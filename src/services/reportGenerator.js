@@ -133,7 +133,7 @@ export async function generateDailyReport(dateStr) {
   const metrics = compileMetrics(orders);
   const restaurantName = (await getSetting('restaurantName')) || 'The Taste';
 
-  const wb = XLSX.book_new();
+  const wb = XLSX.utils.book_new();
 
   // 1. Summary Sheet
   const summaryData = [
@@ -157,7 +157,7 @@ export async function generateDailyReport(dateStr) {
     ['Takeaway Orders', metrics.takeawayOrders]
   ];
   const wsSummary = XLSX.utils.aoa_to_sheet(summaryData);
-  XLSX.book_append_sheet(wb, wsSummary, 'Summary');
+  XLSX.utils.book_append_sheet(wb, wsSummary, 'Summary');
 
   // 2. Order Details Sheet
   const orderHeaders = [
@@ -184,7 +184,7 @@ export async function generateDailyReport(dateStr) {
     ];
   });
   const wsOrders = XLSX.utils.aoa_to_sheet([orderHeaders, ...orderRows]);
-  XLSX.book_append_sheet(wb, wsOrders, 'Order Details');
+  XLSX.utils.book_append_sheet(wb, wsOrders, 'Order Details');
 
   // 3. Item Analysis Sheet
   const itemHeaders = ['Item Name', 'Category', 'Quantity Sold', 'Revenue Generated'];
@@ -197,7 +197,7 @@ export async function generateDailyReport(dateStr) {
       item.revenue
     ]);
   const wsItems = XLSX.utils.aoa_to_sheet([itemHeaders, ...itemRows]);
-  XLSX.book_append_sheet(wb, wsItems, 'Item Analysis');
+  XLSX.utils.book_append_sheet(wb, wsItems, 'Item Analysis');
 
   const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
   return new Blob([wbout], { type: 'application/octet-stream' });
@@ -239,7 +239,7 @@ export async function generateWeeklyReport(endDateStr) {
     }
   });
 
-  const wb = XLSX.book_new();
+  const wb = XLSX.utils.book_new();
 
   // 1. Summary Sheet
   const rangeStr = `${start.toLocaleDateString()} to ${end.toLocaleDateString()}`;
@@ -264,7 +264,7 @@ export async function generateWeeklyReport(endDateStr) {
     ['Takeaway Orders', metrics.takeawayOrders]
   ];
   const wsSummary = XLSX.utils.aoa_to_sheet(summaryData);
-  XLSX.book_append_sheet(wb, wsSummary, 'Summary');
+  XLSX.utils.book_append_sheet(wb, wsSummary, 'Summary');
 
   // 2. Day-over-Day Trend
   const trendHeaders = ['Date', 'Day of Week', 'Orders Placed', 'Revenue (Paid)'];
@@ -273,7 +273,7 @@ export async function generateWeeklyReport(endDateStr) {
     return [date, dayName, data.orders, data.revenue];
   });
   const wsTrend = XLSX.utils.aoa_to_sheet([trendHeaders, ...trendRows]);
-  XLSX.book_append_sheet(wb, wsTrend, 'Daily Breakdown');
+  XLSX.utils.book_append_sheet(wb, wsTrend, 'Daily Breakdown');
 
   // 3. Order Details Sheet
   const orderHeaders = [
@@ -302,7 +302,7 @@ export async function generateWeeklyReport(endDateStr) {
     ];
   });
   const wsOrders = XLSX.utils.aoa_to_sheet([orderHeaders, ...orderRows]);
-  XLSX.book_append_sheet(wb, wsOrders, 'Order Details');
+  XLSX.utils.book_append_sheet(wb, wsOrders, 'Order Details');
 
   // 4. Item Analysis Sheet
   const itemHeaders = ['Item Name', 'Category', 'Quantity Sold', 'Revenue Generated'];
@@ -315,7 +315,7 @@ export async function generateWeeklyReport(endDateStr) {
       item.revenue
     ]);
   const wsItems = XLSX.utils.aoa_to_sheet([itemHeaders, ...itemRows]);
-  XLSX.book_append_sheet(wb, wsItems, 'Item Analysis');
+  XLSX.utils.book_append_sheet(wb, wsItems, 'Item Analysis');
 
   const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
   return new Blob([wbout], { type: 'application/octet-stream' });
@@ -353,7 +353,7 @@ export async function generateMonthlyReport(month, year) {
     }
   });
 
-  const wb = XLSX.book_new();
+  const wb = XLSX.utils.book_new();
 
   // 1. Summary Sheet
   const monthName = start.toLocaleString(undefined, { month: 'long' });
@@ -378,7 +378,7 @@ export async function generateMonthlyReport(month, year) {
     ['Takeaway Orders', metrics.takeawayOrders]
   ];
   const wsSummary = XLSX.utils.aoa_to_sheet(summaryData);
-  XLSX.book_append_sheet(wb, wsSummary, 'Summary');
+  XLSX.utils.book_append_sheet(wb, wsSummary, 'Summary');
 
   // 2. Daily Breakdown
   const trendHeaders = ['Date', 'Orders Placed', 'Revenue (Paid)'];
@@ -386,7 +386,7 @@ export async function generateMonthlyReport(month, year) {
     date, data.orders, data.revenue
   ]);
   const wsTrend = XLSX.utils.aoa_to_sheet([trendHeaders, ...trendRows]);
-  XLSX.book_append_sheet(wb, wsTrend, 'Daily Breakdown');
+  XLSX.utils.book_append_sheet(wb, wsTrend, 'Daily Breakdown');
 
   // 3. Order Details Sheet
   const orderHeaders = [
@@ -415,7 +415,7 @@ export async function generateMonthlyReport(month, year) {
     ];
   });
   const wsOrders = XLSX.utils.aoa_to_sheet([orderHeaders, ...orderRows]);
-  XLSX.book_append_sheet(wb, wsOrders, 'Order Details');
+  XLSX.utils.book_append_sheet(wb, wsOrders, 'Order Details');
 
   // 4. Item Analysis Sheet
   const itemHeaders = ['Item Name', 'Category', 'Quantity Sold', 'Revenue Generated'];
@@ -428,7 +428,7 @@ export async function generateMonthlyReport(month, year) {
       item.revenue
     ]);
   const wsItems = XLSX.utils.aoa_to_sheet([itemHeaders, ...itemRows]);
-  XLSX.book_append_sheet(wb, wsItems, 'Item Analysis');
+  XLSX.utils.book_append_sheet(wb, wsItems, 'Item Analysis');
 
   const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
   return new Blob([wbout], { type: 'application/octet-stream' });
