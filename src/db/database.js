@@ -38,6 +38,46 @@ db.version(2).stores({
   aiConversations: '++id, createdAt, title',
 });
 
+// ── Schema v3 (Cryptographic PIN Security) ──────
+db.version(3).stores({
+  menuCategories: '++id, name, sortOrder, isActive',
+  menuItems: '++id, categoryId, name, price, isAvailable, isVeg, sortOrder',
+  orders: '++id, orderNumber, type, status, paymentMethod, paymentStatus, createdAt, completedAt, customerId, staffId, tableId, channel',
+  settings: 'key',
+  customers: '++id, phone, name, totalSpent, visitCount, loyaltyPoints, tier, lastVisit, createdAt',
+  staff: '++id, name, role, pinHash, isActive, createdAt',
+  shifts: '++id, staffId, date, clockIn, clockOut',
+  inventory: '++id, name, unit, quantity, minThreshold, categoryTag',
+  suppliers: '++id, name, phone, category',
+  recipes: '++id, menuItemId',
+  tables: '++id, number, status, floorSection',
+  reservations: '++id, tableId, customerId, date, time, status',
+  activityLog: '++id, staffId, action, timestamp',
+  aiConversations: '++id, createdAt, title',
+}).upgrade(async (tx) => {
+  try {
+    const staffTable = tx.table('staff');
+    const staffMembers = await staffTable.toArray();
+    for (const s of staffMembers) {
+      if (s.pin && s.pin.length !== 64) {
+        // Hash the PIN using native Web Crypto SHA-256
+        const encoder = new TextEncoder();
+        const data = encoder.encode(s.pin.trim());
+        const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        
+        s.pinHash = hashHex;
+        delete s.pin;
+        await staffTable.put(s);
+      }
+    }
+    console.log('[Database] Dexie schema upgraded to version 3 successfully. Plain-text PINs migrated to SHA-256.');
+  } catch (error) {
+    console.error('[Database] Failed to migrate staff PINs in version 3 upgrade:', error);
+  }
+});
+
 /**
  * Get all active categories sorted by sortOrder.
  * @returns {Promise<Array>} Active categories

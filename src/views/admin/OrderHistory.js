@@ -6,6 +6,7 @@ import { db, getOrder, getOrders, getSetting } from '../../db/database.js';
 import { formatCurrency, formatDateTime, showToast, playSound, vibrateDevice } from '../../utils/helpers.js';
 import { printerService } from '../../services/printer.js';
 import { ReceiptBuilder } from '../../services/receipt.js';
+import { sendBillOnWhatsApp } from '../../services/whatsapp.js';
 
 export class OrderHistory {
   constructor(app) {
@@ -353,6 +354,22 @@ export class OrderHistory {
               <span class="material-symbols-rounded" style="font-size: 18px;">print</span>
               Reprint Thermal Receipt
             </button>
+            <button class="btn btn-block" id="btn-modal-whatsapp" style="
+              font-family: 'Plus Jakarta Sans', sans-serif;
+              font-weight: 700;
+              font-size: var(--text-xs);
+              min-height: 38px;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              gap: 6px;
+              background: #25D366 !important;
+              color: #ffffff !important;
+              border: none;
+            ">
+              <span class="material-symbols-rounded" style="font-size: 18px;">chat</span>
+              Send on WhatsApp
+            </button>
             <button class="btn btn-secondary btn-block" id="btn-modal-close-footer" style="
               font-family: 'Plus Jakarta Sans', sans-serif;
               font-weight: 700;
@@ -387,6 +404,20 @@ export class OrderHistory {
       playSound(800, 100);
       vibrateDevice([40]);
       await this.printReceipt(order);
+    });
+
+    document.getElementById('btn-modal-whatsapp').addEventListener('click', async () => {
+      playSound(800, 100);
+      vibrateDevice([40]);
+      let phone = order.customerPhone || '';
+      const inputPhone = prompt('Enter customer WhatsApp number (10 digits):', phone);
+      if (inputPhone === null) return; // user cancelled
+      try {
+        await sendBillOnWhatsApp(order, inputPhone);
+        showToast('Opening WhatsApp...', 'success');
+      } catch (error) {
+        showToast('Failed to open WhatsApp: ' + error.message, 'error');
+      }
     });
 
     if (order.paymentStatus !== 'paid') {

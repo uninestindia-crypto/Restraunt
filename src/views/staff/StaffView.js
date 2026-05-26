@@ -11,6 +11,7 @@
 import { db } from '../../db/database.js';
 import { showToast, playSound, vibrateDevice } from '../../utils/helpers.js';
 import { logShiftStarted, logShiftEnded } from '../../utils/activityLogger.js';
+import { hashPin } from '../../utils/crypto.js';
 
 const ROLES = {
   owner: { label: 'Owner', color: '#FF6B35' },
@@ -34,7 +35,7 @@ export class StaffView {
   async seedDefault() {
     const count = await db.staff.count();
     if (count === 0) {
-      await db.staff.add({ name: 'Owner', role: 'owner', pin: '1234', isActive: true, createdAt: new Date().toISOString(), isSynced: 0, _platform: 'nextgenos' });
+      await db.staff.add({ name: 'Owner', role: 'owner', pinHash: '03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4', isActive: true, createdAt: new Date().toISOString(), isSynced: 0, _platform: 'nextgenos' });
     }
   }
 
@@ -87,6 +88,7 @@ export class StaffView {
       this.editingStaffId = null;
       document.getElementById('staff-modal-title').textContent = 'Add Staff';
       ['staff-name', 'staff-pin', 'staff-phone'].forEach(id => document.getElementById(id).value = '');
+      document.getElementById('staff-pin').placeholder = '4-digit PIN';
       document.getElementById('staff-role').value = 'cashier';
       document.getElementById('staff-modal').style.display = 'flex';
     });
@@ -94,6 +96,7 @@ export class StaffView {
       this.editingStaffId = null;
       document.getElementById('staff-modal-title').textContent = 'Add Staff';
       ['staff-name', 'staff-pin', 'staff-phone'].forEach(id => document.getElementById(id).value = '');
+      document.getElementById('staff-pin').placeholder = '4-digit PIN';
       document.getElementById('staff-role').value = 'cashier';
       document.getElementById('staff-modal').style.display = 'none';
     });
@@ -102,21 +105,43 @@ export class StaffView {
       const role = document.getElementById('staff-role').value;
       const pin = document.getElementById('staff-pin').value;
       const phone = document.getElementById('staff-phone').value.trim();
-      if (!name || !pin || pin.length !== 4) { showToast('Name and 4-digit PIN required', 'error'); return; }
       
-      const checkId = this.editingStaffId || 0;
-      const existing = await db.staff.where('pin').equals(pin).toArray();
-      const collision = existing.find(s => s.isActive && s.id !== checkId);
-      if (collision) {
-        showToast('PIN already in use by another active staff member', 'error');
+      if (!name) { showToast('Name is required', 'error'); return; }
+      
+      const isEdit = !!this.editingStaffId;
+      
+      if (!isEdit && (!pin || pin.length !== 4)) {
+        showToast('4-digit PIN is required for new staff', 'error');
+        return;
+      }
+      
+      if (pin && pin.length !== 4) {
+        showToast('PIN must be exactly 4 digits', 'error');
         return;
       }
 
-      if (this.editingStaffId) {
-        await db.staff.update(this.editingStaffId, { name, role, pin, phone, isSynced: 0 });
+      let hashedPin = '';
+      if (pin) {
+        hashedPin = await hashPin(pin);
+        
+        const checkId = this.editingStaffId || 0;
+        const existing = await db.staff.where('pinHash').equals(hashedPin).toArray();
+        const collision = existing.find(s => s.isActive && s.id !== checkId);
+        if (collision) {
+          showToast('PIN already in use by another active staff member', 'error');
+          return;
+        }
+      }
+
+      if (isEdit) {
+        const updateData = { name, role, phone, isSynced: 0 };
+        if (pin) {
+          updateData.pinHash = hashedPin;
+        }
+        await db.staff.update(this.editingStaffId, updateData);
         showToast('Staff member updated!', 'success');
       } else {
-        await db.staff.add({ name, role, pin, phone, isActive: true, createdAt: new Date().toISOString(), isSynced: 0, _platform: 'nextgenos' });
+        await db.staff.add({ name, role, pinHash: hashedPin, phone, isActive: true, createdAt: new Date().toISOString(), isSynced: 0, _platform: 'nextgenos' });
         showToast('Staff member added!', 'success');
       }
 
@@ -124,6 +149,7 @@ export class StaffView {
       document.getElementById('staff-modal-title').textContent = 'Add Staff';
       document.getElementById('staff-modal').style.display = 'none';
       ['staff-name', 'staff-pin', 'staff-phone'].forEach(id => document.getElementById(id).value = '');
+      document.getElementById('staff-pin').placeholder = '4-digit PIN';
       document.getElementById('staff-role').value = 'cashier';
       playSound(900, 100);
       vibrateDevice([40]);
@@ -194,7 +220,8 @@ export class StaffView {
           document.getElementById('staff-modal-title').textContent = 'Edit Staff Member';
           document.getElementById('staff-name').value = staffMember.name || '';
           document.getElementById('staff-role').value = staffMember.role || 'cashier';
-          document.getElementById('staff-pin').value = staffMember.pin || '';
+          document.getElementById('staff-pin').value = '';
+          document.getElementById('staff-pin').placeholder = '•••• (leave blank to keep)';
           document.getElementById('staff-phone').value = staffMember.phone || '';
           
           document.getElementById('staff-modal').style.display = 'flex';

@@ -81,11 +81,18 @@ CREATE TABLE IF NOT EXISTS staff (
     id SERIAL PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
     role VARCHAR(30) NOT NULL, -- 'owner', 'manager', 'cashier', 'kitchen', 'waiter'
-    pin VARCHAR(4) NOT NULL,
+    pin_hash VARCHAR(64) NOT NULL, -- Cryptographically hashed login PIN (SHA-256)
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
+
+-- Note for existing databases:
+-- To migrate an existing Supabase 'staff' table, run this SQL in your Supabase SQL Editor:
+-- ALTER TABLE staff ADD COLUMN pin_hash VARCHAR(64);
+-- UPDATE staff SET pin_hash = encode(digest(pin, 'sha256'), 'hex'); -- If using pgcrypto extension
+-- ALTER TABLE staff DROP COLUMN pin;
+-- ALTER TABLE staff ALTER COLUMN pin_hash SET NOT NULL;
 
 -- 9. Staff Shifts Table
 CREATE TABLE IF NOT EXISTS shifts (

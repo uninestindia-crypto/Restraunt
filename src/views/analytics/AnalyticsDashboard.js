@@ -80,6 +80,78 @@ export class AnalyticsDashboard {
             </div>
             <div style="color:var(--text-secondary);font-size:var(--text-sm);line-height:1.6;font-weight:500;" id="ai-insight-text">Analyzing your data...</div>
           </div>
+
+          <!-- Reports & Downloads -->
+          <div class="card card-glass" style="padding:20px;background:rgba(255,255,255,0.01);border:1px solid var(--border-glass);border-radius:16px;display:flex;flex-direction:column;gap:16px;">
+            <div style="font-family:'Plus Jakarta Sans',sans-serif;font-size:var(--text-sm);font-weight:700;color:var(--text-primary);display:flex;align-items:center;gap:8px;">
+              <span class="material-symbols-rounded" style="color:var(--color-primary);font-size:20px;">table_view</span>
+              <span>Business Reports & Excel Export</span>
+            </div>
+            <p style="font-size:var(--text-xs);color:var(--text-secondary);line-height:1.5;margin:0;font-weight:500;">
+              Generate and download multi-sheet Excel spreadsheets (.xlsx) containing Summary KPIs, complete Order Logs, and granular Item Sales Analysis.
+            </p>
+            
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;">
+              <button class="btn btn-secondary report-download-btn" data-type="daily" style="
+                font-family:'Plus Jakarta Sans',sans-serif;
+                font-weight:700;
+                font-size:var(--text-xs);
+                min-height:42px;
+                display:inline-flex;
+                align-items:center;
+                justify-content:center;
+                gap:8px;
+                border:1px solid var(--border-glass);
+                background:rgba(255,255,255,0.02);
+                border-radius:12px;
+                cursor:pointer;
+                transition:all 0.2s;
+              ">
+                <span class="material-symbols-rounded" style="font-size:18px;color:#10B981;">today</span>
+                Download Today's Report
+              </button>
+              
+              <button class="btn btn-secondary report-download-btn" data-type="weekly" style="
+                font-family:'Plus Jakarta Sans',sans-serif;
+                font-weight:700;
+                font-size:var(--text-xs);
+                min-height:42px;
+                display:inline-flex;
+                align-items:center;
+                justify-content:center;
+                gap:8px;
+                border:1px solid var(--border-glass);
+                background:rgba(255,255,255,0.02);
+                border-radius:12px;
+                cursor:pointer;
+                transition:all 0.2s;
+              ">
+                <span class="material-symbols-rounded" style="font-size:18px;color:#FF5E36;">date_range</span>
+                Download Weekly Report
+              </button>
+              
+              <button class="btn btn-secondary report-download-btn" data-type="monthly" style="
+                font-family:'Plus Jakarta Sans',sans-serif;
+                font-weight:700;
+                font-size:var(--text-xs);
+                min-height:42px;
+                display:inline-flex;
+                align-items:center;
+                justify-content:center;
+                gap:8px;
+                border:1px solid var(--border-glass);
+                background:rgba(255,255,255,0.02);
+                border-radius:12px;
+                cursor:pointer;
+                transition:all 0.2s;
+              ">
+                <span class="material-symbols-rounded" style="font-size:18px;color:#3B82F6;">calendar_month</span>
+                Download Monthly Report
+              </button>
+            </div>
+            
+            <div style="font-size:10px;color:var(--text-muted);display:flex;align-items:center;gap:6px;" id="report-drive-upload-status"></div>
+          </div>
         </div>
       </div>
 
@@ -107,6 +179,91 @@ export class AnalyticsDashboard {
         btn.style.border = 'none';
         btn.classList.add('active');
         await this.loadData();
+      });
+    });
+
+    // Reports download handlers
+    this.container.querySelectorAll('.report-download-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        playSound(800, 100);
+        const reportType = btn.dataset.type;
+        const originalText = btn.innerHTML;
+        
+        btn.disabled = true;
+        btn.innerHTML = `<span class="material-symbols-rounded animate-spin" style="font-size:18px;">sync</span> Generating...`;
+        
+        try {
+          // Dynamic import of reportGenerator
+          const { generateDailyReport, generateWeeklyReport, generateMonthlyReport, downloadReport } = await import('../../services/reportGenerator.js');
+          
+          let blob;
+          let filename = '';
+          const now = new Date();
+          
+          if (reportType === 'daily') {
+            const todayStr = now.toISOString().split('T')[0];
+            blob = await generateDailyReport(todayStr);
+            filename = `Daily_Report_${todayStr}.xlsx`;
+          } else if (reportType === 'weekly') {
+            const todayStr = now.toISOString().split('T')[0];
+            blob = await generateWeeklyReport(todayStr);
+            filename = `Weekly_Report_${todayStr}.xlsx`;
+          } else if (reportType === 'monthly') {
+            const month = now.getMonth();
+            const year = now.getFullYear();
+            blob = await generateMonthlyReport(month, year);
+            const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+            filename = `Monthly_Report_${monthNames[month]}_${year}.xlsx`;
+          }
+          
+          if (blob && filename) {
+            // Trigger local download
+            downloadReport(blob, filename);
+            showToast(`${filename} downloaded!`, 'success');
+            
+            // Check Google Drive connection and auto-upload toggle
+            const gdriveToken = localStorage.getItem('gdrive_access_token');
+            const gdriveExpires = localStorage.getItem('gdrive_token_expires');
+            const isDriveConnected = gdriveToken && gdriveExpires && Date.now() < parseInt(gdriveExpires);
+            
+            const { getSetting } = await import('../../db/database.js');
+            const autoUpload = (await getSetting('autoUploadToDrive')) === 'true';
+            
+            const statusEl = document.getElementById('report-drive-upload-status');
+            if (isDriveConnected && autoUpload) {
+              if (statusEl) {
+                statusEl.innerHTML = `<span class="material-symbols-rounded animate-spin" style="font-size:12px;color:#3B82F6;">sync</span> Uploading backup to Google Drive...`;
+              }
+              
+              try {
+                const { uploadToDrive } = await import('../../services/driveUpload.js');
+                const uploadResult = await uploadToDrive(blob, filename);
+                if (uploadResult.success) {
+                  showToast('Backup successfully uploaded to Google Drive! ☁️', 'success');
+                  if (statusEl) {
+                    statusEl.innerHTML = `✅ Report backed up to Google Drive folder: <strong>TheTaste Reports</strong>`;
+                  }
+                }
+              } catch (uploadErr) {
+                console.error('[DriveUpload] Failed to auto-upload report:', uploadErr);
+                showToast('Google Drive backup failed: ' + uploadErr.message, 'warning');
+                if (statusEl) {
+                  statusEl.innerHTML = `❌ Google Drive upload failed: ${uploadErr.message}`;
+                }
+              }
+            } else if (isDriveConnected) {
+              if (statusEl) {
+                statusEl.innerHTML = `ℹ️ Google Drive is connected. Enable "Auto-upload" in Settings to automatically sync reports.`;
+              }
+            }
+          }
+        } catch (err) {
+          console.error('[Reports] Generation failed:', err);
+          showToast('Failed to generate report: ' + err.message, 'error');
+        } finally {
+          btn.disabled = false;
+          btn.innerHTML = originalText;
+        }
       });
     });
   }

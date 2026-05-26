@@ -9,6 +9,7 @@
  */
 
 import { db } from '../db/database.js';
+import { hashPin } from '../utils/crypto.js';
 
 /** 8-hour session duration in milliseconds */
 const SESSION_DURATION_MS = 8 * 60 * 60 * 1000;
@@ -22,14 +23,17 @@ class AuthService {
 
   /**
    * Look up a staff member by their PIN code.
-   * @param {string} pin - The staff PIN
+   * Supports both raw PINs (hashes it first) and pre-hashed PINs (for auto-login).
+   * @param {string} pin - The staff PIN (plain text or SHA-256 hash)
    * @returns {Promise<Object|null>} The matching staff record or null
    */
   async getStaffByPin(pin) {
+    if (!pin) return null;
     try {
+      const hashedPin = pin.length === 64 ? pin : await hashPin(pin);
       const staff = await db.staff
-        .where('pin')
-        .equals(pin)
+        .where('pinHash')
+        .equals(hashedPin)
         .and(s => s.isActive === 1 || s.isActive === true)
         .first();
       return staff || null;
@@ -40,22 +44,26 @@ class AuthService {
   }
 
   /**
-   * Authenticate a staff member using their PIN.
+   * Authenticate a staff member using their PIN (plain text or hash).
    * Starts an 8-hour session timer and logs the login to activityLog.
-   * @param {string} pin - The staff PIN
+   * @param {string} pin - The staff PIN (plain text or SHA-256 hash)
    * @returns {Promise<Object|null>} The authenticated staff object, or null on failure
    */
   async login(pin) {
+    if (!pin) return null;
     try {
       const staff = await this.getStaffByPin(pin);
       if (!staff) {
-        console.warn('[AuthService] Login failed: no active staff found for the provided PIN.');
+        console.warn('[AuthService] Login failed: no active staff found.');
         return null;
       }
 
+      // Store hashed PIN in localStorage for security (never store plain-text!)
+      const hashedPin = pin.length === 64 ? pin : await hashPin(pin);
+
       this.currentStaff = staff;
       this.isAuthenticated = true;
-      localStorage.setItem('auth_staff_pin', pin);
+      localStorage.setItem('auth_staff_pin', hashedPin);
 
       // Start session expiry timer (8 hours)
       this._startSessionTimer();

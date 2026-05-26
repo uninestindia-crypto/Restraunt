@@ -90,6 +90,31 @@ function mapOrderToLocal(row) {
   };
 }
 
+function mapStaffToRemote(staff) {
+  return {
+    id: staff.id,
+    name: staff.name,
+    role: staff.role,
+    pin_hash: staff.pinHash,
+    is_active: staff.isActive === 1 || staff.isActive === true,
+    created_at: staff.createdAt || new Date().toISOString(),
+    updated_at: staff.updatedAt || new Date().toISOString()
+  };
+}
+
+function mapStaffToLocal(row) {
+  return {
+    id: row.id,
+    name: row.name,
+    role: row.role,
+    pinHash: row.pin_hash,
+    isActive: row.is_active ? 1 : 0,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    isSynced: 1
+  };
+}
+
 let supabase = null;
 
 async function initSupabase() {
@@ -437,6 +462,39 @@ class SyncService {
         }
       }
 
+      // 4. Sync Staff
+      let unsyncedStaff = [];
+      try {
+        unsyncedStaff = await db.staff.filter(s => !s.isSynced).toArray();
+      } catch (dbErr) {
+        console.error('[Sync db] Error fetching unsynced staff:', dbErr);
+      }
+
+      if (unsyncedStaff.length > 0) {
+        console.log(`[Sync cache] Found ${unsyncedStaff.length} unsynced staff members in local cache.`);
+        const remoteStaff = unsyncedStaff.map(mapStaffToRemote);
+        
+        try {
+          await retryWithBackoff(async () => {
+            const { error } = await supabase.from('staff').upsert(remoteStaff);
+            if (error) throw error;
+          }, { maxRetries: 3 });
+
+          try {
+            await db.transaction('rw', db.staff, async () => {
+              for (const s of unsyncedStaff) {
+                await db.staff.update(s.id, { isSynced: 1 });
+              }
+            });
+            console.log(`[Sync cache] Successfully synced and updated cache for ${unsyncedStaff.length} staff members.`);
+          } catch (dbErr) {
+            console.error('[Sync db] Error updating staff sync status in local cache:', dbErr);
+          }
+        } catch (netErr) {
+          console.error('[Sync net] Failed to push unsynced staff to cloud after retries:', netErr);
+        }
+      }
+
     } catch (e) {
       console.error('[Sync] Failed to perform initial push of unsynced records:', e);
       showToast('Failed to sync local data to cloud: ' + e.message, 'error');
@@ -472,6 +530,15 @@ class SyncService {
       { event: '*', schema: 'public', table: 'orders' },
       async (payload) => {
         await this.handleRemoteChange('orders', payload, mapOrderToLocal);
+      }
+    );
+
+    // Handle staff updates
+    this.channel.on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'staff' },
+      async (payload) => {
+        await this.handleRemoteChange('staff', payload, mapStaffToLocal);
       }
     );
 
@@ -610,6 +677,39 @@ class SyncService {
     }
   }
 
+  // Active sync-up method for Staff
+  async syncUpStaff(staff) {
+    if (!this.isConnected || !supabase) {
+      console.warn(`[Sync cache] Skipping staff sync for "${staff?.name}": offline or disconnected.`);
+      return;
+    }
+    try {
+      const remote = mapStaffToRemote(staff);
+      
+      await retryWithBackoff(async () => {
+        const { error } = await supabase.from('staff').upsert(remote);
+        if (error) throw error;
+      }, {
+        maxRetries: 3,
+        initialDelayMs: 1000,
+        backoffFactor: 2
+      });
+
+      this.isSyncingFromServer = true;
+      try {
+        await db.staff.update(staff.id, { isSynced: 1 });
+      } catch (dbErr) {
+        console.error(`[Sync db] Error marking staff ${staff.id} as synced:`, dbErr);
+      } finally {
+        this.isSyncingFromServer = false;
+      }
+
+      console.log(`[Sync cache] Staff member "${staff.name}" successfully replicated to cloud and updated in cache.`);
+    } catch (e) {
+      console.error(`[Sync net] Cloud replication failed for staff "${staff.name}":`, e);
+    }
+  }
+
   setupLocalHooks() {
     // Menu Categories hook
     db.menuCategories.hook('creating', (primKey, obj, transaction) => {
@@ -687,6 +787,46 @@ class SyncService {
           console.log(`[Sync cache] Deleted menu item ${primKey} from cloud.`);
         } catch (e) {
           console.error(`[Sync net] Failed to delete item ${primKey} from cloud after retries:`, e);
+        }
+      }, 50);
+    });
+
+    // Staff hooks
+    db.staff.hook('creating', (primKey, obj, transaction) => {
+      setTimeout(async () => {
+        if (this.isSyncingFromServer) return;
+        try {
+          const s = await db.staff.get(primKey);
+          if (s) await this.syncUpStaff(s);
+        } catch (dbErr) {
+          console.error('[Sync db] Error in staff creating hook:', dbErr);
+        }
+      }, 50);
+    });
+
+    db.staff.hook('updating', (mods, primKey, obj, transaction) => {
+      setTimeout(async () => {
+        if (this.isSyncingFromServer) return;
+        try {
+          const s = await db.staff.get(primKey);
+          if (s) await this.syncUpStaff(s);
+        } catch (dbErr) {
+          console.error('[Sync db] Error in staff updating hook:', dbErr);
+        }
+      }, 50);
+    });
+
+    db.staff.hook('deleting', (primKey, obj, transaction) => {
+      setTimeout(async () => {
+        if (this.isSyncingFromServer || !this.isConnected || !supabase) return;
+        try {
+          await retryWithBackoff(async () => {
+            const { error } = await supabase.from('staff').delete().eq('id', primKey);
+            if (error) throw error;
+          }, { maxRetries: 3 });
+          console.log(`[Sync cache] Deleted staff member ${primKey} from cloud.`);
+        } catch (e) {
+          console.error(`[Sync net] Failed to delete staff member ${primKey} from cloud after retries:`, e);
         }
       }, 50);
     });

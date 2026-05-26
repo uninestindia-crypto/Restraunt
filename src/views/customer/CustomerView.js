@@ -22,6 +22,10 @@ export class CustomerView {
     this.state = 'menu';
     this.placedOrder = null;
     this.selectedPaymentMethod = 'upi'; // 'upi' | 'cash'
+    
+    // Active intervals
+    this.successPollInterval = null;
+    this.countdownInterval = null;
   }
 
   async mount(container) {
@@ -32,6 +36,8 @@ export class CustomerView {
     this.detectedTable = null;
     this.orderType = 'takeaway';
     this.selectedTableId = null;
+    this.successPollInterval = null;
+    this.countdownInterval = null;
     await this.loadData();
     this.render();
     this.bindEvents();
@@ -81,6 +87,15 @@ export class CustomerView {
   }
 
   render() {
+    if (this.successPollInterval) {
+      clearInterval(this.successPollInterval);
+      this.successPollInterval = null;
+    }
+    if (this.countdownInterval) {
+      clearInterval(this.countdownInterval);
+      this.countdownInterval = null;
+    }
+
     if (this.state === 'menu') {
       this.renderMenu();
     } else if (this.state === 'cart') {
@@ -661,6 +676,162 @@ export class CustomerView {
       `;
     }
 
+    let prepTrackerCardHtml = '';
+
+    if (!this.placedOrder.estimatedPrepTime) {
+      prepTrackerCardHtml = `
+        <style>
+        @keyframes prep-spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+        </style>
+        <div class="prep-tracker-card" style="
+          margin-top: 24px;
+          width: 100%;
+          max-width: 440px;
+          background: rgba(255, 255, 255, 0.02);
+          border: 1px solid var(--border-glass);
+          border-radius: var(--radius-xl);
+          padding: 24px;
+          text-align: center;
+          box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+          backdrop-filter: blur(10px);
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 16px;
+        ">
+          <div class="spinner-container" style="
+            width: 40px;
+            height: 40px;
+            border: 3px solid rgba(255, 255, 255, 0.1);
+            border-top: 3px solid var(--color-primary);
+            border-radius: 50%;
+            animation: prep-spin 1s linear infinite;
+          "></div>
+          <div>
+            <div style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: var(--text-base); font-weight: 700; color: var(--text-primary); margin-bottom: 6px;">
+              Chef is reviewing your order...
+            </div>
+            <div style="font-size: var(--text-xs); color: var(--text-muted); font-weight: 500; line-height: 1.4; max-width: 320px;">
+              Estimated preparation time will be displayed once the kitchen starts cooking.
+            </div>
+          </div>
+        </div>
+      `;
+
+      if (!this.successPollInterval) {
+        this.successPollInterval = setInterval(async () => {
+          const latestOrder = await db.orders.get(this.placedOrder.id);
+          if (latestOrder && latestOrder.estimatedPrepTime) {
+            this.placedOrder = latestOrder;
+            clearInterval(this.successPollInterval);
+            this.successPollInterval = null;
+            this.render();
+            this.bindEvents();
+          }
+        }, 2500);
+      }
+    } else {
+      if (this.successPollInterval) {
+        clearInterval(this.successPollInterval);
+        this.successPollInterval = null;
+      }
+
+      const prepStartTime = new Date(this.placedOrder.prepStartTime || this.placedOrder.createdAt).getTime();
+      const totalMs = this.placedOrder.estimatedPrepTime * 60 * 1000;
+      const targetTime = prepStartTime + totalMs;
+      const now = Date.now();
+      const initialRemaining = targetTime - now;
+      const initialElapsed = Math.max(0, now - prepStartTime);
+      const initialPercentage = Math.max(0, Math.min(100, (initialElapsed / totalMs) * 100));
+
+      let initialCountdownText = '';
+      if (initialRemaining > 0) {
+        const min = Math.floor(initialRemaining / 60000);
+        const sec = Math.floor((initialRemaining % 60000) / 1000);
+        initialCountdownText = `${min}m ${sec}s remaining`;
+      } else {
+        initialCountdownText = `0m 0s remaining`;
+      }
+
+      let initialTagline = '';
+      if (initialRemaining > 300000) {
+        initialTagline = "Your meal is being prepared by our chefs! 🥘";
+      } else if (initialRemaining <= 300000 && initialRemaining > 0) {
+        initialTagline = "Plating and packing your order... almost ready! 🥡";
+      } else {
+        initialTagline = "Your order is ready at the counter! 🎉 Please show token to pick it up.";
+      }
+
+      prepTrackerCardHtml = `
+        <div class="prep-tracker-card" style="
+          margin-top: 24px;
+          width: 100%;
+          max-width: 440px;
+          background: rgba(255, 255, 255, 0.02);
+          border: 1px solid var(--border-glass);
+          border-radius: var(--radius-xl);
+          padding: 24px;
+          text-align: center;
+          box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+          backdrop-filter: blur(10px);
+          display: flex;
+          flex-direction: column;
+          gap: 16px;
+        ">
+          <div style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: var(--text-xs); color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.1em; font-weight: 700;">
+            Estimated Prep Time: ${this.placedOrder.estimatedPrepTime} min
+          </div>
+          
+          <div id="countdown-clock" style="
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-size: 2rem;
+            font-weight: 800;
+            color: var(--color-primary);
+            letter-spacing: -0.02em;
+          ">
+            ${initialCountdownText}
+          </div>
+
+          <!-- Progress Bar -->
+          <div style="
+            height: 12px;
+            width: 100%;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: var(--radius-full);
+            overflow: hidden;
+            position: relative;
+          ">
+            <div id="progress-bar-fill" style="
+              height: 100%;
+              width: ${initialPercentage}%;
+              background: linear-gradient(90deg, #FF6B35 0%, #FFB347 100%);
+              border-radius: var(--radius-full);
+              transition: width 1s linear;
+            "></div>
+          </div>
+
+          <!-- Status Tagline -->
+          <div id="countdown-tagline" style="
+            font-size: var(--text-sm);
+            color: var(--text-secondary);
+            font-weight: 600;
+            line-height: 1.4;
+          ">
+            ${initialTagline}
+          </div>
+        </div>
+      `;
+
+      setTimeout(() => {
+        this.startCountdownTimer(targetTime, totalMs);
+      }, 50);
+    }
+
     this.container.innerHTML = `
       <div style="flex: 1; display: flex; flex-direction: column; overflow: hidden; height: 100%; background: var(--bg-primary);">
         <div style="flex: 1; overflow-y: auto; padding: 40px 24px; display: flex; flex-direction: column; align-items: center; text-align: center;">
@@ -703,6 +874,8 @@ export class CustomerView {
             </div>
           </div>
 
+          ${prepTrackerCardHtml}
+
           ${paymentStatusSection}
 
           <!-- Back Button -->
@@ -743,6 +916,55 @@ export class CustomerView {
         }
       }, 50);
     }
+  }
+
+  startCountdownTimer(targetTime, totalMs) {
+    if (this.countdownInterval) {
+      clearInterval(this.countdownInterval);
+    }
+
+    const updateTimer = () => {
+      const now = Date.now();
+      const remaining = targetTime - now;
+      const elapsed = Math.max(0, now - (targetTime - totalMs));
+      const percentage = Math.max(0, Math.min(100, (elapsed / totalMs) * 100));
+
+      const clockEl = document.getElementById('countdown-clock');
+      const fillEl = document.getElementById('progress-bar-fill');
+      const taglineEl = document.getElementById('countdown-tagline');
+
+      if (clockEl) {
+        if (remaining > 0) {
+          const min = Math.floor(remaining / 60000);
+          const sec = Math.floor((remaining % 60000) / 1000);
+          clockEl.textContent = `${min}m ${sec}s remaining`;
+        } else {
+          clockEl.textContent = `0m 0s remaining`;
+        }
+      }
+
+      if (fillEl) {
+        fillEl.style.width = `${percentage}%`;
+      }
+
+      if (taglineEl) {
+        if (remaining > 300000) {
+          taglineEl.textContent = "Your meal is being prepared by our chefs! 🥘";
+        } else if (remaining <= 300000 && remaining > 0) {
+          taglineEl.textContent = "Plating and packing your order... almost ready! 🥡";
+        } else {
+          taglineEl.textContent = "Your order is ready at the counter! 🎉 Please show token to pick it up.";
+        }
+      }
+
+      if (remaining <= 0 && this.countdownInterval) {
+        clearInterval(this.countdownInterval);
+        this.countdownInterval = null;
+      }
+    };
+
+    updateTimer();
+    this.countdownInterval = setInterval(updateTimer, 1000);
   }
 
   bindEvents() {
@@ -980,6 +1202,14 @@ export class CustomerView {
         playSound(800, 100);
         this.cart = [];
         this.placedOrder = null;
+        if (this.successPollInterval) {
+          clearInterval(this.successPollInterval);
+          this.successPollInterval = null;
+        }
+        if (this.countdownInterval) {
+          clearInterval(this.countdownInterval);
+          this.countdownInterval = null;
+        }
         this.state = 'menu';
         this.render();
         this.bindEvents();
@@ -1153,6 +1383,14 @@ export class CustomerView {
   }
 
   unmount() {
+    if (this.successPollInterval) {
+      clearInterval(this.successPollInterval);
+      this.successPollInterval = null;
+    }
+    if (this.countdownInterval) {
+      clearInterval(this.countdownInterval);
+      this.countdownInterval = null;
+    }
     this.container = null;
   }
 }

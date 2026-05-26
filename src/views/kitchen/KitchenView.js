@@ -3,7 +3,7 @@
  * Kanban-style board for managing order preparation
  */
 
-import { getOrders, updateOrderStatus } from '../../db/database.js';
+import { getOrders, updateOrderStatus, db } from '../../db/database.js';
 import { formatTime, showToast, playSound, vibrateDevice } from '../../utils/helpers.js';
 
 export class KitchenView {
@@ -140,8 +140,48 @@ export class KitchenView {
         </div>
       </div>
       
-      <!-- Responsive Mobile Styles inlined specifically for KDS column responsiveness -->
+      <!-- Responsive Mobile & KDS Custom Styles -->
       <style>
+        @keyframes pulseRed {
+          0% {
+            box-shadow: 0 0 8px rgba(239, 68, 68, 0.2), inset 0 0 4px rgba(239, 68, 68, 0.1);
+            border-color: rgba(239, 68, 68, 0.4);
+          }
+          50% {
+            box-shadow: 0 0 20px rgba(239, 68, 68, 0.6), inset 0 0 10px rgba(239, 68, 68, 0.2);
+            border-color: rgba(239, 68, 68, 0.8);
+          }
+          100% {
+            box-shadow: 0 0 8px rgba(239, 68, 68, 0.2), inset 0 0 4px rgba(239, 68, 68, 0.1);
+            border-color: rgba(239, 68, 68, 0.4);
+          }
+        }
+        @keyframes pulseGlowRed {
+          0% {
+            box-shadow: 0 0 5px rgba(239, 68, 68, 0.2);
+            background: rgba(239, 68, 68, 0.15);
+          }
+          50% {
+            box-shadow: 0 0 15px rgba(239, 68, 68, 0.5);
+            background: rgba(239, 68, 68, 0.3);
+          }
+          100% {
+            box-shadow: 0 0 5px rgba(239, 68, 68, 0.2);
+            background: rgba(239, 68, 68, 0.15);
+          }
+        }
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        @keyframes fadeOut {
+          from { opacity: 1; }
+          to { opacity: 0; }
+        }
+        @keyframes scaleUp {
+          from { transform: scale(0.9); opacity: 0; }
+          to { transform: scale(1); opacity: 1; }
+        }
         @media (max-width: 900px) {
           #kds-grid-container {
             grid-template-columns: 1fr !important;
@@ -162,6 +202,150 @@ export class KitchenView {
       playSound(700, 80);
       this.loadOrders();
       showToast('KDS Refreshed', 'info');
+    });
+  }
+
+  showPrepTimeModal() {
+    return new Promise((resolve) => {
+      // Create overlay element
+      const overlay = document.createElement('div');
+      overlay.id = 'prep-time-modal-overlay';
+      overlay.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: rgba(9, 9, 14, 0.85);
+        backdrop-filter: blur(8px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 10000;
+        animation: fadeIn 0.25s ease-out;
+      `;
+
+      // Modal container
+      const modal = document.createElement('div');
+      modal.style.cssText = `
+        background: #12121a;
+        border: 1px solid var(--border-glass);
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 40px rgba(255, 94, 54, 0.15);
+        border-radius: var(--radius-xl);
+        padding: 32px;
+        width: 90%;
+        max-width: 440px;
+        text-align: center;
+        animation: scaleUp 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+      `;
+
+      // Modal Title
+      const title = document.createElement('h3');
+      title.innerText = 'Select Estimated Prep Time';
+      title.style.cssText = `
+        font-family: 'Plus Jakarta Sans', sans-serif;
+        font-size: var(--text-lg);
+        font-weight: 800;
+        color: var(--text-primary);
+        margin-bottom: 24px;
+        letter-spacing: -0.01em;
+      `;
+      modal.appendChild(title);
+
+      // Quick timing options grid
+      const grid = document.createElement('div');
+      grid.style.cssText = `
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+        margin-bottom: 20px;
+      `;
+
+      const prepTimes = [10, 15, 20, 30, 45];
+      prepTimes.forEach(mins => {
+        const btn = document.createElement('button');
+        btn.className = 'btn btn-secondary';
+        btn.innerText = `${mins} Mins`;
+        btn.style.cssText = `
+          padding: 14px;
+          font-family: 'Plus Jakarta Sans', sans-serif;
+          font-weight: 700;
+          font-size: var(--text-sm);
+          border: 1px solid var(--border-glass);
+          background: rgba(255, 255, 255, 0.02);
+          color: var(--text-primary);
+          border-radius: var(--radius-md);
+          cursor: pointer;
+          transition: all var(--transition-fast);
+        `;
+        
+        btn.onmouseenter = () => {
+          btn.style.background = 'var(--color-primary)';
+          btn.style.color = 'white';
+          btn.style.borderColor = 'var(--color-primary)';
+          btn.style.boxShadow = '0 4px 15px rgba(255, 94, 54, 0.3)';
+        };
+        btn.onmouseleave = () => {
+          btn.style.background = 'rgba(255, 255, 255, 0.02)';
+          btn.style.color = 'var(--text-primary)';
+          btn.style.borderColor = 'var(--border-glass)';
+          btn.style.boxShadow = 'none';
+        };
+        btn.onclick = () => {
+          playSound(800, 100);
+          resolve(mins);
+          cleanup();
+        };
+        grid.appendChild(btn);
+      });
+
+      modal.appendChild(grid);
+
+      // Cancel Button
+      const cancelBtn = document.createElement('button');
+      cancelBtn.className = 'btn btn-block';
+      cancelBtn.innerText = 'Cancel';
+      cancelBtn.style.cssText = `
+        width: 100%;
+        padding: 12px;
+        font-family: 'Plus Jakarta Sans', sans-serif;
+        font-weight: 700;
+        font-size: var(--text-sm);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        background: transparent;
+        color: var(--text-muted);
+        border-radius: var(--radius-md);
+        cursor: pointer;
+        margin-top: 8px;
+        transition: all var(--transition-fast);
+      `;
+      cancelBtn.onmouseenter = () => {
+        cancelBtn.style.color = 'var(--text-primary)';
+        cancelBtn.style.background = 'rgba(255, 255, 255, 0.05)';
+      };
+      cancelBtn.onmouseleave = () => {
+        cancelBtn.style.color = 'var(--text-muted)';
+        cancelBtn.style.background = 'transparent';
+      };
+      cancelBtn.onclick = () => {
+        playSound(600, 80);
+        resolve(null);
+        cleanup();
+      };
+      
+      modal.appendChild(cancelBtn);
+
+      overlay.appendChild(modal);
+      document.body.appendChild(overlay);
+
+      const cleanup = () => {
+        overlay.style.animation = 'fadeOut 0.2s ease-in forwards';
+        setTimeout(() => {
+          if (overlay.parentNode) {
+            overlay.parentNode.removeChild(overlay);
+          }
+        }, 200);
+      };
     });
   }
 
@@ -315,6 +499,28 @@ export class KitchenView {
       }
     }
 
+    let isOverdue = false;
+    let elapsedPrep = 0;
+    if (order.status === 'preparing' && order.estimatedPrepTime) {
+      elapsedPrep = Math.floor((Date.now() - new Date(order.prepStartTime).getTime()) / 60000);
+      if (elapsedPrep > order.estimatedPrepTime) {
+        isOverdue = true;
+        cardStyle = `
+          padding: 20px;
+          background: rgba(239, 68, 68, 0.02);
+          border-radius: var(--radius-xl);
+          border: 1.5px solid rgba(239, 68, 68, 0.5);
+          display: flex;
+          flex-direction: column;
+          gap: 16px;
+          position: relative;
+          box-shadow: 0 0 20px rgba(239, 68, 68, 0.2), inset 0 0 12px rgba(239, 68, 68, 0.05);
+          animation: pulseRed 2s infinite ease-in-out;
+          transition: all var(--transition-normal);
+        `;
+      }
+    }
+
     card.style.cssText = cardStyle;
 
     // Build items html
@@ -435,6 +641,41 @@ export class KitchenView {
         </div>
       </div>
 
+      <!-- Prep Limit Badge -->
+      ${order.status === 'preparing' && order.estimatedPrepTime ? `
+        <div style="
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          padding: 8px 12px;
+          border-radius: var(--radius-md);
+          font-family: 'Plus Jakarta Sans', sans-serif;
+          font-size: var(--text-xs);
+          font-weight: 700;
+          margin-top: 8px;
+          margin-bottom: 4px;
+          ${isOverdue ? `
+            background: rgba(239, 68, 68, 0.15);
+            color: #FF6B6B;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            box-shadow: 0 0 10px rgba(239, 68, 68, 0.2);
+            animation: pulseGlowRed 1.5s infinite;
+          ` : `
+            background: rgba(245, 158, 11, 0.15);
+            color: var(--color-warning);
+            border: 1px solid rgba(245, 158, 11, 0.25);
+          `}
+        ">
+          ${isOverdue ? `
+            <span style="font-size: 14px;">🚨</span>
+            <span>OVERDUE by ${elapsedPrep - order.estimatedPrepTime}m</span>
+          ` : `
+            <span>⏳</span>
+            <span>Prep Limit: ${order.estimatedPrepTime}m</span>
+          `}
+        </div>
+      ` : ''}
+
       <!-- Items List -->
       <div style="display: flex; flex-direction: column; margin: 4px 0;">
         ${itemsHtml}
@@ -490,8 +731,23 @@ export class KitchenView {
         vibrateDevice([40]);
         
         if (action === 'prepare') {
-          await updateOrderStatus(orderId, 'preparing');
-          showToast('Preparing order', 'warning');
+          const estimatedPrepTime = await this.showPrepTimeModal();
+          if (estimatedPrepTime === null) {
+            return;
+          }
+          const prepStartTime = new Date().toISOString();
+          await db.orders.update(orderId, { status: 'preparing', estimatedPrepTime, prepStartTime, isSynced: 0 });
+          
+          // Trigger sync in background if possible
+          import('../../services/sync.js').then(({ syncService }) => {
+            db.orders.get(orderId).then(order => {
+              if (order) {
+                syncService.syncUpOrder(order).catch(err => console.error('Sync failed:', err));
+              }
+            });
+          }).catch(err => console.warn('Sync service not loaded:', err));
+
+          showToast('Preparing order', 'success');
         } else if (action === 'ready') {
           await updateOrderStatus(orderId, 'ready');
           showToast('Order is ready!', 'success');

@@ -58,7 +58,10 @@ export class SettingsView {
         'showFssaiOnReceipt',
         'showNotesOnReceipt',
         'showFooterOnReceipt',
-        'autoPrintOnConfirm'
+        'autoPrintOnConfirm',
+        // Google Drive settings
+        'googleClientId',
+        'autoUploadToDrive'
       ];
 
       for (const key of keys) {
@@ -70,7 +73,7 @@ export class SettingsView {
       for (const t of defaultOnToggles) {
         if (this.config[t] === '') this.config[t] = 'true';
       }
-      const defaultOffToggles = ['showGstinOnReceipt', 'showFssaiOnReceipt', 'showNotesOnReceipt', 'autoPrintOnConfirm'];
+      const defaultOffToggles = ['showGstinOnReceipt', 'showFssaiOnReceipt', 'showNotesOnReceipt', 'autoPrintOnConfirm', 'autoUploadToDrive'];
       for (const t of defaultOffToggles) {
         if (this.config[t] === '') this.config[t] = 'false';
       }
@@ -624,6 +627,80 @@ export class SettingsView {
           </div>
         </div>
 
+        <!-- Google Drive Integration -->
+        ${this._cardOpen()}
+          ${this._cardHeading('cloud_upload', 'Google Drive Integration')}
+          
+          <div style="display: flex; flex-direction: column; gap: 18px;">
+            <p style="font-size: var(--text-xs); color: var(--text-secondary); line-height: 1.5; margin: 0;">
+              Automatically backup your daily, weekly, and monthly reports directly to your Google Drive in an organized folder structure.
+            </p>
+            <div class="input-group">
+              <label for="googleClientId" style="${this._labelStyle()}">Google Client ID</label>
+              <input type="text" id="googleClientId" class="input" placeholder="e.g. 1234567890-abc123xyz.apps.googleusercontent.com" value="${esc(this.config.googleClientId)}" style="${this._inputStyle()}">
+            </div>
+            
+            <div style="
+              display: flex; 
+              justify-content: space-between; 
+              align-items: center; 
+              background: rgba(0,0,0,0.2); 
+              padding: 14px 18px; 
+              border-radius: var(--radius-lg); 
+              border: 1px solid var(--border-glass);
+            ">
+              <div>
+                <div style="font-size: var(--text-sm); font-weight: 600; color: var(--text-primary);">
+                  Drive Connection Status
+                </div>
+                <div style="font-size: var(--text-xs); color: var(--text-secondary); margin-top: 4px; font-weight: 500;" id="gdrive-status-info">
+                  ${this.isDriveConnected() ? 'Connected to Google Drive' : 'Disconnected'}
+                </div>
+              </div>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span id="gdrive-status-text" style="
+                  font-family: 'Plus Jakarta Sans', sans-serif;
+                  font-size: var(--text-xs); 
+                  font-weight: 800; 
+                  color: ${this.isDriveConnected() ? 'var(--color-success)' : 'var(--text-muted)'};
+                ">
+                  ${this.isDriveConnected() ? 'CONNECTED' : 'DISCONNECTED'}
+                </span>
+                <span class="status-dot ${this.isDriveConnected() ? 'online' : 'offline'}" id="gdrive-status-dot" style="width: 8px; height: 8px;"></span>
+              </div>
+            </div>
+
+            <!-- GDrive Actions -->
+            <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+              <button class="btn ${this.isDriveConnected() ? 'btn-danger' : 'btn-primary'}" id="btn-toggle-gdrive" style="
+                flex: 1;
+                font-family: 'Plus Jakarta Sans', sans-serif;
+                font-weight: 700;
+                font-size: var(--text-xs);
+                min-height: 40px;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                gap: 6px;
+              ">
+                <span class="material-symbols-rounded" style="font-size: 18px;">cloud_sync</span>
+                <span id="btn-gdrive-text">${this.isDriveConnected() ? 'Disconnect Google Drive' : 'Connect Google Drive'}</span>
+              </button>
+            </div>
+
+            <div>
+              <div style="
+                background: rgba(0,0,0,0.15);
+                border-radius: var(--radius-lg);
+                border: 1px solid var(--border-glass);
+                padding: 6px 16px;
+              ">
+                ${this._buildToggleRow('autoUploadToDrive', 'Auto-upload Business Reports to Google Drive', this.config.autoUploadToDrive)}
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- Data Backup & Export -->
         ${this._cardOpen()}
           ${this._cardHeading('backup', 'Data Backup & Export')}
@@ -874,6 +951,39 @@ export class SettingsView {
     `;
   }
 
+  isDriveConnected() {
+    try {
+      const token = localStorage.getItem('gdrive_access_token');
+      const expires = localStorage.getItem('gdrive_token_expires');
+      return token && expires && Date.now() < parseInt(expires);
+    } catch (e) {
+      return false;
+    }
+  }
+
+  _updateDriveUI(isConnected) {
+    const dot = document.getElementById('gdrive-status-dot');
+    const text = document.getElementById('gdrive-status-text');
+    const info = document.getElementById('gdrive-status-info');
+    const btn = document.getElementById('btn-toggle-gdrive');
+    const btnText = document.getElementById('btn-gdrive-text');
+
+    if (dot) dot.className = `status-dot ${isConnected ? 'online' : 'offline'}`;
+    if (text) {
+      text.textContent = isConnected ? 'CONNECTED' : 'DISCONNECTED';
+      text.style.color = isConnected ? 'var(--color-success)' : 'var(--text-muted)';
+    }
+    if (info) {
+      info.textContent = isConnected ? 'Connected to Google Drive' : 'Disconnected';
+    }
+    if (btn) {
+      btn.className = `btn ${isConnected ? 'btn-danger' : 'btn-primary'}`;
+    }
+    if (btnText) {
+      btnText.textContent = isConnected ? 'Disconnect Google Drive' : 'Connect Google Drive';
+    }
+  }
+
   /** HTML-escape helper */
   _escHtml(str) {
     const d = document.createElement('div');
@@ -948,6 +1058,45 @@ export class SettingsView {
         playSound(800, 100);
         vibrateDevice([40]);
         await this.printTestReceipt();
+      });
+    }
+
+    // Google Drive Connect/Disconnect
+    const gdriveToggleBtn = document.getElementById('btn-toggle-gdrive');
+    if (gdriveToggleBtn) {
+      gdriveToggleBtn.addEventListener('click', async () => {
+        playSound(800, 100);
+        vibrateDevice([40]);
+
+        const { isDriveConnected, authenticateGDrive, disconnectGDrive } = await import('../../services/driveUpload.js');
+
+        if (isDriveConnected()) {
+          disconnectGDrive();
+          showToast('Google Drive disconnected', 'info');
+          this._updateDriveUI(false);
+        } else {
+          const clientId = document.getElementById('googleClientId').value.trim();
+          if (!clientId) {
+            showToast('Please enter your Google Client ID first.', 'warning');
+            return;
+          }
+          
+          gdriveToggleBtn.disabled = true;
+          const originalText = document.getElementById('btn-gdrive-text').textContent;
+          document.getElementById('btn-gdrive-text').textContent = 'Connecting...';
+          
+          try {
+            await authenticateGDrive(clientId);
+            showToast('Google Drive connected successfully! 🎉', 'success');
+            this._updateDriveUI(true);
+          } catch (e) {
+            showToast('Connection failed: ' + e.message, 'error');
+            this._updateDriveUI(false);
+          } finally {
+            gdriveToggleBtn.disabled = false;
+            document.getElementById('btn-gdrive-text').textContent = isDriveConnected() ? 'Disconnect Google Drive' : 'Connect Google Drive';
+          }
+        }
       });
     }
 
@@ -1076,7 +1225,8 @@ export class SettingsView {
         'supabaseUrl',
         'supabaseKey',
         'printDensity',
-        'printCopies'
+        'printCopies',
+        'googleClientId'
       ];
 
       // Collect toggle (checkbox) fields
@@ -1088,7 +1238,8 @@ export class SettingsView {
         'showFssaiOnReceipt',
         'showNotesOnReceipt',
         'showFooterOnReceipt',
-        'autoPrintOnConfirm'
+        'autoPrintOnConfirm',
+        'autoUploadToDrive'
       ];
 
       try {
