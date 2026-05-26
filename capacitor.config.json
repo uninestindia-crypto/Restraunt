@@ -1,5 +1,9 @@
 {
   "appId": "com.thetaste.pos",
   "appName": "TheTaste",
-  "webDir": "dist"
+  "webDir": "dist",
+  "server": {
+    "url": "https://thetaste.co.in",
+    "cleartext": true
+  }
 }
