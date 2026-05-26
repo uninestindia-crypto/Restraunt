@@ -94,6 +94,10 @@ export class StaffView {
       const pin = document.getElementById('staff-pin').value;
       const phone = document.getElementById('staff-phone').value.trim();
       if (!name || !pin || pin.length !== 4) { showToast('Name and 4-digit PIN required', 'error'); return; }
+      
+      const existing = await db.staff.where('pin').equals(pin).first();
+      if (existing) { showToast('PIN already in use by another staff member', 'error'); return; }
+
       await db.staff.add({ name, role, pin, phone, isActive: true, createdAt: new Date().toISOString(), isSynced: 0, _platform: 'nextgenos' });
       document.getElementById('staff-modal').style.display = 'none';
       ['staff-name', 'staff-pin', 'staff-phone'].forEach(id => document.getElementById(id).value = '');
@@ -126,16 +130,14 @@ export class StaffView {
     if (!content) return;
     if (this.tab === 'directory') {
       const staffList = await db.staff.toArray();
-      // Check active shifts for each staff
-      const activeShifts = await db.shifts.where('clockOut').equals('').toArray();
-      const activeStaffIds = new Set(activeShifts.map(s => s.staffId));
+      const owners = staffList.filter(s => s.role === 'owner' && s.isActive);
 
       content.innerHTML = staffList.length === 0 ? '<div style="text-align:center;padding:60px;color:var(--text-muted);">No staff members yet.</div>' :
-        `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;">${staffList.map(s => {
+        `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;">${staffList.map(s => {
           const role = ROLES[s.role] || ROLES.cashier;
-          const isClocked = activeStaffIds.has(s.id);
+          const isDeletable = !(s.role === 'owner' && owners.length <= 1);
           return `
-            <div style="padding:18px;background:rgba(255,255,255,0.01);border:1px solid var(--border-glass);border-radius:14px;display:flex;align-items:center;gap:14px;">
+            <div style="padding:18px;background:rgba(255,255,255,0.01);border:1px solid var(--border-glass);border-radius:14px;display:flex;align-items:center;gap:14px;position:relative;">
               <div style="width:44px;height:44px;border-radius:12px;background:rgba(${s.role === 'owner' ? '255,107,53' : '108,92,231'},0.1);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:1.1rem;color:${role.color};font-family:'Plus Jakarta Sans',sans-serif;flex-shrink:0;">${(s.name || '?')[0].toUpperCase()}</div>
               <div style="flex:1;min-width:0;">
                 <div style="font-size:var(--text-sm);font-weight:700;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${s.name}</div>
@@ -144,42 +146,33 @@ export class StaffView {
                   <span style="font-size:0.6rem;color:${s.isActive ? 'var(--color-success)' : 'var(--color-error)'};font-weight:700;">${s.isActive ? '● Active' : '● Inactive'}</span>
                 </div>
               </div>
-              <button class="shift-toggle-btn" data-staff-id="${s.id}" data-staff-name="${s.name}" data-clocked="${isClocked ? 'in' : 'out'}" style="padding:6px 12px;border-radius:8px;font-size:0.65rem;font-weight:700;cursor:pointer;border:none;font-family:'Plus Jakarta Sans',sans-serif;transition:all 0.2s;${isClocked ? 'background:rgba(239,68,68,0.1);color:#EF4444;border:1px solid rgba(239,68,68,0.2);' : 'background:rgba(16,185,129,0.1);color:#10B981;border:1px solid rgba(16,185,129,0.2);'}">
-                ${isClocked ? '⏹ Clock Out' : '▶ Clock In'}
-              </button>
+              <div style="display:flex;align-items:center;gap:10px;">
+                <div style="font-size:0.7rem;color:var(--text-muted);font-weight:600;letter-spacing:0.2em;">****</div>
+                ${isDeletable ? `
+                  <button class="delete-staff-btn" data-id="${s.id}" style="background:transparent;border:none;color:var(--color-danger);cursor:pointer;display:flex;align-items:center;justify-content:center;padding:4px;border-radius:6px;transition:background 0.2s;" onmouseover="this.style.background='rgba(239,68,68,0.1)'" onmouseout="this.style.background='transparent'">
+                    <span class="material-symbols-rounded" style="font-size:18px;">delete</span>
+                  </button>
+                ` : ''}
+              </div>
             </div>`;
         }).join('')}</div>`;
 
-      // Bind shift toggle buttons
-      content.querySelectorAll('.shift-toggle-btn').forEach(btn => {
+      content.querySelectorAll('.delete-staff-btn').forEach(btn => {
         btn.addEventListener('click', async () => {
-          const staffId = parseInt(btn.dataset.staffId);
-          const staffName = btn.dataset.staffName;
-          const isClocked = btn.dataset.clocked === 'in';
-          try {
-            if (isClocked) {
-              // Clock out: find active shift and update
-              const activeShift = await db.shifts.where({ staffId }).filter(s => s.clockOut === '').first();
-              if (activeShift) {
-                await db.shifts.update(activeShift.id, { clockOut: new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) });
-                await logShiftEnded(staffName);
-                showToast(`${staffName} clocked out`, 'info');
-              }
-            } else {
-              // Clock in: create new shift
-              await db.shifts.add({
-                staffId, date: new Date().toLocaleDateString('en-IN'),
-                clockIn: new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }),
-                clockOut: '', hoursWorked: 0, isSynced: 0, _platform: 'nextgenos'
-              });
-              await logShiftStarted(staffName);
-              showToast(`${staffName} clocked in`, 'success');
-            }
-            playSound(800, 80); vibrateDevice([30]);
+          const id = parseInt(btn.dataset.id);
+          const staffMember = await db.staff.get(id);
+          if (!staffMember) return;
+
+          if (confirm(`Are you sure you want to remove ${staffMember.name}?`)) {
+            await db.staff.delete(id);
+            playSound(900, 100);
+            vibrateDevice([40]);
+            showToast('Staff member removed successfully!', 'success');
             await this.loadData();
-          } catch (e) { console.error('Shift toggle error:', e); showToast('Failed', 'error'); }
+          }
         });
       });
+
     } else if (this.tab === 'shifts') {
       const shifts = await db.shifts.reverse().sortBy('clockIn');
       const recent = shifts.slice(0, 20);
