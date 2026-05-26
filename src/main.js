@@ -48,8 +48,8 @@ class App {
       // Initialize database and seed data
       await seedDatabase();
 
-      // Initialize cloud sync service
-      await syncService.init();
+      // Initialize cloud sync service asynchronously to prevent blocking UI boot
+      syncService.init().catch(err => console.error('[App] Sync init error:', err));
 
       // Hide loading screen
       this.hideLoadingScreen();

@@ -146,13 +146,14 @@ export async function createOrder(orderData) {
     throw error; // Re-throw to inform UI of creation failure
   }
 
-  // Replicate to cloud asynchronously
-  try {
-    const { syncService } = await import('../services/sync.js');
-    await syncService.syncUpOrder(result);
-  } catch (err) {
-    console.error('[Database] Failed to sync new order to cloud:', err);
-  }
+  // Replicate to cloud asynchronously in the background
+  import('../services/sync.js').then(({ syncService }) => {
+    syncService.syncUpOrder(result).catch(err => {
+      console.error('[Database] Async syncUpOrder failed:', err);
+    });
+  }).catch(err => {
+    console.error('[Database] Async sync import failed:', err);
+  });
 
   return result;
 }
@@ -216,15 +217,15 @@ export async function updateOrderStatus(id, status) {
   }
 
   if (result > 0) {
-    try {
-      const order = await getOrder(id);
+    getOrder(id).then(order => {
       if (order) {
-        const { syncService } = await import('../services/sync.js');
-        await syncService.syncUpOrder(order);
+        import('../services/sync.js').then(({ syncService }) => {
+          syncService.syncUpOrder(order).catch(err => {
+            console.error('[Database] Async syncUpOrder failed on status update:', err);
+          });
+        }).catch(err => console.error('[Database] Async sync import failed on status update:', err));
       }
-    } catch (err) {
-      console.error('[Database] Failed to sync updated order status to cloud:', err);
-    }
+    }).catch(err => console.error('[Database] Failed to get order for status sync:', err));
   }
 
   return result;
@@ -247,15 +248,15 @@ export async function updatePayment(id, paymentMethod, paymentStatus) {
   }
 
   if (result > 0) {
-    try {
-      const order = await getOrder(id);
+    getOrder(id).then(order => {
       if (order) {
-        const { syncService } = await import('../services/sync.js');
-        await syncService.syncUpOrder(order);
+        import('../services/sync.js').then(({ syncService }) => {
+          syncService.syncUpOrder(order).catch(err => {
+            console.error('[Database] Async syncUpOrder failed on payment update:', err);
+          });
+        }).catch(err => console.error('[Database] Async sync import failed on payment update:', err));
       }
-    } catch (err) {
-      console.error('[Database] Failed to sync updated order payment to cloud:', err);
-    }
+    }).catch(err => console.error('[Database] Failed to get order for payment sync:', err));
   }
 
   return result;
