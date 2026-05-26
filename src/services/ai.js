@@ -14,12 +14,14 @@ const INTENTS = [
   { id: 'REVENUE_TODAY', keywords: ['revenue', 'sales', 'earned', 'money', 'income', 'earning'], handler: 'getRevenueToday' },
   { id: 'BEST_SELLERS', keywords: ['best', 'top', 'popular', 'selling', 'seller', 'famous', 'trending'], handler: 'getBestSellers' },
   { id: 'WORST_SELLERS', keywords: ['worst', 'least', 'slow', 'flop', 'not selling', 'poor'], handler: 'getWorstSellers' },
+  { id: 'GENERATE_REPORT', keywords: ['excel report', 'excel', 'download report', 'export', 'spreadsheet', 'sheet'], handler: 'generateReport' },
+  { id: 'WHATSAPP_SHARE', keywords: ['whatsapp bill', 'whatsapp', 'share bill', 'send bill', 'receipt message', 'bill on whatsapp'], handler: 'whatsappGuide' },
   { id: 'DAILY_SUMMARY', keywords: ['summary', 'overview', 'report', 'how was', 'day going', 'today'], handler: 'getDailySummary' },
   { id: 'PEAK_HOURS', keywords: ['peak', 'busy', 'rush', 'busiest', 'hour', 'when'], handler: 'getPeakHours' },
   { id: 'ORDER_COUNT', keywords: ['orders', 'count', 'how many orders', 'total orders', 'number of orders'], handler: 'getOrderCount' },
   { id: 'AVG_ORDER', keywords: ['average', 'avg', 'bill', 'ticket', 'order value', 'per order'], handler: 'getAvgOrderValue' },
   { id: 'FORECAST', keywords: ['predict', 'forecast', 'tomorrow', 'expect', 'projection', 'estimate'], handler: 'forecastRevenue' },
-  { id: 'PROMO', keywords: ['promo', 'marketing', 'whatsapp', 'message', 'offer', 'write', 'promotion', 'advertise'], handler: 'generatePromo' },
+  { id: 'PROMO', keywords: ['promo', 'marketing', 'message', 'offer', 'write', 'promotion', 'advertise'], handler: 'generatePromo' },
   { id: 'CUSTOMER_COUNT', keywords: ['customer', 'customers', 'visitor', 'how many people', 'footfall'], handler: 'getCustomerCount' },
   { id: 'PAYMENT_SPLIT', keywords: ['payment', 'upi', 'cash', 'method', 'digital', 'split'], handler: 'getPaymentSplit' },
   { id: 'ANOMALY', keywords: ['unusual', 'anomaly', 'strange', 'weird', 'different', 'abnormal'], handler: 'detectAnomalies' },
@@ -348,6 +350,72 @@ class AIService {
     }
 
     return this.formatResponse('text', text, null, ['📊 Summary', '📈 Forecast']);
+  }
+
+  async generateReport(query) {
+    const lower = query.toLowerCase();
+    let type = 'daily';
+    if (lower.includes('week')) type = 'weekly';
+    else if (lower.includes('month')) type = 'monthly';
+
+    try {
+      const { generateDailyReport, generateWeeklyReport, generateMonthlyReport, downloadReport } = await import('./reportGenerator.js');
+      const now = new Date();
+      let blob, filename;
+      
+      if (type === 'daily') {
+        const todayStr = now.toISOString().split('T')[0];
+        blob = await generateDailyReport(todayStr);
+        filename = `Daily_Report_${todayStr}.xlsx`;
+      } else if (type === 'weekly') {
+        const todayStr = now.toISOString().split('T')[0];
+        blob = await generateWeeklyReport(todayStr);
+        filename = `Weekly_Report_${todayStr}.xlsx`;
+      } else if (type === 'monthly') {
+        const month = now.getMonth();
+        const year = now.getFullYear();
+        blob = await generateMonthlyReport(month, year);
+        const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+        filename = `Monthly_Report_${monthNames[month]}_${year}.xlsx`;
+      }
+
+      if (blob) {
+        downloadReport(blob, filename);
+        return this.formatResponse('text',
+          `📊 **Excel Report Generated!**\n\n` +
+          `I have successfully generated and triggered a download for your **${type.toUpperCase()}** report: \`${filename}\`.\n\n` +
+          `It contains sheets for:\n` +
+          `• **Summary KPIs**\n` +
+          `• **Order Details**\n` +
+          `• **Item Sales Analysis**`,
+          { type, filename },
+          ['📊 Today\'s Excel Report', '📈 Weekly Excel Report', '📅 Monthly Excel Report', '🏆 Best Sellers']
+        );
+      }
+    } catch (err) {
+      console.error('[AI] Report generation error:', err);
+      return this.formatResponse('text',
+        `❌ **Failed to generate Excel report**\n\n` +
+        `Error: ${err.message}`,
+        null,
+        ['📊 Today\'s Summary', '🏆 Best Sellers']
+      );
+    }
+  }
+
+  async whatsappGuide() {
+    return this.formatResponse('text',
+      `📱 **WhatsApp Bill Sharing Guide**\n\n` +
+      `You can share beautiful, formatted receipts directly with customers on WhatsApp for free!\n\n` +
+      `**How it works:**\n` +
+      `1. Open **Orders** logs.\n` +
+      `2. Select any order to open the **Receipt Inspector**.\n` +
+      `3. Tap the **📱 Send on WhatsApp** button.\n` +
+      `4. Enter the customer's phone number and hit OK.\n\n` +
+      `The app will open a WhatsApp chat window with the pre-formatted text receipt ready to send!`,
+      null,
+      ['📋 Today\'s Summary', '📊 Generate Report', '🏆 Best Sellers']
+    );
   }
 }
 

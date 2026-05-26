@@ -23,7 +23,7 @@ export class AICommandCenter {
     this.messages = [];
     this.render();
     this.bindEvents();
-    this.addAIMessage(`👋 **Welcome to the AI Command Center!**\n\nI'm your intelligent restaurant assistant. Ask me anything about your business — revenue, best sellers, forecasts, or even generate marketing messages.\n\nTry one of the quick actions below, or type your own question!`, ['📊 Today\'s Summary', '🏆 Best Sellers', '📈 Revenue Forecast', '⏰ Peak Hours']);
+    this.addAIMessage(`👋 **Welcome to the AI Command Center!**\n\nI'm your offline restaurant assistant. Ask me anything about your business — revenue, best sellers, forecasts, generate reports, or WhatsApp receipt sharing guide.\n\nTry one of the quick actions below, or type your own question!`, ['📊 Today\'s Summary', '🏆 Best Sellers', '📊 Generate Report', '📱 WhatsApp Guide']);
   }
 
   render() {
@@ -36,7 +36,7 @@ export class AICommandCenter {
           </div>
           <div>
             <h2 style="font-family:'Plus Jakarta Sans',sans-serif;font-size:var(--text-lg);font-weight:800;color:var(--text-primary);letter-spacing:-0.02em;margin:0;">AI Command Center</h2>
-            <div style="font-size:0.55rem;color:rgba(162,155,254,0.45);font-weight:500;letter-spacing:0.08em;text-transform:uppercase;">Powered by NextGenOS Intelligence</div>
+            <div style="font-size:0.55rem;color:rgba(162,155,254,0.45);font-weight:500;letter-spacing:0.08em;text-transform:uppercase;">Local AI — Offline Keyword Intelligence • No Cloud API</div>
           </div>
         </div>
 
