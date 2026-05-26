@@ -115,6 +115,136 @@ function mapStaffToLocal(row) {
   };
 }
 
+function mapTableToRemote(table) {
+  return {
+    id: table.id,
+    number: parseInt(table.number),
+    capacity: parseInt(table.capacity) || 2,
+    floor_section: table.floorSection || 'Main',
+    status: table.status || 'available'
+  };
+}
+
+function mapTableToLocal(row) {
+  return {
+    id: row.id,
+    number: parseInt(row.number),
+    capacity: parseInt(row.capacity) || 2,
+    floorSection: row.floor_section || 'Main',
+    status: row.status || 'available',
+    isSynced: 1
+  };
+}
+
+function mapInventoryToRemote(inv) {
+  return {
+    id: inv.id,
+    name: inv.name,
+    quantity: parseFloat(inv.quantity) || 0.00,
+    min_threshold: parseFloat(inv.minThreshold) || 0.00
+  };
+}
+
+function mapInventoryToLocal(row) {
+  return {
+    id: row.id,
+    name: row.name,
+    quantity: parseFloat(row.quantity) || 0.00,
+    minThreshold: parseFloat(row.min_threshold) || 0.00,
+    isSynced: 1
+  };
+}
+
+function mapSupplierToRemote(sup) {
+  return {
+    id: sup.id,
+    name: sup.name,
+    contact: sup.phone || sup.contact || ''
+  };
+}
+
+function mapSupplierToLocal(row) {
+  return {
+    id: row.id,
+    name: row.name,
+    phone: row.contact || '',
+    isSynced: 1
+  };
+}
+
+function mapShiftToRemote(shift) {
+  return {
+    id: shift.id,
+    staff_id: parseInt(shift.staffId),
+    clock_in: shift.clockIn || '',
+    clock_out: shift.clockOut || '',
+    date: shift.date || ''
+  };
+}
+
+function mapShiftToLocal(row) {
+  return {
+    id: row.id,
+    staffId: parseInt(row.staff_id),
+    clockIn: row.clock_in || '',
+    clockOut: row.clock_out || '',
+    date: row.date || '',
+    isSynced: 1
+  };
+}
+
+function mapActivityToRemote(log) {
+  return {
+    id: log.id,
+    timestamp: log.timestamp || new Date().toISOString(),
+    action: log.action,
+    staff_name: log.staffName || 'System',
+    details: log.details || ''
+  };
+}
+
+function mapActivityToLocal(row) {
+  return {
+    id: row.id,
+    timestamp: row.timestamp,
+    action: row.action,
+    staffName: row.staff_name || 'System',
+    details: row.details || '',
+    isSynced: 1
+  };
+}
+
+function mapCustomerToRemote(cust) {
+  return {
+    id: cust.id,
+    name: cust.name,
+    phone: cust.phone,
+    birthday: cust.birthday || null,
+    total_spent: parseFloat(cust.totalSpent) || 0.00,
+    visit_count: parseInt(cust.visitCount) || 0,
+    loyalty_points: parseInt(cust.loyaltyPoints) || 0,
+    tier: cust.tier || 'bronze',
+    last_visit: cust.lastVisit || null,
+    created_at: cust.createdAt || new Date().toISOString()
+  };
+}
+
+function mapCustomerToLocal(row) {
+  return {
+    id: row.id,
+    name: row.name,
+    phone: row.phone,
+    birthday: row.birthday || '',
+    totalSpent: parseFloat(row.total_spent) || 0.00,
+    visitCount: parseInt(row.visit_count) || 0,
+    loyaltyPoints: parseInt(row.loyalty_points) || 0,
+    tier: row.tier || 'bronze',
+    lastVisit: row.last_visit || null,
+    createdAt: row.created_at,
+    isSynced: 1
+  };
+}
+
 let supabase = null;
 
 async function initSupabase() {
@@ -495,6 +625,198 @@ class SyncService {
         }
       }
 
+      // 5. Sync Tables
+      let unsyncedTables = [];
+      try {
+        unsyncedTables = await db.tables.filter(t => !t.isSynced).toArray();
+      } catch (dbErr) {
+        console.error('[Sync db] Error fetching unsynced tables:', dbErr);
+      }
+
+      if (unsyncedTables.length > 0) {
+        console.log(`[Sync cache] Found ${unsyncedTables.length} unsynced tables in local cache.`);
+        const remoteTables = unsyncedTables.map(mapTableToRemote);
+        try {
+          await retryWithBackoff(async () => {
+            const { error } = await supabase.from('tables').upsert(remoteTables);
+            if (error) throw error;
+          }, { maxRetries: 3 });
+
+          try {
+            await db.transaction('rw', db.tables, async () => {
+              for (const t of unsyncedTables) {
+                await db.tables.update(t.id, { isSynced: 1 });
+              }
+            });
+            console.log(`[Sync cache] Successfully synced and updated cache for ${unsyncedTables.length} tables.`);
+          } catch (dbErr) {
+            console.error('[Sync db] Error updating table sync status in local cache:', dbErr);
+          }
+        } catch (netErr) {
+          console.error('[Sync net] Failed to push unsynced tables to cloud after retries:', netErr);
+        }
+      }
+
+      // 6. Sync Inventory
+      let unsyncedInventory = [];
+      try {
+        unsyncedInventory = await db.inventory.filter(i => !i.isSynced).toArray();
+      } catch (dbErr) {
+        console.error('[Sync db] Error fetching unsynced inventory:', dbErr);
+      }
+
+      if (unsyncedInventory.length > 0) {
+        console.log(`[Sync cache] Found ${unsyncedInventory.length} unsynced inventory items in local cache.`);
+        const remoteInv = unsyncedInventory.map(mapInventoryToRemote);
+        try {
+          await retryWithBackoff(async () => {
+            const { error } = await supabase.from('inventory').upsert(remoteInv);
+            if (error) throw error;
+          }, { maxRetries: 3 });
+
+          try {
+            await db.transaction('rw', db.inventory, async () => {
+              for (const i of unsyncedInventory) {
+                await db.inventory.update(i.id, { isSynced: 1 });
+              }
+            });
+            console.log(`[Sync cache] Successfully synced and updated cache for ${unsyncedInventory.length} inventory items.`);
+          } catch (dbErr) {
+            console.error('[Sync db] Error updating inventory sync status in local cache:', dbErr);
+          }
+        } catch (netErr) {
+          console.error('[Sync net] Failed to push unsynced inventory items to cloud after retries:', netErr);
+        }
+      }
+
+      // 7. Sync Suppliers
+      let unsyncedSuppliers = [];
+      try {
+        unsyncedSuppliers = await db.suppliers.filter(s => !s.isSynced).toArray();
+      } catch (dbErr) {
+        console.error('[Sync db] Error fetching unsynced suppliers:', dbErr);
+      }
+
+      if (unsyncedSuppliers.length > 0) {
+        console.log(`[Sync cache] Found ${unsyncedSuppliers.length} unsynced suppliers in local cache.`);
+        const remoteSups = unsyncedSuppliers.map(mapSupplierToRemote);
+        try {
+          await retryWithBackoff(async () => {
+            const { error } = await supabase.from('suppliers').upsert(remoteSups);
+            if (error) throw error;
+          }, { maxRetries: 3 });
+
+          try {
+            await db.transaction('rw', db.suppliers, async () => {
+              for (const s of unsyncedSuppliers) {
+                await db.suppliers.update(s.id, { isSynced: 1 });
+              }
+            });
+            console.log(`[Sync cache] Successfully synced and updated cache for ${unsyncedSuppliers.length} suppliers.`);
+          } catch (dbErr) {
+            console.error('[Sync db] Error updating supplier sync status in local cache:', dbErr);
+          }
+        } catch (netErr) {
+          console.error('[Sync net] Failed to push unsynced suppliers to cloud after retries:', netErr);
+        }
+      }
+
+      // 8. Sync Shifts
+      let unsyncedShifts = [];
+      try {
+        unsyncedShifts = await db.shifts.filter(s => !s.isSynced).toArray();
+      } catch (dbErr) {
+        console.error('[Sync db] Error fetching unsynced shifts:', dbErr);
+      }
+
+      if (unsyncedShifts.length > 0) {
+        console.log(`[Sync cache] Found ${unsyncedShifts.length} unsynced shifts in local cache.`);
+        const remoteShifts = unsyncedShifts.map(mapShiftToRemote);
+        try {
+          await retryWithBackoff(async () => {
+            const { error } = await supabase.from('shifts').upsert(remoteShifts);
+            if (error) throw error;
+          }, { maxRetries: 3 });
+
+          try {
+            await db.transaction('rw', db.shifts, async () => {
+              for (const s of unsyncedShifts) {
+                await db.shifts.update(s.id, { isSynced: 1 });
+              }
+            });
+            console.log(`[Sync cache] Successfully synced and updated cache for ${unsyncedShifts.length} shifts.`);
+          } catch (dbErr) {
+            console.error('[Sync db] Error updating shift sync status in local cache:', dbErr);
+          }
+        } catch (netErr) {
+          console.error('[Sync net] Failed to push unsynced shifts to cloud after retries:', netErr);
+        }
+      }
+
+      // 9. Sync Activity Logs
+      let unsyncedActivities = [];
+      try {
+        unsyncedActivities = await db.activityLog.filter(a => !a.isSynced).toArray();
+      } catch (dbErr) {
+        console.error('[Sync db] Error fetching unsynced activities:', dbErr);
+      }
+
+      if (unsyncedActivities.length > 0) {
+        console.log(`[Sync cache] Found ${unsyncedActivities.length} unsynced activities in local cache.`);
+        const remoteActs = unsyncedActivities.map(mapActivityToRemote);
+        try {
+          await retryWithBackoff(async () => {
+            const { error } = await supabase.from('activity_log').upsert(remoteActs);
+            if (error) throw error;
+          }, { maxRetries: 3 });
+
+          try {
+            await db.transaction('rw', db.activityLog, async () => {
+              for (const a of unsyncedActivities) {
+                await db.activityLog.update(a.id, { isSynced: 1 });
+              }
+            });
+            console.log(`[Sync cache] Successfully synced and updated cache for ${unsyncedActivities.length} activities.`);
+          } catch (dbErr) {
+            console.error('[Sync db] Error updating activity sync status in local cache:', dbErr);
+          }
+        } catch (netErr) {
+          console.error('[Sync net] Failed to push unsynced activities to cloud after retries:', netErr);
+        }
+      }
+
+      // 10. Sync Customers
+      let unsyncedCustomers = [];
+      try {
+        unsyncedCustomers = await db.customers.filter(c => !c.isSynced).toArray();
+      } catch (dbErr) {
+        console.error('[Sync db] Error fetching unsynced customers:', dbErr);
+      }
+
+      if (unsyncedCustomers.length > 0) {
+        console.log(`[Sync cache] Found ${unsyncedCustomers.length} unsynced customers in local cache.`);
+        const remoteCustomers = unsyncedCustomers.map(mapCustomerToRemote);
+        try {
+          await retryWithBackoff(async () => {
+            const { error } = await supabase.from('customers').upsert(remoteCustomers);
+            if (error) throw error;
+          }, { maxRetries: 3 });
+
+          try {
+            await db.transaction('rw', db.customers, async () => {
+              for (const c of unsyncedCustomers) {
+                await db.customers.update(c.id, { isSynced: 1 });
+              }
+            });
+            console.log(`[Sync cache] Successfully synced and updated cache for ${unsyncedCustomers.length} customers.`);
+          } catch (dbErr) {
+            console.error('[Sync db] Error updating customer sync status in local cache:', dbErr);
+          }
+        } catch (netErr) {
+          console.error('[Sync net] Failed to push unsynced customers to cloud after retries:', netErr);
+        }
+      }
+
     } catch (e) {
       console.error('[Sync] Failed to perform initial push of unsynced records:', e);
       showToast('Failed to sync local data to cloud: ' + e.message, 'error');
@@ -539,6 +861,60 @@ class SyncService {
       { event: '*', schema: 'public', table: 'staff' },
       async (payload) => {
         await this.handleRemoteChange('staff', payload, mapStaffToLocal);
+      }
+    );
+
+    // Handle tables updates
+    this.channel.on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'tables' },
+      async (payload) => {
+        await this.handleRemoteChange('tables', payload, mapTableToLocal);
+      }
+    );
+
+    // Handle inventory updates
+    this.channel.on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'inventory' },
+      async (payload) => {
+        await this.handleRemoteChange('inventory', payload, mapInventoryToLocal);
+      }
+    );
+
+    // Handle suppliers updates
+    this.channel.on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'suppliers' },
+      async (payload) => {
+        await this.handleRemoteChange('suppliers', payload, mapSupplierToLocal);
+      }
+    );
+
+    // Handle shifts updates
+    this.channel.on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'shifts' },
+      async (payload) => {
+        await this.handleRemoteChange('shifts', payload, mapShiftToLocal);
+      }
+    );
+
+    // Handle activity_log updates
+    this.channel.on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'activity_log' },
+      async (payload) => {
+        await this.handleRemoteChange('activityLog', payload, mapActivityToLocal);
+      }
+    );
+
+    // Handle customers updates
+    this.channel.on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'customers' },
+      async (payload) => {
+        await this.handleRemoteChange('customers', payload, mapCustomerToLocal);
       }
     );
 
@@ -710,6 +1086,174 @@ class SyncService {
     }
   }
 
+  // Active sync-up method for Tables
+  async syncUpTable(table) {
+    if (!this.isConnected || !supabase) {
+      console.warn(`[Sync cache] Skipping table sync for ${table?.number || table?.id}: offline or disconnected.`);
+      return;
+    }
+    try {
+      const remote = mapTableToRemote(table);
+      
+      await retryWithBackoff(async () => {
+        const { error } = await supabase.from('tables').upsert(remote);
+        if (error) throw error;
+      }, { maxRetries: 3, initialDelayMs: 1000, backoffFactor: 2 });
+
+      this.isSyncingFromServer = true;
+      try {
+        await db.tables.update(table.id, { isSynced: 1 });
+      } catch (dbErr) {
+        console.error(`[Sync db] Error marking table ${table.id} as synced:`, dbErr);
+      } finally {
+        this.isSyncingFromServer = false;
+      }
+      console.log(`[Sync cache] Table ${table.number} successfully replicated to cloud.`);
+    } catch (e) {
+      console.error(`[Sync net] Cloud replication failed for table ${table?.number || table?.id}:`, e);
+    }
+  }
+
+  // Active sync-up method for Inventory Items
+  async syncUpInventory(inv) {
+    if (!this.isConnected || !supabase) {
+      console.warn(`[Sync cache] Skipping inventory sync for "${inv?.name}": offline or disconnected.`);
+      return;
+    }
+    try {
+      const remote = mapInventoryToRemote(inv);
+      
+      await retryWithBackoff(async () => {
+        const { error } = await supabase.from('inventory').upsert(remote);
+        if (error) throw error;
+      }, { maxRetries: 3, initialDelayMs: 1000, backoffFactor: 2 });
+
+      this.isSyncingFromServer = true;
+      try {
+        await db.inventory.update(inv.id, { isSynced: 1 });
+      } catch (dbErr) {
+        console.error(`[Sync db] Error marking inventory ${inv.id} as synced:`, dbErr);
+      } finally {
+        this.isSyncingFromServer = false;
+      }
+      console.log(`[Sync cache] Inventory item "${inv.name}" successfully replicated to cloud.`);
+    } catch (e) {
+      console.error(`[Sync net] Cloud replication failed for inventory "${inv?.name}":`, e);
+    }
+  }
+
+  // Active sync-up method for Suppliers
+  async syncUpSupplier(sup) {
+    if (!this.isConnected || !supabase) {
+      console.warn(`[Sync cache] Skipping supplier sync for "${sup?.name}": offline or disconnected.`);
+      return;
+    }
+    try {
+      const remote = mapSupplierToRemote(sup);
+      
+      await retryWithBackoff(async () => {
+        const { error } = await supabase.from('suppliers').upsert(remote);
+        if (error) throw error;
+      }, { maxRetries: 3, initialDelayMs: 1000, backoffFactor: 2 });
+
+      this.isSyncingFromServer = true;
+      try {
+        await db.suppliers.update(sup.id, { isSynced: 1 });
+      } catch (dbErr) {
+        console.error(`[Sync db] Error marking supplier ${sup.id} as synced:`, dbErr);
+      } finally {
+        this.isSyncingFromServer = false;
+      }
+      console.log(`[Sync cache] Supplier "${sup.name}" successfully replicated to cloud.`);
+    } catch (e) {
+      console.error(`[Sync net] Cloud replication failed for supplier "${sup?.name}":`, e);
+    }
+  }
+
+  // Active sync-up method for Shifts
+  async syncUpShift(shift) {
+    if (!this.isConnected || !supabase) {
+      console.warn(`[Sync cache] Skipping shift sync for ${shift?.id}: offline or disconnected.`);
+      return;
+    }
+    try {
+      const remote = mapShiftToRemote(shift);
+      
+      await retryWithBackoff(async () => {
+        const { error } = await supabase.from('shifts').upsert(remote);
+        if (error) throw error;
+      }, { maxRetries: 3, initialDelayMs: 1000, backoffFactor: 2 });
+
+      this.isSyncingFromServer = true;
+      try {
+        await db.shifts.update(shift.id, { isSynced: 1 });
+      } catch (dbErr) {
+        console.error(`[Sync db] Error marking shift ${shift.id} as synced:`, dbErr);
+      } finally {
+        this.isSyncingFromServer = false;
+      }
+      console.log(`[Sync cache] Shift ${shift.id} successfully replicated to cloud.`);
+    } catch (e) {
+      console.error(`[Sync net] Cloud replication failed for shift ${shift?.id}:`, e);
+    }
+  }
+
+  // Active sync-up method for Activity Logs
+  async syncUpActivity(log) {
+    if (!this.isConnected || !supabase) {
+      console.warn(`[Sync cache] Skipping activity log sync for ${log?.id}: offline or disconnected.`);
+      return;
+    }
+    try {
+      const remote = mapActivityToRemote(log);
+      
+      await retryWithBackoff(async () => {
+        const { error } = await supabase.from('activity_log').upsert(remote);
+        if (error) throw error;
+      }, { maxRetries: 3, initialDelayMs: 1000, backoffFactor: 2 });
+
+      this.isSyncingFromServer = true;
+      try {
+        await db.activityLog.update(log.id, { isSynced: 1 });
+      } catch (dbErr) {
+        console.error(`[Sync db] Error marking activity log ${log.id} as synced:`, dbErr);
+      } finally {
+        this.isSyncingFromServer = false;
+      }
+      console.log(`[Sync cache] Activity log ${log.id} successfully replicated to cloud.`);
+    } catch (e) {
+      console.error(`[Sync net] Cloud replication failed for activity log ${log?.id}:`, e);
+    }
+  }
+
+  // Active sync-up method for Customers
+  async syncUpCustomer(cust) {
+    if (!this.isConnected || !supabase) {
+      console.warn(`[Sync cache] Skipping customer sync for "${cust?.name}": offline or disconnected.`);
+      return;
+    }
+    try {
+      const remote = mapCustomerToRemote(cust);
+      
+      await retryWithBackoff(async () => {
+        const { error } = await supabase.from('customers').upsert(remote);
+        if (error) throw error;
+      }, { maxRetries: 3, initialDelayMs: 1000, backoffFactor: 2 });
+
+      this.isSyncingFromServer = true;
+      try {
+        await db.customers.update(cust.id, { isSynced: 1 });
+      } catch (dbErr) {
+        console.error(`[Sync db] Error marking customer ${cust.id} as synced:`, dbErr);
+      } finally {
+        this.isSyncingFromServer = false;
+      }
+      console.log(`[Sync cache] Customer "${cust.name}" successfully replicated to cloud.`);
+    } catch (e) {
+      console.error(`[Sync net] Cloud replication failed for customer "${cust?.name}":`, e);
+    }
+  }
+
   setupLocalHooks() {
     // Menu Categories hook
     db.menuCategories.hook('creating', (primKey, obj, transaction) => {
@@ -827,6 +1371,219 @@ class SyncService {
           console.log(`[Sync cache] Deleted staff member ${primKey} from cloud.`);
         } catch (e) {
           console.error(`[Sync net] Failed to delete staff member ${primKey} from cloud after retries:`, e);
+        }
+      }, 50);
+    });
+
+    // Tables hooks
+    db.tables.hook('creating', (primKey, obj, transaction) => {
+      setTimeout(async () => {
+        if (this.isSyncingFromServer) return;
+        try {
+          const t = await db.tables.get(primKey);
+          if (t) await this.syncUpTable(t);
+        } catch (dbErr) {
+          console.error('[Sync db] Error in tables creating hook:', dbErr);
+        }
+      }, 50);
+    });
+
+    db.tables.hook('updating', (mods, primKey, obj, transaction) => {
+      setTimeout(async () => {
+        if (this.isSyncingFromServer) return;
+        try {
+          const t = await db.tables.get(primKey);
+          if (t) await this.syncUpTable(t);
+        } catch (dbErr) {
+          console.error('[Sync db] Error in tables updating hook:', dbErr);
+        }
+      }, 50);
+    });
+
+    db.tables.hook('deleting', (primKey, obj, transaction) => {
+      setTimeout(async () => {
+        if (this.isSyncingFromServer || !this.isConnected || !supabase) return;
+        try {
+          await retryWithBackoff(async () => {
+            const { error } = await supabase.from('tables').delete().eq('id', primKey);
+            if (error) throw error;
+          }, { maxRetries: 3 });
+          console.log(`[Sync cache] Deleted table ${primKey} from cloud.`);
+        } catch (e) {
+          console.error(`[Sync net] Failed to delete table ${primKey} from cloud after retries:`, e);
+        }
+      }, 50);
+    });
+
+    // Inventory hooks
+    db.inventory.hook('creating', (primKey, obj, transaction) => {
+      setTimeout(async () => {
+        if (this.isSyncingFromServer) return;
+        try {
+          const i = await db.inventory.get(primKey);
+          if (i) await this.syncUpInventory(i);
+        } catch (dbErr) {
+          console.error('[Sync db] Error in inventory creating hook:', dbErr);
+        }
+      }, 50);
+    });
+
+    db.inventory.hook('updating', (mods, primKey, obj, transaction) => {
+      setTimeout(async () => {
+        if (this.isSyncingFromServer) return;
+        try {
+          const i = await db.inventory.get(primKey);
+          if (i) await this.syncUpInventory(i);
+        } catch (dbErr) {
+          console.error('[Sync db] Error in inventory updating hook:', dbErr);
+        }
+      }, 50);
+    });
+
+    db.inventory.hook('deleting', (primKey, obj, transaction) => {
+      setTimeout(async () => {
+        if (this.isSyncingFromServer || !this.isConnected || !supabase) return;
+        try {
+          await retryWithBackoff(async () => {
+            const { error } = await supabase.from('inventory').delete().eq('id', primKey);
+            if (error) throw error;
+          }, { maxRetries: 3 });
+          console.log(`[Sync cache] Deleted inventory item ${primKey} from cloud.`);
+        } catch (e) {
+          console.error(`[Sync net] Failed to delete inventory item ${primKey} from cloud after retries:`, e);
+        }
+      }, 50);
+    });
+
+    // Suppliers hooks
+    db.suppliers.hook('creating', (primKey, obj, transaction) => {
+      setTimeout(async () => {
+        if (this.isSyncingFromServer) return;
+        try {
+          const s = await db.suppliers.get(primKey);
+          if (s) await this.syncUpSupplier(s);
+        } catch (dbErr) {
+          console.error('[Sync db] Error in suppliers creating hook:', dbErr);
+        }
+      }, 50);
+    });
+
+    db.suppliers.hook('updating', (mods, primKey, obj, transaction) => {
+      setTimeout(async () => {
+        if (this.isSyncingFromServer) return;
+        try {
+          const s = await db.suppliers.get(primKey);
+          if (s) await this.syncUpSupplier(s);
+        } catch (dbErr) {
+          console.error('[Sync db] Error in suppliers updating hook:', dbErr);
+        }
+      }, 50);
+    });
+
+    db.suppliers.hook('deleting', (primKey, obj, transaction) => {
+      setTimeout(async () => {
+        if (this.isSyncingFromServer || !this.isConnected || !supabase) return;
+        try {
+          await retryWithBackoff(async () => {
+            const { error } = await supabase.from('suppliers').delete().eq('id', primKey);
+            if (error) throw error;
+          }, { maxRetries: 3 });
+          console.log(`[Sync cache] Deleted supplier ${primKey} from cloud.`);
+        } catch (e) {
+          console.error(`[Sync net] Failed to delete supplier ${primKey} from cloud after retries:`, e);
+        }
+      }, 50);
+    });
+
+    // Shifts hooks
+    db.shifts.hook('creating', (primKey, obj, transaction) => {
+      setTimeout(async () => {
+        if (this.isSyncingFromServer) return;
+        try {
+          const s = await db.shifts.get(primKey);
+          if (s) await this.syncUpShift(s);
+        } catch (dbErr) {
+          console.error('[Sync db] Error in shifts creating hook:', dbErr);
+        }
+      }, 50);
+    });
+
+    db.shifts.hook('updating', (mods, primKey, obj, transaction) => {
+      setTimeout(async () => {
+        if (this.isSyncingFromServer) return;
+        try {
+          const s = await db.shifts.get(primKey);
+          if (s) await this.syncUpShift(s);
+        } catch (dbErr) {
+          console.error('[Sync db] Error in shifts updating hook:', dbErr);
+        }
+      }, 50);
+    });
+
+    db.shifts.hook('deleting', (primKey, obj, transaction) => {
+      setTimeout(async () => {
+        if (this.isSyncingFromServer || !this.isConnected || !supabase) return;
+        try {
+          await retryWithBackoff(async () => {
+            const { error } = await supabase.from('shifts').delete().eq('id', primKey);
+            if (error) throw error;
+          }, { maxRetries: 3 });
+          console.log(`[Sync cache] Deleted shift ${primKey} from cloud.`);
+        } catch (e) {
+          console.error(`[Sync net] Failed to delete shift ${primKey} from cloud after retries:`, e);
+        }
+      }, 50);
+    });
+
+    // Activity Log hooks
+    db.activityLog.hook('creating', (primKey, obj, transaction) => {
+      setTimeout(async () => {
+        if (this.isSyncingFromServer) return;
+        try {
+          const a = await db.activityLog.get(primKey);
+          if (a) await this.syncUpActivity(a);
+        } catch (dbErr) {
+          console.error('[Sync db] Error in activityLog creating hook:', dbErr);
+        }
+      }, 50);
+    });
+
+    // Customers hooks
+    db.customers.hook('creating', (primKey, obj, transaction) => {
+      setTimeout(async () => {
+        if (this.isSyncingFromServer) return;
+        try {
+          const c = await db.customers.get(primKey);
+          if (c) await this.syncUpCustomer(c);
+        } catch (dbErr) {
+          console.error('[Sync db] Error in customers creating hook:', dbErr);
+        }
+      }, 50);
+    });
+
+    db.customers.hook('updating', (mods, primKey, obj, transaction) => {
+      setTimeout(async () => {
+        if (this.isSyncingFromServer) return;
+        try {
+          const c = await db.customers.get(primKey);
+          if (c) await this.syncUpCustomer(c);
+        } catch (dbErr) {
+          console.error('[Sync db] Error in customers updating hook:', dbErr);
+        }
+      }, 50);
+    });
+
+    db.customers.hook('deleting', (primKey, obj, transaction) => {
+      setTimeout(async () => {
+        if (this.isSyncingFromServer || !this.isConnected || !supabase) return;
+        try {
+          await retryWithBackoff(async () => {
+            const { error } = await supabase.from('customers').delete().eq('id', primKey);
+            if (error) throw error;
+          }, { maxRetries: 3 });
+          console.log(`[Sync cache] Deleted customer ${primKey} from cloud.`);
+        } catch (e) {
+          console.error(`[Sync net] Failed to delete customer ${primKey} from cloud after retries:`, e);
         }
       }, 50);
     });
