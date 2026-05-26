@@ -1,0 +1,154 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Sora:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+
+/**
+ * ═══════════════════════════════════════════════════
+ *  NextGenOS Restaurant Operating System
+ *  Stylesheet: variables.css — Design Tokens
+ *  Version: 3.0.0
+ *  © 2026 NextGenOS. All Rights Reserved.
+ * ═══════════════════════════════════════════════════
+ */
+
+/* ============================================
+   THE TASTE — Design Tokens
+   Premium Dark POS Design System
+   NextGenOS Restaurant Operating System
+   ============================================ */
+
+:root {
+  /* ── Typography Fonts ── */
+  --font-sans: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-display: 'Sora', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-sidebar: 'Plus Jakarta Sans', sans-serif;
+
+  /* ── NextGenOS Platform Brand ────────────────── */
+  --nextgenos-purple: #6C5CE7;
+  --nextgenos-purple-glow: rgba(108, 92, 231, 0.45);
+  --nextgenos-purple-bg: rgba(108, 92, 231, 0.08);
+  --nextgenos-purple-border: rgba(108, 92, 231, 0.25);
+
+  /* Platform Signature (Steganographic) */
+  --_ng-sig-1: 78; --_ng-sig-2: 101; --_ng-sig-3: 120; --_ng-sig-4: 116;
+  --_ng-sig-5: 71; --_ng-sig-6: 101; --_ng-sig-7: 110;
+  --_ng-sig-8: 79; --_ng-sig-9: 83;
+
+  /* ── Modal Shadow ── */
+  --shadow-modal: 0 25px 60px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.05);
+
+  /* ── HSL Base Values ── */
+  --primary-h: 12;
+  --primary-s: 100%;
+  --primary-l: 61%; /* #FF5E36 */
+  
+  --bg-primary: #09090E;
+  --bg-surface: #11111E;
+  --bg-card: rgba(255, 255, 255, 0.03);
+  --bg-card-hover: rgba(255, 255, 255, 0.06);
+  --bg-input: rgba(255, 255, 255, 0.02);
+
+  --color-primary: #FF5E36;
+  --color-primary-hover: #FF8960;
+  --color-primary-rgb: 255, 94, 54;
+  --color-primary-glow: rgba(255, 94, 54, 0.2);
+
+  --color-success: #10B981;
+  --color-success-rgb: 16, 185, 129;
+  --color-danger: #EF4444;
+  --color-danger-rgb: 239, 68, 68;
+  --color-warning: #F59E0B;
+  --color-warning-rgb: 245, 158, 11;
+  --color-info: #3B82F6;
+  --color-info-rgb: 59, 130, 246;
+
+  --text-primary: #F8FAFC;
+  --text-secondary: #94A3B8;
+  --text-muted: #64748B;
+
+  --border-color: rgba(255, 255, 255, 0.06);
+  --border-active: rgba(255, 94, 54, 0.4);
+  --border-glass: rgba(255, 255, 255, 0.08);
+  --glass-bg: rgba(17, 17, 30, 0.55);
+  --glass-bg-hover: rgba(255, 255, 255, 0.06);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --glass-border-active: rgba(255, 94, 54, 0.35);
+  --glass-backdrop-filter: blur(20px) saturate(190%);
+
+  --gradient-cosmic: linear-gradient(135deg, #09090E 0%, #11111E 100%);
+  --gradient-primary: linear-gradient(135deg, #FF5E36 0%, #FF8960 100%);
+  --gradient-success: linear-gradient(135deg, #10B981 0%, #059669 100%);
+  --gradient-glass: linear-gradient(135deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0.01) 100%);
+
+  /* ── Typography Scale ── */
+  --text-xs: 0.75rem;
+  --text-sm: 0.8125rem;
+  --text-base: 0.9375rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.25rem;
+  --text-2xl: 1.5rem;
+  --text-3xl: 1.875rem;
+
+  /* ── Font Weights ── */
+  --font-normal: 400;
+  --font-medium: 500;
+  --font-semibold: 600;
+  --font-bold: 700;
+  --font-extrabold: 800;
+
+  /* ── Spacing ── */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --space-20: 80px;
+
+  /* ── Border Radius ── */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --radius-full: 9999px;
+
+  /* ── Shadows (dark-optimized Apple/Stripe-caliber ambient occlusion) ── */
+  --shadow-sm:
+    0 1px 2px rgba(0, 0, 0, 0.35),
+    0 0 0 1px rgba(255, 255, 255, 0.04);
+  --shadow-md:
+    0 4px 12px rgba(0, 0, 0, 0.45),
+    0 2px 4px rgba(0, 0, 0, 0.25),
+    0 0 0 1px rgba(255, 255, 255, 0.06);
+  --shadow-lg:
+    0 12px 28px rgba(0, 0, 0, 0.55),
+    0 8px 10px rgba(0, 0, 0, 0.35),
+    0 0 0 1px rgba(255, 255, 255, 0.08);
+  --shadow-xl:
+    0 24px 48px -12px rgba(0, 0, 0, 0.65),
+    0 18px 24px -10px rgba(0, 0, 0, 0.45),
+    0 0 0 1px rgba(255, 255, 255, 0.1);
+  --shadow-primary:
+    0 0 20px rgba(255, 94, 54, 0.15),
+    0 0 40px rgba(255, 94, 54, 0.05);
+  --shadow-glow-purple:
+    0 0 20px rgba(108, 92, 231, 0.15);
+  --shadow-glow-success:
+    0 0 20px rgba(16, 185, 129, 0.15);
+
+  /* ── Transitions (Organic Spring & Linear) ── */
+  --transition-fast: 150ms cubic-bezier(0.16, 1, 0.3, 1);
+  --transition-normal: 250ms cubic-bezier(0.16, 1, 0.3, 1);
+  --transition-slow: 400ms cubic-bezier(0.16, 1, 0.3, 1);
+  --transition-spring: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  --transition-spring-all: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  --transition-spring-slow: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+
+  /* ── Z-Index Scale ── */
+  --z-sticky: 100;
+  --z-dropdown: 1000;
+  --z-modal: 2000;
+  --z-toast: 3000;
+}

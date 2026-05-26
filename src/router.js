@@ -1,0 +1,160 @@
+/**
+ * Simple hash-based SPA router with Role-Based Access Control (RBAC)
+ */
+
+import { authService } from './services/auth.js';
+import { showToast } from './utils/helpers.js';
+
+export class Router {
+  constructor() {
+    this.routes = {};
+    this.currentView = null;
+    this.currentHash = '';
+    this.container = null;
+    this.onNavigate = null;
+    this.onAuthRequired = null;
+
+    window.addEventListener('hashchange', () => this.handleRoute());
+  }
+
+  /**
+   * Register a route
+   * @param {string} hash - Route hash (e.g. '#/pos')
+   * @param {Function} viewFactory - Async factory function that returns a view instance
+   * @param {Array<string>} [allowedRoles] - Optional roles allowed to access this route
+   */
+  register(hash, viewFactory, allowedRoles = null) {
+    this.routes[hash] = { viewFactory, allowedRoles };
+    return this;
+  }
+
+  /**
+   * Set the container element for views
+   */
+  setContainer(container) {
+    this.container = container;
+    return this;
+  }
+
+  /**
+   * Navigate to a route
+   */
+  navigate(hash) {
+    window.location.hash = hash;
+  }
+
+  /**
+   * Handle route change
+   */
+  async handleRoute() {
+    const hash = window.location.hash || '#/pos';
+
+    // Don't re-render same view
+    if (hash === this.currentHash && this.currentView) return;
+
+    // Check if route exists
+    const routeConfig = this.routes[hash];
+    if (!routeConfig) {
+      // Fallback to POS view
+      this.navigate('#/pos');
+      return;
+    }
+
+    const { viewFactory, allowedRoles } = routeConfig;
+
+    // Kiosk view (#/self-order) is public, all other routes require authentication
+    const isPublic = hash === '#/self-order';
+
+    if (!isPublic && !authService.requireAuth()) {
+      console.warn(`[Router] Access to protected route "${hash}" blocked: User is not authenticated.`);
+      
+      // Clear container and show login
+      if (this.onAuthRequired) {
+        this.onAuthRequired();
+      }
+      return;
+    }
+
+    // Role-based authorization check
+    if (!isPublic && allowedRoles) {
+      const currentStaff = authService.getCurrentStaff();
+      const staffRole = currentStaff?.role?.toLowerCase();
+      
+      if (!staffRole || !allowedRoles.includes(staffRole)) {
+        console.warn(`[Router] Access to "${hash}" denied for role "${staffRole}". Required: [${allowedRoles.join(', ')}]`);
+        showToast('Access denied: Insufficient permissions', 'error');
+        
+        // Redirect to a safe default view based on their role
+        if (staffRole === 'kitchen') {
+          this.navigate('#/kitchen');
+        } else if (staffRole === 'waiter') {
+          this.navigate('#/tables');
+        } else {
+          this.navigate('#/pos');
+        }
+        return;
+      }
+    }
+
+    // Unmount current view
+    if (this.currentView && typeof this.currentView.unmount === 'function') {
+      this.currentView.unmount();
+    }
+
+    // Clear container with transition
+    if (this.container) {
+      this.container.classList.remove('view-enter');
+      this.container.innerHTML = '';
+
+      // Small delay for transition
+      requestAnimationFrame(() => {
+        if (this.container) this.container.classList.add('view-enter');
+      });
+    }
+
+    this.currentHash = hash;
+
+    try {
+      // Create and mount new view
+      this.currentView = await viewFactory();
+      if (this.container && typeof this.currentView.mount === 'function') {
+        await this.currentView.mount(this.container);
+      }
+    } catch (error) {
+      console.error('Failed to mount view:', error);
+      if (this.container) {
+        this.container.innerHTML = `
+          <div class="empty-state" style="height: 80vh;">
+            <span class="material-symbols-rounded">error</span>
+            <p>Something went wrong loading this page.</p>
+            <button class="btn btn-primary" onclick="location.hash='#/pos'" style="margin-top: 16px;">
+              Go to POS
+            </button>
+          </div>
+        `;
+      }
+    }
+
+    // Notify navigation listeners
+    if (this.onNavigate) {
+      this.onNavigate(hash);
+    }
+  }
+
+  /**
+   * Get current route hash
+   */
+  getCurrentRoute() {
+    return window.location.hash || '#/pos';
+  }
+
+  /**
+   * Start the router (initial route)
+   */
+  start() {
+    this.handleRoute();
+  }
+}
+
+export const router = new Router();
+

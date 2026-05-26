@@ -1,0 +1,324 @@
+/**
+ * ═══════════════════════════════════════════════════
+ *  NextGenOS Restaurant Operating System
+ *  Stylesheet: sidebar.css
+ *  Version: 2.0.0
+ *  © 2026 NextGenOS. All Rights Reserved.
+ * ═══════════════════════════════════════════════════
+ */
+
+/* ── App Layout ────────────────────────────────── */
+.app-layout {
+  display: flex;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+  background: var(--bg-primary);
+}
+
+.main-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-width: 0;
+}
+
+/* ── Sidebar ───────────────────────────────────── */
+.sidebar {
+  width: 220px;
+  background: rgba(9, 9, 14, 0.55);
+  backdrop-filter: var(--glass-backdrop-filter);
+  -webkit-backdrop-filter: var(--glass-backdrop-filter);
+  border-right: 1px solid var(--glass-border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 100;
+  flex-shrink: 0;
+  box-shadow: 4px 0 24px rgba(0, 0, 0, 0.25);
+}
+
+.sidebar-header {
+  padding: 20px 16px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.sidebar-header .sidebar-logo-icon {
+  font-size: 1.6rem;
+  line-height: 1;
+}
+
+.sidebar-header .sidebar-brand {
+  font-family: var(--font-sidebar);
+  font-size: 1.1rem;
+  font-weight: 800;
+  background: linear-gradient(135deg, #FF6B35, #FFB347);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  letter-spacing: -0.03em;
+}
+
+.sidebar-header .sidebar-version {
+  font-size: 0.55rem;
+  color: rgba(148, 163, 184, 0.4);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  margin-left: auto;
+}
+
+/* ── Navigation ────────────────────────────────── */
+.sidebar-nav {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 8px 0;
+  scrollbar-width: none;
+}
+
+.sidebar-nav::-webkit-scrollbar {
+  display: none;
+}
+
+.sidebar-group {
+  margin-bottom: 4px;
+}
+
+.sidebar-group-label {
+  font-family: var(--font-sidebar);
+  font-size: 0.625rem;
+  font-weight: 800;
+  color: rgba(148, 163, 184, 0.35);
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  padding: 12px 20px 6px;
+  user-select: none;
+}
+
+.sidebar-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 20px;
+  margin: 1px 8px;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1),
+              background-color 0.25s ease,
+              border-color 0.25s ease,
+              color 0.25s ease;
+  color: rgba(148, 163, 184, 0.7);
+  font-family: var(--font-sans);
+  font-size: 0.82rem;
+  font-weight: 500;
+  text-decoration: none;
+  border: 1px solid transparent;
+  position: relative;
+  user-select: none;
+}
+
+.sidebar-item .sidebar-icon {
+  font-size: 20px;
+  transition: color 0.2s ease;
+  flex-shrink: 0;
+}
+
+.sidebar-item .sidebar-label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sidebar-item:hover {
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(255, 255, 255, 0.95);
+  border-color: rgba(255, 255, 255, 0.05);
+  transform: translateX(4px) scale(1.02);
+}
+
+.sidebar-item:active {
+  transform: translateX(2px) scale(0.97);
+}
+
+.sidebar-item.active {
+  background: rgba(255, 94, 54, 0.08);
+  color: #FF8960;
+  border-color: rgba(255, 94, 54, 0.2);
+  font-weight: 600;
+  box-shadow: 0 4px 15px rgba(255, 94, 54, 0.15);
+}
+
+.sidebar-item.active .sidebar-icon {
+  color: #FF5E36;
+  filter: drop-shadow(0 0 8px rgba(255, 94, 54, 0.5));
+}
+
+.sidebar-item.active::before {
+  content: '';
+  position: absolute;
+  left: -8px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 20px;
+  background: linear-gradient(180deg, #FF5E36, #FF8960);
+  border-radius: 0 4px 4px 0;
+  box-shadow: 0 0 8px rgba(255, 94, 54, 0.5);
+}
+
+/* ── Sidebar Footer ───────────────────────────── */
+.sidebar-footer {
+  padding: 12px 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.04);
+  flex-shrink: 0;
+}
+
+.sidebar-footer .nextgenos-attr {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 6px 0;
+  opacity: 0.45;
+  transition: opacity 0.4s ease;
+}
+
+.sidebar-footer:hover .nextgenos-attr {
+  opacity: 0.7;
+}
+
+.sidebar-footer .ng-diamond {
+  color: rgba(108, 92, 231, 0.6);
+  font-size: 8px;
+  font-weight: 800;
+}
+
+.sidebar-footer .ng-text-small {
+  font-size: 0.5rem;
+  color: rgba(148, 163, 184, 0.4);
+  letter-spacing: 0.06em;
+  font-weight: 500;
+}
+
+.sidebar-footer .ng-text-brand {
+  font-size: 0.5rem;
+  color: rgba(108, 92, 231, 0.65);
+  letter-spacing: 0.06em;
+  font-weight: 600;
+}
+
+/* ── NextGenOS Header Badge ───────────────────── */
+.nextgenos-header-badge {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 0.5rem;
+  font-weight: 700;
+  color: rgba(162, 155, 254, 0.5);
+  background: rgba(108, 92, 231, 0.04);
+  border: 1px solid rgba(108, 92, 231, 0.1);
+  padding: 2px 7px;
+  border-radius: 20px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-left: auto;
+  margin-right: 12px;
+  flex-shrink: 0;
+  user-select: none;
+  opacity: 0.6;
+  transition: opacity 0.3s ease;
+}
+
+.nextgenos-header-badge:hover {
+  opacity: 0.85;
+}
+
+/* ── Mobile Toggle ─────────────────────────────── */
+.sidebar-mobile-toggle {
+  display: none;
+}
+
+/* ── Mobile Bottom Drawer ──────────────────────── */
+.sidebar-mobile-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: 199;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.sidebar-mobile-overlay.visible {
+  opacity: 1;
+}
+
+/* ── Responsive ────────────────────────────────── */
+@media (max-width: 1024px) {
+  .sidebar {
+    width: 64px;
+  }
+  .sidebar-header .sidebar-brand,
+  .sidebar-header .sidebar-version,
+  .sidebar-label,
+  .sidebar-group-label,
+  .sidebar-footer .ng-text-small,
+  .sidebar-footer .ng-text-brand {
+    display: none;
+  }
+  .sidebar-item {
+    justify-content: center;
+    padding: 12px;
+    margin: 1px 6px;
+  }
+  .sidebar-item .sidebar-icon {
+    font-size: 22px;
+  }
+  .sidebar-footer .nextgenos-attr {
+    justify-content: center;
+  }
+}
+
+@media (max-width: 768px) {
+  .sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 260px;
+    transform: translateX(-100%);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 200;
+  }
+
+  .sidebar.mobile-open {
+    transform: translateX(0);
+  }
+
+  .sidebar-mobile-toggle {
+    display: flex;
+  }
+
+  .sidebar-mobile-overlay.show {
+    display: block;
+  }
+
+  .sidebar-label,
+  .sidebar-group-label,
+  .sidebar-header .sidebar-brand,
+  .sidebar-header .sidebar-version,
+  .sidebar-footer .ng-text-small,
+  .sidebar-footer .ng-text-brand {
+    display: initial;
+  }
+
+  .sidebar-item {
+    justify-content: flex-start;
+    padding: 10px 20px;
+    margin: 1px 8px;
+  }
+}

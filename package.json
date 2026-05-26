@@ -1,0 +1,23 @@
+{
+  "name": "the-taste-pos",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host",
+    "build": "vite build",
+    "preview": "vite preview --host"
+  },
+  "dependencies": {
+    "@capacitor/core": "^8.3.4",
+    "@supabase/supabase-js": "^2.106.2",
+    "dexie": "^4.0.11",
+    "qrcode": "^1.5.4"
+  },
+  "devDependencies": {
+    "@capacitor/android": "^8.3.4",
+    "@capacitor/cli": "^8.3.4",
+    "vite": "^6.3.5",
+    "vite-plugin-pwa": "^0.21.1"
+  }
+}

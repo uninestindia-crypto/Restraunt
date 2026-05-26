@@ -1,0 +1,211 @@
+/**
+ * ═══════════════════════════════════════════════════
+ *  NextGenOS Restaurant Operating System
+ *  Module: Staff Management
+ *  Version: 2.0.0
+ *  © 2026 NextGenOS. All Rights Reserved.
+ *  This software is proprietary and confidential.
+ * ═══════════════════════════════════════════════════
+ */
+
+import { db } from '../../db/database.js';
+import { showToast, playSound, vibrateDevice } from '../../utils/helpers.js';
+import { logShiftStarted, logShiftEnded } from '../../utils/activityLogger.js';
+
+const ROLES = {
+  owner: { label: 'Owner', color: '#FF6B35' },
+  manager: { label: 'Manager', color: '#6C5CE7' },
+  cashier: { label: 'Cashier', color: '#10B981' },
+  kitchen: { label: 'Kitchen', color: '#F59E0B' },
+  waiter: { label: 'Waiter', color: '#3B82F6' },
+};
+
+export class StaffView {
+  constructor(app) { this.app = app; this.container = null; this.tab = 'directory'; }
+
+  async mount(container) {
+    this.container = container;
+    await this.seedDefault();
+    this.render();
+    this.bindEvents();
+    await this.loadData();
+  }
+
+  async seedDefault() {
+    const count = await db.staff.count();
+    if (count === 0) {
+      await db.staff.add({ name: 'Owner', role: 'owner', pin: '1234', isActive: true, createdAt: new Date().toISOString(), isSynced: 0, _platform: 'nextgenos' });
+    }
+  }
+
+  render() {
+    this.container.innerHTML = `
+      <div style="flex:1;display:flex;flex-direction:column;height:calc(100vh - 60px);height:calc(100dvh - 60px);overflow:hidden;background:var(--bg-primary);">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 24px;background:rgba(9,9,14,0.8);backdrop-filter:blur(20px);border-bottom:1px solid var(--border-glass);z-index:10;flex-wrap:wrap;gap:12px;">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <span class="material-symbols-rounded" style="color:var(--color-primary);font-size:24px;">groups</span>
+            <h2 style="font-family:'Plus Jakarta Sans',sans-serif;font-size:var(--text-lg);font-weight:800;color:var(--text-primary);margin:0;">Staff & Roles</h2>
+          </div>
+          <button id="add-staff-btn" style="padding:8px 14px;background:var(--gradient-primary);border:none;border-radius:8px;color:white;font-size:var(--text-xs);font-weight:700;cursor:pointer;display:flex;align-items:center;gap:4px;font-family:'Plus Jakarta Sans',sans-serif;">
+            <span class="material-symbols-rounded" style="font-size:16px;">person_add</span> Add Staff
+          </button>
+        </div>
+        <div style="display:flex;gap:6px;padding:12px 24px;border-bottom:1px solid var(--border-glass);" id="staff-tabs">
+          <button class="staff-tab active" data-tab="directory" style="padding:6px 14px;border-radius:8px;font-size:0.75rem;font-weight:700;cursor:pointer;background:var(--gradient-primary);color:white;border:none;font-family:'Plus Jakarta Sans',sans-serif;">Directory</button>
+          <button class="staff-tab" data-tab="shifts" style="padding:6px 14px;border-radius:8px;font-size:0.75rem;font-weight:700;cursor:pointer;background:rgba(255,255,255,0.03);color:var(--text-secondary);border:1px solid var(--border-glass);font-family:'Plus Jakarta Sans',sans-serif;">Shifts</button>
+          <button class="staff-tab" data-tab="activity" style="padding:6px 14px;border-radius:8px;font-size:0.75rem;font-weight:700;cursor:pointer;background:rgba(255,255,255,0.03);color:var(--text-secondary);border:1px solid var(--border-glass);font-family:'Plus Jakarta Sans',sans-serif;">Activity Log</button>
+        </div>
+        <div style="flex:1;overflow-y:auto;padding:16px 24px;" id="staff-content"></div>
+      </div>
+      <div id="staff-modal" style="display:none;position:fixed;inset:0;z-index:999;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);align-items:center;justify-content:center;">
+        <div style="background:var(--bg-secondary);border:1px solid var(--border-glass);border-radius:20px;padding:28px;width:90%;max-width:400px;box-shadow:var(--shadow-modal);">
+          <h3 style="font-family:'Plus Jakarta Sans',sans-serif;font-size:var(--text-md);font-weight:800;color:var(--text-primary);margin:0 0 20px;">Add Staff</h3>
+          <div style="display:flex;flex-direction:column;gap:14px;">
+            <input type="text" id="staff-name" placeholder="Staff name" style="padding:10px 14px;background:rgba(255,255,255,0.03);border:1px solid var(--border-glass);border-radius:10px;color:var(--text-primary);font-size:var(--text-sm);outline:none;font-family:'Inter',sans-serif;">
+            <select id="staff-role" style="padding:10px 14px;background:rgba(255,255,255,0.03);border:1px solid var(--border-glass);border-radius:10px;color:var(--text-primary);font-size:var(--text-sm);outline:none;font-family:'Inter',sans-serif;">
+              <option value="cashier">Cashier</option>
+              <option value="kitchen">Kitchen Staff</option>
+              <option value="waiter">Waiter</option>
+              <option value="manager">Manager</option>
+            </select>
+            <input type="password" id="staff-pin" placeholder="4-digit PIN" maxlength="4" style="padding:10px 14px;background:rgba(255,255,255,0.03);border:1px solid var(--border-glass);border-radius:10px;color:var(--text-primary);font-size:var(--text-sm);outline:none;font-family:'Inter',sans-serif;letter-spacing:0.3em;">
+            <input type="tel" id="staff-phone" placeholder="Phone (optional)" style="padding:10px 14px;background:rgba(255,255,255,0.03);border:1px solid var(--border-glass);border-radius:10px;color:var(--text-primary);font-size:var(--text-sm);outline:none;font-family:'Inter',sans-serif;">
+          </div>
+          <div style="display:flex;gap:10px;margin-top:20px;">
+            <button id="staff-cancel" style="flex:1;padding:10px;background:rgba(255,255,255,0.03);border:1px solid var(--border-glass);border-radius:10px;color:var(--text-secondary);font-weight:700;cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif;">Cancel</button>
+            <button id="staff-save" style="flex:1;padding:10px;background:var(--gradient-primary);border:none;border-radius:10px;color:white;font-weight:700;cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif;">Save</button>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  bindEvents() {
+    document.getElementById('add-staff-btn').addEventListener('click', () => {
+      playSound(700, 80);
+      document.getElementById('staff-modal').style.display = 'flex';
+    });
+    document.getElementById('staff-cancel').addEventListener('click', () => {
+      document.getElementById('staff-modal').style.display = 'none';
+    });
+    document.getElementById('staff-save').addEventListener('click', async () => {
+      const name = document.getElementById('staff-name').value.trim();
+      const role = document.getElementById('staff-role').value;
+      const pin = document.getElementById('staff-pin').value;
+      const phone = document.getElementById('staff-phone').value.trim();
+      if (!name || !pin || pin.length !== 4) { showToast('Name and 4-digit PIN required', 'error'); return; }
+      await db.staff.add({ name, role, pin, phone, isActive: true, createdAt: new Date().toISOString(), isSynced: 0, _platform: 'nextgenos' });
+      document.getElementById('staff-modal').style.display = 'none';
+      ['staff-name', 'staff-pin', 'staff-phone'].forEach(id => document.getElementById(id).value = '');
+      playSound(900, 100);
+      vibrateDevice([40]);
+      showToast('Staff member added!', 'success');
+      await this.loadData();
+    });
+    this.container.querySelectorAll('.staff-tab').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        this.tab = btn.dataset.tab;
+        playSound(700, 80);
+        this.container.querySelectorAll('.staff-tab').forEach(b => {
+          b.style.background = 'rgba(255,255,255,0.03)';
+          b.style.color = 'var(--text-secondary)';
+          b.style.border = '1px solid var(--border-glass)';
+          b.classList.remove('active');
+        });
+        btn.style.background = 'var(--gradient-primary)';
+        btn.style.color = 'white';
+        btn.style.border = 'none';
+        btn.classList.add('active');
+        await this.loadData();
+      });
+    });
+  }
+
+  async loadData() {
+    const content = document.getElementById('staff-content');
+    if (!content) return;
+    if (this.tab === 'directory') {
+      const staffList = await db.staff.toArray();
+      // Check active shifts for each staff
+      const activeShifts = await db.shifts.where('clockOut').equals('').toArray();
+      const activeStaffIds = new Set(activeShifts.map(s => s.staffId));
+
+      content.innerHTML = staffList.length === 0 ? '<div style="text-align:center;padding:60px;color:var(--text-muted);">No staff members yet.</div>' :
+        `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;">${staffList.map(s => {
+          const role = ROLES[s.role] || ROLES.cashier;
+          const isClocked = activeStaffIds.has(s.id);
+          return `
+            <div style="padding:18px;background:rgba(255,255,255,0.01);border:1px solid var(--border-glass);border-radius:14px;display:flex;align-items:center;gap:14px;">
+              <div style="width:44px;height:44px;border-radius:12px;background:rgba(${s.role === 'owner' ? '255,107,53' : '108,92,231'},0.1);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:1.1rem;color:${role.color};font-family:'Plus Jakarta Sans',sans-serif;flex-shrink:0;">${(s.name || '?')[0].toUpperCase()}</div>
+              <div style="flex:1;min-width:0;">
+                <div style="font-size:var(--text-sm);font-weight:700;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${s.name}</div>
+                <div style="display:flex;gap:6px;align-items:center;margin-top:4px;">
+                  <span style="font-size:0.6rem;padding:2px 8px;border-radius:6px;font-weight:700;color:${role.color};background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.06);">${role.label}</span>
+                  <span style="font-size:0.6rem;color:${s.isActive ? 'var(--color-success)' : 'var(--color-error)'};font-weight:700;">${s.isActive ? '● Active' : '● Inactive'}</span>
+                </div>
+              </div>
+              <button class="shift-toggle-btn" data-staff-id="${s.id}" data-staff-name="${s.name}" data-clocked="${isClocked ? 'in' : 'out'}" style="padding:6px 12px;border-radius:8px;font-size:0.65rem;font-weight:700;cursor:pointer;border:none;font-family:'Plus Jakarta Sans',sans-serif;transition:all 0.2s;${isClocked ? 'background:rgba(239,68,68,0.1);color:#EF4444;border:1px solid rgba(239,68,68,0.2);' : 'background:rgba(16,185,129,0.1);color:#10B981;border:1px solid rgba(16,185,129,0.2);'}">
+                ${isClocked ? '⏹ Clock Out' : '▶ Clock In'}
+              </button>
+            </div>`;
+        }).join('')}</div>`;
+
+      // Bind shift toggle buttons
+      content.querySelectorAll('.shift-toggle-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const staffId = parseInt(btn.dataset.staffId);
+          const staffName = btn.dataset.staffName;
+          const isClocked = btn.dataset.clocked === 'in';
+          try {
+            if (isClocked) {
+              // Clock out: find active shift and update
+              const activeShift = await db.shifts.where({ staffId }).filter(s => s.clockOut === '').first();
+              if (activeShift) {
+                await db.shifts.update(activeShift.id, { clockOut: new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) });
+                await logShiftEnded(staffName);
+                showToast(`${staffName} clocked out`, 'info');
+              }
+            } else {
+              // Clock in: create new shift
+              await db.shifts.add({
+                staffId, date: new Date().toLocaleDateString('en-IN'),
+                clockIn: new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }),
+                clockOut: '', hoursWorked: 0, isSynced: 0, _platform: 'nextgenos'
+              });
+              await logShiftStarted(staffName);
+              showToast(`${staffName} clocked in`, 'success');
+            }
+            playSound(800, 80); vibrateDevice([30]);
+            await this.loadData();
+          } catch (e) { console.error('Shift toggle error:', e); showToast('Failed', 'error'); }
+        });
+      });
+    } else if (this.tab === 'shifts') {
+      const shifts = await db.shifts.reverse().sortBy('clockIn');
+      const recent = shifts.slice(0, 20);
+      content.innerHTML = recent.length === 0 ?
+        '<div style="text-align:center;padding:60px;color:var(--text-muted);"><span class="material-symbols-rounded" style="font-size:40px;display:block;margin-bottom:8px;opacity:0.3;">schedule</span>No shift records yet.</div>' :
+        `<div style="display:flex;flex-direction:column;gap:10px;">${recent.map(s => `
+          <div style="padding:14px 16px;background:rgba(255,255,255,0.01);border:1px solid var(--border-glass);border-radius:12px;display:flex;justify-content:space-between;align-items:center;">
+            <div><div style="font-size:var(--text-sm);font-weight:600;color:var(--text-primary);">Staff #${s.staffId}</div>
+            <div style="font-size:0.7rem;color:var(--text-muted);">${s.date || '—'}</div></div>
+            <div style="text-align:right;"><div style="font-size:var(--text-xs);color:var(--color-success);">${s.clockIn || '—'} → ${s.clockOut || 'Active'}</div></div>
+          </div>
+        `).join('')}</div>`;
+    } else {
+      const logs = await db.activityLog.reverse().sortBy('timestamp');
+      const recent = logs.slice(0, 30);
+      content.innerHTML = recent.length === 0 ?
+        '<div style="text-align:center;padding:60px;color:var(--text-muted);"><span class="material-symbols-rounded" style="font-size:40px;display:block;margin-bottom:8px;opacity:0.3;">history</span>No activity logged yet.</div>' :
+        `<div style="display:flex;flex-direction:column;gap:8px;">${recent.map(l => `
+          <div style="padding:12px 14px;background:rgba(255,255,255,0.01);border:1px solid var(--border-glass);border-radius:10px;display:flex;gap:12px;align-items:center;">
+            <span class="material-symbols-rounded" style="font-size:18px;color:var(--color-primary);">history</span>
+            <div style="flex:1;"><div style="font-size:var(--text-xs);color:var(--text-primary);font-weight:600;">${l.action || 'Action'}</div>
+            <div style="font-size:0.65rem;color:var(--text-muted);">${l.staffName || 'System'} · ${new Date(l.timestamp).toLocaleString('en-IN')}</div></div>
+          </div>
+        `).join('')}</div>`;
+    }
+  }
+
+  unmount() { this.container = null; }
+}
