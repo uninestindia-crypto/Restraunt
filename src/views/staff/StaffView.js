@@ -21,7 +21,7 @@ const ROLES = {
 };
 
 export class StaffView {
-  constructor(app) { this.app = app; this.container = null; this.tab = 'directory'; }
+  constructor(app) { this.app = app; this.container = null; this.tab = 'directory'; this.editingStaffId = null; }
 
   async mount(container) {
     this.container = container;
@@ -59,7 +59,7 @@ export class StaffView {
       </div>
       <div id="staff-modal" style="display:none;position:fixed;inset:0;z-index:999;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);align-items:center;justify-content:center;">
         <div style="background:var(--bg-secondary);border:1px solid var(--border-glass);border-radius:20px;padding:28px;width:90%;max-width:400px;box-shadow:var(--shadow-modal);">
-          <h3 style="font-family:'Plus Jakarta Sans',sans-serif;font-size:var(--text-md);font-weight:800;color:var(--text-primary);margin:0 0 20px;">Add Staff</h3>
+          <h3 id="staff-modal-title" style="font-family:'Plus Jakarta Sans',sans-serif;font-size:var(--text-md);font-weight:800;color:var(--text-primary);margin:0 0 20px;">Add Staff</h3>
           <div style="display:flex;flex-direction:column;gap:14px;">
             <input type="text" id="staff-name" placeholder="Staff name" style="padding:10px 14px;background:rgba(255,255,255,0.03);border:1px solid var(--border-glass);border-radius:10px;color:var(--text-primary);font-size:var(--text-sm);outline:none;font-family:'Inter',sans-serif;">
             <select id="staff-role" style="padding:10px 14px;background:rgba(255,255,255,0.03);border:1px solid var(--border-glass);border-radius:10px;color:var(--text-primary);font-size:var(--text-sm);outline:none;font-family:'Inter',sans-serif;">
@@ -67,6 +67,7 @@ export class StaffView {
               <option value="kitchen">Kitchen Staff</option>
               <option value="waiter">Waiter</option>
               <option value="manager">Manager</option>
+              <option value="owner">Owner</option>
             </select>
             <input type="password" id="staff-pin" placeholder="4-digit PIN" maxlength="4" style="padding:10px 14px;background:rgba(255,255,255,0.03);border:1px solid var(--border-glass);border-radius:10px;color:var(--text-primary);font-size:var(--text-sm);outline:none;font-family:'Inter',sans-serif;letter-spacing:0.3em;">
             <input type="tel" id="staff-phone" placeholder="Phone (optional)" style="padding:10px 14px;background:rgba(255,255,255,0.03);border:1px solid var(--border-glass);border-radius:10px;color:var(--text-primary);font-size:var(--text-sm);outline:none;font-family:'Inter',sans-serif;">
@@ -83,9 +84,17 @@ export class StaffView {
   bindEvents() {
     document.getElementById('add-staff-btn').addEventListener('click', () => {
       playSound(700, 80);
+      this.editingStaffId = null;
+      document.getElementById('staff-modal-title').textContent = 'Add Staff';
+      ['staff-name', 'staff-pin', 'staff-phone'].forEach(id => document.getElementById(id).value = '');
+      document.getElementById('staff-role').value = 'cashier';
       document.getElementById('staff-modal').style.display = 'flex';
     });
     document.getElementById('staff-cancel').addEventListener('click', () => {
+      this.editingStaffId = null;
+      document.getElementById('staff-modal-title').textContent = 'Add Staff';
+      ['staff-name', 'staff-pin', 'staff-phone'].forEach(id => document.getElementById(id).value = '');
+      document.getElementById('staff-role').value = 'cashier';
       document.getElementById('staff-modal').style.display = 'none';
     });
     document.getElementById('staff-save').addEventListener('click', async () => {
@@ -96,14 +105,27 @@ export class StaffView {
       if (!name || !pin || pin.length !== 4) { showToast('Name and 4-digit PIN required', 'error'); return; }
       
       const existing = await db.staff.where('pin').equals(pin).first();
-      if (existing) { showToast('PIN already in use by another staff member', 'error'); return; }
+      const checkId = this.editingStaffId || 0;
+      if (existing && existing.id !== checkId && existing.isActive) {
+        showToast('PIN already in use by another staff member', 'error');
+        return;
+      }
 
-      await db.staff.add({ name, role, pin, phone, isActive: true, createdAt: new Date().toISOString(), isSynced: 0, _platform: 'nextgenos' });
+      if (this.editingStaffId) {
+        await db.staff.update(this.editingStaffId, { name, role, pin, phone, isSynced: 0 });
+        showToast('Staff member updated!', 'success');
+      } else {
+        await db.staff.add({ name, role, pin, phone, isActive: true, createdAt: new Date().toISOString(), isSynced: 0, _platform: 'nextgenos' });
+        showToast('Staff member added!', 'success');
+      }
+
+      this.editingStaffId = null;
+      document.getElementById('staff-modal-title').textContent = 'Add Staff';
       document.getElementById('staff-modal').style.display = 'none';
       ['staff-name', 'staff-pin', 'staff-phone'].forEach(id => document.getElementById(id).value = '');
+      document.getElementById('staff-role').value = 'cashier';
       playSound(900, 100);
       vibrateDevice([40]);
-      showToast('Staff member added!', 'success');
       await this.loadData();
     });
     this.container.querySelectorAll('.staff-tab').forEach(btn => {
@@ -148,6 +170,9 @@ export class StaffView {
               </div>
               <div style="display:flex;align-items:center;gap:10px;">
                 <div style="font-size:0.7rem;color:var(--text-muted);font-weight:600;letter-spacing:0.2em;">****</div>
+                <button class="edit-staff-btn" data-id="${s.id}" style="background:transparent;border:none;color:var(--text-secondary);cursor:pointer;display:flex;align-items:center;justify-content:center;padding:4px;border-radius:6px;transition:background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.08)'" onmouseout="this.style.background='transparent'">
+                  <span class="material-symbols-rounded" style="font-size:18px;">edit</span>
+                </button>
                 ${isDeletable ? `
                   <button class="delete-staff-btn" data-id="${s.id}" style="background:transparent;border:none;color:var(--color-danger);cursor:pointer;display:flex;align-items:center;justify-content:center;padding:4px;border-radius:6px;transition:background 0.2s;" onmouseover="this.style.background='rgba(239,68,68,0.1)'" onmouseout="this.style.background='transparent'">
                     <span class="material-symbols-rounded" style="font-size:18px;">delete</span>
@@ -156,6 +181,24 @@ export class StaffView {
               </div>
             </div>`;
         }).join('')}</div>`;
+
+      content.querySelectorAll('.edit-staff-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const id = parseInt(btn.dataset.id);
+          const staffMember = await db.staff.get(id);
+          if (!staffMember) return;
+
+          playSound(700, 80);
+          this.editingStaffId = id;
+          document.getElementById('staff-modal-title').textContent = 'Edit Staff Member';
+          document.getElementById('staff-name').value = staffMember.name || '';
+          document.getElementById('staff-role').value = staffMember.role || 'cashier';
+          document.getElementById('staff-pin').value = staffMember.pin || '';
+          document.getElementById('staff-phone').value = staffMember.phone || '';
+          
+          document.getElementById('staff-modal').style.display = 'flex';
+        });
+      });
 
       content.querySelectorAll('.delete-staff-btn').forEach(btn => {
         btn.addEventListener('click', async () => {

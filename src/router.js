@@ -47,13 +47,14 @@ export class Router {
    * Handle route change
    */
   async handleRoute() {
-    const hash = window.location.hash || '#/pos';
+    const fullHash = window.location.hash || '#/pos';
+    const path = fullHash.split('?')[0];
 
     // Don't re-render same view
-    if (hash === this.currentHash && this.currentView) return;
+    if (fullHash === this.currentHash && this.currentView) return;
 
     // Check if route exists
-    const routeConfig = this.routes[hash];
+    const routeConfig = this.routes[path];
     if (!routeConfig) {
       // Fallback to POS view
       this.navigate('#/pos');
@@ -63,10 +64,10 @@ export class Router {
     const { viewFactory, allowedRoles } = routeConfig;
 
     // Kiosk view (#/self-order) is public, all other routes require authentication
-    const isPublic = hash === '#/self-order';
+    const isPublic = path === '#/self-order';
 
     if (!isPublic && !authService.requireAuth()) {
-      console.warn(`[Router] Access to protected route "${hash}" blocked: User is not authenticated.`);
+      console.warn(`[Router] Access to protected route "${path}" blocked: User is not authenticated.`);
       
       // Clear container and show login
       if (this.onAuthRequired) {
@@ -81,7 +82,7 @@ export class Router {
       const staffRole = currentStaff?.role?.toLowerCase();
       
       if (!staffRole || !allowedRoles.includes(staffRole)) {
-        console.warn(`[Router] Access to "${hash}" denied for role "${staffRole}". Required: [${allowedRoles.join(', ')}]`);
+        console.warn(`[Router] Access to "${path}" denied for role "${staffRole}". Required: [${allowedRoles.join(', ')}]`);
         showToast('Access denied: Insufficient permissions', 'error');
         
         // Redirect to a safe default view based on their role
@@ -112,7 +113,7 @@ export class Router {
       });
     }
 
-    this.currentHash = hash;
+    this.currentHash = fullHash;
 
     try {
       // Create and mount new view
@@ -135,9 +136,9 @@ export class Router {
       }
     }
 
-    // Notify navigation listeners
+    // Notify navigation listeners with path
     if (this.onNavigate) {
-      this.onNavigate(hash);
+      this.onNavigate(path);
     }
   }
 

@@ -13,6 +13,10 @@ export class CustomerView {
     
     // Self-order cart state
     this.cart = [];
+    this.tables = [];
+    this.detectedTable = null;
+    this.orderType = 'takeaway';
+    this.selectedTableId = null;
     
     // View state: 'menu' | 'cart' | 'checkout' | 'success'
     this.state = 'menu';
@@ -24,6 +28,10 @@ export class CustomerView {
     this.container = container;
     this.state = 'menu';
     this.cart = [];
+    this.tables = [];
+    this.detectedTable = null;
+    this.orderType = 'takeaway';
+    this.selectedTableId = null;
     await this.loadData();
     this.render();
     this.bindEvents();
@@ -35,6 +43,32 @@ export class CustomerView {
       if (this.categories.length > 0) {
         this.activeCategoryId = this.categories[0].id;
         await this.loadItems();
+      }
+      
+      // Fetch all tables from DB
+      this.tables = (await db.tables.toArray()) || [];
+
+      // Parse hash query parameter for table number
+      const hash = window.location.hash || '';
+      const queryIndex = hash.indexOf('?');
+      if (queryIndex !== -1) {
+        const queryString = hash.substring(queryIndex + 1);
+        const urlParams = new URLSearchParams(queryString);
+        const tableParam = urlParams.get('table');
+        if (tableParam) {
+          const num = parseInt(tableParam, 10);
+          let matchTable = null;
+          if (!isNaN(num)) {
+            matchTable = await db.tables.where('number').equals(num).first();
+          }
+          if (!matchTable) {
+            matchTable = await db.tables.where('number').equals(tableParam).first();
+          }
+          if (matchTable) {
+            this.detectedTable = matchTable;
+            this.orderType = 'dinein';
+          }
+        }
       }
     } catch (err) {
       console.error('Failed to load self-order data:', err);
@@ -60,6 +94,31 @@ export class CustomerView {
 
   renderMenu() {
     // Header brand
+    let tablePillHtml = '';
+    if (this.detectedTable) {
+      tablePillHtml = `
+        <div style="
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          margin-top: 10px;
+          padding: 6px 14px;
+          border-radius: var(--radius-full);
+          background: rgba(255, 94, 54, 0.15);
+          border: 1px solid rgba(255, 94, 54, 0.3);
+          backdrop-filter: blur(10px);
+          color: #FF8960;
+          font-family: 'Plus Jakarta Sans', sans-serif;
+          font-size: var(--text-xs);
+          font-weight: 700;
+          box-shadow: 0 4px 15px rgba(255, 94, 54, 0.1);
+        ">
+          <span class="material-symbols-rounded" style="font-size: 14px;">restaurant</span>
+          Dine-in at Table ${this.detectedTable.number}
+        </div>
+      `;
+    }
+
     const headerHtml = `
       <div style="background: rgba(9, 9, 14, 0.85); backdrop-filter: blur(20px); padding: 20px 16px 16px; border-bottom: 1px solid var(--border-glass); text-align: center; position: sticky; top: 0; z-index: var(--z-sticky);">
         <div style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: 1.8rem; font-weight: 800; letter-spacing: -0.02em; background: var(--gradient-primary); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">
@@ -68,6 +127,7 @@ export class CustomerView {
         <div style="font-family: 'Inter', sans-serif; font-size: var(--text-xs); color: var(--text-muted); font-weight: 500; text-transform: uppercase; letter-spacing: 0.15em; margin-top: 4px;">
           Premium Self-Ordering Kiosk
         </div>
+        ${tablePillHtml}
       </div>
     `;
 
@@ -352,6 +412,75 @@ export class CustomerView {
   renderCheckout() {
     const total = this.cart.reduce((sum, ci) => sum + (ci.price * ci.quantity), 0);
 
+    let diningTypeHtml = '';
+    if (!this.detectedTable) {
+      diningTypeHtml = `
+        <!-- Order Dining Type -->
+        <div class="card card-glass" style="padding: 20px; margin-bottom: 16px; background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border-glass);">
+          <h3 style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: var(--text-sm); font-weight: 700; margin-bottom: 16px; color: var(--text-primary); letter-spacing: -0.01em;">Order Dining Type</h3>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 0;">
+            <button class="dining-type-btn ${this.orderType === 'takeaway' ? 'active' : ''}" id="self-dine-takeaway" style="
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              justify-content: center;
+              padding: 16px;
+              border-radius: var(--radius-lg);
+              border: 1.5px solid ${this.orderType === 'takeaway' ? 'rgba(255, 94, 54, 0.4)' : 'var(--border-glass)'};
+              background: ${this.orderType === 'takeaway' ? 'rgba(255, 94, 54, 0.06)' : 'rgba(255, 255, 255, 0.01)'};
+              color: ${this.orderType === 'takeaway' ? 'var(--text-primary)' : 'var(--text-secondary)'};
+              box-shadow: ${this.orderType === 'takeaway' ? '0 8px 20px rgba(255, 94, 54, 0.15)' : 'none'};
+              transition: all var(--transition-normal);
+              cursor: pointer;
+            }">
+              <span class="method-icon" style="font-size: 24px; margin-bottom: 6px;">🛍️</span>
+              <span class="method-label" style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: var(--text-xs); font-weight: 600;">Takeaway</span>
+            </button>
+            <button class="dining-type-btn ${this.orderType === 'dinein' ? 'active' : ''}" id="self-dine-dinein" style="
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              justify-content: center;
+              padding: 16px;
+              border-radius: var(--radius-lg);
+              border: 1.5px solid ${this.orderType === 'dinein' ? 'rgba(255, 94, 54, 0.4)' : 'var(--border-glass)'};
+              background: ${this.orderType === 'dinein' ? 'rgba(255, 94, 54, 0.06)' : 'rgba(255, 255, 255, 0.01)'};
+              color: ${this.orderType === 'dinein' ? 'var(--text-primary)' : 'var(--text-secondary)'};
+              box-shadow: ${this.orderType === 'dinein' ? '0 8px 20px rgba(255, 94, 54, 0.15)' : 'none'};
+              transition: all var(--transition-normal);
+              cursor: pointer;
+            }">
+              <span class="method-icon" style="font-size: 24px; margin-bottom: 6px;">🍽️</span>
+              <span class="method-label" style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: var(--text-xs); font-weight: 600;">Dine-In</span>
+            </button>
+          </div>
+          
+          <div id="self-table-select-container" style="display: ${this.orderType === 'dinein' ? 'block' : 'none'}; margin-top: 16px;">
+            <label style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: var(--text-xs); color: var(--text-secondary); font-weight: 600; display: block; margin-bottom: 8px;">SELECT TABLE NUMBER</label>
+            <select id="self-table-select" class="input" style="
+              width: 100%;
+              padding: 12px 16px; 
+              background: rgba(0, 0, 0, 0.2); 
+              border: 1px solid var(--border-glass);
+              border-radius: var(--radius-md);
+              color: var(--text-primary);
+              outline: none;
+              transition: all var(--transition-normal);
+              font-family: 'Plus Jakarta Sans', sans-serif;
+              font-weight: 600;
+            ">
+              <option value="" style="background: #111; color: var(--text-secondary);">-- Select a Table --</option>
+              ${this.tables.map(table => `
+                <option value="${table.id}" ${parseInt(this.selectedTableId) === parseInt(table.id) ? 'selected' : ''} style="background: #111; color: var(--text-primary);">
+                  Table ${table.number} (${table.floorSection || 'Main'})
+                </option>
+              `).join('')}
+            </select>
+          </div>
+        </div>
+      `;
+    }
+
     this.container.innerHTML = `
       <div style="flex: 1; display: flex; flex-direction: column; overflow: hidden; height: 100vh; height: 100dvh; background: var(--bg-primary);">
         <div style="padding: 16px; border-bottom: 1px solid var(--border-glass); display: flex; align-items: center; gap: 12px; background: rgba(9, 9, 14, 0.8); backdrop-filter: blur(20px);">
@@ -389,6 +518,9 @@ export class CustomerView {
             </div>
           </div>
 
+          <!-- Dining Type -->
+          ${diningTypeHtml}
+
           <!-- Payment Options -->
           <div class="card card-glass" style="padding: 20px; margin-bottom: 16px; background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border-glass);">
             <h3 style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: var(--text-sm); font-weight: 700; margin-bottom: 16px; color: var(--text-primary); letter-spacing: -0.01em;">Select Payment Mode</h3>
@@ -425,7 +557,7 @@ export class CustomerView {
                 cursor: pointer;
               ">
                 <span class="method-icon" style="font-size: 24px; margin-bottom: 6px;">💵</span>
-                <span class="method-label" style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: var(--text-xs); font-weight: 600;">Pay Cash at Counter</span>
+                <span class="method-label" style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: var(--text-xs); font-weight: 600;">Pay at Counter (Cash/Card/UPI)</span>
               </button>
             </div>
           </div>
@@ -436,8 +568,10 @@ export class CustomerView {
             <div style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: 2.2rem; font-weight: 800; color: var(--color-primary); line-height: 1.1;">
               ${formatCurrency(total)}
             </div>
-            <div style="font-size: var(--text-xs); color: var(--text-muted); margin-top: 8px; font-weight: 500;">
-              Counter Takeaway Pickup Order
+            <div id="self-order-type-summary" style="font-size: var(--text-xs); color: var(--text-muted); margin-top: 8px; font-weight: 500;">
+              ${this.orderType === 'dinein'
+                ? `Dine-In Order ${this.detectedTable ? `(Table ${this.detectedTable.number})` : (this.selectedTableId ? `(Table ${this.tables.find(t => t.id === parseInt(this.selectedTableId))?.number || ''})` : '')}`
+                : 'Counter Takeaway Pickup Order'}
             </div>
           </div>
         </div>
@@ -519,9 +653,9 @@ export class CustomerView {
           box-shadow: 0 10px 30px rgba(0,0,0,0.15);
         ">
           <span class="material-symbols-rounded" style="color: var(--color-warning); font-size: 44px; margin-bottom: 10px; filter: drop-shadow(0 0 8px rgba(245,158,11,0.3));">payments</span>
-          <div style="font-family: 'Plus Jakarta Sans', sans-serif; color: var(--text-primary); font-weight: 700; font-size: var(--text-sm); letter-spacing: -0.01em;">Pay Cash at Counter</div>
+          <div style="font-family: 'Plus Jakarta Sans', sans-serif; color: var(--text-primary); font-weight: 700; font-size: var(--text-sm); letter-spacing: -0.01em;">Pay at Counter</div>
           <div style="color: var(--text-secondary); font-size: var(--text-xs); margin-top: 8px; line-height: 1.5; font-weight: 500; max-width: 280px; margin-left: auto; margin-right: auto;">
-            Proceed to the cash counter, share your <strong>Token #${orderNumberShort}</strong>, pay <strong>${formatCurrency(total)}</strong>, and collect your food receipt.
+            Proceed to the cash counter, share your Token <strong>#${orderNumberShort}</strong>, pay, and collect your receipt.
           </div>
         </div>
       `;
@@ -714,6 +848,16 @@ export class CustomerView {
           this.selectedPaymentMethod = 'upi';
           payUpi.classList.add('active');
           payCash.classList.remove('active');
+
+          payUpi.style.border = '1.5px solid rgba(255, 94, 54, 0.4)';
+          payUpi.style.background = 'rgba(255, 94, 54, 0.06)';
+          payUpi.style.color = 'var(--text-primary)';
+          payUpi.style.boxShadow = '0 8px 20px rgba(255, 94, 54, 0.15)';
+
+          payCash.style.border = 'var(--border-glass)';
+          payCash.style.background = 'rgba(255, 255, 255, 0.01)';
+          payCash.style.color = 'var(--text-secondary)';
+          payCash.style.boxShadow = 'none';
         });
         
         payCash.addEventListener('click', () => {
@@ -721,19 +865,108 @@ export class CustomerView {
           this.selectedPaymentMethod = 'cash';
           payCash.classList.add('active');
           payUpi.classList.remove('active');
+
+          payCash.style.border = '1.5px solid rgba(255, 94, 54, 0.4)';
+          payCash.style.background = 'rgba(255, 94, 54, 0.06)';
+          payCash.style.color = 'var(--text-primary)';
+          payCash.style.boxShadow = '0 8px 20px rgba(255, 94, 54, 0.15)';
+
+          payUpi.style.border = 'var(--border-glass)';
+          payUpi.style.background = 'rgba(255, 255, 255, 0.01)';
+          payUpi.style.color = 'var(--text-secondary)';
+          payUpi.style.boxShadow = 'none';
+        });
+      }
+
+      // Dining type options if not detected
+      const btnTakeaway = document.getElementById('self-dine-takeaway');
+      const btnDinein = document.getElementById('self-dine-dinein');
+      const tableSelectContainer = document.getElementById('self-table-select-container');
+      const tableSelect = document.getElementById('self-table-select');
+      
+      if (btnTakeaway && btnDinein) {
+        btnTakeaway.addEventListener('click', () => {
+          playSound(700, 80);
+          this.orderType = 'takeaway';
+          btnTakeaway.classList.add('active');
+          btnDinein.classList.remove('active');
+          if (tableSelectContainer) tableSelectContainer.style.display = 'none';
+          
+          btnTakeaway.style.border = '1.5px solid rgba(255, 94, 54, 0.4)';
+          btnTakeaway.style.background = 'rgba(255, 94, 54, 0.06)';
+          btnTakeaway.style.color = 'var(--text-primary)';
+          btnTakeaway.style.boxShadow = '0 8px 20px rgba(255, 94, 54, 0.15)';
+          
+          btnDinein.style.border = 'var(--border-glass)';
+          btnDinein.style.background = 'rgba(255, 255, 255, 0.01)';
+          btnDinein.style.color = 'var(--text-secondary)';
+          btnDinein.style.boxShadow = 'none';
+
+          const summaryEl = document.getElementById('self-order-type-summary');
+          if (summaryEl) {
+            summaryEl.textContent = 'Counter Takeaway Pickup Order';
+          }
+        });
+        
+        btnDinein.addEventListener('click', () => {
+          playSound(700, 80);
+          this.orderType = 'dinein';
+          btnDinein.classList.add('active');
+          btnTakeaway.classList.remove('active');
+          if (tableSelectContainer) tableSelectContainer.style.display = 'block';
+          
+          btnDinein.style.border = '1.5px solid rgba(255, 94, 54, 0.4)';
+          btnDinein.style.background = 'rgba(255, 94, 54, 0.06)';
+          btnDinein.style.color = 'var(--text-primary)';
+          btnDinein.style.boxShadow = '0 8px 20px rgba(255, 94, 54, 0.15)';
+          
+          btnTakeaway.style.border = 'var(--border-glass)';
+          btnTakeaway.style.background = 'rgba(255, 255, 255, 0.01)';
+          btnTakeaway.style.color = 'var(--text-secondary)';
+          btnTakeaway.style.boxShadow = 'none';
+
+          const summaryEl = document.getElementById('self-order-type-summary');
+          if (summaryEl) {
+            const tableText = this.selectedTableId ? `(Table ${this.tables.find(t => t.id === parseInt(this.selectedTableId))?.number || ''})` : '';
+            summaryEl.textContent = `Dine-In Order ${tableText}`;
+          }
+        });
+      }
+
+      if (tableSelect) {
+        tableSelect.addEventListener('change', (e) => {
+          this.selectedTableId = e.target.value;
+          const summaryEl = document.getElementById('self-order-type-summary');
+          if (summaryEl && this.orderType === 'dinein') {
+            const tableText = this.selectedTableId ? `(Table ${this.tables.find(t => t.id === parseInt(this.selectedTableId))?.number || ''})` : '';
+            summaryEl.textContent = `Dine-In Order ${tableText}`;
+          }
+        });
+      }
+
+      // Input listeners to sync state
+      const nameInput = document.getElementById('self-name');
+      const phoneInput = document.getElementById('self-phone');
+      if (nameInput) {
+        nameInput.addEventListener('input', () => {
+          this.customerName = nameInput.value.trim();
+        });
+      }
+      if (phoneInput) {
+        phoneInput.addEventListener('input', () => {
+          this.customerPhone = phoneInput.value.trim();
         });
       }
 
       // Order submit
       document.getElementById('btn-submit-self-order').addEventListener('click', async () => {
-        const nameInput = document.getElementById('self-name');
-        const phoneInput = document.getElementById('self-phone');
-        
-        this.customerName = nameInput ? nameInput.value.trim() : '';
-        this.customerPhone = phoneInput ? phoneInput.value.trim() : '';
-
         if (!this.customerName) {
           showToast('Please enter your name', 'warning');
+          return;
+        }
+
+        if (this.orderType === 'dinein' && !this.detectedTable && !this.selectedTableId) {
+          showToast('Please select your table number', 'warning');
           return;
         }
 
@@ -807,9 +1040,12 @@ export class CustomerView {
       const total = subtotal + tax;
       const orderNumber = await getNextOrderNumber();
 
+      const type = this.detectedTable ? 'dinein' : (this.orderType || 'takeaway');
+      const tableId = this.detectedTable ? this.detectedTable.id : (type === 'dinein' && this.selectedTableId ? parseInt(this.selectedTableId) : null);
+
       const orderData = {
         orderNumber,
-        type: 'takeaway', // self orders are takeaway counters
+        type,
         status: 'confirmed', // goes straight to cooking queues
         items: JSON.stringify(this.cart),
         subtotal,
@@ -822,9 +1058,21 @@ export class CustomerView {
         customerPhone: this.customerPhone,
         createdAt: new Date().toISOString()
       };
+      if (tableId) {
+        orderData.tableId = tableId;
+      }
 
       const order = await createOrder(orderData);
       this.placedOrder = order;
+
+      // Update table status to occupied if dine-in
+      if (tableId && type === 'dinein') {
+        try {
+          await db.tables.update(tableId, { status: 'occupied' });
+        } catch (e) {
+          console.error('Failed to update table status to occupied:', e);
+        }
+      }
 
       // --- Integration Hooks ---
 

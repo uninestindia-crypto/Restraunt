@@ -2,7 +2,7 @@
  * OrderHistory — Admin view for browsing, searching, and reprinting receipts
  */
 
-import { getOrders, getSetting } from '../../db/database.js';
+import { db, getOrder, getOrders, getSetting } from '../../db/database.js';
 import { formatCurrency, formatDateTime, showToast, playSound, vibrateDevice } from '../../utils/helpers.js';
 import { printerService } from '../../services/printer.js';
 import { ReceiptBuilder } from '../../services/receipt.js';
@@ -298,13 +298,47 @@ export class OrderHistory {
             <!-- Customer / Payment -->
             <div style="display:flex; flex-direction:column; gap:8px; font-size:var(--text-sm); font-weight: 500; color: var(--text-secondary);">
               ${order.customerName ? `<div style="display: flex; gap: 6px;"><strong style="color: var(--text-primary);">Customer:</strong> ${order.customerName} ${order.customerPhone ? `(${order.customerPhone})` : ''}</div>` : ''}
-              <div style="display: flex; gap: 6px;"><strong style="color: var(--text-primary);">Payment Option:</strong> ${order.paymentMethod.toUpperCase()} (${order.paymentStatus === 'paid' ? 'Paid' : 'Unpaid'})</div>
+              <div style="display: flex; gap: 6px;"><strong style="color: var(--text-primary);">Payment Option:</strong> ${(order.paymentMethod || 'unpaid').toUpperCase()} (${order.paymentStatus === 'paid' ? 'Paid' : 'Unpaid'})</div>
               <div style="display: flex; gap: 6px;"><strong style="color: var(--text-primary);">Kitchen Status:</strong> ${order.status.toUpperCase()}</div>
             </div>
 
           </div>
           
           <div class="modal-footer" style="border-top: 1px solid var(--border-glass); padding: 16px 24px; display: flex; flex-direction: column; gap:10px;">
+            ${order.paymentStatus !== 'paid' ? `
+              <button class="btn btn-block" id="btn-modal-pay-cash" style="
+                font-family: 'Plus Jakarta Sans', sans-serif;
+                font-weight: 700;
+                font-size: var(--text-xs);
+                min-height: 38px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 6px;
+                background: #10B981 !important;
+                color: #ffffff !important;
+                border: none;
+              ">
+                <span class="material-symbols-rounded" style="font-size: 18px;">payments</span>
+                Paid via Cash
+              </button>
+              <button class="btn btn-block" id="btn-modal-pay-upi" style="
+                font-family: 'Plus Jakarta Sans', sans-serif;
+                font-weight: 700;
+                font-size: var(--text-xs);
+                min-height: 38px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 6px;
+                background: #3B82F6 !important;
+                color: #ffffff !important;
+                border: none;
+              ">
+                <span class="material-symbols-rounded" style="font-size: 18px;">qr_code_scanner</span>
+                Paid via UPI
+              </button>
+            ` : ''}
             <button class="btn btn-primary btn-block" id="btn-modal-reprint" style="
               font-family: 'Plus Jakarta Sans', sans-serif;
               font-weight: 700;
@@ -354,6 +388,56 @@ export class OrderHistory {
       vibrateDevice([40]);
       await this.printReceipt(order);
     });
+
+    if (order.paymentStatus !== 'paid') {
+      const handlePayment = async (method) => {
+        playSound(800, 100);
+        vibrateDevice([40]);
+        try {
+          const result = await db.orders.update(order.id, {
+            paymentStatus: 'paid',
+            paymentMethod: method,
+            status: 'confirmed',
+            isSynced: 0
+          });
+
+          if (result > 0) {
+            const updatedOrder = await getOrder(order.id);
+            if (updatedOrder) {
+              try {
+                const { syncService } = await import('../../services/sync.js');
+                await syncService.syncUpOrder(updatedOrder);
+              } catch (err) {
+                console.error('[Sync] Failed to sync updated order:', err);
+              }
+              
+              showToast('Payment collected!', 'success');
+              
+              // Automatically print receipt
+              await this.printReceipt(updatedOrder);
+              
+              // Close modal
+              close();
+              
+              // Reload orders and re-render/re-bind
+              await this.loadOrders();
+              this.render();
+              this.bindEvents();
+            } else {
+              showToast('Failed to retrieve updated order.', 'error');
+            }
+          } else {
+            showToast('Failed to update order payment in database.', 'error');
+          }
+        } catch (error) {
+          console.error('[Payment] Collection failed:', error);
+          showToast('Payment collection failed: ' + error.message, 'error');
+        }
+      };
+
+      document.getElementById('btn-modal-pay-cash').addEventListener('click', () => handlePayment('cash'));
+      document.getElementById('btn-modal-pay-upi').addEventListener('click', () => handlePayment('upi'));
+    }
   }
 
   async printReceipt(order) {
