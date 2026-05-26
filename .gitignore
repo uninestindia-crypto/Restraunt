@@ -45,3 +45,12 @@ Thumbs.db
 .env.*
 !.env.example
 
+# Secrets and Credentials
+*.pem
+*.key
+*.p12
+*.jks
+*.keystore
+secrets.json
+*secret*.json
+credentials.json
