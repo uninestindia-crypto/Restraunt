@@ -146,7 +146,8 @@ export class Router {
    * Get current route hash
    */
   getCurrentRoute() {
-    return window.location.hash || '#/pos';
+    const hash = window.location.hash || '#/pos';
+    return hash.split('?')[0];
   }
 
   /**

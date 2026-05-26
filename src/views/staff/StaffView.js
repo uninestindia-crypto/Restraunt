@@ -104,10 +104,11 @@ export class StaffView {
       const phone = document.getElementById('staff-phone').value.trim();
       if (!name || !pin || pin.length !== 4) { showToast('Name and 4-digit PIN required', 'error'); return; }
       
-      const existing = await db.staff.where('pin').equals(pin).first();
       const checkId = this.editingStaffId || 0;
-      if (existing && existing.id !== checkId && existing.isActive) {
-        showToast('PIN already in use by another staff member', 'error');
+      const existing = await db.staff.where('pin').equals(pin).toArray();
+      const collision = existing.find(s => s.isActive && s.id !== checkId);
+      if (collision) {
+        showToast('PIN already in use by another active staff member', 'error');
         return;
       }
 
