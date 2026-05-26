@@ -74,8 +74,25 @@ class App {
         showToast('Session expired. Please log in again.', 'warning');
       });
 
-      // Show login screen
-      this.showLogin();
+      // Check for persistent session
+      const savedPin = localStorage.getItem('auth_staff_pin');
+      let autoLoggedIn = false;
+      if (savedPin) {
+        try {
+          const staff = await authService.login(savedPin);
+          if (staff) {
+            await this.onLoginSuccess(staff);
+            autoLoggedIn = true;
+          }
+        } catch (e) {
+          console.error('[App] Auto-login failed:', e);
+        }
+      }
+
+      if (!autoLoggedIn) {
+        // Show login screen
+        this.showLogin();
+      }
     } catch (error) {
       console.error('Failed to initialize app:', error);
       this.showFatalError(error);
@@ -182,7 +199,7 @@ class App {
           </header>
 
           <!-- Main Content Area -->
-          <main id="main-content" class="view-enter" style="flex: 1; display: flex; flex-direction: column;"></main>
+          <main id="main-content" class="view-enter" style="flex: 1; display: flex; flex-direction: column; overflow: hidden;"></main>
         </div>
       </div>
     `;

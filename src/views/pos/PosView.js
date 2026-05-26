@@ -142,6 +142,10 @@ export class PosView {
 
   setOrderType(type) {
     this.orderType = type;
+    const select = document.getElementById('cart-table-select');
+    if (select) {
+      select.style.display = type === 'dinein' ? 'block' : 'none';
+    }
   }
 
   // --- Order Placement ---

@@ -311,7 +311,7 @@ export class CustomerView {
     ` : '';
 
     this.container.innerHTML = `
-      <div style="flex: 1; display: flex; flex-direction: column; overflow: hidden; height: 100vh; height: 100dvh; background: var(--bg-primary);">
+      <div style="flex: 1; display: flex; flex-direction: column; overflow: hidden; height: 100%; background: var(--bg-primary);">
         ${headerHtml}
         ${categoryBarHtml}
         ${gridHtml}
@@ -378,7 +378,7 @@ export class CustomerView {
     const total = this.cart.reduce((sum, ci) => sum + (ci.price * ci.quantity), 0);
 
     this.container.innerHTML = `
-      <div style="flex: 1; display: flex; flex-direction: column; overflow: hidden; height: 100vh; height: 100dvh; background: var(--bg-primary);">
+      <div style="flex: 1; display: flex; flex-direction: column; overflow: hidden; height: 100%; background: var(--bg-primary);">
         <div style="padding: 16px; border-bottom: 1px solid var(--border-glass); display: flex; align-items: center; gap: 12px; background: rgba(9, 9, 14, 0.8); backdrop-filter: blur(20px);">
           <button class="btn-icon btn-secondary" id="btn-back-to-menu" style="border-radius: 50%; border: 1px solid var(--border-glass); background: rgba(255,255,255,0.03);">
              <span class="material-symbols-rounded">arrow_back</span>
@@ -482,7 +482,7 @@ export class CustomerView {
     }
 
     this.container.innerHTML = `
-      <div style="flex: 1; display: flex; flex-direction: column; overflow: hidden; height: 100vh; height: 100dvh; background: var(--bg-primary);">
+      <div style="flex: 1; display: flex; flex-direction: column; overflow: hidden; height: 100%; background: var(--bg-primary);">
         <div style="padding: 16px; border-bottom: 1px solid var(--border-glass); display: flex; align-items: center; gap: 12px; background: rgba(9, 9, 14, 0.8); backdrop-filter: blur(20px);">
           <button class="btn-icon btn-secondary" id="btn-back-to-cart" style="border-radius: 50%; border: 1px solid var(--border-glass); background: rgba(255,255,255,0.03);">
             <span class="material-symbols-rounded">arrow_back</span>
@@ -662,7 +662,7 @@ export class CustomerView {
     }
 
     this.container.innerHTML = `
-      <div style="flex: 1; display: flex; flex-direction: column; overflow: hidden; height: 100vh; height: 100dvh; background: var(--bg-primary);">
+      <div style="flex: 1; display: flex; flex-direction: column; overflow: hidden; height: 100%; background: var(--bg-primary);">
         <div style="flex: 1; overflow-y: auto; padding: 40px 24px; display: flex; flex-direction: column; align-items: center; text-align: center;">
           
           <div class="animate-bounce" style="

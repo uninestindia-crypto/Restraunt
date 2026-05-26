@@ -27,7 +27,7 @@ export class AnalyticsDashboard {
 
   render() {
     this.container.innerHTML = `
-      <div style="flex:1;display:flex;flex-direction:column;height:calc(100vh - 60px);height:calc(100dvh - 60px);overflow:hidden;background:var(--bg-primary);">
+      <div style="flex:1;display:flex;flex-direction:column;height:100%;overflow:hidden;background:var(--bg-primary);">
         <!-- Header -->
         <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 24px;background:rgba(9,9,14,0.8);backdrop-filter:blur(20px);border-bottom:1px solid var(--border-glass);z-index:10;flex-wrap:wrap;gap:12px;">
           <div style="display:flex;align-items:center;gap:10px;">

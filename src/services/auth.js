@@ -55,6 +55,7 @@ class AuthService {
 
       this.currentStaff = staff;
       this.isAuthenticated = true;
+      localStorage.setItem('auth_staff_pin', pin);
 
       // Start session expiry timer (8 hours)
       this._startSessionTimer();
@@ -94,6 +95,7 @@ class AuthService {
 
     this.currentStaff = null;
     this.isAuthenticated = false;
+    localStorage.removeItem('auth_staff_pin');
 
     // Log the logout activity
     if (staffId) {

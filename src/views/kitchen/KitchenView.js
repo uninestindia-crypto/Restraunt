@@ -23,7 +23,7 @@ export class KitchenView {
     this.refreshInterval = setInterval(() => this.loadOrders(), 5000);
   }  render() {
     this.container.innerHTML = `
-      <div style="flex: 1; display: flex; flex-direction: column; overflow: hidden; height: calc(100vh - 60px); height: calc(100dvh - 60px); background: var(--bg-primary);">
+      <div style="flex: 1; display: flex; flex-direction: column; height: 100%; overflow: hidden; background: var(--bg-primary);">
         <!-- Sub-Header / Controls -->
         <div style="display: flex; justify-content: space-between; align-items: center; padding: 16px 24px; background: rgba(9,9,14,0.8); backdrop-filter: blur(20px); border-bottom: 1px solid var(--border-glass); z-index: 10;">
           <div style="display: flex; align-items: center; gap: 10px;">

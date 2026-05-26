@@ -14,6 +14,7 @@ export class SettingsView {
     this.app = app;
     this.container = null;
     this.config = {};
+    this._previewDebounceTimer = null;
   }
 
   async mount(container) {
@@ -38,47 +39,247 @@ export class SettingsView {
         'adminPin',
         'orderNumberPrefix',
         'supabaseUrl',
-        'supabaseKey'
+        'supabaseKey',
+        // New profile fields
+        'gstin',
+        'fssaiNumber',
+        'restaurantEmail',
+        'restaurantWebsite',
+        'operatingHours',
+        'receiptFooter',
+        // New print settings
+        'printDensity',
+        'printCopies',
+        // Receipt content toggles
+        'showLogoOnReceipt',
+        'showAddressOnReceipt',
+        'showPhoneOnReceipt',
+        'showGstinOnReceipt',
+        'showFssaiOnReceipt',
+        'showNotesOnReceipt',
+        'showFooterOnReceipt',
+        'autoPrintOnConfirm'
       ];
 
       for (const key of keys) {
         this.config[key] = await getSetting(key) || '';
       }
+
+      // Set sensible defaults for toggles (default ON for most)
+      const defaultOnToggles = ['showLogoOnReceipt', 'showAddressOnReceipt', 'showPhoneOnReceipt', 'showFooterOnReceipt'];
+      for (const t of defaultOnToggles) {
+        if (this.config[t] === '') this.config[t] = 'true';
+      }
+      const defaultOffToggles = ['showGstinOnReceipt', 'showFssaiOnReceipt', 'showNotesOnReceipt', 'autoPrintOnConfirm'];
+      for (const t of defaultOffToggles) {
+        if (this.config[t] === '') this.config[t] = 'false';
+      }
+      if (!this.config.printerWidth) this.config.printerWidth = '58';
+      if (!this.config.printDensity) this.config.printDensity = 'normal';
+      if (!this.config.printCopies) this.config.printCopies = '1';
+      if (!this.config.receiptFooter) this.config.receiptFooter = '';
     } catch (e) {
       console.error('Failed to load system settings:', e);
     }
+  }
+
+  /** Helper: generates the standard input style string */
+  _inputStyle(extra = '') {
+    return `
+      background: rgba(0,0,0,0.25);
+      border: 1px solid var(--border-glass);
+      color: var(--text-primary);
+      font-family: 'Inter', sans-serif;
+      font-size: var(--text-sm);
+      padding: 12px 14px;
+      border-radius: var(--radius-md);
+      width: 100%;
+      box-sizing: border-box;
+      outline: none;
+      transition: border var(--transition-fast);
+      ${extra}
+    `;
+  }
+
+  /** Helper: generates the standard label style */
+  _labelStyle() {
+    return `font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: var(--text-xs); color: var(--text-secondary); margin-bottom: 8px; display: block; text-transform: uppercase; letter-spacing: 0.05em;`;
+  }
+
+  /** Helper: generates the standard card opening */
+  _cardOpen() {
+    return `<div class="card card-glass" style="
+      padding: 24px;
+      background: rgba(255,255,255,0.01);
+      border: 1px solid var(--border-glass);
+      border-radius: var(--radius-xl);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+    ">`;
+  }
+
+  /** Helper: generates card heading */
+  _cardHeading(icon, title) {
+    return `<h3 style="
+      font-family: 'Plus Jakarta Sans', sans-serif; 
+      font-size: var(--text-base); 
+      font-weight: 800; 
+      color: var(--text-primary); 
+      display: flex; 
+      align-items: center; 
+      gap: 10px; 
+      margin-top: 0;
+      margin-bottom: 20px;
+      letter-spacing: -0.02em;
+    ">
+      <span class="material-symbols-rounded" style="color: var(--color-primary); filter: drop-shadow(0 0 4px rgba(255,94,54,0.3));">${icon}</span>
+      ${title}
+    </h3>`;
+  }
+
+  /** Helper: build a toggle switch row */
+  _toggleRow(id, label, checked) {
+    const isChecked = checked === 'true' || checked === true;
+    return `
+      <div style="
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px 0;
+        border-bottom: 1px solid rgba(255,255,255,0.04);
+      ">
+        <span style="font-family: 'Inter', sans-serif; font-size: var(--text-sm); color: var(--text-primary); font-weight: 500;">${label}</span>
+        <label style="
+          position: relative;
+          display: inline-block;
+          width: 44px;
+          height: 24px;
+          cursor: pointer;
+          flex-shrink: 0;
+        ">
+          <input type="checkbox" id="${id}" class="receipt-toggle" ${isChecked ? 'checked' : ''} style="opacity: 0; width: 0; height: 0; position: absolute;">
+          <span style="
+            position: absolute;
+            inset: 0;
+            background: ${isChecked ? 'var(--color-primary)' : 'rgba(255,255,255,0.1)'};
+            border-radius: 24px;
+            transition: all 0.3s ease;
+            border: 1px solid ${isChecked ? 'rgba(255,94,54,0.5)' : 'var(--border-glass)'};
+          "></span>
+          <span style="
+            position: absolute;
+            top: 3px;
+            left: ${isChecked ? '22px' : '3px'};
+            width: 18px;
+            height: 18px;
+            background: white;
+            border-radius: 50%;
+            transition: all 0.3s ease;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+          "></span>
+        </label>
+      </div>
+    `;
   }
 
   render() {
     const isPrinterSupported = printerService.isSupported();
     const isPrinterConnected = printerService.isConnected;
 
+    // Escape values for safe HTML attribute injection
+    const esc = (v) => (v || '').replace(/"/g, '&quot;');
+
     this.container.innerHTML = `
+      <style>
+        .settings-toggle-switch {
+          position: relative;
+          display: inline-block;
+          width: 44px;
+          height: 24px;
+          cursor: pointer;
+          flex-shrink: 0;
+        }
+        .settings-toggle-switch input {
+          opacity: 0;
+          width: 0;
+          height: 0;
+          position: absolute;
+        }
+        .settings-toggle-track {
+          position: absolute;
+          inset: 0;
+          background: rgba(255,255,255,0.1);
+          border-radius: 24px;
+          transition: all 0.3s ease;
+          border: 1px solid var(--border-glass);
+        }
+        .settings-toggle-switch input:checked + .settings-toggle-track {
+          background: var(--color-primary);
+          border-color: rgba(255,94,54,0.5);
+        }
+        .settings-toggle-thumb {
+          position: absolute;
+          top: 3px;
+          left: 3px;
+          width: 18px;
+          height: 18px;
+          background: white;
+          border-radius: 50%;
+          transition: all 0.3s ease;
+          box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+        }
+        .settings-toggle-switch input:checked ~ .settings-toggle-thumb {
+          left: 22px;
+        }
+        .receipt-preview-paper {
+          background: #FAFAF8;
+          color: #1a1a1a;
+          font-family: 'Courier New', 'Consolas', monospace;
+          padding: 20px 12px;
+          border-radius: 4px;
+          box-shadow: 0 4px 20px rgba(0,0,0,0.35), inset 0 0 30px rgba(0,0,0,0.02);
+          max-width: 320px;
+          margin: 0 auto;
+          font-size: 12px;
+          line-height: 1.5;
+          white-space: pre-wrap;
+          word-break: break-all;
+          border: 1px solid rgba(0,0,0,0.08);
+          position: relative;
+          overflow: hidden;
+        }
+        .receipt-preview-paper::before {
+          content: '';
+          position: absolute;
+          top: 0; left: 0; right: 0;
+          height: 6px;
+          background: repeating-linear-gradient(
+            90deg,
+            transparent 0px,
+            transparent 4px,
+            rgba(0,0,0,0.06) 4px,
+            rgba(0,0,0,0.06) 5px
+          );
+        }
+        .receipt-preview-paper::after {
+          content: '';
+          position: absolute;
+          bottom: 0; left: 0; right: 0;
+          height: 12px;
+          background: linear-gradient(to bottom, #FAFAF8, #f0f0ec);
+          mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12'%3E%3Ccircle cx='6' cy='6' r='4'/%3E%3C/svg%3E");
+        }
+        .receipt-line { text-align: center; }
+        .receipt-line-left { text-align: left; }
+        .receipt-line-bold { font-weight: 700; }
+        .receipt-line-big { font-size: 16px; font-weight: 800; }
+        .receipt-divider { text-align: center; opacity: 0.6; }
+      </style>
+
       <div style="padding: 0 24px 24px 24px; max-width: 800px; margin: 0 auto; width: 100%; display: flex; flex-direction: column; gap: 24px;">
         
         <!-- Bluetooth Printer Section -->
-        <div class="card card-glass" style="
-          padding: 24px;
-          background: rgba(255,255,255,0.01);
-          border: 1px solid var(--border-glass);
-          border-radius: var(--radius-xl);
-          box-shadow: 0 10px 30px rgba(0,0,0,0.15);
-        ">
-          <h3 style="
-            font-family: 'Plus Jakarta Sans', sans-serif; 
-            font-size: var(--text-base); 
-            font-weight: 800; 
-            color: var(--text-primary); 
-            display: flex; 
-            align-items: center; 
-            gap: 10px; 
-            margin-top: 0;
-            margin-bottom: 20px;
-            letter-spacing: -0.02em;
-          ">
-            <span class="material-symbols-rounded" style="color: var(--color-primary); filter: drop-shadow(0 0 4px rgba(255,94,54,0.3));">print</span>
-            Bluetooth Thermal Printer Setup
-          </h3>
+        ${this._cardOpen()}
+          ${this._cardHeading('print', 'Bluetooth Thermal Printer Setup')}
           
           <div style="display: flex; flex-direction: column; gap: 16px;">
             <div style="
@@ -167,182 +368,83 @@ export class SettingsView {
                 Print Test Page
               </button>
             </div>
-
-            <div class="input-group" style="margin-top: 4px;">
-              <label for="printerWidth" style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: var(--text-xs); color: var(--text-secondary); margin-bottom: 8px; display: block; text-transform: uppercase; letter-spacing: 0.05em;">Paper Roll Width</label>
-              <select id="printerWidth" class="input" style="
-                background: rgba(0,0,0,0.25);
-                border: 1px solid var(--border-glass);
-                color: var(--text-primary);
-                font-family: 'Inter', sans-serif;
-                font-size: var(--text-sm);
-                padding: 12px 14px;
-                border-radius: var(--radius-md);
-                width: 100%;
-                box-sizing: border-box;
-                outline: none;
-                transition: border var(--transition-fast);
-              ">
-                <option value="58" ${this.config.printerWidth === '58' ? 'selected' : ''}>58mm (32 characters per line - Standard)</option>
-                <option value="80" ${this.config.printerWidth === '80' ? 'selected' : ''}>80mm (48 characters per line - Wide)</option>
-              </select>
-            </div>
           </div>
         </div>
 
         <!-- Restaurant Profile Section -->
-        <div class="card card-glass" style="
-          padding: 24px;
-          background: rgba(255,255,255,0.01);
-          border: 1px solid var(--border-glass);
-          border-radius: var(--radius-xl);
-          box-shadow: 0 10px 30px rgba(0,0,0,0.15);
-        ">
-          <h3 style="
-            font-family: 'Plus Jakarta Sans', sans-serif; 
-            font-size: var(--text-base); 
-            font-weight: 800; 
-            color: var(--text-primary); 
-            display: flex; 
-            align-items: center; 
-            gap: 10px; 
-            margin-top: 0;
-            margin-bottom: 20px;
-            letter-spacing: -0.02em;
-          ">
-            <span class="material-symbols-rounded" style="color: var(--color-primary); filter: drop-shadow(0 0 4px rgba(255,94,54,0.3));">storefront</span>
-            Restaurant Profile & Branding
-          </h3>
+        ${this._cardOpen()}
+          ${this._cardHeading('storefront', 'Restaurant Profile & Branding')}
           
           <div style="display: flex; flex-direction: column; gap: 18px;">
             <div style="display: flex; gap: 16px; flex-wrap: wrap;">
               <div class="input-group" style="flex: 1; min-width: 240px;">
-                <label for="restaurantName" style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: var(--text-xs); color: var(--text-secondary); margin-bottom: 8px; display: block; text-transform: uppercase; letter-spacing: 0.05em;">Restaurant Name</label>
-                <input type="text" id="restaurantName" class="input" value="${this.config.restaurantName}" placeholder="e.g. The Taste" style="
-                  background: rgba(0,0,0,0.25);
-                  border: 1px solid var(--border-glass);
-                  color: var(--text-primary);
-                  font-family: 'Inter', sans-serif;
-                  font-size: var(--text-sm);
-                  padding: 12px 14px;
-                  border-radius: var(--radius-md);
-                  width: 100%;
-                  box-sizing: border-box;
-                  outline: none;
-                  transition: border var(--transition-fast);
-                ">
+                <label for="restaurantName" style="${this._labelStyle()}">Restaurant Name</label>
+                <input type="text" id="restaurantName" class="input" value="${esc(this.config.restaurantName)}" placeholder="e.g. The Taste" style="${this._inputStyle()}">
               </div>
               <div class="input-group" style="flex: 1; min-width: 240px;">
-                <label for="restaurantTagline" style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: var(--text-xs); color: var(--text-secondary); margin-bottom: 8px; display: block; text-transform: uppercase; letter-spacing: 0.05em;">Tagline / Subtitle</label>
-                <input type="text" id="restaurantTagline" class="input" value="${this.config.restaurantTagline}" placeholder="e.g. Fast Food & Chinese" style="
-                  background: rgba(0,0,0,0.25);
-                  border: 1px solid var(--border-glass);
-                  color: var(--text-primary);
-                  font-family: 'Inter', sans-serif;
-                  font-size: var(--text-sm);
-                  padding: 12px 14px;
-                  border-radius: var(--radius-md);
-                  width: 100%;
-                  box-sizing: border-box;
-                  outline: none;
-                  transition: border var(--transition-fast);
-                ">
+                <label for="restaurantTagline" style="${this._labelStyle()}">Tagline / Subtitle</label>
+                <input type="text" id="restaurantTagline" class="input" value="${esc(this.config.restaurantTagline)}" placeholder="e.g. Fast Food & Chinese" style="${this._inputStyle()}">
               </div>
             </div>
 
             <div class="input-group">
-              <label for="restaurantAddress" style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: var(--text-xs); color: var(--text-secondary); margin-bottom: 8px; display: block; text-transform: uppercase; letter-spacing: 0.05em;">Store Address (printed on receipt)</label>
-              <input type="text" id="restaurantAddress" class="input" value="${this.config.restaurantAddress}" placeholder="e.g. Counter 4, Sector 5, Kolkata" style="
-                background: rgba(0,0,0,0.25);
-                border: 1px solid var(--border-glass);
-                color: var(--text-primary);
-                font-family: 'Inter', sans-serif;
-                font-size: var(--text-sm);
-                padding: 12px 14px;
-                border-radius: var(--radius-md);
-                width: 100%;
-                box-sizing: border-box;
-                outline: none;
-                transition: border var(--transition-fast);
-              ">
+              <label for="restaurantAddress" style="${this._labelStyle()}">Store Address (printed on receipt)</label>
+              <input type="text" id="restaurantAddress" class="input" value="${esc(this.config.restaurantAddress)}" placeholder="e.g. Counter 4, Sector 5, Kolkata" style="${this._inputStyle()}">
+            </div>
+
+            <div style="display: flex; gap: 16px; flex-wrap: wrap;">
+              <div class="input-group" style="flex: 1; min-width: 200px;">
+                <label for="restaurantPhone" style="${this._labelStyle()}">Contact Phone Number</label>
+                <input type="tel" id="restaurantPhone" class="input" value="${esc(this.config.restaurantPhone)}" placeholder="e.g. +91 98765 43210" style="${this._inputStyle()}">
+              </div>
+              <div class="input-group" style="flex: 1; min-width: 200px;">
+                <label for="restaurantEmail" style="${this._labelStyle()}">Email Address</label>
+                <input type="email" id="restaurantEmail" class="input" value="${esc(this.config.restaurantEmail)}" placeholder="e.g. hello@thetaste.co.in" style="${this._inputStyle()}">
+              </div>
+            </div>
+
+            <div style="display: flex; gap: 16px; flex-wrap: wrap;">
+              <div class="input-group" style="flex: 1; min-width: 200px;">
+                <label for="restaurantWebsite" style="${this._labelStyle()}">Website / Domain</label>
+                <input type="url" id="restaurantWebsite" class="input" value="${esc(this.config.restaurantWebsite)}" placeholder="thetaste.co.in" style="${this._inputStyle()}">
+              </div>
+              <div class="input-group" style="flex: 1; min-width: 200px;">
+                <label for="operatingHours" style="${this._labelStyle()}">Operating Hours</label>
+                <input type="text" id="operatingHours" class="input" value="${esc(this.config.operatingHours)}" placeholder="10:00 AM - 11:00 PM" style="${this._inputStyle()}">
+              </div>
+            </div>
+
+            <div style="display: flex; gap: 16px; flex-wrap: wrap;">
+              <div class="input-group" style="flex: 1; min-width: 200px;">
+                <label for="gstin" style="${this._labelStyle()}">GSTIN / Tax ID</label>
+                <input type="text" id="gstin" class="input" value="${esc(this.config.gstin)}" placeholder="e.g. 22AAAAA0000A1Z5" style="${this._inputStyle()}">
+              </div>
+              <div class="input-group" style="flex: 1; min-width: 200px;">
+                <label for="fssaiNumber" style="${this._labelStyle()}">FSSAI License Number</label>
+                <input type="text" id="fssaiNumber" class="input" value="${esc(this.config.fssaiNumber)}" placeholder="e.g. 12345678901234" style="${this._inputStyle()}">
+              </div>
             </div>
 
             <div class="input-group">
-              <label for="restaurantPhone" style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: var(--text-xs); color: var(--text-secondary); margin-bottom: 8px; display: block; text-transform: uppercase; letter-spacing: 0.05em;">Contact Phone Number</label>
-              <input type="tel" id="restaurantPhone" class="input" value="${this.config.restaurantPhone}" placeholder="e.g. +91 98765 43210" style="
-                background: rgba(0,0,0,0.25);
-                border: 1px solid var(--border-glass);
-                color: var(--text-primary);
-                font-family: 'Inter', sans-serif;
-                font-size: var(--text-sm);
-                padding: 12px 14px;
-                border-radius: var(--radius-md);
-                width: 100%;
-                box-sizing: border-box;
-                outline: none;
-                transition: border var(--transition-fast);
-              ">
+              <label for="receiptFooter" style="${this._labelStyle()}">Receipt Footer Message</label>
+              <input type="text" id="receiptFooter" class="input" value="${esc(this.config.receiptFooter)}" placeholder="Thank you! Visit again!" style="${this._inputStyle()}">
             </div>
           </div>
         </div>
 
         <!-- Payments & Tax Configuration -->
-        <div class="card card-glass" style="
-          padding: 24px;
-          background: rgba(255,255,255,0.01);
-          border: 1px solid var(--border-glass);
-          border-radius: var(--radius-xl);
-          box-shadow: 0 10px 30px rgba(0,0,0,0.15);
-        ">
-          <h3 style="
-            font-family: 'Plus Jakarta Sans', sans-serif; 
-            font-size: var(--text-base); 
-            font-weight: 800; 
-            color: var(--text-primary); 
-            display: flex; 
-            align-items: center; 
-            gap: 10px; 
-            margin-top: 0;
-            margin-bottom: 20px;
-            letter-spacing: -0.02em;
-          ">
-            <span class="material-symbols-rounded" style="color: var(--color-primary); filter: drop-shadow(0 0 4px rgba(255,94,54,0.3));">account_balance_wallet</span>
-            Payments & Tax Setup
-          </h3>
+        ${this._cardOpen()}
+          ${this._cardHeading('account_balance_wallet', 'Payments & Tax Setup')}
           
           <div style="display: flex; flex-direction: column; gap: 18px;">
             <div style="display: flex; gap: 16px; flex-wrap: wrap;">
               <div class="input-group" style="flex: 1.5; min-width: 240px;">
-                <label for="upiId" style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: var(--text-xs); color: var(--text-secondary); margin-bottom: 8px; display: block; text-transform: uppercase; letter-spacing: 0.05em;">UPI ID / Virtual Payment Address (VPA)</label>
-                <input type="text" id="upiId" class="input" value="${this.config.upiId}" placeholder="e.g. thetaste@upi" style="
-                  background: rgba(0,0,0,0.25);
-                  border: 1px solid rgba(255, 94, 54, 0.25);
-                  color: var(--text-primary);
-                  font-family: 'Inter', sans-serif;
-                  font-size: var(--text-sm);
-                  padding: 12px 14px;
-                  border-radius: var(--radius-md);
-                  width: 100%;
-                  box-sizing: border-box;
-                  outline: none;
-                  transition: border var(--transition-fast);
-                ">
+                <label for="upiId" style="${this._labelStyle()}">UPI ID / Virtual Payment Address (VPA)</label>
+                <input type="text" id="upiId" class="input" value="${esc(this.config.upiId)}" placeholder="e.g. thetaste@upi" style="${this._inputStyle('border: 1px solid rgba(255, 94, 54, 0.25);')}">
               </div>
               <div class="input-group" style="flex: 1; min-width: 200px;">
-                <label for="upiName" style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: var(--text-xs); color: var(--text-secondary); margin-bottom: 8px; display: block; text-transform: uppercase; letter-spacing: 0.05em;">Merchant Name</label>
-                <input type="text" id="upiName" class="input" value="${this.config.upiName}" placeholder="e.g. The Taste Store" style="
-                  background: rgba(0,0,0,0.25);
-                  border: 1px solid var(--border-glass);
-                  color: var(--text-primary);
-                  font-family: 'Inter', sans-serif;
-                  font-size: var(--text-sm);
-                  padding: 12px 14px;
-                  border-radius: var(--radius-md);
-                  width: 100%;
-                  box-sizing: border-box;
-                  outline: none;
-                  transition: border var(--transition-fast);
-                ">
+                <label for="upiName" style="${this._labelStyle()}">Merchant Name</label>
+                <input type="text" id="upiName" class="input" value="${esc(this.config.upiName)}" placeholder="e.g. The Taste Store" style="${this._inputStyle()}">
               </div>
             </div>
             
@@ -352,68 +454,122 @@ export class SettingsView {
 
             <div style="display: flex; gap: 16px; flex-wrap: wrap;">
               <div class="input-group" style="flex: 1; min-width: 200px;">
-                <label for="gstPercent" style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: var(--text-xs); color: var(--text-secondary); margin-bottom: 8px; display: block; text-transform: uppercase; letter-spacing: 0.05em;">GST Tax rate (%)</label>
-                <input type="number" id="gstPercent" class="input" value="${this.config.gstPercent}" placeholder="5" min="0" step="0.5" style="
-                  background: rgba(0,0,0,0.25);
-                  border: 1px solid var(--border-glass);
-                  color: var(--text-primary);
-                  font-family: 'Inter', sans-serif;
-                  font-size: var(--text-sm);
-                  padding: 12px 14px;
-                  border-radius: var(--radius-md);
-                  width: 100%;
-                  box-sizing: border-box;
-                  outline: none;
-                  transition: border var(--transition-fast);
-                ">
+                <label for="gstPercent" style="${this._labelStyle()}">GST Tax rate (%)</label>
+                <input type="number" id="gstPercent" class="input" value="${esc(this.config.gstPercent)}" placeholder="5" min="0" step="0.5" style="${this._inputStyle()}">
               </div>
               <div class="input-group" style="flex: 1; min-width: 200px;">
-                <label for="orderNumberPrefix" style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: var(--text-xs); color: var(--text-secondary); margin-bottom: 8px; display: block; text-transform: uppercase; letter-spacing: 0.05em;">Order Prefix</label>
-                <input type="text" id="orderNumberPrefix" class="input" value="${this.config.orderNumberPrefix}" placeholder="TT" maxlength="4" style="
-                  background: rgba(0,0,0,0.25);
-                  border: 1px solid var(--border-glass);
-                  color: var(--text-primary);
-                  font-family: 'Inter', sans-serif;
-                  font-size: var(--text-sm);
-                  padding: 12px 14px;
-                  border-radius: var(--radius-md);
-                  width: 100%;
-                  box-sizing: border-box;
-                  outline: none;
-                  transition: border var(--transition-fast);
-                ">
+                <label for="orderNumberPrefix" style="${this._labelStyle()}">Order Prefix</label>
+                <input type="text" id="orderNumberPrefix" class="input" value="${esc(this.config.orderNumberPrefix)}" placeholder="TT" maxlength="4" style="${this._inputStyle()}">
               </div>
             </div>
           </div>
         </div>
 
+        <!-- Advanced Print Configuration -->
+        ${this._cardOpen()}
+          ${this._cardHeading('tune', 'Advanced Print Configuration')}
+
+          <div style="display: flex; flex-direction: column; gap: 18px;">
+            <!-- Paper Size Selection -->
+            <div class="input-group">
+              <label for="printerWidth" style="${this._labelStyle()}">Paper Roll Size</label>
+              <select id="printerWidth" class="input receipt-toggle" style="${this._inputStyle()}">
+                <option value="58" ${this.config.printerWidth === '58' ? 'selected' : ''}>58mm (32 chars) — Standard Thermal</option>
+                <option value="76" ${this.config.printerWidth === '76' ? 'selected' : ''}>76mm (42 chars) — 3-inch Thermal</option>
+                <option value="80" ${this.config.printerWidth === '80' ? 'selected' : ''}>80mm (48 chars) — Wide Thermal</option>
+                <option value="A4" ${this.config.printerWidth === 'A4' ? 'selected' : ''}>A4 (210mm) — Full Page (browser print)</option>
+              </select>
+            </div>
+
+            <!-- Print Density -->
+            <div class="input-group">
+              <label for="printDensity" style="${this._labelStyle()}">Print Density</label>
+              <div style="display: flex; gap: 8px;">
+                ${['light', 'normal', 'bold'].map(d => `
+                  <button type="button" class="btn btn-density-option ${this.config.printDensity === d ? 'active' : ''}" data-density="${d}" style="
+                    flex: 1;
+                    font-family: 'Plus Jakarta Sans', sans-serif;
+                    font-weight: ${this.config.printDensity === d ? '700' : '500'};
+                    font-size: var(--text-xs);
+                    min-height: 38px;
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
+                    border-radius: var(--radius-md);
+                    border: 1px solid ${this.config.printDensity === d ? 'var(--color-primary)' : 'var(--border-glass)'};
+                    background: ${this.config.printDensity === d ? 'rgba(255,94,54,0.12)' : 'rgba(0,0,0,0.2)'};
+                    color: ${this.config.printDensity === d ? 'var(--color-primary)' : 'var(--text-secondary)'};
+                    cursor: pointer;
+                    transition: all 0.2s ease;
+                    text-transform: capitalize;
+                  ">${d}</button>
+                `).join('')}
+              </div>
+              <input type="hidden" id="printDensity" value="${esc(this.config.printDensity)}">
+            </div>
+
+            <!-- Copies per order -->
+            <div class="input-group" style="max-width: 200px;">
+              <label for="printCopies" style="${this._labelStyle()}">Copies Per Order</label>
+              <input type="number" id="printCopies" class="input receipt-toggle" value="${esc(this.config.printCopies)}" min="1" max="5" step="1" style="${this._inputStyle()}">
+            </div>
+
+            <!-- Receipt Content Toggles -->
+            <div>
+              <label style="${this._labelStyle()} margin-bottom: 12px;">Receipt Content</label>
+              <div style="
+                background: rgba(0,0,0,0.15);
+                border-radius: var(--radius-lg);
+                border: 1px solid var(--border-glass);
+                padding: 6px 16px;
+              ">
+                ${this._buildToggleRow('showLogoOnReceipt', 'Show Restaurant Logo / Header', this.config.showLogoOnReceipt)}
+                ${this._buildToggleRow('showAddressOnReceipt', 'Show Address on Receipt', this.config.showAddressOnReceipt)}
+                ${this._buildToggleRow('showPhoneOnReceipt', 'Show Phone on Receipt', this.config.showPhoneOnReceipt)}
+                ${this._buildToggleRow('showGstinOnReceipt', 'Show GSTIN on Receipt', this.config.showGstinOnReceipt)}
+                ${this._buildToggleRow('showFssaiOnReceipt', 'Show FSSAI on Receipt', this.config.showFssaiOnReceipt)}
+                ${this._buildToggleRow('showNotesOnReceipt', 'Show Order Notes', this.config.showNotesOnReceipt)}
+                ${this._buildToggleRow('showFooterOnReceipt', 'Show Footer Message', this.config.showFooterOnReceipt)}
+                ${this._buildToggleRow('autoPrintOnConfirm', 'Auto-print on Order Confirm', this.config.autoPrintOnConfirm)}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Receipt Preview -->
+        ${this._cardOpen()}
+          ${this._cardHeading('preview', 'Receipt Preview')}
+          <p style="font-size: var(--text-xs); color: var(--text-secondary); line-height: 1.5; margin: -8px 0 16px 0; font-weight: 500;">
+            Live preview updates as you change settings above.
+          </p>
+          <div id="receipt-preview-container" style="display: flex; justify-content: center; padding: 16px 0;"></div>
+          <div style="display: flex; justify-content: center; margin-top: 12px;">
+            <button class="btn btn-secondary" id="btn-print-sample" style="
+              font-family: 'Plus Jakarta Sans', sans-serif;
+              font-weight: 700;
+              font-size: var(--text-xs);
+              min-height: 40px;
+              display: inline-flex;
+              align-items: center;
+              justify-content: center;
+              gap: 6px;
+              border: 1px solid var(--border-glass);
+              background: rgba(255,255,255,0.02);
+              padding: 0 24px;
+            ">
+              <span class="material-symbols-rounded" style="font-size: 18px;">print</span>
+              Print Sample Receipt
+            </button>
+          </div>
+        </div>
+
         <!-- Security & Admin PIN -->
-        <div class="card card-glass" style="
-          padding: 24px;
-          background: rgba(255,255,255,0.01);
-          border: 1px solid var(--border-glass);
-          border-radius: var(--radius-xl);
-          box-shadow: 0 10px 30px rgba(0,0,0,0.15);
-        ">
-          <h3 style="
-            font-family: 'Plus Jakarta Sans', sans-serif; 
-            font-size: var(--text-base); 
-            font-weight: 800; 
-            color: var(--text-primary); 
-            display: flex; 
-            align-items: center; 
-            gap: 10px; 
-            margin-top: 0;
-            margin-bottom: 20px;
-            letter-spacing: -0.02em;
-          ">
-            <span class="material-symbols-rounded" style="color: var(--color-primary); filter: drop-shadow(0 0 4px rgba(255,94,54,0.3));">security</span>
-            Security Credentials
-          </h3>
+        ${this._cardOpen()}
+          ${this._cardHeading('security', 'Security Credentials')}
           
           <div class="input-group" style="max-width: 320px;">
-            <label for="adminPin" style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: var(--text-xs); color: var(--text-secondary); margin-bottom: 8px; display: block; text-transform: uppercase; letter-spacing: 0.05em;">Admin Lock PIN (4 digits)</label>
-            <input type="password" id="adminPin" class="input" value="${this.config.adminPin}" maxlength="4" style="
+            <label for="adminPin" style="${this._labelStyle()}">Admin Lock PIN (4 digits)</label>
+            <input type="password" id="adminPin" class="input" value="${esc(this.config.adminPin)}" maxlength="4" style="
               background: rgba(0,0,0,0.25);
               border: 1px solid var(--border-glass);
               color: var(--text-primary);
@@ -433,62 +589,18 @@ export class SettingsView {
         </div>
 
         <!-- Cloud Synchronization Section -->
-        <div class="card card-glass" style="
-          padding: 24px;
-          background: rgba(255,255,255,0.01);
-          border: 1px solid var(--border-glass);
-          border-radius: var(--radius-xl);
-          box-shadow: 0 10px 30px rgba(0,0,0,0.15);
-        ">
-          <h3 style="
-            font-family: 'Plus Jakarta Sans', sans-serif; 
-            font-size: var(--text-base); 
-            font-weight: 800; 
-            color: var(--text-primary); 
-            display: flex; 
-            align-items: center; 
-            gap: 10px; 
-            margin-top: 0;
-            margin-bottom: 20px;
-            letter-spacing: -0.02em;
-          ">
-            <span class="material-symbols-rounded" style="color: var(--color-primary); filter: drop-shadow(0 0 4px rgba(255,94,54,0.3));">cloud_sync</span>
-            Cloud Synchronization (Supabase)
-          </h3>
+        ${this._cardOpen()}
+          ${this._cardHeading('cloud_sync', 'Cloud Synchronization (Supabase)')}
           
           <div style="display: flex; flex-direction: column; gap: 18px;">
             <div class="input-group">
-              <label for="supabaseUrl" style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: var(--text-xs); color: var(--text-secondary); margin-bottom: 8px; display: block; text-transform: uppercase; letter-spacing: 0.05em;">Supabase Project URL</label>
-              <input type="url" id="supabaseUrl" class="input" value="${this.config.supabaseUrl || ''}" placeholder="https://your-project.supabase.co" style="
-                background: rgba(0,0,0,0.25);
-                border: 1px solid var(--border-glass);
-                color: var(--text-primary);
-                font-family: 'Inter', sans-serif;
-                font-size: var(--text-sm);
-                padding: 12px 14px;
-                border-radius: var(--radius-md);
-                width: 100%;
-                box-sizing: border-box;
-                outline: none;
-                transition: border var(--transition-fast);
-              ">
+              <label for="supabaseUrl" style="${this._labelStyle()}">Supabase Project URL</label>
+              <input type="url" id="supabaseUrl" class="input" value="${esc(this.config.supabaseUrl)}" placeholder="https://your-project.supabase.co" style="${this._inputStyle()}">
             </div>
 
             <div class="input-group">
-              <label for="supabaseKey" style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: var(--text-xs); color: var(--text-secondary); margin-bottom: 8px; display: block; text-transform: uppercase; letter-spacing: 0.05em;">Supabase Anon Key</label>
-              <input type="password" id="supabaseKey" class="input" value="${this.config.supabaseKey || ''}" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." style="
-                background: rgba(0,0,0,0.25);
-                border: 1px solid var(--border-glass);
-                color: var(--text-primary);
-                font-family: 'Inter', sans-serif;
-                font-size: var(--text-sm);
-                padding: 12px 14px;
-                border-radius: var(--radius-md);
-                width: 100%;
-                box-sizing: border-box;
-                outline: none;
-                transition: border var(--transition-fast);
-              ">
+              <label for="supabaseKey" style="${this._labelStyle()}">Supabase Anon Key</label>
+              <input type="password" id="supabaseKey" class="input" value="${esc(this.config.supabaseKey)}" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." style="${this._inputStyle()}">
             </div>
 
             <div style="display: flex; gap: 12px; margin-top: 4px;">
@@ -513,28 +625,8 @@ export class SettingsView {
         </div>
 
         <!-- Data Backup & Export -->
-        <div class="card card-glass" style="
-          padding: 24px;
-          background: rgba(255,255,255,0.01);
-          border: 1px solid var(--border-glass);
-          border-radius: var(--radius-xl);
-          box-shadow: 0 10px 30px rgba(0,0,0,0.15);
-        ">
-          <h3 style="
-            font-family: 'Plus Jakarta Sans', sans-serif; 
-            font-size: var(--text-base); 
-            font-weight: 800; 
-            color: var(--text-primary); 
-            display: flex; 
-            align-items: center; 
-            gap: 10px; 
-            margin-top: 0;
-            margin-bottom: 20px;
-            letter-spacing: -0.02em;
-          ">
-            <span class="material-symbols-rounded" style="color: var(--color-primary); filter: drop-shadow(0 0 4px rgba(255,94,54,0.3));">backup</span>
-            Data Backup & Export
-          </h3>
+        ${this._cardOpen()}
+          ${this._cardHeading('backup', 'Data Backup & Export')}
           
           <div style="display: flex; flex-direction: column; gap: 12px;">
             <p style="font-size: var(--text-xs); color: var(--text-secondary); line-height: 1.5; margin: 0;">
@@ -614,6 +706,200 @@ export class SettingsView {
         input.style.boxShadow = 'none';
       });
     });
+
+    // Render initial receipt preview
+    this._renderReceiptPreview();
+  }
+
+  /** Build a single toggle row with proper CSS toggle switch */
+  _buildToggleRow(id, label, value) {
+    const isChecked = value === 'true' || value === true;
+    return `
+      <div style="
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 11px 0;
+        border-bottom: 1px solid rgba(255,255,255,0.04);
+      ">
+        <span style="font-family: 'Inter', sans-serif; font-size: var(--text-sm); color: var(--text-primary); font-weight: 500;">${label}</span>
+        <label class="settings-toggle-switch">
+          <input type="checkbox" id="${id}" class="receipt-toggle" ${isChecked ? 'checked' : ''}>
+          <span class="settings-toggle-track"></span>
+          <span class="settings-toggle-thumb"></span>
+        </label>
+      </div>
+    `;
+  }
+
+  /** Get the column width for a paper size value */
+  _getColumnsForWidth(w) {
+    switch(w) {
+      case '58': return 32;
+      case '76': return 42;
+      case '80': return 48;
+      case 'A4': return 72;
+      default: return 32;
+    }
+  }
+
+  /** Get current values from DOM for live preview */
+  _getCurrentPreviewValues() {
+    const getVal = (id) => {
+      const el = document.getElementById(id);
+      return el ? el.value.trim() : '';
+    };
+    const getCheck = (id) => {
+      const el = document.getElementById(id);
+      return el ? el.checked : false;
+    };
+    return {
+      name: getVal('restaurantName') || 'THE TASTE',
+      tagline: getVal('restaurantTagline') || 'Fast Food & Chinese',
+      address: getVal('restaurantAddress') || 'Counter 4, Sector 5, Kolkata',
+      phone: getVal('restaurantPhone') || '+91 98765 43210',
+      gstin: getVal('gstin'),
+      fssai: getVal('fssaiNumber'),
+      footer: getVal('receiptFooter') || 'Thank you! Visit again!',
+      paperWidth: getVal('printerWidth') || '58',
+      density: getVal('printDensity') || 'normal',
+      showLogo: getCheck('showLogoOnReceipt'),
+      showAddress: getCheck('showAddressOnReceipt'),
+      showPhone: getCheck('showPhoneOnReceipt'),
+      showGstin: getCheck('showGstinOnReceipt'),
+      showFssai: getCheck('showFssaiOnReceipt'),
+      showNotes: getCheck('showNotesOnReceipt'),
+      showFooter: getCheck('showFooterOnReceipt'),
+    };
+  }
+
+  /** Render the live receipt preview */
+  _renderReceiptPreview() {
+    const container = document.getElementById('receipt-preview-container');
+    if (!container) return;
+
+    const v = this._getCurrentPreviewValues();
+    const cols = this._getColumnsForWidth(v.paperWidth);
+
+    // Determine paper pixel width based on paper size
+    const widthMap = { '58': 220, '76': 280, '80': 310, 'A4': 480 };
+    const paperPixelWidth = widthMap[v.paperWidth] || 220;
+
+    // Font weight for density
+    const densityWeight = v.density === 'bold' ? '700' : v.density === 'light' ? '300' : '400';
+
+    // Build receipt lines
+    const divider = (ch) => `<div class="receipt-divider">${ch.repeat(cols)}</div>`;
+    
+    let lines = [];
+
+    if (v.showLogo) {
+      lines.push(`<div class="receipt-line receipt-line-big">${this._escHtml(v.name)}</div>`);
+      if (v.tagline) lines.push(`<div class="receipt-line" style="font-size: 11px; opacity: 0.7;">${this._escHtml(v.tagline)}</div>`);
+    }
+    if (v.showAddress && v.address) {
+      lines.push(`<div class="receipt-line" style="font-size: 11px;">${this._escHtml(v.address)}</div>`);
+    }
+    if (v.showPhone && v.phone) {
+      lines.push(`<div class="receipt-line" style="font-size: 11px;">Ph: ${this._escHtml(v.phone)}</div>`);
+    }
+    if (v.showGstin && v.gstin) {
+      lines.push(`<div class="receipt-line" style="font-size: 10px; opacity: 0.7;">GSTIN: ${this._escHtml(v.gstin)}</div>`);
+    }
+    if (v.showFssai && v.fssai) {
+      lines.push(`<div class="receipt-line" style="font-size: 10px; opacity: 0.7;">FSSAI: ${this._escHtml(v.fssai)}</div>`);
+    }
+
+    lines.push(divider('='));
+
+    // Sample order info
+    const now = new Date();
+    const dateStr = now.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+    const timeStr = now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+
+    lines.push(`<div class="receipt-line-left" style="font-size: 11px;">Order: #TT-0042 &nbsp;&nbsp; Table: 5</div>`);
+    lines.push(`<div class="receipt-line-left" style="font-size: 11px;">Date: ${dateStr} &nbsp; ${timeStr}</div>`);
+    lines.push(divider('-'));
+
+    // Sample items
+    const sampleItems = [
+      { name: 'Chicken Biryani', qty: 2, price: 220 },
+      { name: 'Paneer Butter Masala', qty: 1, price: 180 },
+      { name: 'Cold Coffee', qty: 2, price: 90 },
+    ];
+
+    // Header
+    const itemLabel = 'Item';
+    const qtyLabel = 'Qty';
+    const amtLabel = 'Amt';
+    const headerLine = this._padReceiptRow(itemLabel, qtyLabel, amtLabel, cols);
+    lines.push(`<div class="receipt-line-left receipt-line-bold" style="font-size: 11px;">${headerLine}</div>`);
+    lines.push(divider('-'));
+
+    let subtotal = 0;
+    for (const item of sampleItems) {
+      const total = item.qty * item.price;
+      subtotal += total;
+      const row = this._padReceiptRow(item.name, `x${item.qty}`, `₹${total}`, cols);
+      lines.push(`<div class="receipt-line-left" style="font-size: 11px;">${row}</div>`);
+    }
+
+    lines.push(divider('-'));
+
+    const gst = Math.round(subtotal * 0.05);
+    const grandTotal = subtotal + gst;
+
+    lines.push(`<div class="receipt-line-left" style="font-size: 11px;">${this._padReceiptRow('Subtotal', '', `₹${subtotal}`, cols)}</div>`);
+    lines.push(`<div class="receipt-line-left" style="font-size: 11px;">${this._padReceiptRow('GST (5%)', '', `₹${gst}`, cols)}</div>`);
+    lines.push(divider('='));
+    lines.push(`<div class="receipt-line-left receipt-line-bold" style="font-size: 13px;">${this._padReceiptRow('TOTAL', '', `₹${grandTotal}`, cols)}</div>`);
+    lines.push(divider('='));
+
+    if (v.showNotes) {
+      lines.push(`<div class="receipt-line-left" style="font-size: 10px; font-style: italic; opacity: 0.65;">Note: Extra spicy, no onion</div>`);
+      lines.push(divider('-'));
+    }
+
+    if (v.showFooter && v.footer) {
+      lines.push(`<div class="receipt-line" style="font-size: 11px; margin-top: 4px;">${this._escHtml(v.footer)}</div>`);
+    }
+
+    container.innerHTML = `
+      <div class="receipt-preview-paper" style="
+        width: ${paperPixelWidth}px;
+        font-weight: ${densityWeight};
+      ">
+        ${lines.join('\n')}
+      </div>
+    `;
+  }
+
+  /** HTML-escape helper */
+  _escHtml(str) {
+    const d = document.createElement('div');
+    d.textContent = str || '';
+    return d.innerHTML;
+  }
+
+  /** Pad a receipt row: left-aligned name, center-ish qty, right-aligned amount */
+  _padReceiptRow(left, mid, right, cols) {
+    const l = left || '';
+    const m = mid || '';
+    const r = right || '';
+    const usedLen = l.length + m.length + r.length;
+    const totalSpaces = Math.max(cols - usedLen, 2);
+    const leftPad = Math.floor(totalSpaces / 2);
+    const rightPad = totalSpaces - leftPad;
+    // Use non-breaking spaces so monospace alignment is preserved
+    return `${this._escHtml(l)}${'&nbsp;'.repeat(leftPad)}${this._escHtml(m)}${'&nbsp;'.repeat(rightPad)}${this._escHtml(r)}`;
+  }
+
+  /** Debounced preview update */
+  _schedulePreviewUpdate() {
+    if (this._previewDebounceTimer) clearTimeout(this._previewDebounceTimer);
+    this._previewDebounceTimer = setTimeout(() => {
+      this._renderReceiptPreview();
+    }, 300);
   }
 
   bindEvents() {
@@ -649,6 +935,16 @@ export class SettingsView {
     const testBtn = document.getElementById('btn-print-test');
     if (testBtn) {
       testBtn.addEventListener('click', async () => {
+        playSound(800, 100);
+        vibrateDevice([40]);
+        await this.printTestReceipt();
+      });
+    }
+
+    // Print Sample from preview card
+    const sampleBtn = document.getElementById('btn-print-sample');
+    if (sampleBtn) {
+      sampleBtn.addEventListener('click', async () => {
         playSound(800, 100);
         vibrateDevice([40]);
         await this.printTestReceipt();
@@ -695,6 +991,47 @@ export class SettingsView {
       });
     }
 
+    // Print Density selector buttons
+    const densityBtns = this.container.querySelectorAll('.btn-density-option');
+    densityBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const density = btn.dataset.density;
+        document.getElementById('printDensity').value = density;
+        
+        // Update button visual state
+        densityBtns.forEach(b => {
+          const isActive = b.dataset.density === density;
+          b.style.border = `1px solid ${isActive ? 'var(--color-primary)' : 'var(--border-glass)'}`;
+          b.style.background = isActive ? 'rgba(255,94,54,0.12)' : 'rgba(0,0,0,0.2)';
+          b.style.color = isActive ? 'var(--color-primary)' : 'var(--text-secondary)';
+          b.style.fontWeight = isActive ? '700' : '500';
+        });
+
+        this._schedulePreviewUpdate();
+      });
+    });
+
+    // Live preview: listen to all receipt-affecting inputs and toggles
+    const previewInputIds = [
+      'restaurantName', 'restaurantTagline', 'restaurantAddress', 'restaurantPhone',
+      'gstin', 'fssaiNumber', 'receiptFooter', 'printerWidth', 'printCopies'
+    ];
+    for (const id of previewInputIds) {
+      const el = document.getElementById(id);
+      if (el) {
+        el.addEventListener('input', () => this._schedulePreviewUpdate());
+        el.addEventListener('change', () => this._schedulePreviewUpdate());
+      }
+    }
+
+    // Toggle switches — live preview + visual update
+    const toggleEls = this.container.querySelectorAll('.receipt-toggle[type="checkbox"]');
+    toggleEls.forEach(toggle => {
+      toggle.addEventListener('change', () => {
+        this._schedulePreviewUpdate();
+      });
+    });
+
     // Save configurations
     document.getElementById('btn-save-settings').addEventListener('click', async () => {
       playSound(800, 100);
@@ -718,12 +1055,18 @@ export class SettingsView {
         return;
       }
 
-      // Collect inputs
+      // Collect text/select inputs
       const fields = [
         'restaurantName',
         'restaurantTagline',
         'restaurantPhone',
         'restaurantAddress',
+        'restaurantEmail',
+        'restaurantWebsite',
+        'operatingHours',
+        'gstin',
+        'fssaiNumber',
+        'receiptFooter',
         'upiId',
         'upiName',
         'gstPercent',
@@ -731,7 +1074,21 @@ export class SettingsView {
         'adminPin',
         'orderNumberPrefix',
         'supabaseUrl',
-        'supabaseKey'
+        'supabaseKey',
+        'printDensity',
+        'printCopies'
+      ];
+
+      // Collect toggle (checkbox) fields
+      const toggleFields = [
+        'showLogoOnReceipt',
+        'showAddressOnReceipt',
+        'showPhoneOnReceipt',
+        'showGstinOnReceipt',
+        'showFssaiOnReceipt',
+        'showNotesOnReceipt',
+        'showFooterOnReceipt',
+        'autoPrintOnConfirm'
       ];
 
       try {
@@ -741,6 +1098,15 @@ export class SettingsView {
             const val = el.value.trim();
             await setSetting(f, val);
             this.config[f] = val; // update local config
+          }
+        }
+
+        for (const f of toggleFields) {
+          const el = document.getElementById(f);
+          if (el) {
+            const val = el.checked ? 'true' : 'false';
+            await setSetting(f, val);
+            this.config[f] = val;
           }
         }
         
@@ -847,7 +1213,8 @@ export class SettingsView {
     if (!printerService.isConnected) return;
 
     try {
-      const width = this.config.printerWidth === '80' ? 48 : 32;
+      const pw = this.config.printerWidth || '58';
+      const width = this._getColumnsForWidth(pw);
       const rb = new ReceiptBuilder(width);
       
       const testBytes = rb
@@ -860,7 +1227,7 @@ export class SettingsView {
         .line('=')
         .left()
         .text('Connection status: SUCCESS')
-        .text(`Paper width format: ${this.config.printerWidth}mm (${width} columns)`)
+        .text(`Paper width format: ${pw}mm (${width} columns)`)
         .text(`Date & Time: ${new Date().toLocaleString('en-IN')}`)
         .line('-')
         .center()
@@ -878,6 +1245,7 @@ export class SettingsView {
   }
 
   unmount() {
+    if (this._previewDebounceTimer) clearTimeout(this._previewDebounceTimer);
     this.container = null;
   }
 }

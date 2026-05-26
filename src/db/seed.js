@@ -50,7 +50,7 @@ export async function seedDatabase() {
     return; // Data already exists
   }
 
-  await db.transaction('rw', db.menuCategories, db.menuItems, db.settings, async () => {
+  await db.transaction('rw', db.menuCategories, db.menuItems, db.settings, db.inventory, db.suppliers, db.customers, db.orders, async () => {
     // ── Categories ──────────────────────────────────────────────
     const categories = [
       { name: 'Momos', icon: '🥟', sortOrder: 1, isActive: 1, isSynced: 0 },
@@ -181,5 +181,144 @@ export async function seedDatabase() {
     ];
 
     await db.settings.bulkAdd(defaultSettings);
+
+    // ── Inventory Seeding ───────────────────────────────────────
+    const inventoryItems = [
+      { name: 'Chicken', unit: 'kg', quantity: 50, minThreshold: 10, maxCapacity: 100, categoryTag: 'Meat', isSynced: 0, _platform: 'nextgenos' },
+      { name: 'Paneer', unit: 'kg', quantity: 30, minThreshold: 5, maxCapacity: 50, categoryTag: 'Dairy', isSynced: 0, _platform: 'nextgenos' },
+      { name: 'Flour', unit: 'kg', quantity: 4, minThreshold: 15, maxCapacity: 100, categoryTag: 'Dry Goods', isSynced: 0, _platform: 'nextgenos' }, // below threshold!
+      { name: 'Oil', unit: 'liters', quantity: 40, minThreshold: 10, maxCapacity: 80, categoryTag: 'Dry Goods', isSynced: 0, _platform: 'nextgenos' },
+      { name: 'Potatoes', unit: 'kg', quantity: 60, minThreshold: 20, maxCapacity: 120, categoryTag: 'Produce', isSynced: 0, _platform: 'nextgenos' },
+      { name: 'Rice', unit: 'kg', quantity: 80, minThreshold: 20, maxCapacity: 150, categoryTag: 'Dry Goods', isSynced: 0, _platform: 'nextgenos' },
+      { name: 'Noodles', unit: 'packs', quantity: 25, minThreshold: 10, maxCapacity: 50, categoryTag: 'Dry Goods', isSynced: 0, _platform: 'nextgenos' },
+      { name: 'Sugar', unit: 'kg', quantity: 12, minThreshold: 5, maxCapacity: 30, categoryTag: 'Dry Goods', isSynced: 0, _platform: 'nextgenos' },
+      { name: 'Coffee', unit: 'kg', quantity: 8, minThreshold: 2, maxCapacity: 15, categoryTag: 'Beverages', isSynced: 0, _platform: 'nextgenos' },
+      { name: 'Milk', unit: 'liters', quantity: 25, minThreshold: 5, maxCapacity: 50, categoryTag: 'Dairy', isSynced: 0, _platform: 'nextgenos' },
+      { name: 'Cheese', unit: 'kg', quantity: 15, minThreshold: 5, maxCapacity: 30, categoryTag: 'Dairy', isSynced: 0, _platform: 'nextgenos' },
+      { name: 'Veggies', unit: 'kg', quantity: 3, minThreshold: 10, maxCapacity: 40, categoryTag: 'Produce', isSynced: 0, _platform: 'nextgenos' } // below threshold!
+    ];
+    await db.inventory.bulkAdd(inventoryItems);
+    console.log('[Seed] High-fidelity inventory seeded.');
+
+    // ── Suppliers Seeding ────────────────────────────────────────
+    const detailedSuppliers = [
+      { name: 'Dairy Farm', phone: '9876543210', email: 'dairy@farm.com', category: 'Dairy', isSynced: 0, _platform: 'nextgenos', createdAt: new Date().toISOString() },
+      { name: 'Meat Kings', phone: '9876543211', email: 'info@meatkings.com', category: 'Meat', isSynced: 0, _platform: 'nextgenos', createdAt: new Date().toISOString() },
+      { name: 'Green Grocery', phone: '9876543212', email: 'order@greengrocery.com', category: 'Produce', isSynced: 0, _platform: 'nextgenos', createdAt: new Date().toISOString() },
+      { name: 'Dry Bulk Co', phone: '9876543213', email: 'sales@drybulk.com', category: 'Dry Goods', isSynced: 0, _platform: 'nextgenos', createdAt: new Date().toISOString() }
+    ];
+    await db.suppliers.bulkAdd(detailedSuppliers);
+    console.log('[Seed] High-fidelity suppliers seeded.');
+
+    // ── CRM Customers Seeding ──────────────────────────────────
+    const distinctCustomers = [
+      { name: 'Aarav Sharma', phone: '9999911111', totalSpent: 6200, visitCount: 15, loyaltyPoints: 620, tier: 'platinum', lastVisit: new Date().toISOString(), createdAt: new Date().toISOString(), isSynced: 0, _platform: 'nextgenos' },
+      { name: 'Priya Patel', phone: '9999922222', totalSpent: 3500, visitCount: 8, loyaltyPoints: 350, tier: 'gold', lastVisit: new Date().toISOString(), createdAt: new Date().toISOString(), isSynced: 0, _platform: 'nextgenos' },
+      { name: 'Vikram Singh', phone: '9999933333', totalSpent: 1200, visitCount: 4, loyaltyPoints: 120, tier: 'silver', lastVisit: new Date().toISOString(), createdAt: new Date().toISOString(), isSynced: 0, _platform: 'nextgenos' },
+      { name: 'Ananya Iyer', phone: '9999944444', totalSpent: 450, visitCount: 2, loyaltyPoints: 45, tier: 'bronze', lastVisit: new Date().toISOString(), createdAt: new Date().toISOString(), isSynced: 0, _platform: 'nextgenos' },
+      { name: 'Kabir Mehta', phone: '9999955555', totalSpent: 7500, visitCount: 18, loyaltyPoints: 750, tier: 'platinum', lastVisit: new Date().toISOString(), createdAt: new Date().toISOString(), isSynced: 0, _platform: 'nextgenos' },
+      { name: 'Neha Gupta', phone: '9999966666', totalSpent: 2800, visitCount: 7, loyaltyPoints: 280, tier: 'gold', lastVisit: new Date().toISOString(), createdAt: new Date().toISOString(), isSynced: 0, _platform: 'nextgenos' },
+      { name: 'Rahul Verma', phone: '9999977777', totalSpent: 850, visitCount: 3, loyaltyPoints: 85, tier: 'silver', lastVisit: new Date().toISOString(), createdAt: new Date().toISOString(), isSynced: 0, _platform: 'nextgenos' },
+      { name: 'Riya Sen', phone: '9999988888', totalSpent: 150, visitCount: 1, loyaltyPoints: 15, tier: 'bronze', lastVisit: new Date().toISOString(), createdAt: new Date().toISOString(), isSynced: 0, _platform: 'nextgenos' }
+    ];
+    await db.customers.bulkAdd(distinctCustomers);
+    console.log('[Seed] High-fidelity customers seeded.');
+
+    // ── Historical Orders Seeding ────────────────────────────────
+    const historicalOrders = [];
+    const orderItemsPool = [
+      { name: 'Steamed Veg Momos', price: 80, isVeg: 1 },
+      { name: 'Veg Hakka Noodles', price: 120, isVeg: 1 },
+      { name: 'Chicken Hakka Noodles', price: 160, isVeg: 0 },
+      { name: 'French Fries', price: 80, isVeg: 1 },
+      { name: 'Cold Coffee', price: 80, isVeg: 1 },
+      { name: 'Chilli Paneer Dry', price: 160, isVeg: 1 },
+      { name: 'Chilli Chicken Dry', price: 180, isVeg: 0 },
+      { name: 'Veg Fried Rice', price: 120, isVeg: 1 },
+      { name: 'Classic Veg Burger', price: 80, isVeg: 1 },
+      { name: 'Chocolate Lava Cake', price: 150, isVeg: 1 }
+    ];
+
+    const customersPool = [
+      { name: 'Aarav Sharma', phone: '9999911111' },
+      { name: 'Priya Patel', phone: '9999922222' },
+      { name: 'Vikram Singh', phone: '9999933333' },
+      { name: 'Ananya Iyer', phone: '9999944444' },
+      { name: 'Kabir Mehta', phone: '9999955555' },
+      { name: 'Neha Gupta', phone: '9999966666' },
+      { name: 'Rahul Verma', phone: '9999977777' },
+      { name: 'Riya Sen', phone: '9999988888' },
+      { name: 'Walk-in Customer', phone: '' },
+      { name: 'Walk-in Customer', phone: '' }
+    ];
+
+    const typesPool = ['takeaway', 'dinein', 'delivery'];
+    const paymentsPool = ['upi', 'cash'];
+
+    for (let i = 1; i <= 25; i++) {
+      const dayDiff = Math.floor((i - 1) / 3.5);
+      const orderDate = new Date();
+      orderDate.setDate(orderDate.getDate() - dayDiff);
+      const hour = 11 + (i % 11);
+      const minute = (i * 17) % 60;
+      orderDate.setHours(hour, minute, 0, 0);
+
+      const createdAt = orderDate.toISOString();
+      const completedAt = new Date(orderDate.getTime() + (10 * 60 * 1000) + ((i * 3) % 20) * 60 * 1000).toISOString();
+
+      const cartItems = [];
+      const numItems = 1 + (i % 3);
+      let subtotal = 0;
+
+      for (let j = 0; j < numItems; j++) {
+        const poolIndex = (i + j * 3) % orderItemsPool.length;
+        const item = orderItemsPool[poolIndex];
+        const quantity = 1 + ((i + j) % 2);
+        cartItems.push({
+          itemId: poolIndex + 1,
+          itemName: item.name,
+          price: item.price,
+          quantity,
+          isVeg: item.isVeg,
+          notes: ''
+        });
+        subtotal += item.price * quantity;
+      }
+
+      const gstPercent = 5;
+      const tax = subtotal * (gstPercent / 100);
+      const total = subtotal + tax;
+
+      const customer = customersPool[i % customersPool.length];
+      const type = typesPool[i % typesPool.length];
+      const paymentMethod = paymentsPool[i % paymentsPool.length];
+
+      const orderNumber = `TT-${orderDate.getFullYear()}${String(orderDate.getMonth() + 1).padStart(2, '0')}${String(orderDate.getDate()).padStart(2, '0')}-${String(i).padStart(3, '0')}`;
+
+      historicalOrders.push({
+        orderNumber,
+        type,
+        channel: 'pos',
+        status: 'completed',
+        items: JSON.stringify(cartItems),
+        subtotal,
+        tax,
+        taxPercent: gstPercent,
+        total,
+        paymentMethod,
+        paymentStatus: 'paid',
+        customerName: customer.name,
+        customerPhone: customer.phone,
+        staffId: 1,
+        staffName: 'Owner',
+        tableId: type === 'dinein' ? (1 + (i % 8)) : null,
+        createdAt,
+        completedAt,
+        isSynced: 0
+      });
+    }
+
+    await db.orders.bulkAdd(historicalOrders);
+    console.log('[Seed] High-fidelity historical orders seeded.');
   });
 }
