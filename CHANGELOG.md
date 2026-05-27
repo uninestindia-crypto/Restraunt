@@ -1,5 +1,28 @@
 # Changelog
 
+## [2.1.0] - 2026-05-27 - "Public Online Ordering Launch Readiness"
+
+### Launch Readiness
+- Public website entry now opens customer ordering instead of the staff PIN screen.
+- Added first-run owner setup, hashed admin lock PIN handling, legacy PIN migration, and PIN lockout.
+- Added home delivery checkout with required customer name, phone, delivery address, and optional landmark.
+- Added in-house delivery staff role, delivery assignment, out-for-delivery, delivered, and failed states.
+- Added auditable UPI verification and cash/COD collection fields.
+- Updated reports and analytics to count revenue only after payment is marked paid.
+
+### Security and Cloud
+- Added Dexie schema v4 with menu availability compound index and launch order metadata.
+- Aligned Supabase schema with local order/payment/delivery fields.
+- Added Supabase RLS policies for public menu reads, public order inserts, and authenticated staff access.
+- Added Supabase Auth email/password support for staff sync sessions.
+- Removed vulnerable `xlsx` dependency and replaced spreadsheet exports with CSV reports.
+- Added Vercel security headers and hardened Android backup/cleartext settings.
+
+### Verification
+- Added `npm test` with helper/order parsing tests.
+- Verified `npm test`, `npm run build`, and `npm audit --omit=dev`.
+- Verified Android `assembleRelease`; unsigned release APK is generated until keystore env vars are provided.
+
 All notable changes to the NextGenOS Restaurant Operating System will be documented in this file.
 
 ## [2.0.0] — 2026-05-26 — "Restaurant OS Transformation"
