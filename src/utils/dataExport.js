@@ -9,6 +9,7 @@
  */
 
 import { db } from '../db/database.js';
+import { parseOrderItems } from './helpers.js';
 
 // ── Table names used for export / import ─────────
 const TABLE_NAMES = [
@@ -107,22 +108,26 @@ export async function exportOrdersCSV(daysBack = 30) {
       'type',
       'status',
       'paymentMethod',
+      'paymentStatus',
       'total',
       'itemCount',
+      'deliveryStatus',
       'createdAt',
     ];
 
     const header = columns.join(',');
 
     const rows = orders.map(order => {
-      const itemCount = Array.isArray(order.items) ? order.items.length : 0;
+      const itemCount = parseOrderItems(order.items).length;
       return [
         escapeCsvField(order.orderNumber ?? ''),
         escapeCsvField(order.type ?? ''),
         escapeCsvField(order.status ?? ''),
         escapeCsvField(order.paymentMethod ?? ''),
+        escapeCsvField(order.paymentStatus ?? ''),
         order.total ?? 0,
         itemCount,
+        escapeCsvField(order.deliveryStatus ?? ''),
         escapeCsvField(order.createdAt ?? ''),
       ].join(',');
     });

@@ -4,6 +4,7 @@ android {
     namespace = "com.thetaste.pos"
     compileSdk = rootProject.ext.compileSdkVersion
     buildToolsVersion = "34.0.0"
+    def releaseKeystorePath = System.getenv("THE_TASTE_KEYSTORE")
     defaultConfig {
         applicationId "com.thetaste.pos"
         minSdkVersion rootProject.ext.minSdkVersion
@@ -17,9 +18,23 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    signingConfigs {
+        release {
+            if (releaseKeystorePath) {
+                storeFile file(releaseKeystorePath)
+                storePassword System.getenv("THE_TASTE_KEYSTORE_PASSWORD")
+                keyAlias System.getenv("THE_TASTE_KEY_ALIAS")
+                keyPassword System.getenv("THE_TASTE_KEY_PASSWORD")
+            }
+        }
+    }
     buildTypes {
         release {
-            minifyEnabled false
+            minifyEnabled true
+            shrinkResources true
+            if (releaseKeystorePath) {
+                signingConfig signingConfigs.release
+            }
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
     }

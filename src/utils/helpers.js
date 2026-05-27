@@ -77,7 +77,6 @@ export function parseOrderItems(items) {
     const parsed = JSON.parse(items);
     return Array.isArray(parsed) ? parsed : [];
   } catch (error) {
-    console.warn('[Helpers] Failed to parse order items:', error);
     return [];
   }
 }

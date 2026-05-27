@@ -1707,13 +1707,17 @@ class SyncService {
   }
 
   // Helper method to trigger manual connection test
-  async testConnection(url, key) {
+  async testConnection(url, key, email = '', password = '') {
     if (!url || !key) {
       return { success: false, message: 'URL and Key are required.' };
     }
     try {
       new URL(url); // Verify URL format
       const client = createClient(url, key, { auth: { persistSession: false } });
+      if (email && password) {
+        const { error: authError } = await client.auth.signInWithPassword({ email, password });
+        if (authError) throw authError;
+      }
       const { error } = await client.from('menu_categories').select('id').limit(1);
       if (error) throw error;
       return { success: true, message: 'Connection successful!' };

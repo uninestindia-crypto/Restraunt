@@ -9,6 +9,7 @@
  */
 
 import { db } from '../db/database.js';
+import { parseOrderItems } from '../utils/helpers.js';
 
 class AnalyticsService {
 
@@ -22,7 +23,7 @@ class AnalyticsService {
   async getCompletedOrders(startISO, endISO) {
     try {
       const orders = await db.orders.where('createdAt').between(startISO, endISO).toArray();
-      return orders.filter(o => o.paymentStatus === 'paid' || o.status === 'completed');
+      return orders.filter(o => o.paymentStatus === 'paid');
     } catch (error) {
       console.error('[AnalyticsService] Dexie database error in getCompletedOrders:', error);
       return [];
@@ -74,7 +75,7 @@ class AnalyticsService {
     const orders = await this.getCompletedOrders(start, end);
     const map = {};
     orders.forEach(o => {
-      const items = typeof o.items === 'string' ? JSON.parse(o.items) : (o.items || []);
+      const items = parseOrderItems(o.items);
       items.forEach(item => {
         const name = item.itemName || item.name;
         if (!map[name]) map[name] = { qty: 0, revenue: 0 };

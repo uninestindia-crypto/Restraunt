@@ -3,7 +3,7 @@
  */
 
 import { db, getSetting, setSetting } from '../../db/database.js';
-import { showToast, playSound, vibrateDevice } from '../../utils/helpers.js';
+import { escapeHtml, showToast, playSound, vibrateDevice } from '../../utils/helpers.js';
 import { printerService } from '../../services/printer.js';
 import { ReceiptBuilder } from '../../services/receipt.js';
 import { exportAllData, exportOrdersCSV, importData } from '../../utils/dataExport.js';
@@ -193,7 +193,7 @@ export class SettingsView {
     const isPrinterConnected = printerService.isConnected;
 
     // Escape values for safe HTML attribute injection
-    const esc = (v) => (v || '').replace(/"/g, '&quot;');
+    const esc = (v) => escapeHtml(v || '');
 
     this.container.innerHTML = `
       <style>
@@ -1124,6 +1124,8 @@ export class SettingsView {
 
         const url = document.getElementById('supabaseUrl').value.trim();
         const key = document.getElementById('supabaseKey').value.trim();
+        const email = document.getElementById('supabaseEmail')?.value.trim() || '';
+        const password = document.getElementById('supabasePassword')?.value.trim() || '';
 
         if (!url || !key) {
           showToast('Please enter both Supabase URL and Anon Key to test.', 'warning');
@@ -1139,7 +1141,7 @@ export class SettingsView {
 
         try {
           const { syncService } = await import('../../services/sync.js');
-          const result = await syncService.testConnection(url, key);
+          const result = await syncService.testConnection(url, key, email, password);
           
           if (result.success) {
             showToast('Supabase connection successful! 🎉', 'success');

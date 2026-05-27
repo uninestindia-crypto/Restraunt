@@ -9,7 +9,7 @@
  */
 
 import { db } from '../../db/database.js';
-import { showToast, playSound, vibrateDevice } from '../../utils/helpers.js';
+import { escapeHtml, showToast, playSound, vibrateDevice } from '../../utils/helpers.js';
 import { logShiftStarted, logShiftEnded } from '../../utils/activityLogger.js';
 import { hashPin } from '../../utils/crypto.js';
 
@@ -181,9 +181,9 @@ export class StaffView {
           const isDeletable = !(s.role === 'owner' && owners.length <= 1);
           return `
             <div style="padding:18px;background:rgba(255,255,255,0.01);border:1px solid var(--border-glass);border-radius:14px;display:flex;align-items:center;gap:14px;position:relative;">
-              <div style="width:44px;height:44px;border-radius:12px;background:rgba(${s.role === 'owner' ? '255,107,53' : '108,92,231'},0.1);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:1.1rem;color:${role.color};font-family:'Plus Jakarta Sans',sans-serif;flex-shrink:0;">${(s.name || '?')[0].toUpperCase()}</div>
+              <div style="width:44px;height:44px;border-radius:12px;background:rgba(${s.role === 'owner' ? '255,107,53' : '108,92,231'},0.1);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:1.1rem;color:${role.color};font-family:'Plus Jakarta Sans',sans-serif;flex-shrink:0;">${escapeHtml((s.name || '?')[0].toUpperCase())}</div>
               <div style="flex:1;min-width:0;">
-                <div style="font-size:var(--text-sm);font-weight:700;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${s.name}</div>
+                <div style="font-size:var(--text-sm);font-weight:700;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(s.name)}</div>
                 <div style="display:flex;gap:6px;align-items:center;margin-top:4px;">
                   <span style="font-size:0.6rem;padding:2px 8px;border-radius:6px;font-weight:700;color:${role.color};background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.06);">${role.label}</span>
                   <span style="font-size:0.6rem;color:${s.isActive ? 'var(--color-success)' : 'var(--color-error)'};font-weight:700;">${s.isActive ? '● Active' : '● Inactive'}</span>
@@ -258,8 +258,8 @@ export class StaffView {
         `<div style="display:flex;flex-direction:column;gap:8px;">${recent.map(l => `
           <div style="padding:12px 14px;background:rgba(255,255,255,0.01);border:1px solid var(--border-glass);border-radius:10px;display:flex;gap:12px;align-items:center;">
             <span class="material-symbols-rounded" style="font-size:18px;color:var(--color-primary);">history</span>
-            <div style="flex:1;"><div style="font-size:var(--text-xs);color:var(--text-primary);font-weight:600;">${l.action || 'Action'}</div>
-            <div style="font-size:0.65rem;color:var(--text-muted);">${l.staffName || 'System'} · ${new Date(l.timestamp).toLocaleString('en-IN')}</div></div>
+            <div style="flex:1;"><div style="font-size:var(--text-xs);color:var(--text-primary);font-weight:600;">${escapeHtml(l.action || 'Action')}</div>
+            <div style="font-size:0.65rem;color:var(--text-muted);">${escapeHtml(l.staffName || 'System')} · ${new Date(l.timestamp).toLocaleString('en-IN')}</div></div>
           </div>
         `).join('')}</div>`;
     }

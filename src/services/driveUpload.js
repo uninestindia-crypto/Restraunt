@@ -168,7 +168,7 @@ async function getOrCreateFolder(token, folderName, parentId = null) {
 
 /**
  * Upload file blob to Google Drive (in "TheTaste Reports" folder hierarchy)
- * @param {Blob} blob - Binary Excel data
+ * @param {Blob} blob - Report file data
  * @param {string} filename - Name of file
  * @returns {Promise<Object>} Upload result details
  */

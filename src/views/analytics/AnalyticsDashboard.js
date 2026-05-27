@@ -85,10 +85,10 @@ export class AnalyticsDashboard {
           <div class="card card-glass" style="padding:20px;background:rgba(255,255,255,0.01);border:1px solid var(--border-glass);border-radius:16px;display:flex;flex-direction:column;gap:16px;">
             <div style="font-family:'Plus Jakarta Sans',sans-serif;font-size:var(--text-sm);font-weight:700;color:var(--text-primary);display:flex;align-items:center;gap:8px;">
               <span class="material-symbols-rounded" style="color:var(--color-primary);font-size:20px;">table_view</span>
-              <span>Business Reports & Excel Export</span>
+              <span>Business Reports & CSV Export</span>
             </div>
             <p style="font-size:var(--text-xs);color:var(--text-secondary);line-height:1.5;margin:0;font-weight:500;">
-              Generate and download multi-sheet Excel spreadsheets (.xlsx) containing Summary KPIs, complete Order Logs, and granular Item Sales Analysis.
+              Generate launch-safe CSV reports containing Summary KPIs, complete Order Logs, and granular Item Sales Analysis.
             </p>
             
             <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;">
@@ -203,17 +203,17 @@ export class AnalyticsDashboard {
           if (reportType === 'daily') {
             const todayStr = now.toISOString().split('T')[0];
             blob = await generateDailyReport(todayStr);
-            filename = `Daily_Report_${todayStr}.xlsx`;
+            filename = `Daily_Report_${todayStr}.csv`;
           } else if (reportType === 'weekly') {
             const todayStr = now.toISOString().split('T')[0];
             blob = await generateWeeklyReport(todayStr);
-            filename = `Weekly_Report_${todayStr}.xlsx`;
+            filename = `Weekly_Report_${todayStr}.csv`;
           } else if (reportType === 'monthly') {
             const month = now.getMonth();
             const year = now.getFullYear();
             blob = await generateMonthlyReport(month, year);
             const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-            filename = `Monthly_Report_${monthNames[month]}_${year}.xlsx`;
+            filename = `Monthly_Report_${monthNames[month]}_${year}.csv`;
           }
           
           if (blob && filename) {

@@ -9,12 +9,13 @@
  */
 
 import { db } from '../db/database.js';
+import { parseOrderItems } from '../utils/helpers.js';
 
 const INTENTS = [
   { id: 'REVENUE_TODAY', keywords: ['revenue', 'sales', 'earned', 'money', 'income', 'earning'], handler: 'getRevenueToday' },
   { id: 'BEST_SELLERS', keywords: ['best', 'top', 'popular', 'selling', 'seller', 'famous', 'trending'], handler: 'getBestSellers' },
   { id: 'WORST_SELLERS', keywords: ['worst', 'least', 'slow', 'flop', 'not selling', 'poor'], handler: 'getWorstSellers' },
-  { id: 'GENERATE_REPORT', keywords: ['excel report', 'excel', 'download report', 'export', 'spreadsheet', 'sheet'], handler: 'generateReport' },
+  { id: 'GENERATE_REPORT', keywords: ['csv report', 'excel report', 'excel', 'download report', 'export', 'spreadsheet', 'sheet'], handler: 'generateReport' },
   { id: 'WHATSAPP_SHARE', keywords: ['whatsapp bill', 'whatsapp', 'share bill', 'send bill', 'receipt message', 'bill on whatsapp'], handler: 'whatsappGuide' },
   { id: 'DAILY_SUMMARY', keywords: ['summary', 'overview', 'report', 'how was', 'day going', 'today'], handler: 'getDailySummary' },
   { id: 'PEAK_HOURS', keywords: ['peak', 'busy', 'rush', 'busiest', 'hour', 'when'], handler: 'getPeakHours' },
@@ -83,11 +84,11 @@ class AIService {
   async getOrdersInRange(daysBack = 0) {
     const { start, end } = this.getDateRange(daysBack);
     const orders = await db.orders.where('createdAt').between(start, end).toArray();
-    return orders.filter(o => o.paymentStatus === 'paid' || o.status === 'completed');
+    return orders.filter(o => o.paymentStatus === 'paid');
   }
 
   parseItems(order) {
-    return typeof order.items === 'string' ? JSON.parse(order.items) : (order.items || []);
+    return parseOrderItems(order.items);
   }
 
   // ─── Intent Handlers ────────────────────────────
@@ -170,7 +171,7 @@ class AIService {
     const { start: yStart, end: yEnd } = this.getDateRange(1);
     const { start: tStart } = this.getDateRange(0);
     const yesterdayOrders = (await db.orders.where('createdAt').between(yStart, tStart).toArray())
-      .filter(o => o.paymentStatus === 'paid' || o.status === 'completed');
+      .filter(o => o.paymentStatus === 'paid');
     const yRevenue = yesterdayOrders.reduce((s, o) => s + (o.total || 0), 0);
     const growth = yRevenue > 0 ? ((revenue - yRevenue) / yRevenue * 100).toFixed(1) : 0;
     const growthIcon = growth > 0 ? '📈' : growth < 0 ? '📉' : '➡️';
@@ -366,36 +367,36 @@ class AIService {
       if (type === 'daily') {
         const todayStr = now.toISOString().split('T')[0];
         blob = await generateDailyReport(todayStr);
-        filename = `Daily_Report_${todayStr}.xlsx`;
+        filename = `Daily_Report_${todayStr}.csv`;
       } else if (type === 'weekly') {
         const todayStr = now.toISOString().split('T')[0];
         blob = await generateWeeklyReport(todayStr);
-        filename = `Weekly_Report_${todayStr}.xlsx`;
+        filename = `Weekly_Report_${todayStr}.csv`;
       } else if (type === 'monthly') {
         const month = now.getMonth();
         const year = now.getFullYear();
         blob = await generateMonthlyReport(month, year);
         const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-        filename = `Monthly_Report_${monthNames[month]}_${year}.xlsx`;
+        filename = `Monthly_Report_${monthNames[month]}_${year}.csv`;
       }
 
       if (blob) {
         downloadReport(blob, filename);
         return this.formatResponse('text',
-          `📊 **Excel Report Generated!**\n\n` +
+          `📊 **CSV Report Generated!**\n\n` +
           `I have successfully generated and triggered a download for your **${type.toUpperCase()}** report: \`${filename}\`.\n\n` +
           `It contains sheets for:\n` +
           `• **Summary KPIs**\n` +
           `• **Order Details**\n` +
           `• **Item Sales Analysis**`,
           { type, filename },
-          ['📊 Today\'s Excel Report', '📈 Weekly Excel Report', '📅 Monthly Excel Report', '🏆 Best Sellers']
+          ['📊 Today\'s CSV Report', '📈 Weekly CSV Report', '📅 Monthly CSV Report', '🏆 Best Sellers']
         );
       }
     } catch (err) {
       console.error('[AI] Report generation error:', err);
       return this.formatResponse('text',
-        `❌ **Failed to generate Excel report**\n\n` +
+        `❌ **Failed to generate CSV report**\n\n` +
         `Error: ${err.message}`,
         null,
         ['📊 Today\'s Summary', '🏆 Best Sellers']
