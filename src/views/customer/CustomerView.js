@@ -221,7 +221,7 @@ export class CustomerView {
             </div>
             <div class="store-menu-note">${escapeHtml(address)}</div>
           </div>
-          <div class="store-category-strip scrollbar-none" role="tablist" aria-label="Menu categories">
+          <div class="store-category-strip scrollbar-none" aria-label="Menu categories">
             ${categories}
           </div>
           <div class="store-menu-grid">

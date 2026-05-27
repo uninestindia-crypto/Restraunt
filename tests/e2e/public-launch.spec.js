@@ -17,6 +17,18 @@ test.describe('public launch routing', () => {
       page.getByText('Enter Staff PIN').or(page.getByText('Owner setup required'))
     ).toBeVisible();
   });
+
+  test('public storefront has no horizontal overflow', async ({ page }) => {
+    await page.goto('/#/self-order');
+    await expect(page.locator('header div').filter({ hasText: /^THE TASTE$/ }).last()).toBeVisible();
+
+    const overflow = await page.evaluate(() => {
+      const root = document.querySelector('.storefront-shell') || document.documentElement;
+      return Math.ceil(root.scrollWidth - root.clientWidth);
+    });
+
+    expect(overflow).toBeLessThanOrEqual(1);
+  });
 });
 
 test.describe('public checkout validation', () => {
