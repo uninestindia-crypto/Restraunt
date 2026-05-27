@@ -289,8 +289,58 @@ class App {
     // Start router
     router.start();
 
+    // Start inactivity auto-lock checker
+    this.startInactivityTimer();
+
     this.initialized = true;
     console.log(`🍜 The Taste Restaurant OS — Logged in as ${staff.name} (${staff.role})`);
+  }
+
+  startInactivityTimer() {
+    this.inactivityTimeout = null;
+    this.activityEvents = ['mousemove', 'mousedown', 'keypress', 'touchstart', 'scroll'];
+
+    this.resetInactivityTimer = async () => {
+      if (this.inactivityTimeout) clearTimeout(this.inactivityTimeout);
+
+      const authService = await this.getAuthService();
+      if (!authService.isAuthenticated || !authService.getCurrentStaff() || authService.getCurrentStaff().role === 'customer') {
+        return;
+      }
+
+      const { getSetting } = await import('./db/database.js');
+      const autoLockVal = await getSetting('autoLockTerminal');
+      if (autoLockVal === 'true' || autoLockVal === true) {
+        const timeoutVal = await getSetting('autoLockTimeout') || '5';
+        const minutes = parseInt(timeoutVal, 10);
+        const ms = (isNaN(minutes) ? 5 : minutes) * 60 * 1000;
+
+        this.inactivityTimeout = setTimeout(() => {
+          this.lockTerminalOnInactivity();
+        }, ms);
+      }
+    };
+
+    this.activityEvents.forEach(evt => {
+      window.addEventListener(evt, this.resetInactivityTimer, { passive: true });
+    });
+
+    this.resetInactivityTimer();
+  }
+
+  async lockTerminalOnInactivity() {
+    const authService = await this.getAuthService();
+    if (authService.isAuthenticated) {
+      console.warn('[App] Inactivity timeout reached. Auto-locking terminal.');
+      authService.logout();
+      if (this.inactivityTimeout) clearTimeout(this.inactivityTimeout);
+      if (router.currentView && typeof router.currentView.unmount === 'function') {
+        router.currentView.unmount();
+      }
+      this.initialized = false;
+      this.showLogin();
+      showToast('Terminal auto-locked due to inactivity', 'info');
+    }
   }
 
   startSyncService() {
