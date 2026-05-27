@@ -1,6 +1,4 @@
 import { getCategories, getItemsByCategory, createOrder, getNextOrderNumber, getSetting, db, generateLocalUuid } from '../../db/database.js';
-import { deductInventoryForOrder } from '../../services/inventoryHook.js';
-import { generateUPIQR } from '../../services/upi.js';
 import { escapeHtml, formatCurrency, parseOrderItems, playSound, showToast, vibrateDevice } from '../../utils/helpers.js';
 
 const PHONE_RE = /^[6-9]\d{9}$/;
@@ -624,6 +622,7 @@ export class CustomerView {
     if (!canvas || !this.placedOrder) return;
     const upiId = await getSetting('upiId') || 'paytmqr6zfcsx@ptys';
     if (upiLabel) upiLabel.textContent = upiId;
+    const { generateUPIQR } = await import('../../services/upi.js');
     await generateUPIQR(canvas, {
       amount: this.placedOrder.total,
       orderId: this.placedOrder.orderNumber
@@ -916,6 +915,7 @@ export class CustomerView {
 
   async afterOrderCreated(order) {
     try {
+      const { deductInventoryForOrder } = await import('../../services/inventoryHook.js');
       await deductInventoryForOrder(parseOrderItems(order.items));
     } catch (error) {
       console.error('Inventory deduction failed:', error);

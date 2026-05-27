@@ -469,8 +469,17 @@ class App {
     });
 
     // PWA Service Worker Update Prompt Registry
-    try {
-      import('virtual:pwa-register')
+    const schedulePwaRegistration = (callback) => {
+      if ('requestIdleCallback' in window) {
+        window.requestIdleCallback(callback, { timeout: 8000 });
+      } else {
+        window.setTimeout(callback, 5000);
+      }
+    };
+
+    schedulePwaRegistration(() => {
+      try {
+        import('virtual:pwa-register')
         .then(({ registerSW }) => {
           const updateSW = registerSW({
             onNeedRefresh: () => {
@@ -485,9 +494,10 @@ class App {
         .catch(err => {
           console.debug('[PWA] Service Worker registration skipped (expected during local dev/testing):', err.message);
         });
-    } catch (e) {
-      console.warn('[PWA] Failed to set up Service Worker update prompt:', e);
-    }
+      } catch (e) {
+        console.warn('[PWA] Failed to set up Service Worker update prompt:', e);
+      }
+    });
   }
 
   showUpdateBanner(onConfirm) {

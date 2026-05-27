@@ -45,7 +45,7 @@ export default defineConfig({
         ]
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,svg,png,ico,woff2}'],
+        globPatterns: ['**/*.{js,css,html,svg,png,jpg,jpeg,ico,woff2}'],
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
@@ -83,7 +83,6 @@ export default defineConfig({
       output: {
         manualChunks(id) {
           if (id.includes('node_modules/@supabase')) return 'supabase';
-          if (id.includes('node_modules/qrcode')) return 'qrcode';
         }
       }
     }
