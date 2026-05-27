@@ -51,25 +51,40 @@ export class StaffView {
         </div>
         <div style="flex:1;overflow-y:auto;padding:16px 24px;" id="staff-content"></div>
       </div>
-      <div id="staff-modal" style="display:none;position:fixed;inset:0;z-index:999;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);align-items:center;justify-content:center;">
-        <div style="background:var(--bg-secondary);border:1px solid var(--border-glass);border-radius:20px;padding:28px;width:90%;max-width:400px;box-shadow:var(--shadow-modal);">
-          <h3 id="staff-modal-title" style="font-family:'Plus Jakarta Sans',sans-serif;font-size:var(--text-md);font-weight:800;color:var(--text-primary);margin:0 0 20px;">Add Staff</h3>
-          <div style="display:flex;flex-direction:column;gap:14px;">
-            <input type="text" id="staff-name" placeholder="Staff name" style="padding:10px 14px;background:rgba(255,255,255,0.03);border:1px solid var(--border-glass);border-radius:10px;color:var(--text-primary);font-size:var(--text-sm);outline:none;font-family:'Inter',sans-serif;">
-            <select id="staff-role" style="padding:10px 14px;background:rgba(255,255,255,0.03);border:1px solid var(--border-glass);border-radius:10px;color:var(--text-primary);font-size:var(--text-sm);outline:none;font-family:'Inter',sans-serif;">
-              <option value="cashier">Cashier</option>
-              <option value="kitchen">Kitchen Staff</option>
-              <option value="waiter">Waiter</option>
-              <option value="delivery">Delivery Staff</option>
-              <option value="manager">Manager</option>
-              <option value="owner">Owner</option>
-            </select>
-            <input type="password" id="staff-pin" placeholder="4-digit PIN" maxlength="4" style="padding:10px 14px;background:rgba(255,255,255,0.03);border:1px solid var(--border-glass);border-radius:10px;color:var(--text-primary);font-size:var(--text-sm);outline:none;font-family:'Inter',sans-serif;letter-spacing:0.3em;">
-            <input type="tel" id="staff-phone" placeholder="Phone (optional)" style="padding:10px 14px;background:rgba(255,255,255,0.03);border:1px solid var(--border-glass);border-radius:10px;color:var(--text-primary);font-size:var(--text-sm);outline:none;font-family:'Inter',sans-serif;">
+      <div id="staff-modal" class="modal-overlay" style="display:none;">
+        <div class="modal" style="max-width:400px;">
+          <div class="modal-header">
+            <h3 id="staff-modal-title">Add Staff</h3>
+            <button class="btn-icon" id="staff-close-icon"><span class="material-symbols-rounded">close</span></button>
           </div>
-          <div style="display:flex;gap:10px;margin-top:20px;">
-            <button id="staff-cancel" style="flex:1;padding:10px;background:rgba(255,255,255,0.03);border:1px solid var(--border-glass);border-radius:10px;color:var(--text-secondary);font-weight:700;cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif;">Cancel</button>
-            <button id="staff-save" style="flex:1;padding:10px;background:var(--gradient-primary);border:none;border-radius:10px;color:white;font-weight:700;cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif;">Save</button>
+          <div class="modal-body" style="display:flex;flex-direction:column;gap:14px;">
+            <div class="input-group">
+              <label for="staff-name">Staff Name</label>
+              <input type="text" id="staff-name" class="input" placeholder="e.g. Rahul Sharma">
+            </div>
+            <div class="input-group">
+              <label for="staff-role">Role</label>
+              <select id="staff-role" class="input">
+                <option value="cashier">Cashier</option>
+                <option value="kitchen">Kitchen Staff</option>
+                <option value="waiter">Waiter</option>
+                <option value="delivery">Delivery Staff</option>
+                <option value="manager">Manager</option>
+                <option value="owner">Owner</option>
+              </select>
+            </div>
+            <div class="input-group">
+              <label for="staff-pin">4-Digit PIN</label>
+              <input type="password" id="staff-pin" class="input" placeholder="e.g. 1234" maxlength="4" style="letter-spacing: 0.3em; text-align: center;">
+            </div>
+            <div class="input-group">
+              <label for="staff-phone">Phone Number</label>
+              <input type="tel" id="staff-phone" class="input" placeholder="e.g. 9876543210">
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button id="staff-cancel" class="btn btn-secondary btn-sm">Cancel</button>
+            <button id="staff-save" class="btn btn-primary btn-sm">Save</button>
           </div>
         </div>
       </div>
@@ -77,6 +92,7 @@ export class StaffView {
   }
 
   bindEvents() {
+    const modal = document.getElementById('staff-modal');
     document.getElementById('add-staff-btn').addEventListener('click', () => {
       playSound(700, 80);
       this.editingStaffId = null;
@@ -84,16 +100,19 @@ export class StaffView {
       ['staff-name', 'staff-pin', 'staff-phone'].forEach(id => document.getElementById(id).value = '');
       document.getElementById('staff-pin').placeholder = '4-digit PIN';
       document.getElementById('staff-role').value = 'cashier';
-      document.getElementById('staff-modal').style.display = 'flex';
+      modal.style.display = 'flex';
     });
-    document.getElementById('staff-cancel').addEventListener('click', () => {
+    const closeModal = () => {
       this.editingStaffId = null;
       document.getElementById('staff-modal-title').textContent = 'Add Staff';
       ['staff-name', 'staff-pin', 'staff-phone'].forEach(id => document.getElementById(id).value = '');
       document.getElementById('staff-pin').placeholder = '4-digit PIN';
       document.getElementById('staff-role').value = 'cashier';
-      document.getElementById('staff-modal').style.display = 'none';
-    });
+      modal.style.display = 'none';
+    };
+    document.getElementById('staff-cancel').addEventListener('click', closeModal);
+    document.getElementById('staff-close-icon')?.addEventListener('click', closeModal);
+    modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
     document.getElementById('staff-save').addEventListener('click', async () => {
       const name = document.getElementById('staff-name').value.trim();
       const role = document.getElementById('staff-role').value;

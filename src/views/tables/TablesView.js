@@ -49,17 +49,29 @@ export class TablesView {
         </div>
         <div style="flex:1;overflow-y:auto;padding:8px 24px 24px;" id="tables-grid"></div>
       </div>
-      <div id="table-modal" style="display:none;position:fixed;inset:0;z-index:999;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);align-items:center;justify-content:center;">
-        <div style="background:var(--bg-secondary);border:1px solid var(--border-glass);border-radius:20px;padding:28px;width:90%;max-width:360px;">
-          <h3 style="font-family:'Plus Jakarta Sans',sans-serif;font-size:var(--text-md);font-weight:800;color:var(--text-primary);margin:0 0 20px;">Add Table</h3>
-          <div style="display:flex;flex-direction:column;gap:14px;">
-            <input type="number" id="tbl-number" placeholder="Table number" style="padding:10px 14px;background:rgba(255,255,255,0.03);border:1px solid var(--border-glass);border-radius:10px;color:var(--text-primary);font-size:var(--text-sm);outline:none;font-family:Inter,sans-serif;">
-            <input type="number" id="tbl-capacity" placeholder="Capacity (seats)" style="padding:10px 14px;background:rgba(255,255,255,0.03);border:1px solid var(--border-glass);border-radius:10px;color:var(--text-primary);font-size:var(--text-sm);outline:none;font-family:Inter,sans-serif;">
-            <input type="text" id="tbl-section" placeholder="Floor section (e.g., Main)" style="padding:10px 14px;background:rgba(255,255,255,0.03);border:1px solid var(--border-glass);border-radius:10px;color:var(--text-primary);font-size:var(--text-sm);outline:none;font-family:Inter,sans-serif;">
+      <div id="table-modal" class="modal-overlay" style="display:none;">
+        <div class="modal" style="max-width:360px;">
+          <div class="modal-header">
+            <h3>Add Table</h3>
+            <button class="btn-icon" id="tbl-close-icon"><span class="material-symbols-rounded">close</span></button>
           </div>
-          <div style="display:flex;gap:10px;margin-top:20px;">
-            <button id="tbl-cancel" style="flex:1;padding:10px;background:rgba(255,255,255,0.03);border:1px solid var(--border-glass);border-radius:10px;color:var(--text-secondary);font-weight:700;cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif;">Cancel</button>
-            <button id="tbl-save" style="flex:1;padding:10px;background:var(--gradient-primary);border:none;border-radius:10px;color:white;font-weight:700;cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif;">Save</button>
+          <div class="modal-body" style="display:flex;flex-direction:column;gap:14px;">
+            <div class="input-group">
+              <label for="tbl-number">Table Number</label>
+              <input type="number" id="tbl-number" class="input" placeholder="e.g. 5">
+            </div>
+            <div class="input-group">
+              <label for="tbl-capacity">Capacity (Seats)</label>
+              <input type="number" id="tbl-capacity" class="input" placeholder="e.g. 4">
+            </div>
+            <div class="input-group">
+              <label for="tbl-section">Floor Section</label>
+              <input type="text" id="tbl-section" class="input" placeholder="e.g. Main">
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button id="tbl-cancel" class="btn btn-secondary btn-sm">Cancel</button>
+            <button id="tbl-save" class="btn btn-primary btn-sm">Save</button>
           </div>
         </div>
       </div>
@@ -67,11 +79,15 @@ export class TablesView {
   }
 
   bindEvents() {
+    const modal = document.getElementById('table-modal');
     document.getElementById('add-table-btn').addEventListener('click', () => {
       playSound(700, 80);
-      document.getElementById('table-modal').style.display = 'flex';
+      modal.style.display = 'flex';
     });
-    document.getElementById('tbl-cancel').addEventListener('click', () => { document.getElementById('table-modal').style.display = 'none'; });
+    const closeModal = () => { modal.style.display = 'none'; };
+    document.getElementById('tbl-cancel').addEventListener('click', closeModal);
+    document.getElementById('tbl-close-icon')?.addEventListener('click', closeModal);
+    modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
     document.getElementById('tbl-save').addEventListener('click', async () => {
       const number = parseInt(document.getElementById('tbl-number').value) || 0;
       const capacity = parseInt(document.getElementById('tbl-capacity').value) || 2;
