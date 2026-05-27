@@ -182,6 +182,23 @@ export class KitchenView {
           from { transform: scale(0.9); opacity: 0; }
           to { transform: scale(1); opacity: 1; }
         }
+        .prep-modal-card {
+          background: #12121a;
+          border: 1px solid var(--border-glass);
+          box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 40px rgba(255, 94, 54, 0.15);
+          border-radius: var(--radius-xl);
+          padding: 32px;
+          width: 90%;
+          max-width: 440px;
+          text-align: center;
+          animation: scaleUp 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        #prep-time-modal-overlay {
+          background: rgba(9, 9, 14, 0.85);
+          backdrop-filter: blur(8px);
+          z-index: 10000;
+          animation: fadeIn 0.25s ease-out;
+        }
         @media (max-width: 900px) {
           #kds-grid-container {
             grid-template-columns: 1fr !important;
@@ -192,6 +209,17 @@ export class KitchenView {
           }
           .kds-col {
             height: 450px !important;
+          }
+        }
+        @media (max-width: 768px) {
+          .prep-modal-card {
+            width: 100% !important;
+            max-width: 100% !important;
+            border-radius: var(--radius-xl) var(--radius-xl) 0 0 !important;
+            margin: 0 !important;
+            max-height: 85vh !important;
+            padding: 24px 20px !important;
+            animation: slideUp 300ms cubic-bezier(0.16, 1, 0.3, 1) !important;
           }
         }
       </style>
@@ -211,26 +239,10 @@ export class KitchenView {
       const overlay = document.createElement('div');
       overlay.id = 'prep-time-modal-overlay';
       overlay.className = 'modal-overlay';
-      overlay.style.cssText = `
-        background: rgba(9, 9, 14, 0.85);
-        backdrop-filter: blur(8px);
-        z-index: 10000;
-        animation: fadeIn 0.25s ease-out;
-      `;
 
       // Modal container
       const modal = document.createElement('div');
-      modal.style.cssText = `
-        background: #12121a;
-        border: 1px solid var(--border-glass);
-        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 40px rgba(255, 94, 54, 0.15);
-        border-radius: var(--radius-xl);
-        padding: 32px;
-        width: 90%;
-        max-width: 440px;
-        text-align: center;
-        animation: scaleUp 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-      `;
+      modal.className = 'modal prep-modal-card';
 
       // Modal Title
       const title = document.createElement('h3');

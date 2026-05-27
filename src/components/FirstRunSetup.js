@@ -44,6 +44,80 @@ export class FirstRunSetup {
           </p>
         </div>
       </div>
+
+      <style>
+        .login-screen {
+          position: fixed; inset: 0; z-index: 9998;
+          display: flex; align-items: center; justify-content: center;
+          background: radial-gradient(circle at center, #12121C 0%, #08080C 100%);
+          overflow: hidden;
+        }
+        .login-card {
+          width: 90%; max-width: 420px; text-align: left;
+          padding: 48px 32px 32px;
+          background: var(--glass-bg);
+          border: 1px solid var(--border-color);
+          border-radius: var(--radius-xl);
+          backdrop-filter: var(--glass-backdrop-filter);
+          -webkit-backdrop-filter: var(--glass-backdrop-filter);
+          box-shadow: var(--shadow-xl), 0 0 100px rgba(139, 92, 246, 0.03);
+          animation: loginSlideUp var(--transition-slow) var(--ease-out-expo);
+        }
+        @keyframes loginSlideUp {
+          from { opacity: 0; transform: translateY(30px) scale(0.96); }
+          to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        .login-logo-container {
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          margin-bottom: 16px;
+        }
+        .login-logo-img {
+          width: 72px;
+          height: 72px;
+          object-fit: contain;
+          border-radius: var(--radius-md);
+          border: 1px solid var(--border-active);
+          box-shadow: var(--shadow-glow-active), 0 4px 12px rgba(0, 0, 0, 0.15);
+          transition: transform var(--transition-fast) var(--ease-spring);
+        }
+        .login-logo-img:hover {
+          transform: scale(1.1) rotate(3deg);
+        }
+        .login-title {
+          font-family: var(--font-display);
+          font-size: 1.75rem; font-weight: 800;
+          background: var(--gradient-primary);
+          -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+          background-clip: text; margin: 0 0 6px; letter-spacing: -0.04em;
+        }
+        .login-subtitle {
+          font-size: 0.72rem; color: var(--text-secondary);
+          letter-spacing: 0.08em; text-transform: uppercase;
+          font-weight: 700; margin: 0 0 24px;
+          opacity: 0.8;
+        }
+        .login-label {
+          font-size: 0.68rem; color: var(--text-muted);
+          font-weight: 700; letter-spacing: 0.08em;
+          text-transform: uppercase; display: block; margin-bottom: 8px;
+        }
+        @media (max-width: 480px) {
+          .login-card {
+            padding: 32px 20px 24px;
+            border-radius: var(--radius-lg);
+          }
+          .login-title {
+            font-size: 1.5rem;
+          }
+          .login-logo-img {
+            width: 56px;
+            height: 56px;
+            margin-bottom: 8px;
+          }
+        }
+      </style>
     `;
 
     container.querySelector('#setup-submit')?.addEventListener('click', () => this.submit());

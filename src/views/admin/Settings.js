@@ -90,6 +90,15 @@ export class SettingsView {
         this.config[key] = await getSetting(key) || '';
       }
 
+      // If adminPinHash setting is missing, check if we have a synced owner staff member with a PIN
+      if (!this.config.adminPinHash) {
+        const owner = await db.staff.where('role').equals('owner').first();
+        if (owner && owner.pinHash) {
+          await setSetting('adminPinHash', owner.pinHash);
+          this.config.adminPinHash = owner.pinHash;
+        }
+      }
+
       // Set sensible defaults for toggles (default ON for most)
       const defaultOnToggles = ['showLogoOnReceipt', 'showAddressOnReceipt', 'showPhoneOnReceipt', 'showFooterOnReceipt'];
       for (const t of defaultOnToggles) {

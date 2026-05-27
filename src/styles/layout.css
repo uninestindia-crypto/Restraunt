@@ -1133,6 +1133,33 @@
   .help-content-viewport {
     padding: 20px 16px !important;
     overflow-y: visible !important;
+}
+
+/* Header & Status Controls Mobile Responsiveness */
+@media (max-width: 768px) {
+  .app-header {
+    padding: 0 12px !important;
+  }
+  .app-header .nextgenos-header-badge {
+    display: none !important;
+  }
+  .app-header .header-actions {
+    gap: 6px !important;
+  }
+  .app-header .header-printer-status {
+    padding: 6px 8px !important;
+    gap: 4px !important;
+  }
+  #sync-status-text, 
+  #printer-status-text, 
+  #header-staff-role {
+    display: none !important;
+  }
+}
+
+@media (max-width: 480px) {
+  #header-staff-display {
+    display: none !important;
   }
 }
 

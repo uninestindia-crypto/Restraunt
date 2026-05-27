@@ -135,13 +135,15 @@ export class StaffView {
 
       let hashedPin = '';
       if (pin) {
+        const isWeak = /^(.)\1{3}$/.test(pin) || '0123456789'.includes(pin) || '9876543210'.includes(pin);
         hashedPin = await hashPin(pin);
         
         const checkId = this.editingStaffId || 0;
         const existing = await db.staff.where('pinHash').equals(hashedPin).toArray();
-        const collision = existing.find(s => s.isActive && s.id !== checkId);
-        if (collision) {
-          showToast('PIN already in use by another active staff member', 'error');
+        const collision = existing.some(s => s.isActive && s.id !== checkId);
+        
+        if (isWeak || collision) {
+          showToast('Invalid or insecure PIN. Please choose a different 4-digit combination.', 'error');
           return;
         }
       }

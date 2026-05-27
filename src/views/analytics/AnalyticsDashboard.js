@@ -61,7 +61,7 @@ export class AnalyticsDashboard {
           </div>
 
           <!-- Payment & Order Type -->
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;" id="analytics-breakdowns">
             <div class="card card-glass" style="padding:20px;background:rgba(255,255,255,0.01);border:1px solid var(--border-glass);border-radius:16px;">
               <div style="font-family:'Plus Jakarta Sans',sans-serif;font-size:var(--text-sm);font-weight:700;color:var(--text-primary);margin-bottom:16px;">Payment Methods</div>
               <div id="payment-breakdown" style="display:flex;flex-direction:column;gap:12px;"></div>
@@ -157,7 +157,7 @@ export class AnalyticsDashboard {
 
       <style>
         @media (max-width: 768px) {
-          #analytics-charts { grid-template-columns: 1fr !important; }
+          #analytics-charts, #analytics-breakdowns { grid-template-columns: 1fr !important; }
         }
       </style>
     `;
