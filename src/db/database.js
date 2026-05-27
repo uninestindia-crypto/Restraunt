@@ -345,9 +345,20 @@ export async function createOrder(orderData, options = {}) {
     throw error; // Re-throw to inform UI of creation failure
   }
 
-  // Replicate to cloud asynchronously in the background
+  // Replicate to cloud
   if (!options.skipSync) {
-    syncOrderInBackground(result, 'order creation');
+    if (navigator.onLine) {
+      try {
+        const { syncService } = await import('../services/sync.js');
+        await syncService.syncUpOrder(result);
+        const updated = await db.orders.get(result.id);
+        if (updated) result = updated;
+      } catch (err) {
+        console.error('[Database] Synchronous sync failed for order:', err);
+      }
+    } else {
+      syncOrderInBackground(result, 'order creation');
+    }
   }
 
   return result;
@@ -359,6 +370,36 @@ export async function createOrder(orderData, options = {}) {
  * @returns {Promise<Array>} Orders
  */
 export async function getOrders(status) {
+  if (navigator.onLine) {
+    try {
+      const { getSupabaseClient } = await import('../services/supabaseClient.js');
+      const supabase = await getSupabaseClient({ persistSession: true });
+      if (supabase) {
+        const storeId = localStorage.getItem('store_id') || 'the-taste';
+        let query = supabase.from('orders').select('*').eq('store_id', storeId);
+        if (status) {
+          query = query.eq('status', status);
+        }
+        const { data, error } = await query.order('created_at', { ascending: false }).limit(200);
+        if (!error && data) {
+          const { mapOrderToLocal } = await import('../services/cloudDb.js');
+          const localOrders = data.map(mapOrderToLocal);
+          await db.transaction('rw', db.orders, async () => {
+            for (const order of localOrders) {
+              const existing = await db.orders.where('clientOrderId').equals(order.clientOrderId).first();
+              if (existing) {
+                order.id = existing.id; // Preserve local auto-increment key
+              }
+              await db.orders.put(order);
+            }
+          });
+        }
+      }
+    } catch (err) {
+      console.warn('[Database] Failed to fetch orders from cloud, falling back to local cache:', err);
+    }
+  }
+
   try {
     let collection;
 
@@ -380,11 +421,50 @@ export async function getOrders(status) {
 
 /**
  * Get a single order by id.
- * @param {number} id
+ * @param {number|string} id
  * @returns {Promise<Object|undefined>} The order
  */
 export async function getOrder(id) {
+  if (navigator.onLine) {
+    try {
+      const { getSupabaseClient } = await import('../services/supabaseClient.js');
+      const supabase = await getSupabaseClient({ persistSession: true });
+      if (supabase) {
+        const storeId = localStorage.getItem('store_id') || 'the-taste';
+        let localOrder;
+        if (typeof id === 'string') {
+          localOrder = await db.orders.where('clientOrderId').equals(id).first();
+        } else {
+          localOrder = await db.orders.get(id);
+        }
+
+        const clientOrderId = localOrder ? localOrder.clientOrderId : (typeof id === 'string' ? id : null);
+        if (clientOrderId) {
+          const { data, error } = await supabase
+            .from('orders')
+            .select('*')
+            .eq('store_id', storeId)
+            .eq('client_order_id', clientOrderId)
+            .single();
+          if (!error && data) {
+            const { mapOrderToLocal } = await import('../services/cloudDb.js');
+            const mapped = mapOrderToLocal(data);
+            if (localOrder) {
+              mapped.id = localOrder.id;
+            }
+            await db.orders.put(mapped);
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('[Database] Failed to fetch order from cloud:', err);
+    }
+  }
+
   try {
+    if (typeof id === 'string') {
+      return await db.orders.where('clientOrderId').equals(id).first();
+    }
     return await db.orders.get(id);
   } catch (error) {
     console.error(`[Database] Dexie database error in getOrder(${id}):`, error);
@@ -421,11 +501,19 @@ export async function updateOrderStatus(id, status) {
   }
 
   if (result > 0) {
-    getOrder(id).then(order => {
+    try {
+      const order = await getOrder(id);
       if (order) {
-        syncOrderInBackground(order, 'status update');
+        if (navigator.onLine) {
+          const { syncService } = await import('../services/sync.js');
+          await syncService.syncUpOrder(order);
+        } else {
+          syncOrderInBackground(order, 'status update');
+        }
       }
-    }).catch(err => console.error('[Database] Failed to get order for status sync:', err));
+    } catch (err) {
+      console.error('[Database] Failed to sync order status update:', err);
+    }
   }
 
   return result;
@@ -458,11 +546,19 @@ export async function updatePayment(id, paymentMethod, paymentStatus, metadata =
   }
 
   if (result > 0) {
-    getOrder(id).then(order => {
+    try {
+      const order = await getOrder(id);
       if (order) {
-        syncOrderInBackground(order, 'payment update');
+        if (navigator.onLine) {
+          const { syncService } = await import('../services/sync.js');
+          await syncService.syncUpOrder(order);
+        } else {
+          syncOrderInBackground(order, 'payment update');
+        }
       }
-    }).catch(err => console.error('[Database] Failed to get order for payment sync:', err));
+    } catch (err) {
+      console.error('[Database] Failed to sync order payment update:', err);
+    }
   }
 
   return result;
@@ -484,9 +580,19 @@ export async function updateOrderFields(id, fields) {
   }
 
   if (result > 0) {
-    getOrder(id).then(order => {
-      if (order) syncOrderInBackground(order, 'field update');
-    }).catch(err => console.error('[Database] Failed to get order for field sync:', err));
+    try {
+      const order = await getOrder(id);
+      if (order) {
+        if (navigator.onLine) {
+          const { syncService } = await import('../services/sync.js');
+          await syncService.syncUpOrder(order);
+        } else {
+          syncOrderInBackground(order, 'field update');
+        }
+      }
+    } catch (err) {
+      console.error('[Database] Failed to sync order fields update:', err);
+    }
   }
 
   return result;

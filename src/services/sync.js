@@ -431,6 +431,16 @@ class SyncService {
     }
   }
 
+  async fullPull(options = {}) {
+    try {
+      const { fullPull } = await import('./cloudDb.js');
+      return await fullPull(options);
+    } catch (err) {
+      console.error('[Sync] fullPull failed:', err);
+      return { success: false, tables: {} };
+    }
+  }
+
   triggerStatusChange(status) {
     this.status = status;
     const isConnected = this.isConnected;
@@ -507,7 +517,10 @@ class SyncService {
       // 1. Perform initial push of unsynced local records
       await this.pushUnsynced();
 
-      // 2. Subscribe to real-time updates
+      // 2. Perform a full pull to hydrate the local cache with the latest cloud state
+      await this.fullPull();
+
+      // 3. Subscribe to real-time updates
       this.subscribeRealtime();
 
     } catch (e) {

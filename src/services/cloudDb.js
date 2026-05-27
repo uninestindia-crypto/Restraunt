@@ -292,8 +292,13 @@ export async function fullPull(options = {}) {
     if (!staffErr && staff?.length > 0) {
       const localStaff = staff.map(mapStaffToLocal);
       await db.transaction('rw', db.staff, async () => {
-        await db.staff.clear();
-        await db.staff.bulkPut(localStaff);
+        for (const s of localStaff) {
+          const existing = await db.staff.where('name').equals(s.name).first();
+          if (existing) {
+            s.id = existing.id; // Keep local ID
+          }
+          await db.staff.put(s);
+        }
       });
       results.staff = localStaff.length;
       console.log(`[CloudDB] Hydrated ${localStaff.length} staff members from cloud.`);
@@ -309,8 +314,13 @@ export async function fullPull(options = {}) {
     if (!orderErr && orders?.length > 0) {
       const localOrders = orders.map(mapOrderToLocal);
       await db.transaction('rw', db.orders, async () => {
-        // Don't clear orders — merge to preserve any offline-queued orders
-        await db.orders.bulkPut(localOrders);
+        for (const order of localOrders) {
+          const existing = await db.orders.where('clientOrderId').equals(order.clientOrderId).first();
+          if (existing) {
+            order.id = existing.id; // Preserve local auto-increment key
+          }
+          await db.orders.put(order);
+        }
       });
       results.orders = localOrders.length;
       console.log(`[CloudDB] Hydrated ${localOrders.length} orders from cloud.`);
@@ -325,8 +335,13 @@ export async function fullPull(options = {}) {
       const localTables = tables.map(mapTableToLocal);
       const tableStore = db.table('tables');
       await db.transaction('rw', tableStore, async () => {
-        await tableStore.clear();
-        await tableStore.bulkPut(localTables);
+        for (const tbl of localTables) {
+          const existing = await tableStore.where('number').equals(tbl.number).first();
+          if (existing) {
+            tbl.id = existing.id;
+          }
+          await tableStore.put(tbl);
+        }
       });
       results.tables = localTables.length;
     }
@@ -339,8 +354,13 @@ export async function fullPull(options = {}) {
     if (!invErr && inventory?.length > 0) {
       const localInv = inventory.map(mapInventoryToLocal);
       await db.transaction('rw', db.inventory, async () => {
-        await db.inventory.clear();
-        await db.inventory.bulkPut(localInv);
+        for (const inv of localInv) {
+          const existing = await db.inventory.where('name').equals(inv.name).first();
+          if (existing) {
+            inv.id = existing.id;
+          }
+          await db.inventory.put(inv);
+        }
       });
       results.inventory = localInv.length;
     }
@@ -353,8 +373,13 @@ export async function fullPull(options = {}) {
     if (!supErr && suppliers?.length > 0) {
       const localSups = suppliers.map(mapSupplierToLocal);
       await db.transaction('rw', db.suppliers, async () => {
-        await db.suppliers.clear();
-        await db.suppliers.bulkPut(localSups);
+        for (const sup of localSups) {
+          const existing = await db.suppliers.where('name').equals(sup.name).first();
+          if (existing) {
+            sup.id = existing.id;
+          }
+          await db.suppliers.put(sup);
+        }
       });
       results.suppliers = localSups.length;
     }
@@ -367,8 +392,13 @@ export async function fullPull(options = {}) {
     if (!custErr && customers?.length > 0) {
       const localCusts = customers.map(mapCustomerToLocal);
       await db.transaction('rw', db.customers, async () => {
-        await db.customers.clear();
-        await db.customers.bulkPut(localCusts);
+        for (const cust of localCusts) {
+          const existing = await db.customers.where('phone').equals(cust.phone).first();
+          if (existing) {
+            cust.id = existing.id;
+          }
+          await db.customers.put(cust);
+        }
       });
       results.customers = localCusts.length;
     }
@@ -381,8 +411,17 @@ export async function fullPull(options = {}) {
     if (!shiftErr && shifts?.length > 0) {
       const localShifts = shifts.map(mapShiftToLocal);
       await db.transaction('rw', db.shifts, async () => {
-        await db.shifts.clear();
-        await db.shifts.bulkPut(localShifts);
+        for (const shift of localShifts) {
+          const existing = await db.shifts
+            .where('date')
+            .equals(shift.date)
+            .and(s => s.staffId === shift.staffId)
+            .first();
+          if (existing) {
+            shift.id = existing.id;
+          }
+          await db.shifts.put(shift);
+        }
       });
       results.shifts = localShifts.length;
     }
