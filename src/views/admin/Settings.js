@@ -17,6 +17,7 @@ export class SettingsView {
     this.container = null;
     this.config = {};
     this._previewDebounceTimer = null;
+    this.activePreviewTab = 'thermal';
   }
 
   async mount(container) {
@@ -65,7 +66,19 @@ export class SettingsView {
         'autoPrintOnConfirm',
         // Google Drive settings
         'googleClientId',
-        'autoUploadToDrive'
+        'autoUploadToDrive',
+        // Premium invoice designer settings
+        'invoiceTemplate',
+        'invoicePrimaryColor',
+        'invoiceFontFamily',
+        'invoiceLogoUrl',
+        'invoiceTitle',
+        'invoiceTerms',
+        'invoiceShowSignature',
+        'invoiceSignatureText',
+        'invoiceShowGrid',
+        'invoiceShowWatermark',
+        'invoiceShowUpiQr'
       ];
 
       for (const key of keys) {
@@ -85,6 +98,18 @@ export class SettingsView {
       if (!this.config.printDensity) this.config.printDensity = 'normal';
       if (!this.config.printCopies) this.config.printCopies = '1';
       if (!this.config.receiptFooter) this.config.receiptFooter = '';
+
+      // Sensible defaults for invoice settings
+      if (!this.config.invoiceTemplate) this.config.invoiceTemplate = 'minimalist';
+      if (!this.config.invoicePrimaryColor) this.config.invoicePrimaryColor = '#FF5E36';
+      if (!this.config.invoiceFontFamily) this.config.invoiceFontFamily = 'sans-serif';
+      if (!this.config.invoiceTitle) this.config.invoiceTitle = 'TAX INVOICE';
+      if (!this.config.invoiceTerms) this.config.invoiceTerms = '1. Goods once sold cannot be returned.\n2. Please check bill before leaving.';
+      if (this.config.invoiceShowSignature === '') this.config.invoiceShowSignature = 'false';
+      if (!this.config.invoiceSignatureText) this.config.invoiceSignatureText = 'Authorized Signatory';
+      if (this.config.invoiceShowGrid === '') this.config.invoiceShowGrid = 'true';
+      if (this.config.invoiceShowWatermark === '') this.config.invoiceShowWatermark = 'false';
+      if (this.config.invoiceShowUpiQr === '') this.config.invoiceShowUpiQr = 'true';
     } catch (e) {
       console.error('Failed to load system settings:', e);
     }
@@ -543,13 +568,131 @@ export class SettingsView {
           </div>
         </div>
 
-        <!-- Receipt Preview -->
+        <!-- Bill & Invoice Designer -->
         ${this._cardOpen()}
-          ${this._cardHeading('preview', 'Receipt Preview')}
+          ${this._cardHeading('palette', 'Bill & Invoice Designer')}
           <p style="font-size: var(--text-xs); color: var(--text-secondary); line-height: 1.5; margin: -8px 0 16px 0; font-weight: 500;">
-            Live preview updates as you change settings above.
+            Customize the look and feel of the printed A4/standard invoices.
           </p>
+
+          <div style="display: flex; flex-direction: column; gap: 18px;">
+            <div style="display: flex; gap: 16px; flex-wrap: wrap;">
+              <div class="input-group" style="flex: 1; min-width: 240px;">
+                <label for="invoiceTemplate" style="${this._labelStyle()}">Invoice Template Style</label>
+                <select id="invoiceTemplate" class="input invoice-designer-input" style="${this._inputStyle()}">
+                  <option value="minimalist" ${this.config.invoiceTemplate === 'minimalist' ? 'selected' : ''}>Modern Minimalist (Sleek & Airy)</option>
+                  <option value="luxury" ${this.config.invoiceTemplate === 'luxury' ? 'selected' : ''}>Luxury Gold / Royal (Elegant Serif)</option>
+                  <option value="executive" ${this.config.invoiceTemplate === 'executive' ? 'selected' : ''}>Executive Navy / Bold (Corporate Grid)</option>
+                  <option value="chic" ${this.config.invoiceTemplate === 'chic' ? 'selected' : ''}>Chic Rose / Peach (Aesthetic Cafe)</option>
+                </select>
+              </div>
+
+              <div class="input-group" style="flex: 1; min-width: 240px;">
+                <label for="invoiceFontFamily" style="${this._labelStyle()}">Invoice Font Selection</label>
+                <select id="invoiceFontFamily" class="input invoice-designer-input" style="${this._inputStyle()}">
+                  <option value="sans-serif" ${this.config.invoiceFontFamily === 'sans-serif' ? 'selected' : ''}>Inter / Plus Jakarta Sans (Modern)</option>
+                  <option value="serif" ${this.config.invoiceFontFamily === 'serif' ? 'selected' : ''}>EB Garamond / Georgia (Elegant Serif)</option>
+                  <option value="slab" ${this.config.invoiceFontFamily === 'slab' ? 'selected' : ''}>Roboto Slab (Executive)</option>
+                  <option value="monospace" ${this.config.invoiceFontFamily === 'monospace' ? 'selected' : ''}>JetBrains Mono / Courier (Retro Tech)</option>
+                </select>
+              </div>
+            </div>
+
+            <div style="display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-end;">
+              <div class="input-group" style="flex: 1.5; min-width: 200px;">
+                <label for="invoiceTitle" style="${this._labelStyle()}">Invoice Document Title</label>
+                <input type="text" id="invoiceTitle" class="input invoice-designer-input" value="${esc(this.config.invoiceTitle)}" placeholder="e.g. TAX INVOICE" style="${this._inputStyle()}">
+              </div>
+
+              <div class="input-group" style="flex: 0.5; min-width: 150px;">
+                <label for="invoicePrimaryColor" style="${this._labelStyle()}">Brand Accent Color</label>
+                <div style="display: flex; gap: 8px; align-items: center;">
+                  <input type="color" id="invoicePrimaryColor" class="invoice-designer-input" value="${this.config.invoicePrimaryColor || '#FF5E36'}" style="
+                    border: 1px solid var(--border-glass);
+                    background: none;
+                    width: 42px;
+                    height: 42px;
+                    border-radius: var(--radius-md);
+                    cursor: pointer;
+                    padding: 0;
+                  ">
+                  <input type="text" id="invoicePrimaryColorText" class="input invoice-designer-input" value="${this.config.invoicePrimaryColor || '#FF5E36'}" placeholder="#FF5E36" style="${this._inputStyle('max-width: 100px; text-transform: uppercase; text-align: center;')}">
+                </div>
+              </div>
+            </div>
+
+            <div class="input-group">
+              <label for="invoiceLogoUrl" style="${this._labelStyle()}">Logo Image URL (Optional)</label>
+              <input type="url" id="invoiceLogoUrl" class="input invoice-designer-input" value="${esc(this.config.invoiceLogoUrl)}" placeholder="e.g. https://yoursite.com/logo.png" style="${this._inputStyle()}">
+            </div>
+
+            <div class="input-group">
+              <label for="invoiceTerms" style="${this._labelStyle()}">Terms & Conditions / Legal Footer</label>
+              <textarea id="invoiceTerms" class="input invoice-designer-input" placeholder="Enter terms of sale..." style="${this._inputStyle('min-height: 80px; font-family: Inter, sans-serif; resize: vertical;')}">${esc(this.config.invoiceTerms)}</textarea>
+            </div>
+
+            <div class="input-group" style="max-width: 320px;">
+              <label for="invoiceSignatureText" style="${this._labelStyle()}">Signature Label Text</label>
+              <input type="text" id="invoiceSignatureText" class="input invoice-designer-input" value="${esc(this.config.invoiceSignatureText)}" placeholder="e.g. Authorized Signatory" style="${this._inputStyle()}">
+            </div>
+
+            <!-- Toggles for Invoice Elements -->
+            <div>
+              <label style="${this._labelStyle()} margin-bottom: 12px;">Invoice Layout Elements</label>
+              <div style="
+                background: rgba(0,0,0,0.15);
+                border-radius: var(--radius-lg);
+                border: 1px solid var(--border-glass);
+                padding: 6px 16px;
+              ">
+                ${this._buildToggleRow('invoiceShowUpiQr', 'Show Dynamic UPI Payment QR Code', this.config.invoiceShowUpiQr)}
+                ${this._buildToggleRow('invoiceShowGrid', 'Show Grid Lines in Items Table', this.config.invoiceShowGrid)}
+                ${this._buildToggleRow('invoiceShowSignature', 'Show Signature Block', this.config.invoiceShowSignature)}
+                ${this._buildToggleRow('invoiceShowWatermark', 'Show Subtle Watermark', this.config.invoiceShowWatermark)}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Receipt & Invoice Preview -->
+        ${this._cardOpen()}
+          ${this._cardHeading('preview', 'Live Document Preview')}
+          <p style="font-size: var(--text-xs); color: var(--text-secondary); line-height: 1.5; margin: -8px 0 16px 0; font-weight: 500;">
+            See how your receipts and invoices look before printing.
+          </p>
+
+          <!-- Preview Selector Tabs -->
+          <div style="display: flex; justify-content: center; gap: 10px; margin-bottom: 20px; border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 14px;">
+            <button type="button" class="btn btn-preview-tab ${this.activePreviewTab === 'thermal' ? 'active' : ''}" id="preview-tab-thermal" style="
+              font-family: 'Plus Jakarta Sans', sans-serif;
+              font-weight: 700;
+              font-size: var(--text-xs);
+              min-height: 36px;
+              padding: 0 16px;
+              border-radius: var(--radius-md);
+              border: 1px solid ${this.activePreviewTab === 'thermal' ? 'var(--color-primary)' : 'var(--border-glass)'};
+              background: ${this.activePreviewTab === 'thermal' ? 'rgba(255,94,54,0.1)' : 'rgba(0,0,0,0.2)'};
+              color: ${this.activePreviewTab === 'thermal' ? 'var(--color-primary)' : 'var(--text-secondary)'};
+              cursor: pointer;
+              transition: all 0.2s ease;
+            ">Thermal Receipt (BLE)</button>
+            <button type="button" class="btn btn-preview-tab ${this.activePreviewTab === 'invoice' ? 'active' : ''}" id="preview-tab-invoice" style="
+              font-family: 'Plus Jakarta Sans', sans-serif;
+              font-weight: 700;
+              font-size: var(--text-xs);
+              min-height: 36px;
+              padding: 0 16px;
+              border-radius: var(--radius-md);
+              border: 1px solid ${this.activePreviewTab === 'invoice' ? 'var(--color-primary)' : 'var(--border-glass)'};
+              background: ${this.activePreviewTab === 'invoice' ? 'rgba(255,94,54,0.1)' : 'rgba(0,0,0,0.2)'};
+              color: ${this.activePreviewTab === 'invoice' ? 'var(--color-primary)' : 'var(--text-secondary)'};
+              cursor: pointer;
+              transition: all 0.2s ease;
+            ">Standard Invoice (A4)</button>
+          </div>
+
           <div id="receipt-preview-container" style="display: flex; justify-content: center; padding: 16px 0;"></div>
+          
           <div style="display: flex; justify-content: center; margin-top: 12px;">
             <button class="btn btn-secondary" id="btn-print-sample" style="
               font-family: 'Plus Jakarta Sans', sans-serif;
@@ -895,6 +1038,18 @@ export class SettingsView {
       showFssai: getCheck('showFssaiOnReceipt'),
       showNotes: getCheck('showNotesOnReceipt'),
       showFooter: getCheck('showFooterOnReceipt'),
+      // New Invoice preview fields
+      invoiceTemplate: getVal('invoiceTemplate') || 'minimalist',
+      invoiceFontFamily: getVal('invoiceFontFamily') || 'sans-serif',
+      invoiceTitle: getVal('invoiceTitle') || 'TAX INVOICE',
+      invoicePrimaryColor: getVal('invoicePrimaryColor') || '#FF5E36',
+      invoiceLogoUrl: getVal('invoiceLogoUrl') || '',
+      invoiceTerms: getVal('invoiceTerms') || '',
+      invoiceSignatureText: getVal('invoiceSignatureText') || 'Authorized Signatory',
+      invoiceShowSignature: getCheck('invoiceShowSignature'),
+      invoiceShowGrid: getCheck('invoiceShowGrid'),
+      invoiceShowWatermark: getCheck('invoiceShowWatermark'),
+      invoiceShowUpiQr: getCheck('invoiceShowUpiQr')
     };
   }
 
@@ -902,6 +1057,89 @@ export class SettingsView {
   _renderReceiptPreview() {
     const container = document.getElementById('receipt-preview-container');
     if (!container) return;
+
+    if (this.activePreviewTab === 'invoice') {
+      const v = this._getCurrentPreviewValues();
+      
+      // Build dummy order for preview
+      const dummyOrder = {
+        orderNumber: 'TT-20260527-0042',
+        createdAt: new Date().toISOString(),
+        type: 'dine_in',
+        paymentStatus: 'paid',
+        paymentMethod: 'upi',
+        customerName: 'Aria Sen',
+        customerPhone: '9876543210',
+        tableId: '5',
+        subtotal: 490.00,
+        tax: 24.50,
+        total: 514.50,
+        items: JSON.stringify([
+          { name: 'Chicken Biryani', qty: 2, price: 220 },
+          { name: 'Paneer Butter Masala', qty: 1, price: 180 },
+          { name: 'Cold Coffee', qty: 2, price: 90 }
+        ])
+      };
+
+      // Dummy base64 QR code for preview
+      const dummyQr = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100" height="100" fill="white"/><rect x="10" y="10" width="30" height="30" fill="black"/><rect x="15" y="15" width="20" height="20" fill="white"/><rect x="60" y="10" width="30" height="30" fill="black"/><rect x="65" y="15" width="20" height="20" fill="white"/><rect x="10" y="60" width="30" height="30" fill="black"/><rect x="15" y="65" width="20" height="20" fill="white"/><rect x="45" y="45" width="10" height="10" fill="black"/><rect x="60" y="60" width="10" height="10" fill="black"/><rect x="75" y="75" width="15" height="15" fill="black"/></svg>';
+
+      const invoiceSettings = {
+        restaurantName: v.name,
+        restaurantTagline: v.tagline,
+        restaurantAddress: v.address,
+        restaurantPhone: v.phone,
+        restaurantEmail: document.getElementById('restaurantEmail')?.value.trim() || 'hello@thetaste.co.in',
+        restaurantWebsite: document.getElementById('restaurantWebsite')?.value.trim() || 'thetaste.co.in',
+        gstin: v.gstin,
+        fssaiNumber: v.fssai,
+        receiptFooter: v.footer,
+        showAddressOnReceipt: v.showAddress ? 'true' : 'false',
+        showPhoneOnReceipt: v.showPhone ? 'true' : 'false',
+        showGstinOnReceipt: v.showGstin ? 'true' : 'false',
+        showFssaiOnReceipt: v.showFssai ? 'true' : 'false',
+        showFooterOnReceipt: v.showFooter ? 'true' : 'false',
+        gstPercent: document.getElementById('gstPercent')?.value.trim() || '5',
+        invoiceTemplate: v.invoiceTemplate,
+        invoicePrimaryColor: v.invoicePrimaryColor,
+        invoiceFontFamily: v.invoiceFontFamily,
+        invoiceLogoUrl: v.invoiceLogoUrl,
+        invoiceTitle: v.invoiceTitle,
+        invoiceTerms: v.invoiceTerms,
+        invoiceShowSignature: v.invoiceShowSignature,
+        invoiceSignatureText: v.invoiceSignatureText,
+        invoiceShowGrid: v.invoiceShowGrid,
+        invoiceShowWatermark: v.invoiceShowWatermark,
+        invoiceShowUpiQr: v.invoiceShowUpiQr,
+        upiId: 'thetaste@upi'
+      };
+
+      import('../../services/invoiceGenerator.js').then(({ InvoiceGenerator }) => {
+        const invoiceHtml = InvoiceGenerator.generateInvoiceHTML(dummyOrder, invoiceSettings, dummyQr);
+        
+        container.innerHTML = `
+          <iframe id="invoice-preview-iframe" style="
+            width: 100%;
+            max-width: 580px;
+            height: 720px;
+            border: 1px solid var(--border-glass);
+            border-radius: var(--radius-lg);
+            background: #fff;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.4);
+          "></iframe>
+        `;
+        const iframe = document.getElementById('invoice-preview-iframe');
+        if (iframe) {
+          // Prevent printing triggers in preview mode
+          const previewHtml = invoiceHtml.replace('window.location.search.includes(\'preview=true\')', 'true');
+          iframe.srcdoc = previewHtml;
+        }
+      }).catch(err => {
+        console.error('Invoice preview generation failed:', err);
+        container.innerHTML = `<div style="color:var(--color-danger);font-size:var(--text-sm);">Preview compilation failed: ${err.message}</div>`;
+      });
+      return;
+    }
 
     const v = this._getCurrentPreviewValues();
     const cols = this._getColumnsForWidth(v.paperWidth);
@@ -1241,10 +1479,57 @@ export class SettingsView {
       });
     });
 
+    // Document Preview Tab Switching
+    const tabThermal = document.getElementById('preview-tab-thermal');
+    const tabInvoice = document.getElementById('preview-tab-invoice');
+    if (tabThermal && tabInvoice) {
+      const setTabActive = (activeTab, activeEl, inactiveEl) => {
+        this.activePreviewTab = activeTab;
+        
+        activeEl.style.border = '1px solid var(--color-primary)';
+        activeEl.style.background = 'rgba(255,94,54,0.1)';
+        activeEl.style.color = 'var(--color-primary)';
+        
+        inactiveEl.style.border = '1px solid var(--border-glass)';
+        inactiveEl.style.background = 'rgba(0,0,0,0.2)';
+        inactiveEl.style.color = 'var(--text-secondary)';
+        
+        this._renderReceiptPreview();
+      };
+      
+      tabThermal.addEventListener('click', () => {
+        playSound(800, 60);
+        setTabActive('thermal', tabThermal, tabInvoice);
+      });
+      tabInvoice.addEventListener('click', () => {
+        playSound(800, 60);
+        setTabActive('invoice', tabInvoice, tabThermal);
+      });
+    }
+
+    // Accent Color Picker & Text input synchronization
+    const colorPicker = document.getElementById('invoicePrimaryColor');
+    const colorText = document.getElementById('invoicePrimaryColorText');
+    if (colorPicker && colorText) {
+      colorPicker.addEventListener('input', () => {
+        colorText.value = colorPicker.value.toUpperCase();
+        this._schedulePreviewUpdate();
+      });
+      colorText.addEventListener('input', () => {
+        const val = colorText.value.trim();
+        if (/^#[0-9A-F]{6}$/i.test(val)) {
+          colorPicker.value = val;
+          this._schedulePreviewUpdate();
+        }
+      });
+    }
+
     // Live preview: listen to all receipt-affecting inputs and toggles
     const previewInputIds = [
       'restaurantName', 'restaurantTagline', 'restaurantAddress', 'restaurantPhone',
-      'gstin', 'fssaiNumber', 'receiptFooter', 'printerWidth', 'printCopies'
+      'gstin', 'fssaiNumber', 'receiptFooter', 'printerWidth', 'printCopies',
+      'invoiceTemplate', 'invoiceFontFamily', 'invoiceTitle', 'invoicePrimaryColor',
+      'invoiceLogoUrl', 'invoiceTerms', 'invoiceSignatureText'
     ];
     for (const id of previewInputIds) {
       const el = document.getElementById(id);
@@ -1311,7 +1596,15 @@ export class SettingsView {
         'supabaseEmail',
         'printDensity',
         'printCopies',
-        'googleClientId'
+        'googleClientId',
+        // Premium invoice inputs
+        'invoiceTemplate',
+        'invoicePrimaryColor',
+        'invoiceFontFamily',
+        'invoiceLogoUrl',
+        'invoiceTitle',
+        'invoiceTerms',
+        'invoiceSignatureText'
       ];
 
       // Collect toggle (checkbox) fields
@@ -1324,7 +1617,12 @@ export class SettingsView {
         'showNotesOnReceipt',
         'showFooterOnReceipt',
         'autoPrintOnConfirm',
-        'autoUploadToDrive'
+        'autoUploadToDrive',
+        // Premium invoice toggles
+        'invoiceShowSignature',
+        'invoiceShowGrid',
+        'invoiceShowWatermark',
+        'invoiceShowUpiQr'
       ];
 
       try {

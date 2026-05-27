@@ -3,42 +3,34 @@ import { hashPin } from '../utils/crypto.js';
 
 /**
  * Seeds the database with initial data if empty.
- * Checks for existing categories before seeding.
+ * Cloud-first: If Supabase has data, pull from cloud instead of seeding locally.
+ * This ensures new devices always get the real production data.
  */
 export async function seedDatabase(options = {}) {
   const { publicOnly = false } = options;
-  // Migrate existing staff/admin credentials. New installs use the owner setup wizard.
+
+  // ── Cloud-First Hydration ─────────────────────────────────────
+  // If Supabase is configured and has data, hydrate from cloud instead of seeding.
+  // This is the KEY fix for multi-device consistency.
   try {
-    const staffCount = await db.staff.count();
-    if (staffCount > 0) {
-      const staffMembers = await db.staff.toArray();
-      for (const staff of staffMembers) {
-        if (staff.pin && !staff.pinHash) {
-          await db.staff.update(staff.id, {
-            pinHash: await hashPin(staff.pin),
-            pin: undefined,
-            isSynced: 0
-          });
-        }
+    const { cloudHasData, fullPull } = await import('../services/cloudDb.js');
+    const hasCloudData = await cloudHasData();
+    if (hasCloudData) {
+      console.log('[Seed] Cloud data detected — hydrating from Supabase instead of local seeds.');
+      await fullPull({ publicOnly });
+      // Still run migrations below, but skip seed data
+      await runMigrations();
+      if (!publicOnly) {
+        await ensureDefaultTables();
       }
-    }
-
-    const legacyAdminPin = await db.settings.get('adminPin');
-    const adminPinHash = await db.settings.get('adminPinHash');
-    if (legacyAdminPin?.value && !adminPinHash?.value && legacyAdminPin.value !== '1234') {
-      await db.settings.put({ key: 'adminPinHash', value: await hashPin(legacyAdminPin.value) });
-      await db.settings.delete('adminPin');
-    }
-
-    // Dynamic UPI ID Migration: Ensure default UPI ID is updated if it was previously set to 'thetaste@upi' or is empty
-    const currentUpiIdSetting = await db.settings.get('upiId');
-    if (!currentUpiIdSetting || currentUpiIdSetting.value === 'thetaste@upi' || currentUpiIdSetting.value === '') {
-      await db.settings.put({ key: 'upiId', value: 'paytmqr6zfcsx@ptys' });
-      console.log('[Seed] UPI ID successfully migrated to paytmqr6zfcsx@ptys');
+      return;
     }
   } catch (err) {
-    console.error('[Seed] Failed to migrate staff credentials or settings:', err);
+    console.warn('[Seed] Cloud hydration check skipped (offline or unconfigured):', err.message);
   }
+
+  // Run data migrations (PIN hashing, UPI ID update) on the normal seed path too
+  await runMigrations();
 
   if (!publicOnly) {
     await ensureDefaultTables();
@@ -336,6 +328,44 @@ export async function seedDatabase(options = {}) {
     await db.orders.bulkAdd(historicalOrders);
     console.log('[Seed] High-fidelity historical orders seeded.');
   });
+}
+
+/**
+ * Run data migrations (PIN hashing, UPI ID update).
+ * Extracted so it can be called from both cloud-first and normal seed paths.
+ */
+async function runMigrations() {
+  try {
+    const staffCount = await db.staff.count();
+    if (staffCount > 0) {
+      const staffMembers = await db.staff.toArray();
+      for (const staff of staffMembers) {
+        if (staff.pin && !staff.pinHash) {
+          await db.staff.update(staff.id, {
+            pinHash: await hashPin(staff.pin),
+            pin: undefined,
+            isSynced: 0
+          });
+        }
+      }
+    }
+
+    const legacyAdminPin = await db.settings.get('adminPin');
+    const adminPinHash = await db.settings.get('adminPinHash');
+    if (legacyAdminPin?.value && !adminPinHash?.value && legacyAdminPin.value !== '1234') {
+      await db.settings.put({ key: 'adminPinHash', value: await hashPin(legacyAdminPin.value) });
+      await db.settings.delete('adminPin');
+    }
+
+    // Dynamic UPI ID Migration
+    const currentUpiIdSetting = await db.settings.get('upiId');
+    if (!currentUpiIdSetting || currentUpiIdSetting.value === 'thetaste@upi' || currentUpiIdSetting.value === '') {
+      await db.settings.put({ key: 'upiId', value: 'paytmqr6zfcsx@ptys' });
+      console.log('[Seed] UPI ID successfully migrated to paytmqr6zfcsx@ptys');
+    }
+  } catch (err) {
+    console.error('[Seed] Failed to run migrations:', err);
+  }
 }
 
 async function ensureDefaultTables() {

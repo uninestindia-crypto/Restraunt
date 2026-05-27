@@ -352,104 +352,108 @@ export class CheckoutSuccessModal {
     });
   }
 
-  browserPrint() {
+  async browserPrint() {
     const printWindow = window.open('', '_blank');
     if (!printWindow) {
       showToast('Popup blocker active! Please allow popups to print.', 'warning');
       return;
     }
 
-    const items = typeof this.order.items === 'string' ? JSON.parse(this.order.items) : (this.order.items || []);
-    const itemsRows = items.map(item => `
-      <tr>
-        <td style="padding: 10px 0; border-bottom: 1px solid #e2e8f0; font-weight:500;">${escapeHtml(item.itemName || item.name)}</td>
-        <td style="padding: 10px 0; text-align: center; border-bottom: 1px solid #e2e8f0; color:#4a5568;">${item.quantity || item.qty || 1}</td>
-        <td style="padding: 10px 0; text-align: right; border-bottom: 1px solid #e2e8f0; color:#4a5568;">₹${(item.price || 0).toFixed(2)}</td>
-        <td style="padding: 10px 0; text-align: right; border-bottom: 1px solid #e2e8f0; font-weight:600;">₹${((item.price || 0) * (item.quantity || item.qty || 1)).toFixed(2)}</td>
-      </tr>
-    `).join('');
-
+    // Write a loading message while settings and QR codes are generated
     printWindow.document.write(`
       <html>
         <head>
-          <title>Order Receipt #${this.order.orderNumber}</title>
+          <title>Generating Invoice...</title>
           <style>
-            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
-            body { font-family: 'Inter', sans-serif; padding: 40px; color: #1a202c; max-width: 650px; margin: 0 auto; background:#fff; }
-            h1 { font-size: 26px; color: #ff5e36; margin: 0 0 4px; font-weight: 800; letter-spacing: -0.02em; }
-            .header { text-align: center; margin-bottom: 35px; }
-            .details { display: flex; justify-content: space-between; margin-bottom: 30px; font-size: 13px; line-height: 1.5; background:#f7fafc; padding: 16px; border-radius:8px; border:1px solid #e2e8f0; }
-            table { width: 100%; border-collapse: collapse; margin-bottom: 35px; }
-            th { text-align: left; padding-bottom: 10px; border-bottom: 2px solid #1a202c; font-size: 12px; text-transform: uppercase; letter-spacing:0.05em; color: #4a5568; }
-            .total-section { float: right; width: 260px; font-size: 13px; line-height: 2.2; }
-            .total-row { display: flex; justify-content: space-between; }
-            .grand-total { font-size: 18px; font-weight: 800; border-top: 2px solid #1a202c; border-bottom: 2px solid #1a202c; padding: 8px 0; margin-top: 8px; color: #ff5e36; }
-            @media print {
-              body { padding: 0; }
-              button { display: none; }
-            }
+            body { font-family: system-ui, sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; background: #f8fafc; color: #64748b; }
+            .loader { border: 3px solid #e2e8f0; border-top: 3px solid #ff5e36; border-radius: 50%; width: 24px; height: 24px; animation: spin 0.8s linear infinite; margin-right: 12px; }
+            @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
           </style>
         </head>
         <body>
-          <div class="header">
-            <h1>THE TASTE</h1>
-            <div style="font-size: 14px; color: #4a5568; font-weight:600; text-transform:uppercase; letter-spacing:0.05em;">Fast Food & Chinese</div>
-            <div style="font-size: 12px; margin-top: 4px; color:#718096;">Date: ${new Date(this.order.createdAt).toLocaleString()}</div>
-          </div>
-          <div class="details">
-            <div>
-              <strong>Order Code:</strong> #${escapeHtml(this.order.orderNumber)}<br>
-              <strong>Serve Type:</strong> ${(this.order.type || 'takeaway').toUpperCase()}<br>
-              <strong>Payment Status:</strong> ${(this.order.paymentStatus || 'paid').toUpperCase()}
-            </div>
-            <div style="text-align: right;">
-              <strong>Customer:</strong> ${escapeHtml(this.order.customerName || 'Walk-in')}<br>
-              ${this.order.customerPhone ? `<strong>Phone:</strong> ${escapeHtml(this.order.customerPhone)}<br>` : ''}
-              <strong>Method:</strong> ${(this.order.paymentMethod || 'cash').toUpperCase()}
-            </div>
-          </div>
-          <table>
-            <thead>
-              <tr>
-                <th style="width:50%;">Item Description</th>
-                <th style="text-align: center; width:10%;">Qty</th>
-                <th style="text-align: right; width:20%;">Price</th>
-                <th style="text-align: right; width:20%;">Total</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${itemsRows}
-            </tbody>
-          </table>
-          <div class="total-section">
-            <div class="total-row">
-              <span style="color:#4a5568;">Subtotal:</span>
-              <span style="font-weight:600;">₹${(this.order.subtotal || 0).toFixed(2)}</span>
-            </div>
-            ${this.order.tax > 0 ? `
-            <div class="total-row">
-              <span style="color:#4a5568;">GST / Tax:</span>
-              <span style="font-weight:600;">₹${(this.order.tax || 0).toFixed(2)}</span>
-            </div>
-            ` : ''}
-            <div class="total-row grand-total">
-              <span>TOTAL DUE:</span>
-              <span>₹${(this.order.total || 0).toFixed(2)}</span>
-            </div>
-          </div>
-          <div style="clear: both; margin-top: 60px; text-align: center; font-size: 12px; color: #a0aec0; font-weight:500;">
-            Thank you for ordering with us! Visit again! 🙏
-          </div>
-          <script>
-            window.onload = function() {
-              window.print();
-              setTimeout(() => window.close(), 600);
-            }
-          </script>
+          <div class="loader"></div>
+          <div>Preparing premium invoice print preview...</div>
         </body>
       </html>
     `);
-    printWindow.document.close();
+
+    try {
+      // Load all settings
+      const settingsKeys = [
+        'restaurantName',
+        'restaurantTagline',
+        'restaurantPhone',
+        'restaurantAddress',
+        'restaurantEmail',
+        'restaurantWebsite',
+        'operatingHours',
+        'gstin',
+        'fssaiNumber',
+        'receiptFooter',
+        'gstPercent',
+        'showAddressOnReceipt',
+        'showPhoneOnReceipt',
+        'showGstinOnReceipt',
+        'showFssaiOnReceipt',
+        'showFooterOnReceipt',
+        // Invoice designer settings
+        'invoiceTemplate',
+        'invoicePrimaryColor',
+        'invoiceFontFamily',
+        'invoiceLogoUrl',
+        'invoiceTitle',
+        'invoiceTerms',
+        'invoiceShowSignature',
+        'invoiceSignatureText',
+        'invoiceShowGrid',
+        'invoiceShowWatermark',
+        'invoiceShowUpiQr',
+        'upiId',
+        'upiName'
+      ];
+
+      const settings = {};
+      for (const key of settingsKeys) {
+        settings[key] = await getSetting(key);
+      }
+
+      // Generate UPI QR code if enabled
+      let upiQrDataUrl = '';
+      const showUpiQr = settings.invoiceShowUpiQr === 'true' || settings.invoiceShowUpiQr === true;
+      if (showUpiQr && settings.upiId) {
+        try {
+          const { generateUPIQRDataURL } = await import('../../services/upi.js');
+          upiQrDataUrl = await generateUPIQRDataURL({
+            amount: this.order.total,
+            orderId: this.order.orderNumber
+          });
+        } catch (err) {
+          console.error('Failed to generate UPI QR code for printed bill:', err);
+        }
+      }
+
+      // Generate A4 invoice HTML
+      const { InvoiceGenerator } = await import('../../services/invoiceGenerator.js');
+      const invoiceHtml = InvoiceGenerator.generateInvoiceHTML(this.order, settings, upiQrDataUrl);
+
+      // Replace content
+      printWindow.document.open();
+      printWindow.document.write(invoiceHtml);
+      printWindow.document.close();
+    } catch (error) {
+      console.error('Premium invoice print generation failed:', error);
+      printWindow.document.open();
+      printWindow.document.write(`
+        <html>
+          <body style="font-family: system-ui; text-align: center; padding: 40px; color: #ef4444;">
+            <h3>Error generating invoice</h3>
+            <p>${escapeHtml(error.message)}</p>
+            <button onclick="window.close()">Close Window</button>
+          </body>
+        </html>
+      `);
+      printWindow.document.close();
+    }
   }
 
   close() {
