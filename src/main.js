@@ -58,6 +58,9 @@ class App {
       printConsoleSignature();
       injectBuildGlobal();
 
+      // Inject interactive portal switcher widget
+      this.injectSandboxWidget();
+
       // Setup router auth handler
       router.onAuthRequired = () => {
         this.initialized = false;
@@ -555,6 +558,79 @@ class App {
       loadingScreen.classList.add('hide');
       setTimeout(() => loadingScreen.remove(), 500);
     }
+  }
+
+  injectSandboxWidget() {
+    if (document.getElementById('aether-sandbox-widget')) return;
+
+    const widget = document.createElement('div');
+    widget.id = 'aether-sandbox-widget';
+    widget.className = 'aether-sandbox-widget';
+    widget.innerHTML = `
+      <div class="aether-sandbox-trigger">
+        <span class="material-symbols-rounded">admin_panel_settings</span>
+        <span class="sandbox-txt">OS Portals</span>
+      </div>
+      <div class="aether-sandbox-panel">
+        <div class="aether-sandbox-header">
+          <strong>NextGenOS OS Switcher</strong>
+          <small>Interactive Sandbox Switcher</small>
+        </div>
+        <div class="aether-sandbox-body">
+          <button class="sandbox-panel-btn" id="sandbox-go-kiosk">
+            <span class="material-symbols-rounded" style="color:var(--color-primary);">shopping_cart</span>
+            <div>
+              <strong>Customer Kiosk</strong>
+              <small>Public storefront (/#/self-order)</small>
+            </div>
+          </button>
+          <button class="sandbox-panel-btn" id="sandbox-go-pos">
+            <span class="material-symbols-rounded" style="color:var(--nextgenos-purple);">point_of_sale</span>
+            <div>
+              <strong>Staff POS Portal</strong>
+              <small>Operations backend (/#/pos)</small>
+            </div>
+          </button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(widget);
+
+    const trigger = widget.querySelector('.aether-sandbox-trigger');
+    if (trigger) {
+      trigger.addEventListener('click', () => {
+        widget.classList.toggle('is-expanded');
+        import('./utils/helpers.js').then(({ playSound, vibrateDevice }) => {
+          playSound(700, 50);
+          vibrateDevice([15]);
+        });
+      });
+    }
+
+    const goKiosk = widget.querySelector('#sandbox-go-kiosk');
+    if (goKiosk) {
+      goKiosk.addEventListener('click', () => {
+        import('./utils/helpers.js').then(({ playSound }) => playSound(800, 80));
+        window.location.hash = '#/self-order';
+        widget.classList.remove('is-expanded');
+      });
+    }
+
+    const goPos = widget.querySelector('#sandbox-go-pos');
+    if (goPos) {
+      goPos.addEventListener('click', () => {
+        import('./utils/helpers.js').then(({ playSound }) => playSound(800, 80));
+        window.location.hash = '#/pos';
+        widget.classList.remove('is-expanded');
+      });
+    }
+
+    document.addEventListener('click', (e) => {
+      if (!widget.contains(e.target)) {
+        widget.classList.remove('is-expanded');
+      }
+    });
   }
 
   showFatalError(error) {

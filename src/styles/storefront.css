@@ -1117,3 +1117,731 @@
     transition: none;
   }
 }
+
+/* ==========================================================================
+   AETHER OS — LUXURY CUSTOMER VIEWS & CRM TELEMETRY
+   ========================================================================== */
+
+/* ── Interactive Slide-Up details Drawer ── */
+.aether-drawer-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 1000;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--duration-normal) var(--ease-out-expo);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.aether-drawer-overlay.is-open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.aether-drawer-sheet {
+  width: 100%;
+  max-width: 500px;
+  background: var(--bg-surface-glass);
+  backdrop-filter: var(--glass-backdrop-filter);
+  -webkit-backdrop-filter: var(--glass-backdrop-filter);
+  border: 1px solid var(--border-active);
+  border-bottom: none;
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  box-shadow: var(--shadow-occlusion);
+  transform: translateY(100%);
+  transition: transform var(--duration-normal) var(--ease-spring);
+  display: flex;
+  flex-direction: column;
+  max-height: 92vh;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.aether-drawer-overlay.is-open .aether-drawer-sheet {
+  transform: translateY(0);
+}
+
+.aether-drawer-handle {
+  width: 40px;
+  height: 4px;
+  background: var(--text-muted);
+  border-radius: var(--radius-full);
+  margin: 12px auto 0;
+  opacity: 0.4;
+}
+
+.aether-drawer-close-btn {
+  position: absolute;
+  top: 14px;
+  right: 16px;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-full);
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 10;
+  transition: transform var(--duration-instant) ease;
+}
+
+.aether-drawer-close-btn:hover {
+  transform: scale(1.08);
+}
+
+.aether-drawer-scroll-content {
+  flex: 1;
+  overflow-y: auto;
+  padding-bottom: 24px;
+  scrollbar-width: none;
+}
+.aether-drawer-scroll-content::-webkit-scrollbar {
+  display: none;
+}
+
+.aether-drawer-hero-wrapper {
+  position: relative;
+  width: 100%;
+  height: 240px;
+  overflow: hidden;
+}
+
+.aether-drawer-hero-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.aether-drawer-body {
+  padding: var(--space-3);
+}
+
+.aether-drawer-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 8px;
+}
+
+.aether-drawer-header h2 {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 800;
+  margin: 0;
+  color: var(--text-primary);
+}
+
+.aether-drawer-price {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: var(--color-primary);
+}
+
+.aether-drawer-desc {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  margin: 0 0 var(--space-3);
+}
+
+.aether-drawer-section {
+  margin-bottom: 24px;
+}
+
+.aether-drawer-section h3 {
+  font-family: var(--font-display);
+  font-size: 0.9rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-secondary);
+  margin: 0 0 12px;
+}
+
+/* Spicy customizer grid */
+.aether-spicy-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.aether-spicy-option {
+  cursor: pointer;
+}
+
+.aether-spicy-option input[type="radio"] {
+  display: none;
+}
+
+.aether-spicy-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 12px 6px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+  background: rgba(255, 255, 255, 0.02);
+  transition: all var(--duration-fast) var(--ease-out-expo);
+  text-align: center;
+}
+
+.aether-spicy-option input[type="radio"]:checked + .aether-spicy-card {
+  border-color: var(--color-primary);
+  background: rgba(196, 56, 28, 0.05);
+  box-shadow: var(--shadow-glow-active);
+}
+
+.aether-spicy-card span {
+  font-size: 24px;
+  margin-bottom: 4px;
+}
+
+.aether-spicy-card strong {
+  font-size: 0.8rem;
+  color: var(--text-primary);
+}
+
+.aether-spicy-card small {
+  font-size: 0.6rem;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+/* Modifiers check list */
+.aether-modifiers-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.aether-modifier-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.015);
+  border: 1px solid var(--border-subtle);
+  cursor: pointer;
+  transition: all var(--duration-fast);
+}
+
+.aether-modifier-item:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.aether-modifier-item input[type="checkbox"] {
+  display: none;
+}
+
+.aether-checkbox-visual {
+  width: 20px;
+  height: 20px;
+  border-radius: var(--radius-xs);
+  border: 1px solid var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--duration-fast);
+}
+
+.aether-modifier-item input[type="checkbox"]:checked + .aether-checkbox-visual {
+  border-color: var(--color-primary);
+  background: var(--color-primary);
+}
+
+.aether-checkbox-visual::after {
+  content: "✓";
+  color: white;
+  font-size: 12px;
+  font-weight: bold;
+  opacity: 0;
+  transition: opacity var(--duration-instant);
+}
+
+.aether-modifier-item input[type="checkbox"]:checked + .aether-checkbox-visual::after {
+  opacity: 1;
+}
+
+.aether-modifier-label {
+  display: flex;
+  flex-direction: column;
+}
+
+.aether-modifier-label strong {
+  font-size: 0.85rem;
+  color: var(--text-primary);
+}
+
+.aether-modifier-label small {
+  font-size: 0.65rem;
+  color: var(--text-secondary);
+}
+
+.aether-textarea {
+  width: 100%;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 0.8rem;
+  outline: none;
+  resize: none;
+  box-sizing: border-box;
+}
+
+/* Action Bar inside Drawer */
+.aether-drawer-action-bar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px var(--space-3) calc(env(safe-area-inset-bottom, 16px) + 8px);
+  border-top: 1px solid var(--border-active);
+  background: rgba(18, 18, 22, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.aether-drawer-quantity-stepper {
+  display: flex;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-full);
+  padding: 4px;
+}
+
+.aether-qty-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-full);
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  font-size: 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background-color var(--duration-fast);
+}
+
+.aether-qty-btn:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.aether-qty-count {
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  font-weight: 800;
+  width: 32px;
+  text-align: center;
+  color: var(--text-primary);
+}
+
+
+/* ── concentric svg telemetry progress ring ── */
+.aether-telemetry-ring-wrapper {
+  position: relative;
+  width: 140px;
+  height: 140px;
+  margin: 24px auto 16px;
+}
+
+.aether-telemetry-svg {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+
+.aether-telemetry-svg circle {
+  fill: none;
+  stroke-width: 6px;
+  stroke-linecap: round;
+}
+
+.aether-telemetry-svg circle.aether-track {
+  stroke: var(--border-subtle);
+}
+
+.aether-telemetry-svg circle.aether-fill {
+  stroke: var(--color-primary);
+  stroke-dasharray: 251.2;
+  stroke-dashoffset: 251.2;
+  transition: stroke-dashoffset 0.8s var(--ease-out-expo);
+  filter: drop-shadow(0 0 6px var(--color-primary-glow));
+}
+
+.aether-telemetry-ring-label {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.aether-telemetry-ring-label span {
+  font-size: 22px;
+  color: var(--color-primary);
+  margin-bottom: 2px;
+}
+
+.aether-telemetry-ring-label strong {
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  line-height: 1;
+}
+
+.aether-telemetry-ring-label small {
+  font-size: 0.55rem;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-top: 4px;
+}
+
+
+/* ── TasteRewards Loyalty CRM Drawer ── */
+.crm-drawer {
+  max-height: 85vh;
+}
+
+.crm-hero-section {
+  text-align: center;
+  padding: 24px var(--space-3) 16px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.crm-hero-section h2 {
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+  font-weight: 800;
+  margin: 8px 0 4px;
+  color: var(--text-primary);
+}
+
+.crm-hero-section p {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  line-height: 1.4;
+  margin: 0;
+}
+
+.crm-body-content {
+  padding: var(--space-3);
+}
+
+.crm-loyalty-card {
+  padding: 20px;
+  border-radius: var(--radius-lg);
+  color: white;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  height: 160px;
+  margin-bottom: 20px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+  position: relative;
+  overflow: hidden;
+}
+
+.crm-loyalty-card::after {
+  content: "";
+  position: absolute;
+  top: -50%; left: -30%; width: 150%; height: 200%;
+  background: radial-gradient(circle, rgba(255,255,255,0.08) 0%, transparent 60%);
+  pointer-events: none;
+}
+
+.crm-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.crm-brand-name {
+  font-weight: 900;
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+}
+
+.crm-tier-tag {
+  font-size: 0.6rem;
+  font-weight: 800;
+  background: rgba(255, 255, 255, 0.15);
+  padding: 2px 6px;
+  border-radius: var(--radius-xs);
+  letter-spacing: 0.05em;
+}
+
+.crm-card-middle h3 {
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  font-weight: 800;
+  margin: 0 0 2px;
+}
+
+.crm-card-middle p {
+  font-size: 0.75rem;
+  opacity: 0.8;
+  margin: 0;
+  font-family: var(--font-mono);
+}
+
+.crm-card-bottom {
+  display: flex;
+  gap: 32px;
+}
+
+.crm-card-bottom div {
+  display: flex;
+  flex-direction: column;
+}
+
+.crm-card-bottom small {
+  font-size: 0.5rem;
+  opacity: 0.6;
+  letter-spacing: 0.05em;
+}
+
+.crm-card-bottom strong {
+  font-size: 0.95rem;
+  font-weight: 800;
+}
+
+.crm-tier-meter-box {
+  margin-bottom: 24px;
+}
+
+.crm-meter-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.crm-meter-track {
+  height: 6px;
+  background: var(--border-subtle);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+
+.crm-meter-fill {
+  height: 100%;
+  background: var(--color-primary);
+  border-radius: var(--radius-full);
+  box-shadow: var(--shadow-glow-active);
+}
+
+.crm-meter-hint {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  margin: 6px 0 0;
+}
+
+.crm-history-section h3 {
+  font-family: var(--font-display);
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 0 0 12px;
+}
+
+.crm-orders-scroll-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: 280px;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+.crm-orders-scroll-list::-webkit-scrollbar {
+  display: none;
+}
+
+.crm-order-card {
+  padding: 12px;
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.015);
+  border: 1px solid var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+}
+
+.crm-order-card-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.crm-order-card-header strong {
+  font-size: 0.75rem;
+  color: var(--text-primary);
+}
+
+.crm-order-price {
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: var(--color-primary);
+}
+
+.crm-order-items {
+  font-size: 0.68rem;
+  color: var(--text-secondary);
+  margin: 0;
+  line-height: 1.4;
+}
+
+.crm-no-orders {
+  text-align: center;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  padding: 16px;
+}
+
+
+/* ── NextGenOS Portal Switcher Widget ── */
+.aether-sandbox-widget {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 10000;
+  font-family: var(--font-sans);
+}
+
+.aether-sandbox-trigger {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-active);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.25), var(--shadow-glow-active);
+  padding: 8px 12px;
+  border-radius: var(--radius-full);
+  color: var(--text-primary);
+  font-size: 0.7rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all var(--duration-fast);
+}
+
+.aether-sandbox-trigger:hover {
+  transform: translateY(-2px);
+  border-color: var(--color-primary);
+}
+
+.aether-sandbox-trigger span {
+  font-size: 16px;
+  color: var(--color-primary);
+}
+
+.aether-sandbox-panel {
+  position: absolute;
+  bottom: calc(100% + 10px);
+  right: 0;
+  width: 260px;
+  background: var(--bg-surface-glass);
+  backdrop-filter: var(--glass-backdrop-filter);
+  -webkit-backdrop-filter: var(--glass-backdrop-filter);
+  border: 1px solid var(--border-active);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-occlusion);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  opacity: 0;
+  pointer-events: none;
+  transform: scale(0.95) translateY(10px);
+  transform-origin: bottom right;
+  transition: all var(--duration-normal) var(--ease-spring);
+}
+
+.aether-sandbox-widget.is-expanded .aether-sandbox-panel {
+  opacity: 1;
+  pointer-events: auto;
+  transform: scale(1) translateY(0);
+}
+
+.aether-sandbox-header {
+  display: flex;
+  flex-direction: column;
+  border-bottom: 1px solid var(--border-subtle);
+  padding-bottom: 8px;
+}
+
+.aether-sandbox-header strong {
+  font-size: 0.8rem;
+  font-family: var(--font-display);
+  color: var(--text-primary);
+}
+
+.aether-sandbox-header small {
+  font-size: 0.6rem;
+  color: var(--text-secondary);
+}
+
+.aether-sandbox-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sandbox-panel-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+  background: rgba(255, 255, 255, 0.01);
+  color: var(--text-primary);
+  text-align: left;
+  cursor: pointer;
+  transition: all var(--duration-fast);
+}
+
+.sandbox-panel-btn:hover {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: var(--border-active);
+}
+
+.sandbox-panel-btn span {
+  font-size: 20px;
+}
+
+.sandbox-panel-btn div {
+  display: flex;
+  flex-direction: column;
+}
+
+.sandbox-panel-btn strong {
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.sandbox-panel-btn small {
+  font-size: 0.58rem;
+  color: var(--text-secondary);
+}
