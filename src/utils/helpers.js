@@ -4,7 +4,10 @@
  * @returns {string} e.g. "₹120.00"
  */
 export function formatCurrency(amount) {
-  return '₹' + Number(amount).toFixed(2);
+  const symbol = localStorage.getItem('app_currency_symbol') || '₹';
+  const code = localStorage.getItem('app_currency_code') || 'INR';
+  const locale = code === 'INR' ? 'en-IN' : (code === 'EUR' ? 'de-DE' : (code === 'GBP' ? 'en-GB' : (code === 'AUD' ? 'en-AU' : (code === 'CAD' ? 'en-CA' : 'en-US'))));
+  return symbol + Number(amount).toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 /**
@@ -13,7 +16,10 @@ export function formatCurrency(amount) {
  * @returns {string} e.g. "₹120"
  */
 export function formatCurrencyShort(amount) {
-  return '₹' + Math.round(Number(amount));
+  const symbol = localStorage.getItem('app_currency_symbol') || '₹';
+  const code = localStorage.getItem('app_currency_code') || 'INR';
+  const locale = code === 'INR' ? 'en-IN' : (code === 'EUR' ? 'de-DE' : (code === 'GBP' ? 'en-GB' : (code === 'AUD' ? 'en-AU' : (code === 'CAD' ? 'en-CA' : 'en-US'))));
+  return symbol + Math.round(Number(amount)).toLocaleString(locale);
 }
 
 /**

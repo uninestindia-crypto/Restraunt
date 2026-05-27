@@ -34,7 +34,10 @@ class AIService {
   }
 
   formatCurrency(amount) {
-    return `₹${Number(amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+    const symbol = localStorage.getItem('app_currency_symbol') || '₹';
+    const code = localStorage.getItem('app_currency_code') || 'INR';
+    const locale = code === 'INR' ? 'en-IN' : (code === 'EUR' ? 'de-DE' : (code === 'GBP' ? 'en-GB' : (code === 'AUD' ? 'en-AU' : (code === 'CAD' ? 'en-CA' : 'en-US'))));
+    return symbol + Number(amount || 0).toLocaleString(locale, { minimumFractionDigits: 0, maximumFractionDigits: 0 });
   }
 
   classifyIntent(query) {

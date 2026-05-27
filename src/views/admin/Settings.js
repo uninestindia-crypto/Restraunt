@@ -78,7 +78,12 @@ export class SettingsView {
         'invoiceSignatureText',
         'invoiceShowGrid',
         'invoiceShowWatermark',
-        'invoiceShowUpiQr'
+        'invoiceShowUpiQr',
+        // Multi-currency and dynamic tax settings
+        'currencyCode',
+        'currencySymbol',
+        'taxType',
+        'taxLabel'
       ];
 
       for (const key of keys) {
@@ -110,6 +115,12 @@ export class SettingsView {
       if (this.config.invoiceShowGrid === '') this.config.invoiceShowGrid = 'true';
       if (this.config.invoiceShowWatermark === '') this.config.invoiceShowWatermark = 'false';
       if (this.config.invoiceShowUpiQr === '') this.config.invoiceShowUpiQr = 'true';
+
+      // Defaults for currency and tax
+      if (!this.config.currencyCode) this.config.currencyCode = 'INR';
+      if (!this.config.currencySymbol) this.config.currencySymbol = '₹';
+      if (!this.config.taxType) this.config.taxType = 'GST';
+      if (!this.config.taxLabel) this.config.taxLabel = 'GST';
     } catch (e) {
       console.error('Failed to load system settings:', e);
     }
@@ -325,12 +336,46 @@ export class SettingsView {
 
             <div style="display: flex; gap: 16px; flex-wrap: wrap;">
               <div class="input-group" style="flex: 1; min-width: 200px;">
-                <label for="gstPercent" style="${this._labelStyle()}">GST Tax rate (%)</label>
+                <label for="gstPercent" style="${this._labelStyle()}">Tax Rate (%)</label>
                 <input type="number" id="gstPercent" class="input" value="${esc(this.config.gstPercent)}" placeholder="5" min="0" step="0.5" style="${this._inputStyle()}">
               </div>
               <div class="input-group" style="flex: 1; min-width: 200px;">
                 <label for="orderNumberPrefix" style="${this._labelStyle()}">Order Prefix</label>
                 <input type="text" id="orderNumberPrefix" class="input" value="${esc(this.config.orderNumberPrefix)}" placeholder="TT" maxlength="4" style="${this._inputStyle()}">
+              </div>
+            </div>
+
+            <div style="display: flex; gap: 16px; flex-wrap: wrap;">
+              <div class="input-group" style="flex: 1; min-width: 200px;">
+                <label for="currencyCode" style="${this._labelStyle()}">Currency Code</label>
+                <select id="currencyCode" class="input" style="${this._inputStyle()}">
+                  <option value="INR" ${this.config.currencyCode === 'INR' ? 'selected' : ''}>INR (Indian Rupee)</option>
+                  <option value="USD" ${this.config.currencyCode === 'USD' ? 'selected' : ''}>USD (US Dollar)</option>
+                  <option value="EUR" ${this.config.currencyCode === 'EUR' ? 'selected' : ''}>EUR (Euro)</option>
+                  <option value="GBP" ${this.config.currencyCode === 'GBP' ? 'selected' : ''}>GBP (British Pound)</option>
+                  <option value="AUD" ${this.config.currencyCode === 'AUD' ? 'selected' : ''}>AUD (Australian Dollar)</option>
+                  <option value="CAD" ${this.config.currencyCode === 'CAD' ? 'selected' : ''}>CAD (Canadian Dollar)</option>
+                </select>
+              </div>
+              <div class="input-group" style="flex: 1; min-width: 200px;">
+                <label for="currencySymbol" style="${this._labelStyle()}">Currency Symbol</label>
+                <input type="text" id="currencySymbol" class="input" value="${esc(this.config.currencySymbol)}" placeholder="₹" style="${this._inputStyle()}">
+              </div>
+            </div>
+
+            <div style="display: flex; gap: 16px; flex-wrap: wrap;">
+              <div class="input-group" style="flex: 1; min-width: 200px;">
+                <label for="taxType" style="${this._labelStyle()}">Tax Type</label>
+                <select id="taxType" class="input" style="${this._inputStyle()}">
+                  <option value="GST" ${this.config.taxType === 'GST' ? 'selected' : ''}>GST (Goods & Services Tax)</option>
+                  <option value="VAT" ${this.config.taxType === 'VAT' ? 'selected' : ''}>VAT (Value Added Tax)</option>
+                  <option value="Sales Tax" ${this.config.taxType === 'Sales Tax' ? 'selected' : ''}>Sales Tax</option>
+                  <option value="None" ${this.config.taxType === 'None' ? 'selected' : ''}>None (Tax-Free)</option>
+                </select>
+              </div>
+              <div class="input-group" style="flex: 1; min-width: 200px;">
+                <label for="taxLabel" style="${this._labelStyle()}">Tax Label (displayed on bill)</label>
+                <input type="text" id="taxLabel" class="input" value="${esc(this.config.taxLabel)}" placeholder="e.g. GST or VAT" style="${this._inputStyle()}">
               </div>
             </div>
           </div>
@@ -869,7 +914,9 @@ export class SettingsView {
       invoiceShowSignature: getCheck('invoiceShowSignature'),
       invoiceShowGrid: getCheck('invoiceShowGrid'),
       invoiceShowWatermark: getCheck('invoiceShowWatermark'),
-      invoiceShowUpiQr: getCheck('invoiceShowUpiQr')
+      invoiceShowUpiQr: getCheck('invoiceShowUpiQr'),
+      currencySymbol: getVal('currencySymbol') || '₹',
+      taxLabel: getVal('taxLabel') || 'GST'
     };
   }
 
@@ -931,7 +978,9 @@ export class SettingsView {
         invoiceShowGrid: v.invoiceShowGrid,
         invoiceShowWatermark: v.invoiceShowWatermark,
         invoiceShowUpiQr: v.invoiceShowUpiQr,
-        upiId: 'thetaste@upi'
+        upiId: 'thetaste@upi',
+        currencySymbol: v.currencySymbol,
+        taxLabel: v.taxLabel
       };
 
       import('../../services/invoiceGenerator.js').then(({ InvoiceGenerator }) => {
@@ -1023,7 +1072,7 @@ export class SettingsView {
     for (const item of sampleItems) {
       const total = item.qty * item.price;
       subtotal += total;
-      const row = this._padReceiptRow(item.name, `x${item.qty}`, `₹${total}`, cols);
+      const row = this._padReceiptRow(item.name, `x${item.qty}`, `${v.currencySymbol}${total}`, cols);
       lines.push(`<div class="receipt-line-left" style="font-size: 11px;">${row}</div>`);
     }
 
@@ -1032,10 +1081,10 @@ export class SettingsView {
     const gst = Math.round(subtotal * 0.05);
     const grandTotal = subtotal + gst;
 
-    lines.push(`<div class="receipt-line-left" style="font-size: 11px;">${this._padReceiptRow('Subtotal', '', `₹${subtotal}`, cols)}</div>`);
-    lines.push(`<div class="receipt-line-left" style="font-size: 11px;">${this._padReceiptRow('GST (5%)', '', `₹${gst}`, cols)}</div>`);
+    lines.push(`<div class="receipt-line-left" style="font-size: 11px;">${this._padReceiptRow('Subtotal', '', `${v.currencySymbol}${subtotal}`, cols)}</div>`);
+    lines.push(`<div class="receipt-line-left" style="font-size: 11px;">${this._padReceiptRow(`${v.taxLabel} (5%)`, '', `${v.currencySymbol}${gst}`, cols)}</div>`);
     lines.push(divider('='));
-    lines.push(`<div class="receipt-line-left receipt-line-bold" style="font-size: 13px;">${this._padReceiptRow('TOTAL', '', `₹${grandTotal}`, cols)}</div>`);
+    lines.push(`<div class="receipt-line-left receipt-line-bold" style="font-size: 13px;">${this._padReceiptRow('TOTAL', '', `${v.currencySymbol}${grandTotal}`, cols)}</div>`);
     lines.push(divider('='));
 
     if (v.showNotes) {
@@ -1349,7 +1398,8 @@ export class SettingsView {
       'restaurantName', 'restaurantTagline', 'restaurantAddress', 'restaurantPhone',
       'gstin', 'fssaiNumber', 'receiptFooter', 'printerWidth', 'printCopies',
       'invoiceTemplate', 'invoiceFontFamily', 'invoiceTitle', 'invoicePrimaryColor',
-      'invoiceLogoUrl', 'invoiceTerms', 'invoiceSignatureText'
+      'invoiceLogoUrl', 'invoiceTerms', 'invoiceSignatureText',
+      'currencyCode', 'currencySymbol', 'taxType', 'taxLabel'
     ];
     for (const id of previewInputIds) {
       const el = document.getElementById(id);
@@ -1424,7 +1474,12 @@ export class SettingsView {
         'invoiceLogoUrl',
         'invoiceTitle',
         'invoiceTerms',
-        'invoiceSignatureText'
+        'invoiceSignatureText',
+        // Currency and Tax fields
+        'currencyCode',
+        'currencySymbol',
+        'taxType',
+        'taxLabel'
       ];
 
       // Collect toggle (checkbox) fields
@@ -1472,6 +1527,12 @@ export class SettingsView {
           }
         }
         
+        // Update localStorage cached values
+        localStorage.setItem('app_currency_symbol', this.config.currencySymbol || '₹');
+        localStorage.setItem('app_currency_code', this.config.currencyCode || 'INR');
+        localStorage.setItem('app_tax_type', this.config.taxType || 'GST');
+        localStorage.setItem('app_tax_label', this.config.taxLabel || 'GST');
+
         // Notify header logo text (if rendered)
         const logo = document.getElementById('app-logo')?.querySelector('span:last-child');
         if (logo) logo.textContent = this.config.restaurantName;

@@ -46,6 +46,21 @@ class App {
       // surviving across app updates (laptop vs phone inconsistency).
       performVersionGate();
 
+      // Cache currency and tax settings to localStorage for synchronous access in helpers
+      try {
+        const appCurrencySymbol = await db.settings.get('currencySymbol');
+        const appCurrencyCode = await db.settings.get('currencyCode');
+        const appTaxType = await db.settings.get('taxType');
+        const appTaxLabel = await db.settings.get('taxLabel');
+        
+        localStorage.setItem('app_currency_symbol', appCurrencySymbol ? appCurrencySymbol.value : '₹');
+        localStorage.setItem('app_currency_code', appCurrencyCode ? appCurrencyCode.value : 'INR');
+        localStorage.setItem('app_tax_type', appTaxType ? appTaxType.value : 'GST');
+        localStorage.setItem('app_tax_label', appTaxLabel ? appTaxLabel.value : 'GST');
+      } catch (dbErr) {
+        console.warn('[App] Failed to cache database settings in localStorage:', dbErr);
+      }
+
       const initialHash = window.location.hash || '#/self-order';
       const initialPath = initialHash.split('?')[0];
       const isPublicEntry = initialPath === '#/self-order';

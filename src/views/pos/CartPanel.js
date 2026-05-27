@@ -16,6 +16,7 @@ export class CartPanel {
     this.onPlaceOrder = onPlaceOrder;
     this.onOrderTypeChange = onOrderTypeChange;
     this.gstPercent = 5;
+    this.taxLabel = 'GST';
 
     this.loadSettings();
   }
@@ -23,6 +24,9 @@ export class CartPanel {
   async loadSettings() {
     const gst = await getSetting('gstPercent');
     if (gst) this.gstPercent = parseFloat(gst);
+    const label = await getSetting('taxLabel');
+    if (label) this.taxLabel = label.value || label;
+    this.renderCartContent();
   }
 
   updateCart(cart) {
@@ -154,7 +158,7 @@ export class CartPanel {
           <span>${formatCurrency(subtotal)}</span>
         </div>
         <div class="cart-summary-row">
-          <span>GST (${this.gstPercent}%)</span>
+          <span>${this.taxLabel} (${this.gstPercent}%)</span>
           <span>${formatCurrency(tax)}</span>
         </div>
         <div class="cart-summary-row summary-total">
