@@ -1,8 +1,8 @@
 /**
  * ═══════════════════════════════════════════════════
  *  NextGenOS Restaurant Operating System
- *  Component: Login Screen
- *  Version: 2.0.0
+ *  Component: Enterprise Login Screen
+ *  Version: 3.0.0
  *  © 2026 NextGenOS. All Rights Reserved.
  *  This software is proprietary and confidential.
  * ═══════════════════════════════════════════════════
@@ -16,6 +16,7 @@ export class LoginScreen {
     this.onLoginSuccess = onLoginSuccess;
     this.container = null;
     this.pinInput = '';
+    this._keyHandler = null;
   }
 
   render(container) {
@@ -29,29 +30,53 @@ export class LoginScreen {
           <h1 class="login-title">The Taste</h1>
           <p class="login-subtitle">Restaurant Operating System</p>
 
-          <div class="login-pin-section">
-            <label class="login-label">Enter Staff PIN</label>
-            <div class="login-pin-dots" id="login-pin-dots">
-              <span class="pin-dot"></span>
-              <span class="pin-dot"></span>
-              <span class="pin-dot"></span>
-              <span class="pin-dot"></span>
-            </div>
-            <div id="login-error" class="login-error"></div>
+          <div class="login-tabs">
+            <button class="login-tab-btn active" id="tab-cloud" type="button">Enterprise Cloud</button>
+            <button class="login-tab-btn" id="tab-pin" type="button">Local PIN</button>
           </div>
 
-          <div class="login-numpad" id="login-numpad">
-            ${[1,2,3,4,5,6,7,8,9,'',0,'⌫'].map(k => k === '' ? '<button class="numpad-btn empty" disabled></button>' : `
-              <button class="numpad-btn ${k === '⌫' ? 'backspace' : ''}" data-key="${k}">
-                ${k === '⌫' ? '<span class="material-symbols-rounded" style="font-size:20px;">backspace</span>' : k}
-              </button>
-            `).join('')}
+          <div id="login-error" class="login-error"></div>
+
+          <!-- Enterprise Cloud Sign-In Form -->
+          <div class="login-section" id="section-cloud" style="display: block;">
+            <div class="login-input-group">
+              <label class="login-label" for="login-email">Staff Email</label>
+              <input type="email" id="login-email" class="login-input" placeholder="name@nextgenos.com" required autocomplete="username">
+            </div>
+            <div class="login-input-group">
+              <label class="login-label" for="login-password">Security Password</label>
+              <input type="password" id="login-password" class="login-input" placeholder="••••••••••••" required autocomplete="current-password">
+            </div>
+            <button class="btn btn-primary login-submit-btn" id="btn-cloud-login" type="button" style="width:100%; height:46px; border-radius:var(--radius-sm); font-weight:700; margin-top:8px;">
+              Authorize Access
+            </button>
+          </div>
+
+          <!-- Local PIN Sign-In Form -->
+          <div class="login-section" id="section-pin" style="display: none;">
+            <div class="login-pin-section">
+              <label class="login-label">Enter Staff PIN</label>
+              <div class="login-pin-dots" id="login-pin-dots">
+                <span class="pin-dot"></span>
+                <span class="pin-dot"></span>
+                <span class="pin-dot"></span>
+                <span class="pin-dot"></span>
+              </div>
+            </div>
+
+            <div class="login-numpad" id="login-numpad">
+              ${[1,2,3,4,5,6,7,8,9,'',0,'⌫'].map(k => k === '' ? '<button class="numpad-btn empty" disabled></button>' : `
+                <button class="numpad-btn ${k === '⌫' ? 'backspace' : ''}" data-key="${k}" type="button">
+                  ${k === '⌫' ? '<span class="material-symbols-rounded" style="font-size:20px;">backspace</span>' : k}
+                </button>
+              `).join('')}
+            </div>
           </div>
 
           <div class="login-footer">
-            <span style="color:rgba(108,92,231,0.4);font-size:8px;">◆</span>
-            <span style="font-size:0.5rem;color:rgba(148,163,184,0.3);letter-spacing:0.06em;">Powered by</span>
-            <span style="font-size:0.5rem;color:rgba(108,92,231,0.4);letter-spacing:0.06em;">NextGenOS</span>
+            <span style="color:rgba(139,92,246,0.4);font-size:8px;">◆</span>
+            <span style="font-size:0.5rem;color:var(--text-secondary);opacity:0.4;letter-spacing:0.06em;">Powered by</span>
+            <span style="font-size:0.5rem;color:rgba(139,92,246,0.5);letter-spacing:0.06em;font-weight:700;">NextGenOS</span>
           </div>
         </div>
       </div>
@@ -96,17 +121,53 @@ export class LoginScreen {
         .login-subtitle {
           font-size: 0.72rem; color: var(--text-secondary);
           letter-spacing: 0.08em; text-transform: uppercase;
-          font-weight: 700; margin: 0 0 32px;
+          font-weight: 700; margin: 0 0 24px;
           opacity: 0.8;
         }
-        .login-pin-section { margin-bottom: 28px; }
+        .login-tabs {
+          display: flex; gap: 8px; margin-bottom: 24px;
+          background: rgba(255, 255, 255, 0.015);
+          border: 1px solid var(--border-color);
+          border-radius: var(--radius-md);
+          padding: 4px;
+        }
+        .login-tab-btn {
+          flex: 1; padding: 8px; font-size: 0.72rem; font-weight: 700;
+          border-radius: var(--radius-sm); color: var(--text-secondary);
+          transition: all var(--transition-fast);
+          cursor: pointer;
+          border: none;
+          background: none;
+        }
+        .login-tab-btn.active {
+          background: var(--color-primary);
+          color: #FFFFFF;
+          box-shadow: var(--shadow-sm);
+        }
+        .login-input-group {
+          margin-bottom: 16px;
+          text-align: left;
+        }
         .login-label {
           font-size: 0.68rem; color: var(--text-muted);
           font-weight: 700; letter-spacing: 0.08em;
-          text-transform: uppercase; display: block; margin-bottom: 16px;
+          text-transform: uppercase; display: block; margin-bottom: 8px;
         }
+        .login-input {
+          width: 100%; height: 46px; background: var(--bg-input);
+          border: 1px solid var(--border-color); border-radius: var(--radius-sm);
+          padding: 0 16px; color: var(--text-primary); font-size: var(--text-base);
+          transition: all var(--transition-fast) var(--ease-out-expo);
+        }
+        .login-input:focus {
+          border-color: var(--color-primary);
+          box-shadow: var(--shadow-primary);
+          outline: none;
+        }
+        .login-pin-section { margin-bottom: 28px; }
         .login-pin-dots {
           display: flex; gap: 16px; justify-content: center; margin-bottom: 12px;
+          margin-top: 12px;
         }
         .pin-dot {
           width: 12px; height: 12px; border-radius: 50%;
@@ -132,8 +193,8 @@ export class LoginScreen {
           75% { transform: translateX(6px); }
         }
         .login-error {
-          font-size: 0.7rem; color: var(--color-danger); font-weight: 600;
-          min-height: 18px; margin-top: 6px;
+          font-size: 0.72rem; color: var(--color-danger); font-weight: 600;
+          min-height: 18px; margin-bottom: 12px;
           letter-spacing: -0.01em;
         }
         .login-numpad {
@@ -173,37 +234,69 @@ export class LoginScreen {
   }
 
   bindEvents() {
-    const numpad = document.getElementById('login-numpad');
-    if (!numpad) return;
+    const tabCloud = document.getElementById('tab-cloud');
+    const tabPin = document.getElementById('tab-pin');
+    const secCloud = document.getElementById('section-cloud');
+    const secPin = document.getElementById('section-pin');
+    const btnCloud = document.getElementById('btn-cloud-login');
+    const errEl = document.getElementById('login-error');
 
-    numpad.querySelectorAll('.numpad-btn:not(.empty)').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const key = btn.dataset.key;
-        if (key === '⌫') {
-          this.pinInput = this.pinInput.slice(0, -1);
-          playSound(400, 50);
-        } else if (this.pinInput.length < 4) {
-          this.pinInput += key;
-          playSound(600, 50);
-        }
-        this.updateDots();
-        if (this.pinInput.length === 4) {
-          setTimeout(() => this.attemptLogin(), 200);
-        }
-      });
+    tabCloud?.addEventListener('click', () => {
+      tabCloud.classList.add('active');
+      tabPin.classList.remove('active');
+      if (secCloud) secCloud.style.display = 'block';
+      if (secPin) secPin.style.display = 'none';
+      if (errEl) errEl.textContent = '';
+      playSound(650, 60);
     });
+
+    tabPin?.addEventListener('click', () => {
+      tabPin.classList.add('active');
+      tabCloud.classList.remove('active');
+      if (secPin) secPin.style.display = 'block';
+      if (secCloud) secCloud.style.display = 'none';
+      if (errEl) errEl.textContent = '';
+      playSound(650, 60);
+    });
+
+    btnCloud?.addEventListener('click', () => this.attemptCloudLogin());
+
+    const numpad = document.getElementById('login-numpad');
+    if (numpad) {
+      numpad.querySelectorAll('.numpad-btn:not(.empty)').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const key = btn.dataset.key;
+          if (key === '⌫') {
+            this.pinInput = this.pinInput.slice(0, -1);
+            playSound(400, 50);
+          } else if (this.pinInput.length < 4) {
+            this.pinInput += key;
+            playSound(600, 50);
+          }
+          this.updateDots();
+          if (this.pinInput.length === 4) {
+            setTimeout(() => this.attemptLogin(), 200);
+          }
+        });
+      });
+    }
 
     // Keyboard support
     this._keyHandler = (e) => {
-      if (e.key >= '0' && e.key <= '9' && this.pinInput.length < 4) {
-        this.pinInput += e.key;
-        playSound(600, 50);
-        this.updateDots();
-        if (this.pinInput.length === 4) setTimeout(() => this.attemptLogin(), 200);
-      } else if (e.key === 'Backspace') {
-        this.pinInput = this.pinInput.slice(0, -1);
-        playSound(400, 50);
-        this.updateDots();
+      // Only process keys on local pin mode when active
+      if (secPin && secPin.style.display === 'block') {
+        if (e.key >= '0' && e.key <= '9' && this.pinInput.length < 4) {
+          this.pinInput += e.key;
+          playSound(600, 50);
+          this.updateDots();
+          if (this.pinInput.length === 4) setTimeout(() => this.attemptLogin(), 200);
+        } else if (e.key === 'Backspace') {
+          this.pinInput = this.pinInput.slice(0, -1);
+          playSound(400, 50);
+          this.updateDots();
+        }
+      } else if (secCloud && secCloud.style.display === 'block' && e.key === 'Enter') {
+        this.attemptCloudLogin();
       }
     };
     document.addEventListener('keydown', this._keyHandler);
@@ -217,6 +310,48 @@ export class LoginScreen {
     });
     const errEl = document.getElementById('login-error');
     if (errEl) errEl.textContent = '';
+  }
+
+  async attemptCloudLogin() {
+    const emailEl = document.getElementById('login-email');
+    const passwordEl = document.getElementById('login-password');
+    const errEl = document.getElementById('login-error');
+    const btnCloud = document.getElementById('btn-cloud-login');
+
+    const email = emailEl?.value.trim();
+    const password = passwordEl?.value;
+
+    if (!email || !password) {
+      showToast('Email and password are required', 'warning');
+      return;
+    }
+
+    try {
+      if (errEl) errEl.textContent = '';
+      if (btnCloud) {
+        btnCloud.disabled = true;
+        btnCloud.textContent = 'Authenticating...';
+      }
+
+      const staff = await authService.loginWithCloudCredentials(email, password);
+      if (staff) {
+        playSound(900, 100);
+        vibrateDevice([40, 20, 40]);
+        showToast(`Welcome, ${staff.name}! (${staff.role})`, 'success');
+        this.destroy();
+        if (this.onLoginSuccess) this.onLoginSuccess(staff);
+      } else {
+        throw new Error('Could not resolve staff member.');
+      }
+    } catch (err) {
+      playSound(200, 200);
+      vibrateDevice([100]);
+      if (errEl) errEl.textContent = err.message || 'Invalid email or password.';
+      if (btnCloud) {
+        btnCloud.disabled = false;
+        btnCloud.textContent = 'Authorize Access';
+      }
+    }
   }
 
   async attemptLogin() {

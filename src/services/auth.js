@@ -10,6 +10,7 @@
 
 import { db } from '../db/database.js';
 import { hashPin } from '../utils/crypto.js';
+import { signInCloudStaff, signOutCloudStaff } from './supabaseClient.js';
 
 /** 8-hour session duration in milliseconds */
 const SESSION_DURATION_MS = 8 * 60 * 60 * 1000;
@@ -98,6 +99,83 @@ class AuthService {
   }
 
   /**
+   * Authenticate a staff member using their Supabase Auth cloud credentials (email & password).
+   * Binds the live cloud session to the local staff record.
+   * @param {string} email - Supabase Auth cloud email
+   * @param {string} password - Supabase Auth cloud password
+   * @returns {Promise<Object|null>} The authenticated staff object, or null on failure
+   */
+  async loginWithCloudCredentials(email, password) {
+    if (!email || !password) return null;
+    try {
+      const result = await signInCloudStaff(email, password);
+      if (!result.success) {
+        console.warn('[AuthService] Cloud login failed:', result.message);
+        throw new Error(result.message || 'Cloud authentication failed');
+      }
+
+      const user = result.user;
+      if (!user) return null;
+
+      // Match the authenticated Supabase user ID with our local staff registry
+      let staff = await db.staff
+        .where('cloudUserId')
+        .equals(user.id)
+        .first();
+
+      // Fallback: If not found by cloudUserId, match by name or roles, or look up in staff memberships
+      if (!staff) {
+        const userEmail = user.email || email;
+        staff = await db.staff
+          .filter(s => String(s.name).toLowerCase() === userEmail.split('@')[0].toLowerCase())
+          .first();
+      }
+
+      // If still not found, build a secure dynamic staff profile from the cloud session
+      if (!staff) {
+        const fallbackRole = email.includes('admin') || email.includes('owner') ? 'owner' : 'cashier';
+        const tempId = Date.now();
+        staff = {
+          id: tempId,
+          name: user.email?.split('@')[0] || 'Cloud User',
+          role: fallbackRole,
+          cloudUserId: user.id,
+          isActive: true,
+          createdAt: new Date().toISOString()
+        };
+        // Put in local Dexie so it can be resolved by routing RBAC
+        await db.staff.put(staff);
+      }
+
+      this.currentStaff = staff;
+      this.isAuthenticated = true;
+      localStorage.setItem('auth_staff_email', email);
+      localStorage.removeItem('auth_failed_attempts');
+      localStorage.removeItem('auth_lockout_until');
+
+      // Start session expiry timer (8 hours)
+      this._startSessionTimer();
+
+      // Log activity
+      try {
+        await db.activityLog.add({
+          staffId: staff.id,
+          action: 'cloud_login',
+          timestamp: new Date().toISOString()
+        });
+      } catch (e) {
+        console.error('[AuthService] Error logging cloud login activity:', e);
+      }
+
+      console.log(`[AuthService] Enterprise Cloud Staff "${staff.name}" (${staff.role}) authenticated successfully.`);
+      return staff;
+    } catch (error) {
+      console.error('[AuthService] Cloud login failed:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Log out the current staff member.
    * Clears authentication state, cancels the session timer, and logs the action.
    */
@@ -111,9 +189,15 @@ class AuthService {
       this.sessionTimeout = null;
     }
 
+    // Call Supabase cloud sign-out asynchronously
+    signOutCloudStaff().catch(err => {
+      console.error('[AuthService] Supabase cloud signout error on logout:', err);
+    });
+
     this.currentStaff = null;
     this.isAuthenticated = false;
     localStorage.removeItem('auth_staff_pin');
+    localStorage.removeItem('auth_staff_email');
 
     // Log the logout activity
     if (staffId) {

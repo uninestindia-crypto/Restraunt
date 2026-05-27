@@ -78,6 +78,14 @@ export default defineConfig({
   },
   build: {
     target: 'es2020',
-    sourcemap: false
+    sourcemap: false,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes('node_modules/@supabase')) return 'supabase';
+          if (id.includes('node_modules/qrcode')) return 'qrcode';
+        }
+      }
+    }
   }
 });
