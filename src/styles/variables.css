@@ -8,6 +8,14 @@
  * ═══════════════════════════════════════════════════
  */
 
+@font-face {
+  font-family: 'Material Symbols Rounded';
+  font-style: normal;
+  font-weight: 400;
+  src: url('/assets/material-symbols-rounded.ttf') format('truetype');
+  font-display: block;
+}
+
 :root {
   /* ── Typography Fonts ── */
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;

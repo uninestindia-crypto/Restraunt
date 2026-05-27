@@ -271,3 +271,30 @@ b {
 .scrollbar-none::-webkit-scrollbar {
   display: none;
 }
+
+/* ── Material Symbols Rounded Reset ── */
+.material-symbols-rounded {
+  font-family: 'Material Symbols Rounded';
+  font-weight: normal;
+  font-style: normal;
+  font-size: 24px;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  -webkit-font-feature-settings: 'liga';
+  -webkit-font-smoothing: antialiased;
+  
+  /* Layout stabilization if font fails or is loading */
+  width: 1em;
+  height: 1em;
+  overflow: hidden;
+  text-align: center;
+  flex-shrink: 0;
+}
+
