@@ -20,6 +20,8 @@ export function formatWhatsAppBill(order, settings = {}) {
   const restaurantAddress = settings.restaurantAddress || '';
   const restaurantPhone = settings.restaurantPhone || '';
   const gstin = settings.restaurantGst || '';
+  const currencySymbol = settings.currencySymbol || '₹';
+  const taxLabel = settings.taxLabel || 'GST';
   
   let text = `🍜 *${restaurantName.toUpperCase()}* — Order Receipt\n`;
   if (restaurantAddress) text += `📍 ${restaurantAddress}\n`;
@@ -37,14 +39,14 @@ export function formatWhatsAppBill(order, settings = {}) {
       const name = item.itemName || item.name || 'Item';
       const qty = item.quantity || item.qty || 1;
       const price = item.price || 0;
-      text += `• ${name} x${qty} — ₹${price * qty}\n`;
+      text += `• ${name} x${qty} — ${currencySymbol}${price * qty}\n`;
     });
   }
   
   text += `━━━━━━━━━━━━━━━━\n`;
-  text += `*Subtotal:* ₹${order.subtotal || 0}\n`;
-  if (order.tax) text += `*GST/Tax:* ₹${order.tax || 0}\n`;
-  text += `*TOTAL: ₹${order.total || 0}*\n`;
+  text += `*Subtotal:* ${currencySymbol}${order.subtotal || 0}\n`;
+  if (order.tax) text += `*${taxLabel}:* ${currencySymbol}${order.tax || 0}\n`;
+  text += `*TOTAL: ${currencySymbol}${order.total || 0}*\n`;
   text += `━━━━━━━━━━━━━━━━\n`;
   
   if (order.paymentStatus === 'paid') {
@@ -72,7 +74,9 @@ export async function sendBillOnWhatsApp(order, phoneNumber = '') {
     restaurantName: await getSetting('restaurantName'),
     restaurantAddress: await getSetting('restaurantAddress'),
     restaurantPhone: await getSetting('restaurantPhone'),
-    restaurantGst: await getSetting('gstin')
+    restaurantGst: await getSetting('gstin'),
+    currencySymbol: await getSetting('currencySymbol'),
+    taxLabel: await getSetting('taxLabel')
   };
 
   const text = formatWhatsAppBill(order, settings);

@@ -474,7 +474,7 @@ export class InvoiceGenerator {
                       <div>
                         <div style="font-size: 12px; font-weight: 700; color: #1e293b;">Scan to Pay Instantly</div>
                         <div style="font-size: 11px; color: #64748b; margin-top: 4px; line-height: 1.4;">
-                          Scan this QR code using any UPI app (GPay, PhonePe, Paytm) to make payment of <strong>₹${total.toFixed(2)}</strong>.
+                          Scan this QR code using any UPI app (GPay, PhonePe, Paytm) to make payment of <strong>${currencySymbol}${total.toFixed(2)}</strong>.
                         </div>
                       </div>
                     </div>
@@ -493,17 +493,17 @@ export class InvoiceGenerator {
                   <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px;">
                     <div style="display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 12px;">
                       <span style="color: #64748b;">Subtotal</span>
-                      <span style="font-weight: 600; color: #1e293b;">₹${subtotal.toFixed(2)}</span>
+                      <span style="font-weight: 600; color: #1e293b;">${currencySymbol}${subtotal.toFixed(2)}</span>
                     </div>
                     ${tax > 0 ? `
                       <div style="display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 12px;">
                         <span style="color: #64748b;">${escapeHtml(taxLabel)}</span>
-                        <span style="font-weight: 600; color: #1e293b;">₹${tax.toFixed(2)}</span>
+                        <span style="font-weight: 600; color: #1e293b;">${currencySymbol}${tax.toFixed(2)}</span>
                       </div>
                     ` : ''}
                     <div style="border-top: 2px solid ${primaryColor}22; padding-top: 10px; margin-top: 10px; display: flex; justify-content: space-between; align-items: center;">
                       <span style="font-weight: 800; color: #0f172a; font-size: 14px;">Total Amount</span>
-                      <span style="font-weight: 800; color: ${primaryColor}; font-size: 18px;">₹${total.toFixed(2)}</span>
+                      <span style="font-weight: 800; color: ${primaryColor}; font-size: 18px;">${currencySymbol}${total.toFixed(2)}</span>
                     </div>
                     
                     <div style="margin-top: 12px; font-size: 10px; color: #64748b; text-align: center; border-top: 1px dashed #e2e8f0; padding-top: 8px;">

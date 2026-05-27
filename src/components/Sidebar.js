@@ -40,6 +40,7 @@ const NAV_GROUPS = [
     items: [
       { hash: '#/orders', icon: 'receipt_long', label: 'Orders', roles: ['owner', 'manager', 'cashier', 'delivery'] },
       { hash: '#/admin', icon: 'admin_panel_settings', label: 'Admin', roles: ['owner', 'manager'] },
+      { hash: '#/help', icon: 'help', label: 'Help Center', roles: ['owner', 'manager', 'cashier', 'waiter', 'kitchen', 'delivery'] },
     ],
   },
 ];

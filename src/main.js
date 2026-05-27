@@ -450,6 +450,11 @@ class App {
       return new AdminView(this);
     }, ['owner', 'manager']);
 
+    router.register('#/help', async () => {
+      const { HelpView } = await import('./views/admin/HelpView.js');
+      return new HelpView(this);
+    }, ['owner', 'manager', 'cashier', 'waiter', 'kitchen', 'delivery']);
+
     // Update sidebar + header on route change
     router.onNavigate = (hash) => {
       const header = document.querySelector('.app-header');

@@ -38,18 +38,63 @@ export function performVersionGate() {
   const STORAGE_KEY = 'app_build_version';
   const stored = localStorage.getItem(STORAGE_KEY);
 
-  if (stored !== APP_BUILD_VERSION) {
+  if (stored && stored !== APP_BUILD_VERSION) {
     console.log(
-      `[VersionGate] Build changed: "${stored}" → "${APP_BUILD_VERSION}". Clearing stale auth state.`
+      `[VersionGate] Build changed: "${stored}" → "${APP_BUILD_VERSION}". Clearing stale cache, cookies, and auth state.`
     );
 
-    // Wipe auth tokens that may reference old/stale staff data
+    // 1. Wipe auth tokens that may reference old/stale staff/session data
     localStorage.removeItem('auth_staff_pin');
     localStorage.removeItem('auth_staff_email');
     localStorage.removeItem('auth_failed_attempts');
     localStorage.removeItem('auth_lockout_until');
+    localStorage.removeItem('gdrive_access_token');
+    localStorage.removeItem('gdrive_token_expires');
 
-    // Stamp the new version
+    // Clear all Supabase client session local storage keys
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && (key.startsWith('sb-') || key.includes('auth') || key.includes('session'))) {
+        localStorage.removeItem(key);
+        i--; // Decrement i since length has decreased
+      }
+    }
+
+    // 2. Clear all cookies
+    try {
+      const cookies = document.cookie.split(";");
+      for (let i = 0; i < cookies.length; i++) {
+        const cookie = cookies[i];
+        const eqPos = cookie.indexOf("=");
+        const name = eqPos > -1 ? cookie.substr(0, eqPos).trim() : cookie.trim();
+        document.cookie = name + "=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/";
+        document.cookie = name + "=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/;domain=" + window.location.hostname;
+      }
+    } catch (cookieErr) {
+      console.error('[VersionGate] Error clearing cookies:', cookieErr);
+    }
+
+    // 3. Unregister all Service Workers to clear PWA cache and force fetch new files
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations()
+        .then(registrations => {
+          const promises = registrations.map(r => r.unregister());
+          return Promise.all(promises);
+        })
+        .catch(err => {
+          console.error('[VersionGate] Service worker unregister failed:', err);
+        })
+        .finally(() => {
+          // Stamp the new version and reload
+          localStorage.setItem(STORAGE_KEY, APP_BUILD_VERSION);
+          window.location.reload();
+        });
+    } else {
+      localStorage.setItem(STORAGE_KEY, APP_BUILD_VERSION);
+      window.location.reload();
+    }
+  } else if (!stored) {
+    // Stamp the current version on first boot without reload
     localStorage.setItem(STORAGE_KEY, APP_BUILD_VERSION);
   }
 }

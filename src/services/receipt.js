@@ -218,7 +218,7 @@ export class ReceiptBuilder {
 
     // Tax
     if (order.tax && order.tax > 0) {
-      const gstLabel = settings.gstPercent ? `GST (${settings.gstPercent}%)` : 'Tax';
+      const gstLabel = settings.taxLabel ? `${settings.taxLabel} (${settings.gstPercent || 5}%)` : (settings.gstPercent ? `GST (${settings.gstPercent}%)` : 'Tax');
       rb.leftRight(gstLabel, order.tax.toFixed(2));
     }
 
@@ -226,7 +226,7 @@ export class ReceiptBuilder {
       .center()
       .bold()
       .big()
-      .text(`TOTAL: ₹${(order.total || 0).toFixed(2)}`)
+      .text(`TOTAL: ${settings.currencySymbol || '₹'}${(order.total || 0).toFixed(2)}`)
       .normal()
       .bold(false)
       .line('=');

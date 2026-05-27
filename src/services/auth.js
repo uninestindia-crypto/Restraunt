@@ -25,6 +25,125 @@ class AuthService {
   }
 
   /**
+   * Resolves a Supabase Auth user to a local staff or customer object.
+   * Checks local IndexedDB cache first, then checks user_metadata, and falls back to Supabase queries.
+   * @private
+   */
+  async _resolveStaffOrCustomer(user, emailFallback = '') {
+    if (!user) return null;
+
+    // 1. Try to find local staff record by cloudUserId
+    let staff = await db.staff
+      .where('cloudUserId')
+      .equals(user.id)
+      .first();
+
+    if (staff) return staff;
+
+    // 2. Not found locally. Determine if user is staff or customer.
+    const staffRoles = ['owner', 'manager', 'cashier', 'kitchen', 'waiter', 'delivery'];
+    const metadataRole = user.user_metadata?.role;
+    let isStaff = metadataRole && staffRoles.includes(metadataRole.toLowerCase());
+    let resolvedRole = metadataRole || 'cashier';
+    let resolvedStaffId = null;
+
+    // 3. If metadata doesn't explicitly state staff role, query Supabase staff_memberships table
+    if (!isStaff) {
+      try {
+        const { getSupabaseClient } = await import('./supabaseClient.js');
+        const client = await getSupabaseClient();
+        if (client) {
+          const { data: membership } = await client
+            .from('staff_memberships')
+            .select('role, staff_id')
+            .eq('auth_user_id', user.id)
+            .eq('is_active', true)
+            .maybeSingle();
+          if (membership) {
+            isStaff = true;
+            resolvedRole = membership.role;
+            resolvedStaffId = membership.staff_id;
+          }
+        }
+      } catch (e) {
+        console.error('[AuthService] Error checking remote memberships:', e);
+      }
+    }
+
+    // 4. Fallback to email pattern matching if we still aren't sure (failsafe)
+    if (!isStaff) {
+      const userEmail = user.email || emailFallback || '';
+      const lowercaseEmail = userEmail.toLowerCase();
+      isStaff = lowercaseEmail.includes('admin') || 
+                lowercaseEmail.includes('staff') || 
+                lowercaseEmail.includes('owner') || 
+                lowercaseEmail.includes('manager') || 
+                lowercaseEmail.includes('cashier') || 
+                lowercaseEmail.includes('kitchen') || 
+                lowercaseEmail.includes('waiter');
+      if (isStaff) {
+        resolvedRole = lowercaseEmail.includes('admin') || lowercaseEmail.includes('owner') ? 'owner' : 'cashier';
+      }
+    }
+
+    const userEmail = user.email || emailFallback || '';
+    const name = user.user_metadata?.name || userEmail.split('@')[0] || 'Cloud User';
+
+    if (isStaff) {
+      // Build and insert a staff profile locally
+      const tempId = resolvedStaffId || Date.now();
+      staff = {
+        id: tempId,
+        name,
+        role: resolvedRole.toLowerCase(),
+        cloudUserId: user.id,
+        isActive: true,
+        createdAt: new Date().toISOString()
+      };
+      await db.staff.put(staff);
+      return staff;
+    } else {
+      // Customer flow
+      let customer = await db.customers
+        .where('authUserId')
+        .equals(user.id)
+        .first();
+
+      if (!customer) {
+        customer = await db.customers
+          .filter(c => c.name.toLowerCase() === name.toLowerCase())
+          .first();
+      }
+
+      if (!customer) {
+        customer = {
+          id: Date.now(),
+          name,
+          phone: '',
+          authUserId: user.id,
+          totalSpent: 0,
+          visitCount: 0,
+          loyaltyPoints: 0,
+          tier: 'bronze',
+          createdAt: new Date().toISOString()
+        };
+        await db.customers.put(customer);
+      } else if (!customer.authUserId) {
+        await db.customers.update(customer.id, { authUserId: user.id, isSynced: 0 });
+      }
+
+      return {
+        id: customer.id,
+        name: customer.name,
+        role: 'customer',
+        cloudUserId: user.id,
+        isActive: true,
+        createdAt: customer.createdAt || new Date().toISOString()
+      };
+    }
+  }
+
+  /**
    * Attempt to restore a persistent session (both staff PIN, and Supabase Auth cloud user).
    * @returns {Promise<Object|null>} The restored staff/customer object, or null
    */
@@ -34,42 +153,7 @@ class AuthService {
       const { getCloudSession } = await import('./supabaseClient.js');
       const session = await getCloudSession();
       if (session?.user) {
-        const user = session.user;
-        const userEmail = user.email || '';
-        const lowercaseEmail = userEmail.toLowerCase();
-        const isStaffEmail = lowercaseEmail.includes('admin') || 
-                             lowercaseEmail.includes('staff') || 
-                             lowercaseEmail.includes('owner') || 
-                             lowercaseEmail.includes('manager') || 
-                             lowercaseEmail.includes('cashier') || 
-                             lowercaseEmail.includes('kitchen') || 
-                             lowercaseEmail.includes('waiter');
-
-        let staff = null;
-        if (isStaffEmail) {
-          staff = await db.staff
-            .where('cloudUserId')
-            .equals(user.id)
-            .first();
-        } else {
-          // Customer
-          let customer = await db.customers
-            .where('authUserId')
-            .equals(user.id)
-            .first();
-          
-          if (customer) {
-            staff = {
-              id: customer.id,
-              name: customer.name,
-              role: 'customer',
-              cloudUserId: user.id,
-              isActive: true,
-              createdAt: customer.createdAt
-            };
-          }
-        }
-
+        const staff = await this._resolveStaffOrCustomer(session.user);
         if (staff) {
           this.currentStaff = staff;
           this.isAuthenticated = true;
@@ -188,77 +272,8 @@ class AuthService {
       const user = result.user;
       if (!user) return null;
 
-      // Match the authenticated Supabase user ID with our local staff registry
-      let staff = await db.staff
-        .where('cloudUserId')
-        .equals(user.id)
-        .first();
-
-      // Fallback: If not found by cloudUserId, check email profile characteristics
-      if (!staff) {
-        const userEmail = user.email || email;
-        const lowercaseEmail = userEmail.toLowerCase();
-        const isStaffEmail = lowercaseEmail.includes('admin') || 
-                             lowercaseEmail.includes('staff') || 
-                             lowercaseEmail.includes('owner') || 
-                             lowercaseEmail.includes('manager') || 
-                             lowercaseEmail.includes('cashier') || 
-                             lowercaseEmail.includes('kitchen') || 
-                             lowercaseEmail.includes('waiter');
-
-        if (!isStaffEmail) {
-          // Treat as Customer!
-          let customer = await db.customers
-            .where('authUserId')
-            .equals(user.id)
-            .first();
-
-          if (!customer) {
-            customer = await db.customers
-              .filter(c => c.name.toLowerCase() === userEmail.split('@')[0].toLowerCase())
-              .first();
-          }
-
-          if (!customer) {
-            customer = {
-              id: Date.now(),
-              name: userEmail.split('@')[0],
-              phone: '',
-              authUserId: user.id,
-              totalSpent: 0,
-              visitCount: 0,
-              loyaltyPoints: 0,
-              tier: 'bronze',
-              createdAt: new Date().toISOString()
-            };
-            await db.customers.put(customer);
-          } else if (!customer.authUserId) {
-            await db.customers.update(customer.id, { authUserId: user.id, isSynced: 0 });
-          }
-
-          staff = {
-            id: customer.id,
-            name: customer.name,
-            role: 'customer',
-            cloudUserId: user.id,
-            isActive: true,
-            createdAt: new Date().toISOString()
-          };
-        } else {
-          // Build a secure dynamic staff profile from the cloud session
-          const fallbackRole = lowercaseEmail.includes('admin') || lowercaseEmail.includes('owner') ? 'owner' : 'cashier';
-          const tempId = Date.now();
-          staff = {
-            id: tempId,
-            name: userEmail.split('@')[0] || 'Cloud Staff',
-            role: fallbackRole,
-            cloudUserId: user.id,
-            isActive: true,
-            createdAt: new Date().toISOString()
-          };
-          await db.staff.put(staff);
-        }
-      }
+      const staff = await this._resolveStaffOrCustomer(user, email);
+      if (!staff) return null;
 
       this.currentStaff = staff;
       this.isAuthenticated = true;
