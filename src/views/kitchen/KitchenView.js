@@ -4,7 +4,7 @@
  */
 
 import { getOrders, updateOrderStatus, db } from '../../db/database.js';
-import { formatTime, showToast, playSound, vibrateDevice } from '../../utils/helpers.js';
+import { escapeHtml, formatTime, parseOrderItems, showToast, playSound, vibrateDevice } from '../../utils/helpers.js';
 
 export class KitchenView {
   constructor(app) {
@@ -447,7 +447,7 @@ export class KitchenView {
     card.className = 'card card-glass animate-slideUp';
     
     // Parse items if string
-    const items = typeof order.items === 'string' ? JSON.parse(order.items) : order.items;
+    const items = parseOrderItems(order.items);
 
     // Calculate time elapsed
     const elapsedMinutes = Math.floor((Date.now() - new Date(order.createdAt).getTime()) / 60000);
@@ -534,11 +534,11 @@ export class KitchenView {
           <div style="flex: 1; min-width: 0; padding-right: 12px;">
             <div style="display: flex; align-items: center; gap: 8px;">
               <span style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 800; color: var(--color-primary); font-size: 1.1rem; line-height: 1;">${item.quantity}x</span>
-              <span style="color: var(--text-primary); font-weight: 600; font-size: 0.95rem;">${item.itemName}</span>
+              <span style="color: var(--text-primary); font-weight: 600; font-size: 0.95rem;">${escapeHtml(item.itemName || item.name || 'Item')}</span>
             </div>
             ${item.notes ? `<div style="font-size: var(--text-xs); color: #FF8960; font-weight: 500; font-style: italic; margin-left: 28px; margin-top: 4px; display: flex; align-items: center; gap: 4px;">
               <span class="material-symbols-rounded" style="font-size: 12px;">notes</span>
-              ${item.notes}
+              ${escapeHtml(item.notes)}
             </div>` : ''}
           </div>
           <div style="display: flex; align-items: center; justify-content: center; height: 20px;">
@@ -587,8 +587,10 @@ export class KitchenView {
         </button>
       `;
     } else if (order.status === 'ready') {
+      const action = order.type === 'delivery' ? 'dispatch-wait' : 'complete';
+      const label = order.type === 'delivery' ? 'Ready for Dispatch' : 'Done & Serve';
       actionBtnHtml = `
-        <button class="btn action-btn" data-action="complete" data-id="${order.id}" style="
+        <button class="btn action-btn" data-action="${action}" data-id="${order.id}" style="
           color: white; 
           background: linear-gradient(135deg, #10B981 0%, #059669 100%);
           border: none;
@@ -602,12 +604,12 @@ export class KitchenView {
           align-items: center;
           justify-content: center;
           gap: 6px;
-          cursor: pointer;
+          cursor: ${order.type === 'delivery' ? 'default' : 'pointer'};
           font-size: var(--text-xs);
           transition: all var(--transition-fast);
         ">
           <span class="material-symbols-rounded" style="font-size: 18px;">done_all</span>
-          Done & Serve
+          ${label}
         </button>
       `;
     }
@@ -620,7 +622,7 @@ export class KitchenView {
             #${order.orderNumber.split('-').pop()}
           </div>
           <div style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: var(--text-xs); color: var(--text-secondary); text-transform: uppercase; margin-top: 4px; font-weight: 700; display: flex; align-items: center; gap: 4px;">
-            ${order.type === 'dinein' ? '🍽️ Dine In' : order.type === 'takeaway' ? '🥡 Takeaway' : '🛵 Delivery'}
+            ${order.type === 'dinein' ? 'Dine In' : order.type === 'takeaway' ? 'Pickup' : 'Delivery'}
           </div>
         </div>
         <div style="text-align: right; display: flex; flex-direction: column; align-items: flex-end;">
@@ -695,8 +697,23 @@ export class KitchenView {
           gap: 6px;
         ">
           <span class="material-symbols-rounded" style="font-size: 14px; color: var(--color-primary);">person</span>
-          <span style="font-weight: 600;">${order.customerName}</span>
-          ${order.customerPhone ? `<span style="color: var(--text-muted); font-size: 10px;">(${order.customerPhone})</span>` : ''}
+          <span style="font-weight: 600;">${escapeHtml(order.customerName)}</span>
+          ${order.customerPhone ? `<span style="color: var(--text-muted); font-size: 10px;">(${escapeHtml(order.customerPhone)})</span>` : ''}
+        </div>
+      ` : ''}
+
+      ${order.type === 'delivery' ? `
+        <div style="
+          font-size: var(--text-xs);
+          color: var(--text-secondary);
+          background: rgba(59, 130, 246, 0.05);
+          padding: 8px 12px;
+          border-radius: var(--radius-md);
+          border: 1px dashed rgba(59, 130, 246, 0.24);
+          line-height: 1.4;
+        ">
+          <strong style="color: var(--text-primary);">Delivery:</strong> ${escapeHtml(order.deliveryAddress || 'Address missing')}
+          ${order.deliveryLandmark ? `<br><span>${escapeHtml(order.deliveryLandmark)}</span>` : ''}
         </div>
       ` : ''}
 
@@ -710,7 +727,7 @@ export class KitchenView {
           border-radius: var(--radius-md);
           border: 1px solid rgba(245, 158, 11, 0.1);
         ">
-          <strong>Notes:</strong> ${order.notes}
+          <strong>Notes:</strong> ${escapeHtml(order.notes)}
         </div>
       ` : ''}
 
@@ -754,6 +771,8 @@ export class KitchenView {
         } else if (action === 'complete') {
           await updateOrderStatus(orderId, 'completed');
           showToast('Order served & closed', 'success');
+        } else if (action === 'dispatch-wait') {
+          showToast('Use Orders to assign delivery staff', 'info');
         }
 
         // Instantly reload KDS

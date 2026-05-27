@@ -28,8 +28,15 @@ export async function seedDatabase() {
       await db.settings.put({ key: 'adminPinHash', value: await hashPin(legacyAdminPin.value) });
       await db.settings.delete('adminPin');
     }
+
+    // Dynamic UPI ID Migration: Ensure default UPI ID is updated if it was previously set to 'thetaste@upi' or is empty
+    const currentUpiIdSetting = await db.settings.get('upiId');
+    if (!currentUpiIdSetting || currentUpiIdSetting.value === 'thetaste@upi' || currentUpiIdSetting.value === '') {
+      await db.settings.put({ key: 'upiId', value: 'paytmqr6zfcsx@ptys' });
+      console.log('[Seed] UPI ID successfully migrated to paytmqr6zfcsx@ptys');
+    }
   } catch (err) {
-    console.error('[Seed] Failed to migrate staff credentials:', err);
+    console.error('[Seed] Failed to migrate staff credentials or settings:', err);
   }
 
   // Ensure default tables exist

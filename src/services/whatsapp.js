@@ -31,9 +31,13 @@ export function formatWhatsAppBill(order, settings = {}) {
   if (order.customerName) text += `*Customer:* ${order.customerName}\n`;
   text += `━━━━━━━━━━━━━━━━\n`;
   
-  if (Array.isArray(order.items)) {
-    order.items.forEach(item => {
-      text += `• ${item.name} x${item.quantity} — ₹${item.price * item.quantity}\n`;
+  const items = typeof order.items === 'string' ? JSON.parse(order.items) : (order.items || []);
+  if (Array.isArray(items)) {
+    items.forEach(item => {
+      const name = item.itemName || item.name || 'Item';
+      const qty = item.quantity || item.qty || 1;
+      const price = item.price || 0;
+      text += `• ${name} x${qty} — ₹${price * qty}\n`;
     });
   }
   
@@ -68,7 +72,7 @@ export async function sendBillOnWhatsApp(order, phoneNumber = '') {
     restaurantName: await getSetting('restaurantName'),
     restaurantAddress: await getSetting('restaurantAddress'),
     restaurantPhone: await getSetting('restaurantPhone'),
-    restaurantGst: await getSetting('restaurantGst')
+    restaurantGst: await getSetting('gstin')
   };
 
   const text = formatWhatsAppBill(order, settings);

@@ -1,12 +1,9 @@
-/**
- * OrderHistory — Admin view for browsing, searching, and reprinting receipts
- */
-
-import { db, getOrder, getOrders, getSetting } from '../../db/database.js';
-import { formatCurrency, formatDateTime, showToast, playSound, vibrateDevice } from '../../utils/helpers.js';
-import { printerService } from '../../services/printer.js';
+import { db, getOrder, getOrders, getSetting, updateOrderFields, updatePayment } from '../../db/database.js';
 import { ReceiptBuilder } from '../../services/receipt.js';
+import { printerService } from '../../services/printer.js';
 import { sendBillOnWhatsApp } from '../../services/whatsapp.js';
+import { authService } from '../../services/auth.js';
+import { escapeHtml, formatCurrency, formatDateTime, parseOrderItems, playSound, showToast, vibrateDevice } from '../../utils/helpers.js';
 
 export class OrderHistory {
   constructor(app) {
@@ -14,490 +11,368 @@ export class OrderHistory {
     this.container = null;
     this.orders = [];
     this.filteredOrders = [];
+    this.deliveryStaff = [];
     this.searchQuery = '';
-    
-    // Selected order for detailed modal view
-    this.selectedOrder = null;
   }
 
   async mount(container) {
     this.container = container;
-    await this.loadOrders();
+    await this.loadData();
     this.render();
-    this.bindEvents();
   }
 
-  async loadOrders() {
-    try {
-      this.orders = await getOrders();
-      this.applyFilter();
-    } catch (err) {
-      console.error('Failed to load order history:', err);
-    }
+  async loadData() {
+    this.orders = await getOrders();
+    this.deliveryStaff = (await db.staff.toArray())
+      .filter(staff => staff.role === 'delivery' && (staff.isActive === 1 || staff.isActive === true));
+    this.applyFilter();
   }
 
   applyFilter() {
     const query = this.searchQuery.toLowerCase().trim();
-    if (!query) {
-      this.filteredOrders = [...this.orders];
-    } else {
-      this.filteredOrders = this.orders.filter(order => 
-        order.orderNumber.toLowerCase().includes(query) ||
-        (order.customerName && order.customerName.toLowerCase().includes(query)) ||
-        (order.customerPhone && order.customerPhone.includes(query)) ||
-        (order.paymentMethod && order.paymentMethod.toLowerCase().includes(query))
-      );
-    }
+    this.filteredOrders = !query ? [...this.orders] : this.orders.filter(order => {
+      return [
+        order.orderNumber,
+        order.customerName,
+        order.customerPhone,
+        order.type,
+        order.paymentMethod,
+        order.paymentStatus,
+        order.deliveryStatus,
+        order.deliveryStaffName
+      ].some(value => String(value || '').toLowerCase().includes(query));
+    });
   }
 
   render() {
-    const ordersRows = this.filteredOrders.map(order => {
-      const typeLabel = order.type === 'dinein' ? '🍽️ Dine In' : order.type === 'takeaway' ? '🥡 Takeaway' : '🛵 Delivery';
-      const statusBadge = order.status === 'completed' 
-        ? '<span class="badge badge-success" style="font-family: \'Plus Jakarta Sans\', sans-serif; font-weight: 700;">Completed</span>' 
-        : order.status === 'ready' 
-        ? '<span class="badge badge-success" style="font-family: \'Plus Jakarta Sans\', sans-serif; font-weight: 700; background:rgba(16,185,129,0.08); color:var(--color-success); border:1px solid rgba(16,185,129,0.25);">Ready</span>'
-        : order.status === 'preparing'
-        ? '<span class="badge badge-warning" style="font-family: \'Plus Jakarta Sans\', sans-serif; font-weight: 700; background:rgba(245,158,11,0.08); border:1px solid rgba(245,158,11,0.25);">Cooking</span>'
-        : '<span class="badge badge-danger" style="font-family: \'Plus Jakarta Sans\', sans-serif; font-weight: 700; background:rgba(239,68,68,0.08); border:1px solid rgba(239,68,68,0.25);">Pending</span>';
-
-      const payMethodLabel = order.paymentMethod === 'upi' ? '📱 UPI' : order.paymentMethod === 'cash' ? '💵 Cash' : 'Unpaid';
-      const payStatusClass = order.paymentStatus === 'paid' ? 'text-success' : 'text-danger';
-
-      return `
-        <tr style="border-bottom: 1px solid var(--border-glass); font-size: var(--text-sm); cursor: pointer; transition: background var(--transition-fast);" class="order-row" data-id="${order.id}">
-          <td style="padding: 16px 20px; font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 800; color: var(--text-primary);">#${order.orderNumber.split('-').pop()}</td>
-          <td style="padding: 16px 20px; color: var(--text-secondary); font-weight: 500;">${formatDateTime(order.createdAt)}</td>
-          <td style="padding: 16px 20px; color: var(--text-primary); font-weight: 600;">${typeLabel}</td>
-          <td style="padding: 16px 20px; font-weight: 800; color: var(--color-primary);">${formatCurrency(order.total)}</td>
-          <td style="padding: 16px 20px; font-weight: 600; color: var(--text-primary);">${payMethodLabel} (<span class="${payStatusClass}" style="font-weight:700;">${order.paymentStatus}</span>)</td>
-          <td style="padding: 16px 20px;">${statusBadge}</td>
-          <td style="padding: 16px 20px; text-align: right;">
-            <button class="btn btn-secondary btn-sm reprint-direct-btn" data-id="${order.id}" style="
-              min-height: 32px; 
-              padding: 6px 12px; 
-              gap: 4px;
-              font-family: 'Plus Jakarta Sans', sans-serif;
-              font-weight: 700;
-              font-size: var(--text-xs);
-              border: 1px solid var(--border-glass);
-              background: rgba(255,255,255,0.02);
-            ">
-              <span class="material-symbols-rounded" style="font-size: 16px;">print</span>
-              Print
-            </button>
-          </td>
-        </tr>
-      `;
-    }).join('');
+    const rows = this.filteredOrders.map(order => `
+      <tr class="order-row" data-id="${order.id}" style="border-bottom:1px solid var(--border-glass);cursor:pointer;">
+        <td style="${this.tdStyle('font-weight:900;color:var(--text-primary);')}">#${escapeHtml(order.orderNumber.split('-').pop())}</td>
+        <td style="${this.tdStyle()}">${escapeHtml(formatDateTime(order.createdAt))}</td>
+        <td style="${this.tdStyle('font-weight:800;color:var(--text-primary);')}">${this.typeBadge(order)}</td>
+        <td style="${this.tdStyle('font-weight:900;color:var(--color-primary);')}">${formatCurrency(order.total)}</td>
+        <td style="${this.tdStyle()}">${this.paymentBadge(order)}</td>
+        <td style="${this.tdStyle()}">${this.statusBadge(order.status)}</td>
+        <td style="${this.tdStyle()}">${this.deliveryBadge(order)}</td>
+        <td style="${this.tdStyle('text-align:right;')}">
+          <button class="btn btn-secondary btn-sm print-btn" data-id="${order.id}" style="min-height:32px;padding:6px 10px;border:1px solid var(--border-glass);background:rgba(255,255,255,0.02);">
+            <span class="material-symbols-rounded" style="font-size:16px;">print</span>
+          </button>
+        </td>
+      </tr>
+    `).join('');
 
     this.container.innerHTML = `
-      <div style="padding: 0 24px 24px 24px; max-width: 1000px; margin: 0 auto; width: 100%; display: flex; flex-direction: column; gap: 20px;">
-        <div style="display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap;">
-          <h3 style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: 1.15rem; font-weight: 800; color: var(--text-primary); letter-spacing: -0.02em; margin: 0;">Order Logs (${this.filteredOrders.length})</h3>
-          
-          <!-- Search Bar -->
-          <div class="search-wrapper" style="width: 100%; max-width: 320px; position: relative;">
-            <span class="material-symbols-rounded search-icon" style="
-              position: absolute; 
-              left: 12px; 
-              top: 50%; 
-              transform: translateY(-50%); 
-              color: var(--text-secondary);
-              font-size: 20px;
-            ">search</span>
-            <input type="text" id="order-search" class="input" placeholder="Search order #, customer..." value="${this.searchQuery}" style="
-              padding-left: 42px; 
-              height: 38px;
-              background: rgba(0,0,0,0.2);
-              border: 1px solid var(--border-glass);
-              color: var(--text-primary);
-              font-family: 'Inter', sans-serif;
-              border-radius: var(--radius-md);
-              width: 100%;
-              box-sizing: border-box;
-              outline: none;
-              font-size: var(--text-sm);
-              transition: all var(--transition-fast);
-            ">
+      <div style="padding:0 24px 24px;max-width:1180px;margin:0 auto;width:100%;display:flex;flex-direction:column;gap:18px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;">
+          <h3 style="font-family:'Plus Jakarta Sans',sans-serif;font-size:1.15rem;font-weight:900;color:var(--text-primary);margin:0;">Orders & Delivery (${this.filteredOrders.length})</h3>
+          <div style="position:relative;width:100%;max-width:360px;">
+            <span class="material-symbols-rounded" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:20px;color:var(--text-secondary);">search</span>
+            <input id="order-search" class="input" value="${escapeHtml(this.searchQuery)}" placeholder="Search order, customer, driver..." style="padding-left:42px;height:38px;background:rgba(0,0,0,0.2);border:1px solid var(--border-glass);border-radius:8px;width:100%;box-sizing:border-box;color:var(--text-primary);">
           </div>
         </div>
 
-        <!-- Orders Table -->
-        <div style="
-          overflow-x: auto; 
-          border: 1px solid var(--border-glass); 
-          border-radius: var(--radius-xl); 
-          background: rgba(17,17,30,0.3);
-          box-shadow: 0 10px 30px rgba(0,0,0,0.15);
-        " class="scrollbar-none">
-          <table style="width: 100%; border-collapse: collapse; text-align: left;">
+        <div style="overflow-x:auto;border:1px solid var(--border-glass);border-radius:8px;background:rgba(17,17,30,0.28);" class="scrollbar-none">
+          <table style="width:100%;border-collapse:collapse;text-align:left;min-width:920px;">
             <thead>
-              <tr style="border-bottom: 1px solid var(--border-glass); background: rgba(255, 255, 255, 0.01); font-size: var(--text-xs); text-transform: uppercase; color: var(--text-secondary); letter-spacing: 0.05em;">
-                <th style="padding: 16px 20px; font-weight: 700;">Token</th>
-                <th style="padding: 16px 20px; font-weight: 700;">Date & Time</th>
-                <th style="padding: 16px 20px; font-weight: 700;">Type</th>
-                <th style="padding: 16px 20px; font-weight: 700;">Amount</th>
-                <th style="padding: 16px 20px; font-weight: 700;">Payment</th>
-                <th style="padding: 16px 20px; font-weight: 700;">Kitchen Status</th>
-                <th style="padding: 16px 20px; font-weight: 700; text-align: right;">Receipt</th>
+              <tr style="border-bottom:1px solid var(--border-glass);background:rgba(255,255,255,0.02);font-size:var(--text-xs);color:var(--text-secondary);text-transform:uppercase;">
+                <th style="${this.thStyle()}">Token</th>
+                <th style="${this.thStyle()}">Date</th>
+                <th style="${this.thStyle()}">Type</th>
+                <th style="${this.thStyle()}">Amount</th>
+                <th style="${this.thStyle()}">Payment</th>
+                <th style="${this.thStyle()}">Kitchen</th>
+                <th style="${this.thStyle()}">Delivery</th>
+                <th style="${this.thStyle('text-align:right;')}">Receipt</th>
               </tr>
             </thead>
             <tbody>
-              ${ordersRows.length > 0 ? ordersRows : `
-                <tr>
-                  <td colspan="7" style="padding: 48px; text-align: center; color: var(--text-muted); font-weight: 500;">
-                    No matching orders found.
-                  </td>
-                </tr>
-              `}
+              ${rows || `<tr><td colspan="8" style="padding:44px;text-align:center;color:var(--text-muted);">No matching orders found.</td></tr>`}
             </tbody>
           </table>
         </div>
       </div>
     `;
 
-    // Interactive custom inputs border glows
-    const searchInput = this.container.querySelector('#order-search');
-    if (searchInput) {
-      searchInput.addEventListener('focus', () => {
-        searchInput.style.borderColor = 'var(--color-primary)';
-        searchInput.style.boxShadow = '0 0 10px rgba(255, 94, 54, 0.25)';
-      });
-      searchInput.addEventListener('blur', () => {
-        searchInput.style.borderColor = 'var(--border-glass)';
-        searchInput.style.boxShadow = 'none';
-      });
-    }
-
-    // Visual hover style for rows
-    const style = document.createElement('style');
-    style.innerHTML = `
-      .order-row:hover {
-        background: rgba(255,255,255,0.015) !important;
-      }
-    `;
-    this.container.appendChild(style);
+    this.bindEvents();
   }
 
   bindEvents() {
-    // Search input event
-    const searchInp = document.getElementById('order-search');
-    if (searchInp) {
-      searchInp.addEventListener('input', (e) => {
-        this.searchQuery = e.target.value;
-        this.applyFilter();
-        this.render();
-        this.bindEvents();
-        // Keep focus at the end of text
-        const input = document.getElementById('order-search');
-        if (input) {
-          input.focus();
-          const val = input.value;
-          input.value = '';
-          input.value = val;
-        }
-      });
-    }
+    this.container.querySelector('#order-search')?.addEventListener('input', event => {
+      this.searchQuery = event.target.value;
+      this.applyFilter();
+      this.render();
+      this.container.querySelector('#order-search')?.focus();
+    });
 
-    // Row click for detail modal
     this.container.querySelectorAll('.order-row').forEach(row => {
       row.addEventListener('click', () => {
-        const id = parseInt(row.dataset.id);
-        this.selectedOrder = this.orders.find(o => o.id === id);
-        playSound(800, 100);
-        this.showOrderDetailModal();
+        const order = this.orders.find(o => o.id === parseInt(row.dataset.id, 10));
+        if (order) this.showOrderDetailModal(order);
       });
     });
 
-    // Reprint button direct click
-    this.container.querySelectorAll('.reprint-direct-btn').forEach(btn => {
-      btn.addEventListener('click', async (e) => {
-        e.stopPropagation(); // Stop row click modal
-        const id = parseInt(btn.dataset.id);
-        const order = this.orders.find(o => o.id === id);
-        playSound(800, 100);
-        vibrateDevice([40]);
-        await this.printReceipt(order);
+    this.container.querySelectorAll('.print-btn').forEach(btn => {
+      btn.addEventListener('click', async event => {
+        event.stopPropagation();
+        const order = this.orders.find(o => o.id === parseInt(btn.dataset.id, 10));
+        if (order) await this.printReceipt(order);
       });
     });
   }
 
-  showOrderDetailModal() {
-    if (!this.selectedOrder) return;
-    const order = this.selectedOrder;
-    const items = typeof order.items === 'string' ? JSON.parse(order.items) : order.items;
-
-    const itemsListHtml = items.map(item => `
-      <div style="display:flex; justify-content:space-between; font-size:var(--text-sm); margin-bottom:10px;">
-        <span style="color:var(--text-primary); font-weight: 600;">${item.quantity}x ${item.itemName}</span>
-        <span style="font-weight: 700; color:var(--text-primary);">${formatCurrency(item.price * item.quantity)}</span>
-      </div>
-      ${item.notes ? `<div style="font-size:var(--text-xs); color:#FF8960; font-weight: 500; font-style:italic; margin-bottom:10px; margin-top:-6px; display: flex; align-items: center; gap: 4px;">
-        <span class="material-symbols-rounded" style="font-size: 12px;">notes</span>
-        * Note: ${item.notes}
-      </div>` : ''}
-    `).join('<div style="height: 1px; background: var(--border-glass); margin: 6px 0;"></div>');
-
-    const modalHtml = `
-      <div class="modal-overlay" id="order-detail-overlay" style="background: rgba(0,0,0,0.65); backdrop-filter: blur(12px); display: flex; align-items: center; justify-content: center; z-index: 999;">
-        <div class="modal card-glass" style="
-          background: rgba(17,17,30,0.85); 
-          border: 1px solid var(--border-glass); 
-          border-radius: var(--radius-xl); 
-          width: 100%; 
-          max-width: 440px; 
-          box-shadow: 0 25px 50px rgba(0,0,0,0.3);
-          overflow: hidden;
-          animation: modalFadeIn 300ms ease-out;
-        ">
-          <div class="modal-header" style="border-bottom: 1px solid var(--border-glass); padding: 20px 24px; display: flex; align-items: center; justify-content: space-between;">
-            <h3 style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: 1.15rem; font-weight: 800; color: var(--text-primary); letter-spacing: -0.02em; margin: 0;">Receipt Inspector</h3>
-            <button class="btn-icon" id="order-detail-close" style="background: transparent; border: none; cursor: pointer;"><span class="material-symbols-rounded" style="color: var(--text-secondary);">close</span></button>
-          </div>
-          
-          <div class="modal-body scrollbar-none" style="display:flex; flex-direction:column; gap:18px; padding: 24px; max-height: 70vh; overflow-y: auto;">
-            <!-- Summary Header -->
-            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-glass); padding-bottom:14px;">
-              <div>
-                <div style="font-family: 'Plus Jakarta Sans', sans-serif; font-size:1.25rem; font-weight: 800; color:var(--text-primary); letter-spacing: -0.01em;">Order #${order.orderNumber.split('-').pop()}</div>
-                <div style="font-size:var(--text-xs); color:var(--text-secondary); margin-top:4px; font-weight: 500;">${formatDateTime(order.createdAt)}</div>
-              </div>
-              <div class="badge badge-primary" style="
-                font-family: 'Plus Jakarta Sans', sans-serif;
-                padding:6px 12px; 
-                font-size: var(--text-xs);
-                font-weight: 700;
-                letter-spacing: 0.05em;
-              ">${order.type.toUpperCase()}</div>
-            </div>
-
-            <!-- Items -->
-            <div>
-              <h4 style="font-family: 'Plus Jakarta Sans', sans-serif; font-size:var(--text-xs); color:var(--text-secondary); text-transform:uppercase; margin-bottom:10px; font-weight: 700; letter-spacing: 0.05em;">Items Ordered</h4>
-              <div style="background: rgba(0,0,0,0.25); padding:16px; border-radius:var(--radius-xl); border:1px solid var(--border-glass);">
-                ${itemsListHtml}
-              </div>
-            </div>
-
-            <!-- Bill Split -->
-            <div style="display:flex; flex-direction:column; gap:8px; font-size:var(--text-sm); border-bottom:1px solid var(--border-glass); padding-bottom:14px;">
-              <div style="display:flex; justify-content:space-between; color:var(--text-secondary); font-weight: 500;">
-                <span>Subtotal</span>
-                <span>${formatCurrency(order.subtotal)}</span>
-              </div>
-              <div style="display:flex; justify-content:space-between; color:var(--text-secondary); font-weight: 500;">
-                <span>GST (Tax)</span>
-                <span>${formatCurrency(order.tax)}</span>
-              </div>
-              <div style="display:flex; justify-content:space-between; color:var(--color-primary); font-weight: 800; font-size:1.2rem; margin-top:6px; font-family: 'Plus Jakarta Sans', sans-serif; letter-spacing: -0.01em;">
-                <span>Total Bill</span>
-                <span>${formatCurrency(order.total)}</span>
-              </div>
-            </div>
-
-            <!-- Customer / Payment -->
-            <div style="display:flex; flex-direction:column; gap:8px; font-size:var(--text-sm); font-weight: 500; color: var(--text-secondary);">
-              ${order.customerName ? `<div style="display: flex; gap: 6px;"><strong style="color: var(--text-primary);">Customer:</strong> ${order.customerName} ${order.customerPhone ? `(${order.customerPhone})` : ''}</div>` : ''}
-              <div style="display: flex; gap: 6px;"><strong style="color: var(--text-primary);">Payment Option:</strong> ${(order.paymentMethod || 'unpaid').toUpperCase()} (${order.paymentStatus === 'paid' ? 'Paid' : 'Unpaid'})</div>
-              <div style="display: flex; gap: 6px;"><strong style="color: var(--text-primary);">Kitchen Status:</strong> ${order.status.toUpperCase()}</div>
-            </div>
-
-          </div>
-          
-          <div class="modal-footer" style="border-top: 1px solid var(--border-glass); padding: 16px 24px; display: flex; flex-direction: column; gap:10px;">
-            ${order.paymentStatus !== 'paid' ? `
-              <button class="btn btn-block" id="btn-modal-pay-cash" style="
-                font-family: 'Plus Jakarta Sans', sans-serif;
-                font-weight: 700;
-                font-size: var(--text-xs);
-                min-height: 38px;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                gap: 6px;
-                background: #10B981 !important;
-                color: #ffffff !important;
-                border: none;
-              ">
-                <span class="material-symbols-rounded" style="font-size: 18px;">payments</span>
-                Paid via Cash
-              </button>
-              <button class="btn btn-block" id="btn-modal-pay-upi" style="
-                font-family: 'Plus Jakarta Sans', sans-serif;
-                font-weight: 700;
-                font-size: var(--text-xs);
-                min-height: 38px;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                gap: 6px;
-                background: #3B82F6 !important;
-                color: #ffffff !important;
-                border: none;
-              ">
-                <span class="material-symbols-rounded" style="font-size: 18px;">qr_code_scanner</span>
-                Paid via UPI
-              </button>
-            ` : ''}
-            <button class="btn btn-primary btn-block" id="btn-modal-reprint" style="
-              font-family: 'Plus Jakarta Sans', sans-serif;
-              font-weight: 700;
-              font-size: var(--text-xs);
-              min-height: 38px;
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              gap: 6px;
-              box-shadow: var(--shadow-primary);
-            ">
-              <span class="material-symbols-rounded" style="font-size: 18px;">print</span>
-              Reprint Thermal Receipt
-            </button>
-            <button class="btn btn-block" id="btn-modal-whatsapp" style="
-              font-family: 'Plus Jakarta Sans', sans-serif;
-              font-weight: 700;
-              font-size: var(--text-xs);
-              min-height: 38px;
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              gap: 6px;
-              background: #25D366 !important;
-              color: #ffffff !important;
-              border: none;
-            ">
-              <span class="material-symbols-rounded" style="font-size: 18px;">chat</span>
-              Send on WhatsApp
-            </button>
-            <button class="btn btn-secondary btn-block" id="btn-modal-close-footer" style="
-              font-family: 'Plus Jakarta Sans', sans-serif;
-              font-weight: 700;
-              font-size: var(--text-xs);
-              min-height: 38px;
-              background: rgba(255,255,255,0.02);
-              border: 1px solid var(--border-glass);
-            ">Close Inspector</button>
-          </div>
-        </div>
-      </div>
-    `;
+  showOrderDetailModal(order) {
+    const items = parseOrderItems(order.items);
+    const staffOptions = this.deliveryStaff.map(staff => `
+      <option value="${staff.id}" ${String(order.deliveryStaffId || '') === String(staff.id) ? 'selected' : ''}>${escapeHtml(staff.name)}${staff.phone ? ` (${escapeHtml(staff.phone)})` : ''}</option>
+    `).join('');
 
     const wrapper = document.createElement('div');
     wrapper.id = 'detail-modal-wrapper';
-    wrapper.innerHTML = modalHtml;
+    wrapper.innerHTML = `
+      <div id="order-detail-overlay" class="modal-overlay" style="background:rgba(0,0,0,0.65);backdrop-filter:blur(12px);display:flex;align-items:center;justify-content:center;z-index:999;">
+        <div class="modal card-glass" style="width:100%;max-width:560px;max-height:88vh;overflow:hidden;background:rgba(17,17,30,0.92);border:1px solid var(--border-glass);border-radius:8px;box-shadow:var(--shadow-modal);">
+          <header style="padding:18px 22px;border-bottom:1px solid var(--border-glass);display:flex;align-items:center;justify-content:space-between;">
+            <div>
+              <h3 style="font-family:'Plus Jakarta Sans',sans-serif;font-size:1.1rem;font-weight:900;color:var(--text-primary);margin:0;">Order #${escapeHtml(order.orderNumber.split('-').pop())}</h3>
+              <div style="font-size:var(--text-xs);color:var(--text-muted);font-weight:700;margin-top:4px;">${escapeHtml(formatDateTime(order.createdAt))}</div>
+            </div>
+            <button class="btn-icon" id="order-detail-close" style="background:transparent;border:0;"><span class="material-symbols-rounded">close</span></button>
+          </header>
+
+          <main style="padding:20px 22px;overflow-y:auto;max-height:calc(88vh - 190px);display:flex;flex-direction:column;gap:16px;" class="scrollbar-none">
+            ${this.detailSection('Items', items.map(item => `
+              <div style="display:flex;justify-content:space-between;gap:12px;font-size:var(--text-sm);padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.04);">
+                <div><strong>${item.quantity || 1}x</strong> ${escapeHtml(item.itemName || item.name || 'Item')}${item.notes ? `<div style="font-size:var(--text-xs);color:var(--color-warning);margin-top:2px;">${escapeHtml(item.notes)}</div>` : ''}</div>
+                <strong>${formatCurrency((item.price || 0) * (item.quantity || 1))}</strong>
+              </div>
+            `).join(''))}
+
+            ${this.detailSection('Bill', `
+              <div style="display:flex;justify-content:space-between;"><span>Subtotal</span><strong>${formatCurrency(order.subtotal)}</strong></div>
+              <div style="display:flex;justify-content:space-between;"><span>Tax</span><strong>${formatCurrency(order.tax)}</strong></div>
+              ${order.deliveryFee ? `<div style="display:flex;justify-content:space-between;"><span>Delivery fee</span><strong>${formatCurrency(order.deliveryFee)}</strong></div>` : ''}
+              <div style="display:flex;justify-content:space-between;font-size:1.1rem;color:var(--color-primary);font-weight:900;border-top:1px solid var(--border-glass);padding-top:8px;"><span>Total</span><span>${formatCurrency(order.total)}</span></div>
+            `)}
+
+            ${this.detailSection('Customer', `
+              <div><strong>Name:</strong> ${escapeHtml(order.customerName || 'Not provided')}</div>
+              <div><strong>Phone:</strong> ${escapeHtml(order.customerPhone || 'Not provided')}</div>
+              ${order.type === 'delivery' ? `
+                <div><strong>Address:</strong> ${escapeHtml(order.deliveryAddress || 'Missing')}</div>
+                ${order.deliveryLandmark ? `<div><strong>Landmark:</strong> ${escapeHtml(order.deliveryLandmark)}</div>` : ''}
+              ` : ''}
+            `)}
+
+            ${this.detailSection('Payment', `
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
+                ${this.paymentBadge(order)}
+                <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                  ${order.paymentStatus !== 'paid' ? `
+                    <button class="btn btn-secondary btn-sm" id="btn-verify-upi">Verify UPI</button>
+                    <button class="btn btn-secondary btn-sm" id="btn-collect-cash">Collect Cash</button>
+                  ` : `<span class="badge badge-success">Verified ${escapeHtml(order.paymentVerifiedAt ? formatDateTime(order.paymentVerifiedAt) : '')}</span>`}
+                </div>
+              </div>
+            `)}
+
+            ${order.type === 'delivery' ? this.detailSection('Delivery Dispatch', `
+              <div style="display:flex;flex-direction:column;gap:10px;">
+                <div>${this.deliveryBadge(order)}</div>
+                <select id="delivery-staff-select" class="input" style="padding:10px 12px;background:rgba(0,0,0,0.22);border:1px solid var(--border-glass);border-radius:8px;color:var(--text-primary);">
+                  <option value="">Select delivery staff</option>
+                  ${staffOptions}
+                </select>
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(128px,1fr));gap:8px;">
+                  <button class="btn btn-secondary btn-sm" id="btn-assign-delivery">Assign</button>
+                  <button class="btn btn-secondary btn-sm" id="btn-out-delivery">Out for Delivery</button>
+                  <button class="btn btn-primary btn-sm" id="btn-delivered">Delivered</button>
+                  <button class="btn btn-danger btn-sm" id="btn-delivery-failed">Failed</button>
+                </div>
+              </div>
+            `) : ''}
+          </main>
+
+          <footer style="padding:16px 22px;border-top:1px solid var(--border-glass);display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;">
+            <button class="btn btn-primary btn-sm" id="btn-modal-reprint">Print Receipt</button>
+            <button class="btn btn-secondary btn-sm" id="btn-modal-whatsapp">WhatsApp Bill</button>
+            <button class="btn btn-secondary btn-sm" id="btn-modal-close-footer">Close</button>
+          </footer>
+        </div>
+      </div>
+    `;
     document.body.appendChild(wrapper);
 
-    // Bind modal handlers
-    const close = () => {
-      playSound(700, 80);
-      wrapper.remove();
-    };
-
-    document.getElementById('order-detail-close').addEventListener('click', close);
-    document.getElementById('btn-modal-close-footer').addEventListener('click', close);
-    document.getElementById('order-detail-overlay').addEventListener('click', (e) => {
-      if (e.target === document.getElementById('order-detail-overlay')) close();
+    const close = () => wrapper.remove();
+    wrapper.querySelector('#order-detail-close')?.addEventListener('click', close);
+    wrapper.querySelector('#btn-modal-close-footer')?.addEventListener('click', close);
+    wrapper.querySelector('#order-detail-overlay')?.addEventListener('click', event => {
+      if (event.target.id === 'order-detail-overlay') close();
     });
+    wrapper.querySelector('#btn-modal-reprint')?.addEventListener('click', () => this.printReceipt(order));
+    wrapper.querySelector('#btn-modal-whatsapp')?.addEventListener('click', () => this.sendWhatsApp(order));
+    wrapper.querySelector('#btn-verify-upi')?.addEventListener('click', () => this.markPaid(order, 'upi', close));
+    wrapper.querySelector('#btn-collect-cash')?.addEventListener('click', () => this.markPaid(order, 'cash', close));
+    wrapper.querySelector('#btn-assign-delivery')?.addEventListener('click', () => this.assignDelivery(order, wrapper, close));
+    wrapper.querySelector('#btn-out-delivery')?.addEventListener('click', () => this.markOutForDelivery(order, close));
+    wrapper.querySelector('#btn-delivered')?.addEventListener('click', () => this.markDelivered(order, close));
+    wrapper.querySelector('#btn-delivery-failed')?.addEventListener('click', () => this.markDeliveryFailed(order, close));
+  }
 
-    document.getElementById('btn-modal-reprint').addEventListener('click', async () => {
-      playSound(800, 100);
-      vibrateDevice([40]);
-      await this.printReceipt(order);
+  async markPaid(order, method, close) {
+    const reference = method === 'upi' ? (prompt('Enter UPI reference/UTR (optional):', order.paymentReference || '') || '') : '';
+    const staff = authService.getCurrentStaff();
+    await updatePayment(order.id, method, 'paid', {
+      paymentReference: reference,
+      paymentVerifiedAt: new Date().toISOString(),
+      paymentVerifiedBy: staff?.name || 'Staff',
+      paymentCollectedAt: new Date().toISOString()
     });
+    showToast('Payment marked paid', 'success');
+    close();
+    await this.reload();
+  }
 
-    document.getElementById('btn-modal-whatsapp').addEventListener('click', async () => {
-      playSound(800, 100);
-      vibrateDevice([40]);
-      let phone = order.customerPhone || '';
-      const inputPhone = prompt('Enter customer WhatsApp number (10 digits):', phone);
-      if (inputPhone === null) return; // user cancelled
-      try {
-        await sendBillOnWhatsApp(order, inputPhone);
-        showToast('Opening WhatsApp...', 'success');
-      } catch (error) {
-        showToast('Failed to open WhatsApp: ' + error.message, 'error');
-      }
-    });
-
-    if (order.paymentStatus !== 'paid') {
-      const handlePayment = async (method) => {
-        playSound(800, 100);
-        vibrateDevice([40]);
-        try {
-          const result = await db.orders.update(order.id, {
-            paymentStatus: 'paid',
-            paymentMethod: method,
-            status: 'confirmed',
-            isSynced: 0
-          });
-
-          if (result > 0) {
-            const updatedOrder = await getOrder(order.id);
-            if (updatedOrder) {
-              try {
-                const { syncService } = await import('../../services/sync.js');
-                await syncService.syncUpOrder(updatedOrder);
-              } catch (err) {
-                console.error('[Sync] Failed to sync updated order:', err);
-              }
-              
-              showToast('Payment collected!', 'success');
-              
-              // Automatically print receipt
-              await this.printReceipt(updatedOrder);
-              
-              // Close modal
-              close();
-              
-              // Reload orders and re-render/re-bind
-              await this.loadOrders();
-              this.render();
-              this.bindEvents();
-            } else {
-              showToast('Failed to retrieve updated order.', 'error');
-            }
-          } else {
-            showToast('Failed to update order payment in database.', 'error');
-          }
-        } catch (error) {
-          console.error('[Payment] Collection failed:', error);
-          showToast('Payment collection failed: ' + error.message, 'error');
-        }
-      };
-
-      document.getElementById('btn-modal-pay-cash').addEventListener('click', () => handlePayment('cash'));
-      document.getElementById('btn-modal-pay-upi').addEventListener('click', () => handlePayment('upi'));
+  async assignDelivery(order, wrapper, close) {
+    const staffId = wrapper.querySelector('#delivery-staff-select')?.value;
+    if (!staffId) {
+      showToast('Select delivery staff first', 'warning');
+      return;
     }
+    const staff = this.deliveryStaff.find(s => String(s.id) === String(staffId));
+    await updateOrderFields(order.id, {
+      deliveryStaffId: staff.id,
+      deliveryStaffName: staff.name,
+      deliveryStatus: 'assigned',
+      deliveryAssignedAt: new Date().toISOString()
+    });
+    showToast(`Assigned to ${staff.name}`, 'success');
+    close();
+    await this.reload();
+  }
+
+  async markOutForDelivery(order, close) {
+    if (!order.deliveryStaffId) {
+      showToast('Assign delivery staff before dispatch', 'warning');
+      return;
+    }
+    await updateOrderFields(order.id, {
+      deliveryStatus: 'out_for_delivery',
+      deliveryOutAt: new Date().toISOString()
+    });
+    showToast('Order marked out for delivery', 'success');
+    close();
+    await this.reload();
+  }
+
+  async markDelivered(order, close) {
+    const updates = {
+      deliveryStatus: 'delivered',
+      deliveredAt: new Date().toISOString(),
+      status: 'completed',
+      completedAt: new Date().toISOString()
+    };
+    if (order.paymentStatus !== 'paid' && order.paymentMethod === 'cash') {
+      Object.assign(updates, {
+        paymentStatus: 'paid',
+        paymentCollectedAt: new Date().toISOString(),
+        paymentVerifiedAt: new Date().toISOString(),
+        paymentVerifiedBy: authService.getCurrentStaff()?.name || 'Delivery'
+      });
+    }
+    await updateOrderFields(order.id, updates);
+    showToast('Delivery completed', 'success');
+    close();
+    await this.reload();
+  }
+
+  async markDeliveryFailed(order, close) {
+    const reason = prompt('Reason for failed delivery:', order.deliveryNotes || '') || '';
+    await updateOrderFields(order.id, {
+      deliveryStatus: 'failed',
+      deliveryNotes: reason
+    });
+    showToast('Delivery marked failed', 'warning');
+    close();
+    await this.reload();
+  }
+
+  async reload() {
+    await this.loadData();
+    this.render();
   }
 
   async printReceipt(order) {
     if (!printerService.isConnected) {
-      showToast('Printer is not connected! Connect printer in settings.', 'warning', 4000);
+      showToast('Printer is not connected', 'warning', 4000);
       return;
     }
+    const settings = {
+      restaurantName: await getSetting('restaurantName') || 'The Taste',
+      restaurantTagline: await getSetting('restaurantTagline') || 'Fast Food & Chinese',
+      restaurantPhone: await getSetting('restaurantPhone') || '',
+      restaurantAddress: await getSetting('restaurantAddress') || '',
+      printerWidth: await getSetting('printerWidth') || '58',
+    };
+    const latest = await getOrder(order.id) || order;
+    await printerService.print(ReceiptBuilder.orderReceipt(latest, settings));
+    playSound(800, 80);
+    vibrateDevice([30]);
+    showToast('Receipt printed', 'success');
+  }
 
-    try {
-      const settings = {
-        restaurantName: await getSetting('restaurantName') || 'The Taste',
-        restaurantTagline: await getSetting('restaurantTagline') || 'Fast Food & Chinese',
-        restaurantPhone: await getSetting('restaurantPhone') || '',
-        restaurantAddress: await getSetting('restaurantAddress') || '',
-        printerWidth: await getSetting('printerWidth') || '58',
-      };
+  async sendWhatsApp(order) {
+    const inputPhone = prompt('Enter customer WhatsApp number:', order.customerPhone || '');
+    if (inputPhone === null) return;
+    await sendBillOnWhatsApp(order, inputPhone);
+    showToast('Opening WhatsApp...', 'success');
+  }
 
-      const receiptData = ReceiptBuilder.orderReceipt(order, settings);
-      await printerService.print(receiptData);
-      showToast('Receipt printed successfully!', 'success');
-    } catch (error) {
-      console.error('Reprint failed:', error);
-      showToast('Print failed: ' + error.message, 'error');
-    }
+  detailSection(title, body) {
+    return `
+      <section style="padding:14px;border:1px solid var(--border-glass);border-radius:8px;background:rgba(255,255,255,0.02);font-size:var(--text-sm);color:var(--text-secondary);display:flex;flex-direction:column;gap:8px;">
+        <h4 style="font-family:'Plus Jakarta Sans',sans-serif;font-size:var(--text-xs);font-weight:900;color:var(--text-primary);text-transform:uppercase;letter-spacing:0.06em;margin:0;">${escapeHtml(title)}</h4>
+        ${body}
+      </section>
+    `;
+  }
+
+  typeBadge(order) {
+    const labels = { dinein: 'Dine-In', takeaway: 'Pickup', delivery: 'Delivery' };
+    return `<span class="badge badge-primary">${labels[order.type] || escapeHtml(order.type || 'Order')}</span>`;
+  }
+
+  paymentBadge(order) {
+    const paid = order.paymentStatus === 'paid';
+    const pending = order.paymentStatus === 'pending';
+    const label = `${(order.paymentMethod || 'unpaid').toUpperCase()} / ${(order.paymentStatus || 'unpaid').toUpperCase()}`;
+    const cls = paid ? 'badge-success' : pending ? 'badge-warning' : 'badge-danger';
+    return `<span class="badge ${cls}">${escapeHtml(label)}</span>`;
+  }
+
+  statusBadge(status) {
+    const cls = status === 'completed' || status === 'ready' ? 'badge-success' : status === 'preparing' ? 'badge-warning' : 'badge-danger';
+    return `<span class="badge ${cls}">${escapeHtml(status || 'pending')}</span>`;
+  }
+
+  deliveryBadge(order) {
+    if (order.type !== 'delivery') return '<span style="color:var(--text-muted);font-size:var(--text-xs);">Not delivery</span>';
+    const status = order.deliveryStatus || 'pending';
+    const cls = status === 'delivered' ? 'badge-success' : status === 'failed' ? 'badge-danger' : 'badge-warning';
+    const driver = order.deliveryStaffName ? ` - ${order.deliveryStaffName}` : '';
+    return `<span class="badge ${cls}">${escapeHtml(status.replace(/_/g, ' ') + driver)}</span>`;
+  }
+
+  thStyle(extra = '') {
+    return `padding:14px 16px;font-weight:900;${extra}`;
+  }
+
+  tdStyle(extra = '') {
+    return `padding:14px 16px;font-size:var(--text-sm);color:var(--text-secondary);${extra}`;
   }
 
   unmount() {
     this.container = null;
-    const wrapper = document.getElementById('detail-modal-wrapper');
-    if (wrapper) wrapper.remove();
+    document.getElementById('detail-modal-wrapper')?.remove();
   }
 }

@@ -6,6 +6,7 @@
 import { MenuGrid } from './MenuGrid.js';
 import { CartPanel } from './CartPanel.js';
 import { PaymentModal } from './PaymentModal.js';
+import { CheckoutSuccessModal } from './CheckoutSuccessModal.js';
 import { db, createOrder, getNextOrderNumber, getSetting } from '../../db/database.js';
 import { printerService } from '../../services/printer.js';
 import { ReceiptBuilder } from '../../services/receipt.js';
@@ -226,8 +227,8 @@ export class PosView {
       }
 
       // Save to database
-      const orderId = await createOrder(orderData);
-      orderData.id = orderId;
+      const createdOrder = await createOrder(orderData);
+      orderData.id = createdOrder.id;
 
       // --- Integration Hooks ---
 
@@ -303,11 +304,17 @@ export class PosView {
         : '';
       showToast(`Order #${orderData.orderNumber} confirmed! ${paymentMethod === 'upi' ? '(UPI)' : '(Cash)'}${splitInfo}`, 'success', 4000);
 
-      // Close payment modal
+      // Close payment modal & show success bill window
       if (this.paymentModal) {
         this.paymentModal.close();
         this.paymentModal = null;
       }
+
+      const successModal = new CheckoutSuccessModal({
+        order: orderData,
+        onClose: () => {}
+      });
+      await successModal.show();
 
     } catch (error) {
       console.error('Failed to finalize order:', error);
