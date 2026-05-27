@@ -7,6 +7,8 @@
 - Added safe Supabase launch schema with UUID order identity, idempotency keys, display tokens, staff memberships, audit events, and public order rate-limit storage.
 - Added public Supabase Edge Function for server-side validation of customer orders before writing them to the cloud database.
 - Added Playwright, Axe accessibility checks, Lighthouse smoke workflow, and conditional signed Android release workflow.
+- Added a customer-facing storefront website experience for `/#/self-order` with hero imagery, service-mode selection, popular items, menu sections, sticky cart, polished checkout, and order success states.
+- Added local storefront food assets in `public/assets/`.
 
 ### Changed
 - Public online/QR orders now attempt Edge Function validation first and fall back to local pending validation if cloud is unavailable.
@@ -14,10 +16,12 @@
 - Order sync uses `client_order_id` conflict handling for safer multi-device retries.
 - Default seed/settings writes are now idempotent so fresh devices do not fail startup after migrations create settings records.
 - Dexie `tables` access now uses `db.table('tables')` to avoid the reserved `db.tables` metadata property.
+- Public route UI no longer behaves like a kiosk-only menu grid; it now presents The Taste as an online ordering website for home delivery, pickup, and dine-in QR.
+- Mobile viewport settings now allow browser zoom instead of disabling scaling.
 
 ### Verified
 - Passed `npm.cmd run launch:verify` with 6 / 6 unit tests, successful production build, and 0 production audit vulnerabilities.
-- Passed `npm.cmd run test:e2e` with 20 / 20 Playwright checks across desktop, iPhone SE, iPhone 15, Pixel 5, and iPad emulation.
+- Passed `npm.cmd run test:e2e` with 25 / 25 Playwright checks across desktop, iPhone SE, iPhone 15, Pixel 5, and iPad emulation, including public storefront horizontal-overflow checks.
 
 ### Remaining Launch Gates
 - Production Supabase migration, Edge Function deployment, staff membership setup, real-device QA, monitoring, backup restore drill, and signed Android release remain required before public launch.
