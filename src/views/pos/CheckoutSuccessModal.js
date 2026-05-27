@@ -49,13 +49,15 @@ export class CheckoutSuccessModal {
     const tax = this.order.tax || 0;
     const total = this.order.total || 0;
     const orderNum = this.order.orderNumber.split('-').pop();
+    const currencySymbol = localStorage.getItem('app_currency_symbol') || '₹';
+    const taxLabel = localStorage.getItem('app_tax_label') || 'GST';
 
     const itemsHtml = items.map(item => {
       const name = item.itemName || item.name || 'Item';
       const qty = item.quantity || item.qty || 1;
       const price = item.price || 0;
       const rowText = `${name} x${qty}`;
-      const priceText = `₹${(price * qty).toFixed(2)}`;
+      const priceText = `${currencySymbol}${(price * qty).toFixed(2)}`;
       
       // Pad to standard 32 character receipt layout
       const spaces = 32 - rowText.substring(0, 20).length - priceText.length;
@@ -93,18 +95,18 @@ export class CheckoutSuccessModal {
         <div class="receipt-divider">--------------------------------</div>
         <div class="flex-row-between">
           <span>Subtotal</span>
-          <span>₹${subtotal.toFixed(2)}</span>
+          <span>${currencySymbol}${subtotal.toFixed(2)}</span>
         </div>
         ${tax > 0 ? `
         <div class="flex-row-between" style="margin-top:2px;">
-          <span>GST / Tax</span>
-          <span>₹${tax.toFixed(2)}</span>
+          <span>${taxLabel}</span>
+          <span>${currencySymbol}${tax.toFixed(2)}</span>
         </div>
         ` : ''}
         <div class="receipt-divider">================================</div>
         <div class="flex-row-between txt-bold" style="font-size:13px;">
           <span>TOTAL</span>
-          <span>₹${total.toFixed(2)}</span>
+          <span>${currencySymbol}${total.toFixed(2)}</span>
         </div>
         <div class="receipt-divider">================================</div>
         <div class="receipt-line receipt-line-bold" style="font-size:10px;">

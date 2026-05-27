@@ -21,6 +21,7 @@ export class PaymentModal {
     this.splitMode = 'full'; // 'full' | 'half' | 'custom'
     this.customAmount = '';
     this.qrAmount = this.order.total; // amount encoded in QR
+    this.currencySymbol = localStorage.getItem('app_currency_symbol') || '₹';
   }
 
   show() {
@@ -112,7 +113,7 @@ export class PaymentModal {
             <!-- Custom Amount Input -->
             <div id="custom-amount-container" style="${this.splitMode !== 'custom' ? 'display:none;' : ''} margin-bottom: 16px;">
               <div class="input-group">
-                <label for="custom-qr-amount" class="payment-payable-label">Enter QR Amount (₹)</label>
+                <label for="custom-qr-amount" class="payment-payable-label">Enter QR Amount (${this.currencySymbol})</label>
                 <input 
                   type="number" 
                   id="custom-qr-amount" 
@@ -127,7 +128,7 @@ export class PaymentModal {
                 >
               </div>
               <div id="custom-remaining-display" class="txt-center txt-muted" style="font-size: var(--text-xs); margin-top: 8px; font-weight: 600;">
-                ${this.customAmount ? `Remaining ₹${(this.order.total - parseFloat(this.customAmount)).toFixed(2)} to be paid separately` : `Bill total: ${formatCurrency(this.order.total)}`}
+                ${this.customAmount ? `Remaining ${this.currencySymbol}${(this.order.total - parseFloat(this.customAmount)).toFixed(2)} to be paid separately` : `Bill total: ${formatCurrency(this.order.total)}`}
               </div>
             </div>
 
@@ -155,7 +156,7 @@ export class PaymentModal {
           <div id="payment-cash-view" style="${this.selectedMethod !== 'cash' ? 'display:none;' : ''}">
             <div class="cash-form">
               <div class="input-group">
-                <label for="cash-received-input" class="payment-payable-label">Cash Received (₹)</label>
+                <label for="cash-received-input" class="payment-payable-label">Cash Received (${this.currencySymbol})</label>
                 <input 
                   type="number" 
                   id="cash-received-input" 
@@ -177,7 +178,7 @@ export class PaymentModal {
               <!-- Change display -->
               <div class="payment-change-card" id="change-display" style="display: none;">
                 <div class="payment-payable-label">Change to Return</div>
-                <div class="payment-payable-value" id="change-amount" style="font-size: 1.8rem; margin-top: 4px;">₹0</div>
+                <div class="payment-payable-value" id="change-amount" style="font-size: 1.8rem; margin-top: 4px;">${this.currencySymbol}0</div>
               </div>
             </div>
           </div>
@@ -212,7 +213,7 @@ export class PaymentModal {
 
     return sortedAmounts.map(amount => `
       <button class="btn btn-secondary btn-sm quick-amount-btn" data-amount="${amount}" style="flex: 1; min-width: 68px;">
-        ₹${amount}
+        ${this.currencySymbol}${amount}
       </button>
     `).join('');
   }
@@ -393,7 +394,7 @@ export class PaymentModal {
           if (parsed > 0 && parsed <= this.order.total) {
             const remaining = this.order.total - parsed;
             remainingDisplay.textContent = remaining > 0
-              ? `Remaining ₹${remaining.toFixed(2)} to be paid separately`
+              ? `Remaining ${this.currencySymbol}${remaining.toFixed(2)} to be paid separately`
               : 'Full amount covered';
             remainingDisplay.style.color = 'var(--text-muted)';
           } else if (parsed > this.order.total) {
@@ -463,7 +464,7 @@ export class PaymentModal {
     if (this.selectedMethod === 'upi' && this.splitMode === 'custom') {
       const parsed = parseFloat(this.customAmount) || 0;
       if (parsed <= 0 || parsed > this.order.total) {
-        showToast('Please enter a valid custom amount between ₹1 and the bill total', 'warning');
+        showToast(`Please enter a valid custom amount between ${this.currencySymbol}1 and the bill total`, 'warning');
         return;
       }
     }
