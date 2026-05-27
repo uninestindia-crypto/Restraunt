@@ -1,14 +1,15 @@
 /**
  * ═══════════════════════════════════════════════════
  *  NextGenOS Restaurant Operating System
- *  Component: Enterprise Login Screen
- *  Version: 3.0.0
+ *  Component: Unified Enterprise Login & Signup Screen
+ *  Version: 4.0.0
  *  © 2026 NextGenOS. All Rights Reserved.
  *  This software is proprietary and confidential.
  * ═══════════════════════════════════════════════════
  */
 
 import { authService } from '../services/auth.js';
+import { signUpCustomer } from '../services/supabaseClient.js';
 import { showToast, playSound, vibrateDevice } from '../utils/helpers.js';
 
 export class LoginScreen {
@@ -27,20 +28,20 @@ export class LoginScreen {
       <div class="login-screen">
         <div class="login-card">
           <div class="login-logo">🍜</div>
-          <h1 class="login-title">The Taste</h1>
+          <h1 class="login-title" id="login-brand-title">The Taste</h1>
           <p class="login-subtitle">Restaurant Operating System</p>
 
-          <div class="login-tabs">
+          <div class="login-tabs" id="login-tabs-container">
             <button class="login-tab-btn active" id="tab-cloud" type="button">Enterprise Cloud</button>
             <button class="login-tab-btn" id="tab-pin" type="button">Local PIN</button>
           </div>
 
           <div id="login-error" class="login-error"></div>
 
-          <!-- Enterprise Cloud Sign-In Form -->
+          <!-- Cloud Sign-In Form (Shared: Customer & Staff) -->
           <div class="login-section" id="section-cloud" style="display: block;">
             <div class="login-input-group">
-              <label class="login-label" for="login-email">Staff Email</label>
+              <label class="login-label" for="login-email">Account Email</label>
               <input type="email" id="login-email" class="login-input" placeholder="name@nextgenos.com" required autocomplete="username">
             </div>
             <div class="login-input-group">
@@ -50,9 +51,30 @@ export class LoginScreen {
             <button class="btn btn-primary login-submit-btn" id="btn-cloud-login" type="button" style="width:100%; height:46px; border-radius:var(--radius-sm); font-weight:700; margin-top:8px;">
               Authorize Access
             </button>
+            <p class="login-toggle-link" id="link-goto-signup">New to The Taste? Create Customer Account</p>
           </div>
 
-          <!-- Local PIN Sign-In Form -->
+          <!-- Customer Sign-Up Form -->
+          <div class="login-section" id="section-signup" style="display: none;">
+            <div class="login-input-group">
+              <label class="login-label" for="signup-name">Full Name</label>
+              <input type="text" id="signup-name" class="login-input" placeholder="Aarav Sharma" required autocomplete="name">
+            </div>
+            <div class="login-input-group">
+              <label class="login-label" for="signup-email">Email Address</label>
+              <input type="email" id="signup-email" class="login-input" placeholder="aarav@gmail.com" required autocomplete="username">
+            </div>
+            <div class="login-input-group">
+              <label class="login-label" for="signup-password">Password</label>
+              <input type="password" id="signup-password" class="login-input" placeholder="Minimum 6 characters" required autocomplete="new-password">
+            </div>
+            <button class="btn btn-primary login-submit-btn" id="btn-submit-signup" type="button" style="width:100%; height:46px; border-radius:var(--radius-sm); font-weight:700; margin-top:8px;">
+              Register & Order
+            </button>
+            <p class="login-toggle-link" id="link-goto-signin">Already have an account? Sign In</p>
+          </div>
+
+          <!-- Local PIN Sign-In Form (Staff Backup) -->
           <div class="login-section" id="section-pin" style="display: none;">
             <div class="login-pin-section">
               <label class="login-label">Enter Staff PIN</label>
@@ -227,6 +249,14 @@ export class LoginScreen {
           display: flex; align-items: center; justify-content: center;
           gap: 6px; padding-top: 12px; border-top: 1px solid var(--border-color);
         }
+        .login-toggle-link {
+          font-size: 0.72rem; color: var(--text-secondary); margin-top: 18px;
+          cursor: pointer; text-decoration: underline; transition: color var(--transition-fast);
+          display: inline-block;
+        }
+        .login-toggle-link:hover {
+          color: var(--color-primary);
+        }
       </style>
     `;
 
@@ -238,14 +268,22 @@ export class LoginScreen {
     const tabPin = document.getElementById('tab-pin');
     const secCloud = document.getElementById('section-cloud');
     const secPin = document.getElementById('section-pin');
+    const secSignup = document.getElementById('section-signup');
     const btnCloud = document.getElementById('btn-cloud-login');
+    const btnSignup = document.getElementById('btn-submit-signup');
     const errEl = document.getElementById('login-error');
+    const tabsContainer = document.getElementById('login-tabs-container');
 
+    const linkSignup = document.getElementById('link-goto-signup');
+    const linkSignin = document.getElementById('link-goto-signin');
+
+    // Tab Switches
     tabCloud?.addEventListener('click', () => {
       tabCloud.classList.add('active');
       tabPin.classList.remove('active');
       if (secCloud) secCloud.style.display = 'block';
       if (secPin) secPin.style.display = 'none';
+      if (secSignup) secSignup.style.display = 'none';
       if (errEl) errEl.textContent = '';
       playSound(650, 60);
     });
@@ -255,11 +293,33 @@ export class LoginScreen {
       tabCloud.classList.remove('active');
       if (secPin) secPin.style.display = 'block';
       if (secCloud) secCloud.style.display = 'none';
+      if (secSignup) secSignup.style.display = 'none';
       if (errEl) errEl.textContent = '';
       playSound(650, 60);
     });
 
+    // Custom Switch to Sign Up
+    linkSignup?.addEventListener('click', () => {
+      if (secCloud) secCloud.style.display = 'none';
+      if (secPin) secPin.style.display = 'none';
+      if (secSignup) secSignup.style.display = 'block';
+      if (tabsContainer) tabsContainer.style.display = 'none';
+      if (errEl) errEl.textContent = '';
+      playSound(700, 70);
+    });
+
+    // Custom Switch Back to Sign In
+    linkSignin?.addEventListener('click', () => {
+      if (secCloud) secCloud.style.display = 'block';
+      if (secPin) secPin.style.display = 'none';
+      if (secSignup) secSignup.style.display = 'none';
+      if (tabsContainer) tabsContainer.style.display = 'flex';
+      if (errEl) errEl.textContent = '';
+      playSound(700, 70);
+    });
+
     btnCloud?.addEventListener('click', () => this.attemptCloudLogin());
+    btnSignup?.addEventListener('click', () => this.attemptSignup());
 
     const numpad = document.getElementById('login-numpad');
     if (numpad) {
@@ -283,7 +343,6 @@ export class LoginScreen {
 
     // Keyboard support
     this._keyHandler = (e) => {
-      // Only process keys on local pin mode when active
       if (secPin && secPin.style.display === 'block') {
         if (e.key >= '0' && e.key <= '9' && this.pinInput.length < 4) {
           this.pinInput += e.key;
@@ -297,6 +356,8 @@ export class LoginScreen {
         }
       } else if (secCloud && secCloud.style.display === 'block' && e.key === 'Enter') {
         this.attemptCloudLogin();
+      } else if (secSignup && secSignup.style.display === 'block' && e.key === 'Enter') {
+        this.attemptSignup();
       }
     };
     document.addEventListener('keydown', this._keyHandler);
@@ -337,11 +398,14 @@ export class LoginScreen {
       if (staff) {
         playSound(900, 100);
         vibrateDevice([40, 20, 40]);
-        showToast(`Welcome, ${staff.name}! (${staff.role})`, 'success');
+        const welcomeMsg = staff.role === 'customer' 
+          ? `Welcome to The Taste, ${staff.name}!`
+          : `Welcome, ${staff.name}! (${staff.role})`;
+        showToast(welcomeMsg, 'success');
         this.destroy();
         if (this.onLoginSuccess) this.onLoginSuccess(staff);
       } else {
-        throw new Error('Could not resolve staff member.');
+        throw new Error('Could not resolve session.');
       }
     } catch (err) {
       playSound(200, 200);
@@ -350,6 +414,73 @@ export class LoginScreen {
       if (btnCloud) {
         btnCloud.disabled = false;
         btnCloud.textContent = 'Authorize Access';
+      }
+    }
+  }
+
+  async attemptSignup() {
+    const nameEl = document.getElementById('signup-name');
+    const emailEl = document.getElementById('signup-email');
+    const passwordEl = document.getElementById('signup-password');
+    const errEl = document.getElementById('login-error');
+    const btnSignup = document.getElementById('btn-submit-signup');
+
+    const name = nameEl?.value.trim();
+    const email = emailEl?.value.trim();
+    const password = passwordEl?.value;
+
+    if (!name || !email || !password) {
+      showToast('All fields are required', 'warning');
+      return;
+    }
+    if (password.length < 6) {
+      showToast('Password must be at least 6 characters', 'warning');
+      return;
+    }
+
+    try {
+      if (errEl) errEl.textContent = '';
+      if (btnSignup) {
+        btnSignup.disabled = true;
+        btnSignup.textContent = 'Creating Account...';
+      }
+
+      // Register the customer in Supabase Auth
+      const signupResult = await signUpCustomer(email, password);
+      if (!signupResult.success) {
+        throw new Error(signupResult.message || 'Failed to create account.');
+      }
+
+      // Login using newly created credentials
+      const staff = await authService.loginWithCloudCredentials(email, password);
+      if (staff) {
+        playSound(900, 100);
+        vibrateDevice([40, 20, 40]);
+        
+        // Update customer profile name
+        if (staff.id) {
+          try {
+            const { db } = await import('../db/database.js');
+            await db.customers.update(staff.id, { name });
+            staff.name = name;
+          } catch (e) {
+            console.error('[Signup] Local CRM name update failed:', e);
+          }
+        }
+
+        showToast(`Registration successful! Welcome to The Taste, ${name}!`, 'success');
+        this.destroy();
+        if (this.onLoginSuccess) this.onLoginSuccess(staff);
+      } else {
+        throw new Error('Registration succeeded, but auto-login failed.');
+      }
+    } catch (err) {
+      playSound(200, 200);
+      vibrateDevice([100]);
+      if (errEl) errEl.textContent = err.message || 'Signup failed. Please try again.';
+      if (btnSignup) {
+        btnSignup.disabled = false;
+        btnSignup.textContent = 'Register & Order';
       }
     }
   }

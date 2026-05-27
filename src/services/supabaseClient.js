@@ -81,3 +81,16 @@ export async function testSupabaseMenuRead(url, key) {
     return { success: false, message: error.message || String(error) };
   }
 }
+
+export async function signUpCustomer(email, password) {
+  if (!email || !password) {
+    return { success: false, message: 'Email and password are required for sign up.' };
+  }
+  const client = await getSupabaseClient({ persistSession: true });
+  if (!client) {
+    return { success: false, message: 'Supabase is not configured.' };
+  }
+  const { data, error } = await client.auth.signUp({ email, password });
+  if (error) return { success: false, message: error.message };
+  return { success: true, user: data?.user || null };
+}

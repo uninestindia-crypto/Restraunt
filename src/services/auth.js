@@ -123,28 +123,60 @@ class AuthService {
         .equals(user.id)
         .first();
 
-      // Fallback: If not found by cloudUserId, match by name or roles, or look up in staff memberships
+      // Fallback: If not found by cloudUserId, check email profile characteristics
       if (!staff) {
         const userEmail = user.email || email;
-        staff = await db.staff
-          .filter(s => String(s.name).toLowerCase() === userEmail.split('@')[0].toLowerCase())
-          .first();
-      }
+        const lowercaseEmail = userEmail.toLowerCase();
+        const isStaffEmail = lowercaseEmail.includes('admin') || 
+                             lowercaseEmail.includes('staff') || 
+                             lowercaseEmail.includes('owner') || 
+                             lowercaseEmail.includes('manager') || 
+                             lowercaseEmail.includes('cashier') || 
+                             lowercaseEmail.includes('kitchen') || 
+                             lowercaseEmail.includes('waiter');
 
-      // If still not found, build a secure dynamic staff profile from the cloud session
-      if (!staff) {
-        const fallbackRole = email.includes('admin') || email.includes('owner') ? 'owner' : 'cashier';
-        const tempId = Date.now();
-        staff = {
-          id: tempId,
-          name: user.email?.split('@')[0] || 'Cloud User',
-          role: fallbackRole,
-          cloudUserId: user.id,
-          isActive: true,
-          createdAt: new Date().toISOString()
-        };
-        // Put in local Dexie so it can be resolved by routing RBAC
-        await db.staff.put(staff);
+        if (!isStaffEmail) {
+          // Treat as Customer!
+          let customer = await db.customers
+            .filter(c => c.name.toLowerCase() === userEmail.split('@')[0].toLowerCase())
+            .first();
+
+          if (!customer) {
+            customer = {
+              id: Date.now(),
+              name: userEmail.split('@')[0],
+              phone: '',
+              totalSpent: 0,
+              visitCount: 0,
+              loyaltyPoints: 0,
+              tier: 'bronze',
+              createdAt: new Date().toISOString()
+            };
+            await db.customers.put(customer);
+          }
+
+          staff = {
+            id: customer.id,
+            name: customer.name,
+            role: 'customer',
+            cloudUserId: user.id,
+            isActive: true,
+            createdAt: new Date().toISOString()
+          };
+        } else {
+          // Build a secure dynamic staff profile from the cloud session
+          const fallbackRole = lowercaseEmail.includes('admin') || lowercaseEmail.includes('owner') ? 'owner' : 'cashier';
+          const tempId = Date.now();
+          staff = {
+            id: tempId,
+            name: userEmail.split('@')[0] || 'Cloud Staff',
+            role: fallbackRole,
+            cloudUserId: user.id,
+            isActive: true,
+            createdAt: new Date().toISOString()
+          };
+          await db.staff.put(staff);
+        }
       }
 
       this.currentStaff = staff;

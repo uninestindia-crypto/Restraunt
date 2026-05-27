@@ -150,6 +150,14 @@ class App {
   }
 
   async onLoginSuccess(staff) {
+    if (staff && staff.role === 'customer') {
+      this.startPublicRoute();
+      router.navigate('#/self-order');
+      this.initialized = true;
+      console.log(`🍜 The Taste — Customer ${staff.name} logged in successfully.`);
+      return;
+    }
+
     // Build the app shell
     this.renderShell();
 
