@@ -890,6 +890,14 @@ textarea.input {
   gap: 6px;
   padding: 12px 24px;
   border-bottom: 1px solid var(--border-glass);
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  flex-wrap: nowrap;
+}
+
+.tab-container::-webkit-scrollbar {
+  display: none;
 }
 
 /* ── Stats & KPI Grids ── */
@@ -1176,7 +1184,8 @@ textarea.input {
   padding: 20px 12px;
   border-radius: 4px;
   box-shadow: 0 4px 20px rgba(0,0,0,0.35), inset 0 0 30px rgba(0,0,0,0.02);
-  max-width: 320px;
+  max-width: 100% !important;
+  box-sizing: border-box;
   margin: 0 auto;
   font-size: 12px;
   line-height: 1.5;
@@ -1185,6 +1194,13 @@ textarea.input {
   border: 1px solid rgba(0,0,0,0.08);
   position: relative;
   overflow: hidden;
+}
+
+@media (max-width: 480px) {
+  .receipt-preview-paper {
+    font-size: 10px !important;
+    padding: 16px 8px !important;
+  }
 }
 
 .receipt-preview-paper::before {

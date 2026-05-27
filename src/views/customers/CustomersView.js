@@ -36,9 +36,9 @@ export class CustomersView {
             <span class="material-symbols-rounded">loyalty</span>
             <h2>Customer CRM</h2>
           </div>
-          <div style="display:flex;gap:12px;align-items:center;">
-            <input type="text" id="customer-search" placeholder="Search customer..." class="input" style="width:200px;">
-            <button id="add-customer-btn" class="btn btn-primary btn-sm">
+          <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;flex:1;justify-content:flex-end;">
+            <input type="text" id="customer-search" placeholder="Search customer..." class="input" style="width:160px;min-width:120px;flex-grow:1;">
+            <button id="add-customer-btn" class="btn btn-primary btn-sm" style="flex-shrink:0;">
               <span class="material-symbols-rounded" style="font-size:16px;">person_add</span> Add
             </button>
           </div>
