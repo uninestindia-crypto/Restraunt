@@ -479,6 +479,14 @@
 
 /* ── Cart Items ── */
 
+#cart-items-container {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
 .cart-items {
   flex: 1;
   overflow-y: auto;
