@@ -199,6 +199,9 @@ export class OrderHistory {
           <footer class="modal-footer" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;">
             <button class="btn btn-primary btn-sm" id="btn-modal-reprint">Print Receipt</button>
             <button class="btn btn-secondary btn-sm" id="btn-modal-whatsapp">WhatsApp Bill</button>
+            ${order.status !== 'cancelled' ? `
+              <button class="btn btn-danger btn-sm" id="btn-modal-void" style="background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239,68,68,0.25); color: #FF4D4D;">Void Order</button>
+            ` : ''}
             <button class="btn btn-secondary btn-sm" id="btn-modal-close-footer">Close</button>
           </footer>
         </div>
@@ -214,6 +217,7 @@ export class OrderHistory {
     });
     wrapper.querySelector('#btn-modal-reprint')?.addEventListener('click', () => this.printReceipt(order));
     wrapper.querySelector('#btn-modal-whatsapp')?.addEventListener('click', () => this.sendWhatsApp(order));
+    wrapper.querySelector('#btn-modal-void')?.addEventListener('click', () => this.handleVoidOrder(order, close));
     wrapper.querySelector('#btn-verify-upi')?.addEventListener('click', () => this.markPaid(order, 'upi', close));
     wrapper.querySelector('#btn-collect-cash')?.addEventListener('click', () => this.markPaid(order, 'cash', close));
     wrapper.querySelector('#btn-assign-delivery')?.addEventListener('click', () => this.assignDelivery(order, wrapper, close));
@@ -298,6 +302,64 @@ export class OrderHistory {
     showToast('Delivery marked failed', 'warning');
     close();
     await this.reload();
+  }
+
+  async handleVoidOrder(order, closeDetail) {
+    const staff = authService.getCurrentStaff();
+    const role = staff?.role?.toLowerCase() || '';
+    const allowCashierVoidVal = await getSetting('allowCashierVoid');
+    const allowCashierVoid = allowCashierVoidVal === 'true' || allowCashierVoidVal === true;
+
+    const canVoid = ['owner', 'manager'].includes(role) || (role === 'cashier' && allowCashierVoid);
+
+    if (canVoid) {
+      if (confirm('Are you sure you want to void this order? This action will cancel the order and mark it as refunded.')) {
+        await this.executeVoid(order, staff, closeDetail);
+      }
+    } else {
+      // Prompt for Manager/Owner PIN
+      const pin = prompt('Voiding this order requires Manager or Owner authorization.\nPlease enter an authorized PIN:');
+      if (!pin) return;
+
+      const authStaff = await authService.getStaffByPin(pin);
+      const isAuthorized = authStaff && ['owner', 'manager'].includes(authStaff.role?.toLowerCase());
+
+      if (isAuthorized) {
+        await this.executeVoid(order, authStaff, closeDetail);
+      } else {
+        playSound(300, 200, 'square');
+        vibrateDevice([150]);
+        showToast('Unauthorized PIN code', 'error');
+      }
+    }
+  }
+
+  async executeVoid(order, authorizedStaff, closeDetail) {
+    try {
+      await updateOrderFields(order.id, {
+        status: 'cancelled',
+        paymentStatus: 'refunded',
+        completedAt: new Date().toISOString(),
+        voidedBy: authorizedStaff.name,
+        voidedById: authorizedStaff.id,
+        isSynced: 0
+      });
+
+      // Log activity
+      await db.activityLog.add({
+        staffId: authorizedStaff.id,
+        action: `voided_order_${order.orderNumber}`,
+        timestamp: new Date().toISOString()
+      });
+
+      playSound(900, 100);
+      showToast(`Order voided by ${authorizedStaff.name}`, 'success');
+      closeDetail();
+      await this.reload();
+    } catch (e) {
+      console.error(e);
+      showToast('Failed to void order: ' + e.message, 'error');
+    }
   }
 
   async reload() {

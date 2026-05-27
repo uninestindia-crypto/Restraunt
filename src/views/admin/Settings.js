@@ -83,7 +83,15 @@ export class SettingsView {
         'currencyCode',
         'currencySymbol',
         'taxType',
-        'taxLabel'
+        'taxLabel',
+        // Enterprise Access Controls
+        'requirePinForOrder',
+        'allowManagerAdmin',
+        'allowCashierVoid',
+        'autoLockTerminal',
+        'autoLockTimeout',
+        'sessionDuration',
+        'app_theme'
       ];
 
       for (const key of keys) {
@@ -128,6 +136,15 @@ export class SettingsView {
       if (!this.config.currencySymbol) this.config.currencySymbol = '₹';
       if (!this.config.taxType) this.config.taxType = 'GST';
       if (!this.config.taxLabel) this.config.taxLabel = 'GST';
+
+      // Enterprise defaults
+      if (this.config.requirePinForOrder === '') this.config.requirePinForOrder = 'false';
+      if (this.config.allowManagerAdmin === '') this.config.allowManagerAdmin = 'true';
+      if (this.config.allowCashierVoid === '') this.config.allowCashierVoid = 'false';
+      if (this.config.autoLockTerminal === '') this.config.autoLockTerminal = 'false';
+      if (!this.config.autoLockTimeout) this.config.autoLockTimeout = '5';
+      if (!this.config.sessionDuration) this.config.sessionDuration = '8';
+      if (!this.config.app_theme) this.config.app_theme = localStorage.getItem('app_theme') || 'dark';
     } catch (e) {
       console.error('Failed to load system settings:', e);
     }
@@ -629,6 +646,107 @@ export class SettingsView {
           </div>
         </div>
 
+        <!-- Access & Permissions Section -->
+        ${this._cardOpen()}
+          ${this._cardHeading('admin_panel_settings', 'Access & Permissions')}
+          <div style="display: flex; flex-direction: column; gap: 16px;">
+            <div style="
+              background: rgba(0,0,0,0.15);
+              border-radius: var(--radius-lg);
+              border: 1px solid var(--border-glass);
+              padding: 6px 16px;
+            ">
+              ${this._buildToggleRow('requirePinForOrder', 'Require PIN for every order', this.config.requirePinForOrder)}
+              ${this._buildToggleRow('allowManagerAdmin', 'Allow managers to access admin panel', this.config.allowManagerAdmin)}
+              ${this._buildToggleRow('allowCashierVoid', 'Allow cashiers to void/refund orders', this.config.allowCashierVoid)}
+              ${this._buildToggleRow('autoLockTerminal', 'Auto-lock terminal after inactivity', this.config.autoLockTerminal)}
+            </div>
+
+            <div style="display: flex; gap: 16px; flex-wrap: wrap;">
+              <div class="input-group" style="flex: 1; min-width: 200px;" id="auto-lock-timeout-group">
+                <label for="autoLockTimeout">Auto-Lock Inactivity Timeout</label>
+                <select id="autoLockTimeout" class="input">
+                  <option value="5" ${this.config.autoLockTimeout === '5' ? 'selected' : ''}>5 Minutes</option>
+                  <option value="10" ${this.config.autoLockTimeout === '10' ? 'selected' : ''}>10 Minutes</option>
+                  <option value="15" ${this.config.autoLockTimeout === '15' ? 'selected' : ''}>15 Minutes</option>
+                  <option value="30" ${this.config.autoLockTimeout === '30' ? 'selected' : ''}>30 Minutes</option>
+                </select>
+              </div>
+
+              <div class="input-group" style="flex: 1; min-width: 200px;">
+                <label for="sessionDuration">Active Session Duration</label>
+                <select id="sessionDuration" class="input">
+                  <option value="4" ${this.config.sessionDuration === '4' ? 'selected' : ''}>4 Hours</option>
+                  <option value="8" ${this.config.sessionDuration === '8' ? 'selected' : ''}>8 Hours (Standard)</option>
+                  <option value="12" ${this.config.sessionDuration === '12' ? 'selected' : ''}>12 Hours</option>
+                  <option value="24" ${this.config.sessionDuration === '24' ? 'selected' : ''}>24 Hours</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Theme Preference Section -->
+        ${this._cardOpen()}
+          ${this._cardHeading('palette', 'Theme Preference')}
+          <p style="font-size: var(--text-xs); color: var(--text-secondary); line-height: 1.5; margin: -8px 0 16px 0; font-weight: 500;">
+            Select your preferred display theme for the console terminal.
+          </p>
+          <div style="display: flex; gap: 12px; margin-bottom: 20px;">
+            ${['dark', 'light', 'system'].map(theme => {
+              const label = { dark: 'Dark Mode', light: 'Light Mode', system: 'System Theme' }[theme];
+              const icon = { dark: 'dark_mode', light: 'light_mode', system: 'computer' }[theme];
+              const isActive = this.config.app_theme === theme;
+              return `
+                <button type="button" class="btn btn-theme-option ${isActive ? 'active' : ''}" data-theme="${theme}" style="
+                  flex: 1;
+                  font-family: 'Plus Jakarta Sans', sans-serif;
+                  font-weight: ${isActive ? '700' : '500'};
+                  font-size: var(--text-xs);
+                  min-height: 44px;
+                  display: inline-flex;
+                  align-items: center;
+                  justify-content: center;
+                  gap: 8px;
+                  border-radius: var(--radius-md);
+                  border: 1.5px solid ${isActive ? 'var(--color-primary)' : 'var(--border-glass)'};
+                  background: ${isActive ? 'rgba(255,94,54,0.12)' : 'rgba(0,0,0,0.15)'};
+                  color: ${isActive ? 'var(--color-primary)' : 'var(--text-secondary)'};
+                  cursor: pointer;
+                  transition: all 0.25s ease;
+                ">
+                  <span class="material-symbols-rounded" style="font-size: 18px;">${icon}</span>
+                  ${label}
+                </button>
+              `;
+            }).join('')}
+            <input type="hidden" id="app_theme" value="${esc(this.config.app_theme)}">
+          </div>
+          <!-- Theme Preview Colors -->
+          <div style="
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            padding: 16px;
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--border-glass);
+            background: rgba(0,0,0,0.1);
+          " id="settings-theme-preview-box">
+            <div style="display: flex; flex-direction: column; gap: 4px; align-items: center;">
+              <span style="font-size: 0.6rem; color: var(--text-muted); font-weight: 700;">BACKGROUND</span>
+              <div id="theme-preview-bg" style="width: 100%; height: 32px; border-radius: var(--radius-sm); border: 1px solid var(--border-glass); transition: background 0.3s;"></div>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 4px; align-items: center;">
+              <span style="font-size: 0.6rem; color: var(--text-muted); font-weight: 700;">SURFACE</span>
+              <div id="theme-preview-surface" style="width: 100%; height: 32px; border-radius: var(--radius-sm); border: 1px solid var(--border-glass); transition: background 0.3s;"></div>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 4px; align-items: center;">
+              <span style="font-size: 0.6rem; color: var(--text-muted); font-weight: 700;">TEXT COLOR</span>
+              <div id="theme-preview-text" style="width: 100%; height: 32px; border-radius: var(--radius-sm); border: 1px solid var(--border-glass); display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: 700; transition: background 0.3s, color 0.3s;">Aa</div>
+            </div>
+          </div>
+        </div>
+
         <!-- Cloud Synchronization Section -->
         ${this._cardOpen()}
           ${this._cardHeading('cloud_sync', 'Cloud Synchronization (Supabase)')}
@@ -855,6 +973,9 @@ export class SettingsView {
 
     // Render initial receipt preview
     this._renderReceiptPreview();
+
+    // Render initial theme preview
+    this._updateThemePreview(this.config.app_theme || 'dark');
   }
 
   /** Build a single toggle row with proper CSS toggle switch */
@@ -1424,6 +1545,43 @@ export class SettingsView {
       });
     });
 
+    // Theme options in settings
+    this.container.querySelectorAll('.btn-theme-option').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const theme = btn.dataset.theme;
+        playSound(700, 60);
+
+        // Update active class
+        this.container.querySelectorAll('.btn-theme-option').forEach(b => {
+          b.classList.toggle('active', b.dataset.theme === theme);
+          const active = b.dataset.theme === theme;
+          b.style.border = `1.5px solid ${active ? 'var(--color-primary)' : 'var(--border-glass)'}`;
+          b.style.background = active ? 'rgba(255,94,54,0.12)' : 'rgba(0,0,0,0.15)';
+          b.style.color = active ? 'var(--color-primary)' : 'var(--text-secondary)';
+          b.style.fontWeight = active ? '700' : '500';
+        });
+
+        // Set hidden input
+        const input = document.getElementById('app_theme');
+        if (input) input.value = theme;
+
+        this._updateThemePreview(theme);
+      });
+    });
+
+    // Auto-lock toggle interaction
+    const autoLockCheckbox = document.getElementById('autoLockTerminal');
+    const autoLockTimeoutGroup = document.getElementById('auto-lock-timeout-group');
+    if (autoLockCheckbox && autoLockTimeoutGroup) {
+      const updateTimeoutVisibility = () => {
+        autoLockTimeoutGroup.style.opacity = autoLockCheckbox.checked ? '1' : '0.4';
+        const select = autoLockTimeoutGroup.querySelector('select');
+        if (select) select.disabled = !autoLockCheckbox.checked;
+      };
+      autoLockCheckbox.addEventListener('change', updateTimeoutVisibility);
+      updateTimeoutVisibility();
+    }
+
     // Save configurations
     document.getElementById('btn-save-settings').addEventListener('click', async () => {
       playSound(800, 100);
@@ -1486,7 +1644,11 @@ export class SettingsView {
         'currencyCode',
         'currencySymbol',
         'taxType',
-        'taxLabel'
+        'taxLabel',
+        // Enterprise inputs
+        'autoLockTimeout',
+        'sessionDuration',
+        'app_theme'
       ];
 
       // Collect toggle (checkbox) fields
@@ -1504,7 +1666,12 @@ export class SettingsView {
         'invoiceShowSignature',
         'invoiceShowGrid',
         'invoiceShowWatermark',
-        'invoiceShowUpiQr'
+        'invoiceShowUpiQr',
+        // Enterprise toggles
+        'requirePinForOrder',
+        'allowManagerAdmin',
+        'allowCashierVoid',
+        'autoLockTerminal'
       ];
 
       try {
@@ -1545,6 +1712,12 @@ export class SettingsView {
         localStorage.setItem('app_currency_code', this.config.currencyCode || 'INR');
         localStorage.setItem('app_tax_type', this.config.taxType || 'GST');
         localStorage.setItem('app_tax_label', this.config.taxLabel || 'GST');
+
+        // Apply theme immediately
+        const savedTheme = this.config.app_theme || 'dark';
+        localStorage.setItem('app_theme', savedTheme);
+        document.documentElement.setAttribute('data-theme', savedTheme);
+        window.dispatchEvent(new CustomEvent('theme-changed', { detail: { theme: savedTheme } }));
 
         // Notify header logo text (if rendered)
         const logo = document.getElementById('app-logo')?.querySelector('span:last-child');
@@ -1677,6 +1850,36 @@ export class SettingsView {
     } catch (e) {
       console.error('Test print failed:', e);
       showToast('Print error: ' + e.message, 'error');
+    }
+  }
+
+  _updateThemePreview(theme) {
+    const previewBox = document.getElementById('settings-theme-preview-box');
+    if (!previewBox) return;
+
+    let resolved = theme;
+    if (theme === 'system') {
+      resolved = window.matchMedia?.('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+    }
+
+    const bgEl = document.getElementById('theme-preview-bg');
+    const surfaceEl = document.getElementById('theme-preview-surface');
+    const textEl = document.getElementById('theme-preview-text');
+
+    if (resolved === 'light') {
+      if (bgEl) bgEl.style.background = '#F8F9FC';
+      if (surfaceEl) surfaceEl.style.background = '#FFFFFF';
+      if (textEl) {
+        textEl.style.background = '#F1F3F9';
+        textEl.style.color = '#0F172A';
+      }
+    } else {
+      if (bgEl) bgEl.style.background = '#040406';
+      if (surfaceEl) surfaceEl.style.background = '#0B0B0F';
+      if (textEl) {
+        textEl.style.background = '#0E0E14';
+        textEl.style.color = '#F9FAFB';
+      }
     }
   }
 

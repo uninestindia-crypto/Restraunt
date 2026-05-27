@@ -141,7 +141,13 @@ export class AdminView {
       const legacyPin = await getSetting('adminPin');
       const inputHash = await hashPin(this.pinInput);
       const staff = await authService.getStaffByPin(this.pinInput);
-      const canStaffUnlock = ['owner', 'manager'].includes(staff?.role?.toLowerCase());
+      
+      const allowManagerAdminVal = await getSetting('allowManagerAdmin');
+      const allowManager = allowManagerAdminVal === 'true' || allowManagerAdminVal === true || allowManagerAdminVal === undefined || allowManagerAdminVal === '';
+      const allowedRoles = ['owner'];
+      if (allowManager) allowedRoles.push('manager');
+
+      const canStaffUnlock = staff && allowedRoles.includes(staff.role?.toLowerCase());
       const legacyAllowed = legacyPin && legacyPin !== '1234' && this.pinInput === legacyPin;
 
       if ((configuredHash && inputHash === configuredHash) || legacyAllowed || canStaffUnlock) {
