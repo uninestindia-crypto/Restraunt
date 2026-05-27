@@ -1,5 +1,27 @@
 # Changelog
 
+## [2.2.0] - 2026-05-27 - "Production Launch Hardening"
+
+### Added
+- Added `LAUNCH_READINESS_BLUEPRINT.md` as the persistent public-launch tracker.
+- Added safe Supabase launch schema with UUID order identity, idempotency keys, display tokens, staff memberships, audit events, and public order rate-limit storage.
+- Added public Supabase Edge Function for server-side validation of customer orders before writing them to the cloud database.
+- Added Playwright, Axe accessibility checks, Lighthouse smoke workflow, and conditional signed Android release workflow.
+
+### Changed
+- Public online/QR orders now attempt Edge Function validation first and fall back to local pending validation if cloud is unavailable.
+- Cloud staff password is no longer stored in frontend settings; Settings now uses transient Supabase Auth sign-in for the device session.
+- Order sync uses `client_order_id` conflict handling for safer multi-device retries.
+- Default seed/settings writes are now idempotent so fresh devices do not fail startup after migrations create settings records.
+- Dexie `tables` access now uses `db.table('tables')` to avoid the reserved `db.tables` metadata property.
+
+### Verified
+- Passed `npm.cmd run launch:verify` with 6 / 6 unit tests, successful production build, and 0 production audit vulnerabilities.
+- Passed `npm.cmd run test:e2e` with 20 / 20 Playwright checks across desktop, iPhone SE, iPhone 15, Pixel 5, and iPad emulation.
+
+### Remaining Launch Gates
+- Production Supabase migration, Edge Function deployment, staff membership setup, real-device QA, monitoring, backup restore drill, and signed Android release remain required before public launch.
+
 ## [2.1.0] - 2026-05-27 - "Public Online Ordering Launch Readiness"
 
 ### Launch Readiness

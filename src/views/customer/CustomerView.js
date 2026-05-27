@@ -1,5 +1,6 @@
-import { getCategories, getItemsByCategory, createOrder, getNextOrderNumber, getSetting, db } from '../../db/database.js';
+import { getCategories, getItemsByCategory, createOrder, getNextOrderNumber, getSetting, db, generateLocalUuid } from '../../db/database.js';
 import { deductInventoryForOrder } from '../../services/inventoryHook.js';
+import { submitPublicOrder } from '../../services/publicOrders.js';
 import { generateUPIQR } from '../../services/upi.js';
 import { escapeHtml, formatCurrency, parseOrderItems, playSound, showToast, vibrateDevice } from '../../utils/helpers.js';
 
@@ -43,7 +44,8 @@ export class CustomerView {
 
   async loadData() {
     this.categories = await getCategories();
-    this.tables = await db.tables.toArray();
+    const tablesStore = db.table('tables');
+    this.tables = await tablesStore.toArray();
     this.detectedTable = await this.getDetectedTable();
     if (this.detectedTable) {
       this.orderType = 'dinein';
@@ -61,10 +63,10 @@ export class CustomerView {
     if (!tableParam) return null;
     const numeric = parseInt(tableParam, 10);
     if (!Number.isNaN(numeric)) {
-      const byNumber = await db.tables.where('number').equals(numeric).first();
+      const byNumber = await db.table('tables').where('number').equals(numeric).first();
       if (byNumber) return byNumber;
     }
-    return db.tables.where('number').equals(tableParam).first();
+    return db.table('tables').where('number').equals(tableParam).first();
   }
 
   async loadItems() {
@@ -314,7 +316,7 @@ export class CustomerView {
 
   renderSuccess() {
     const order = this.placedOrder;
-    const token = order.orderNumber.split('-').pop();
+    const token = order.displayToken || order.orderNumber.split('-').pop();
     const isUpi = order.paymentMethod === 'upi';
     const deliveryText = order.type === 'delivery'
       ? 'Your order will be prepared and assigned to our delivery staff.'
@@ -531,8 +533,11 @@ export class CustomerView {
       const type = this.detectedTable ? 'dinein' : this.orderType;
       const tableId = this.detectedTable ? this.detectedTable.id : (type === 'dinein' ? parseInt(this.selectedTableId, 10) : null);
       const now = new Date().toISOString();
+      const clientOrderId = generateLocalUuid();
 
       const orderData = {
+        clientOrderId,
+        idempotencyKey: clientOrderId,
         orderNumber: await getNextOrderNumber(),
         type,
         channel: type === 'dinein' && this.detectedTable ? 'qr' : 'online',
@@ -554,14 +559,30 @@ export class CustomerView {
         deliveryStatus: type === 'delivery' ? 'pending' : 'none',
         tableId,
         createdAt: now,
-        updatedAt: now
+        updatedAt: now,
+        requiresServerValidation: true,
+        validationStatus: 'pending',
+        syncStatus: 'pending',
+        isSynced: 0
       };
 
-      const order = await createOrder(orderData);
+      const remoteSubmit = await submitPublicOrder(orderData);
+      const finalOrderData = remoteSubmit.accepted ? remoteSubmit.order : {
+        ...orderData,
+        lastSyncError: remoteSubmit.message || '',
+        validationStatus: 'pending',
+        requiresServerValidation: true
+      };
+
+      const order = await createOrder(finalOrderData, { skipSync: remoteSubmit.accepted });
       this.placedOrder = order;
 
+      if (!remoteSubmit.accepted) {
+        showToast('Order saved on this device. It will sync when cloud validation is available.', 'warning', 5000);
+      }
+
       if (tableId && type === 'dinein') {
-        await db.tables.update(tableId, { status: 'occupied', isSynced: 0 });
+        await db.table('tables').update(tableId, { status: 'occupied', isSynced: 0 });
       }
 
       this.afterOrderCreated(order);

@@ -1,0 +1,82 @@
+name: Launch Readiness
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  web:
+    name: Web build, security, E2E, accessibility
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run launch:verify
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+      - name: Lighthouse public ordering smoke
+        run: |
+          npm run build
+          nohup npx vite preview --host 127.0.0.1 --port 4173 > /tmp/the-taste-preview.log 2>&1 &
+          for i in {1..30}; do curl -fsS http://127.0.0.1:4173 >/dev/null && break; sleep 1; done
+          npx lighthouse http://127.0.0.1:4173/#/self-order --chrome-flags="--headless --no-sandbox" --only-categories=performance,accessibility,best-practices,seo --output=json --output-path=./lighthouse-report.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: web-launch-reports
+          path: |
+            playwright-report
+            test-results
+            lighthouse-report.json
+
+  android-release:
+    name: Android release build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - run: npm ci
+      - run: npm run build
+      - name: Check Android signing secrets
+        id: signing
+        run: |
+          if [ -z "$THE_TASTE_KEYSTORE_B64" ]; then
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "Android signing secrets are not configured; signed release build is skipped."
+          else
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          fi
+        env:
+          THE_TASTE_KEYSTORE_B64: ${{ secrets.THE_TASTE_KEYSTORE_B64 }}
+      - name: Restore Android keystore
+        if: steps.signing.outputs.available == 'true'
+        run: |
+          echo "$THE_TASTE_KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/the-taste-release.jks"
+        env:
+          THE_TASTE_KEYSTORE_B64: ${{ secrets.THE_TASTE_KEYSTORE_B64 }}
+      - name: Build signed release APK
+        if: steps.signing.outputs.available == 'true'
+        working-directory: android
+        run: ./gradlew assembleRelease
+        env:
+          THE_TASTE_KEYSTORE: ${{ runner.temp }}/the-taste-release.jks
+          THE_TASTE_KEYSTORE_PASSWORD: ${{ secrets.THE_TASTE_KEYSTORE_PASSWORD }}
+          THE_TASTE_KEY_ALIAS: ${{ secrets.THE_TASTE_KEY_ALIAS }}
+          THE_TASTE_KEY_PASSWORD: ${{ secrets.THE_TASTE_KEY_PASSWORD }}
+      - uses: actions/upload-artifact@v4
+        if: steps.signing.outputs.available == 'true'
+        with:
+          name: android-release-apk
+          path: android/app/build/outputs/apk/release/*.apk

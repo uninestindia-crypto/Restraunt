@@ -120,6 +120,40 @@ db.version(4).stores({
   }
 });
 
+// Schema v5: production launch order identity, idempotency, server validation, and sync diagnostics.
+db.version(5).stores({
+  menuCategories: '++id, name, sortOrder, isActive, updatedAt',
+  menuItems: '++id, categoryId, [categoryId+isAvailable], name, price, isAvailable, isVeg, sortOrder, updatedAt',
+  orders: '++id, clientOrderId, idempotencyKey, orderNumber, displayToken, type, status, paymentMethod, paymentStatus, createdAt, completedAt, customerId, staffId, tableId, channel, source, deliveryStatus, deliveryStaffId, updatedAt, syncStatus, validationStatus',
+  settings: 'key',
+  customers: '++id, phone, name, totalSpent, visitCount, loyaltyPoints, tier, lastVisit, createdAt',
+  staff: '++id, name, role, pinHash, cloudUserId, isActive, createdAt',
+  shifts: '++id, staffId, date, clockIn, clockOut',
+  inventory: '++id, name, unit, quantity, minThreshold, categoryTag',
+  suppliers: '++id, name, phone, category',
+  recipes: '++id, menuItemId',
+  tables: '++id, number, status, floorSection',
+  reservations: '++id, tableId, customerId, date, time, status',
+  activityLog: '++id, staffId, action, timestamp',
+  aiConversations: '++id, createdAt, title',
+}).upgrade(async (tx) => {
+  const now = new Date().toISOString();
+  const orders = await tx.table('orders').toArray();
+  for (const order of orders) {
+    const clientOrderId = order.clientOrderId || generateLocalUuid();
+    await tx.table('orders').update(order.id, {
+      clientOrderId,
+      idempotencyKey: order.idempotencyKey || clientOrderId,
+      displayToken: order.displayToken || String(order.orderNumber || order.id || '').split('-').pop(),
+      requiresServerValidation: Boolean(order.requiresServerValidation),
+      validationStatus: order.validationStatus || (order.source === 'online' || order.source === 'qr' ? 'pending' : 'trusted_staff'),
+      syncStatus: order.syncStatus || (order.isSynced ? 'synced' : 'pending'),
+      syncAttempts: parseInt(order.syncAttempts) || 0,
+      updatedAt: order.updatedAt || now
+    });
+  }
+});
+
 function normalizeOrderItems(items) {
   if (Array.isArray(items)) return items;
   if (typeof items !== 'string' || !items.trim()) return [];
@@ -134,6 +168,20 @@ function normalizeOrderItems(items) {
 
 function serializeOrderItems(items) {
   return JSON.stringify(normalizeOrderItems(items));
+}
+
+export function generateLocalUuid() {
+  if (globalThis.crypto?.randomUUID) return globalThis.crypto.randomUUID();
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+    const r = Math.random() * 16 | 0;
+    const v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+}
+
+export function getDisplayToken(orderNumber, fallback = '') {
+  const token = String(orderNumber || fallback || '').split('-').pop();
+  return token || String(Math.floor(1000 + Math.random() * 9000));
 }
 
 function syncOrderInBackground(order, context = 'order update') {
@@ -235,12 +283,18 @@ export async function searchItems(query) {
  * @param {Object} orderData - Order data including items array
  * @returns {Promise<Object>} The created order with id
  */
-export async function createOrder(orderData) {
+export async function createOrder(orderData, options = {}) {
   let result;
   try {
     result = await db.transaction('rw', db.orders, async () => {
+      const clientOrderId = orderData.clientOrderId || generateLocalUuid();
+      const idempotencyKey = orderData.idempotencyKey || clientOrderId;
       const order = {
+        clientOrderId,
+        idempotencyKey,
+        serverOrderId: orderData.serverOrderId || null,
         orderNumber: orderData.orderNumber,
+        displayToken: orderData.displayToken || getDisplayToken(orderData.orderNumber, idempotencyKey),
         type: orderData.type || 'takeaway',
         status: orderData.status || 'pending',
         channel: orderData.channel || (orderData.source === 'online' ? 'online' : 'pos'),
@@ -275,9 +329,12 @@ export async function createOrder(orderData) {
         createdAt: orderData.createdAt || new Date().toISOString(),
         completedAt: orderData.completedAt || null,
         updatedAt: orderData.updatedAt || new Date().toISOString(),
-        syncStatus: 'pending',
-        syncAttempts: 0,
-        isSynced: 0
+        requiresServerValidation: Boolean(orderData.requiresServerValidation),
+        validationStatus: orderData.validationStatus || ((orderData.source === 'online' || orderData.source === 'qr') ? 'pending' : 'trusted_staff'),
+        lastSyncError: orderData.lastSyncError || '',
+        syncStatus: orderData.syncStatus || 'pending',
+        syncAttempts: parseInt(orderData.syncAttempts) || 0,
+        isSynced: orderData.isSynced ? 1 : 0
       };
 
       const id = await db.orders.add(order);
@@ -289,7 +346,9 @@ export async function createOrder(orderData) {
   }
 
   // Replicate to cloud asynchronously in the background
-  syncOrderInBackground(result, 'order creation');
+  if (!options.skipSync) {
+    syncOrderInBackground(result, 'order creation');
+  }
 
   return result;
 }

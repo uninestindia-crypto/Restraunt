@@ -124,7 +124,7 @@ export class TablesView {
     grid.querySelectorAll('.table-card').forEach(card => {
       card.addEventListener('click', async () => {
         const id = parseInt(card.dataset.id);
-        const table = await db.tables.get(id);
+        const table = await db.table('tables').get(id);
         if (!table) return;
         const idx = STATUS_CYCLE.indexOf(table.status || 'available');
         const nextStatus = STATUS_CYCLE[(idx + 1) % STATUS_CYCLE.length];

@@ -1,11 +1,16 @@
-import { createClient } from '@supabase/supabase-js';
-import { db, getSetting } from '../db/database.js';
+import { db } from '../db/database.js';
+import { getSupabaseClient, resetSupabaseClient, testSupabaseMenuRead } from './supabaseClient.js';
+import { submitPublicOrder } from './publicOrders.js';
 import { showToast } from '../utils/helpers.js';
 
 const DEFAULT_STORE_ID = 'the-taste';
 
 function getStoreId() {
   return localStorage.getItem('store_id') || DEFAULT_STORE_ID;
+}
+
+function tableStore() {
+  return db.table('tables');
 }
 
 function normalizeRemoteItems(items) {
@@ -18,6 +23,14 @@ function normalizeRemoteItems(items) {
     console.warn('[Sync] Failed to parse order items for remote sync:', error);
     return [];
   }
+}
+
+function isPublicOrder(order) {
+  return ['online', 'qr'].includes(order?.source) || ['online', 'qr'].includes(order?.channel);
+}
+
+function needsServerValidation(order) {
+  return isPublicOrder(order) && order?.validationStatus !== 'accepted';
 }
 
 // Table mapping helper functions
@@ -70,10 +83,12 @@ function mapItemToLocal(row) {
 }
 
 function mapOrderToRemote(order) {
-  return {
-    id: order.id,
+  const remote = {
     store_id: getStoreId(),
+    client_order_id: order.clientOrderId,
+    idempotency_key: order.idempotencyKey || order.clientOrderId,
     order_number: order.orderNumber,
+    display_token: order.displayToken || String(order.orderNumber || order.id || '').split('-').pop(),
     type: order.type || 'takeaway',
     status: order.status || 'pending',
     channel: order.channel || 'pos',
@@ -108,14 +123,22 @@ function mapOrderToRemote(order) {
     created_at: order.createdAt || new Date().toISOString(),
     completed_at: order.completedAt || null,
     updated_at: order.updatedAt || new Date().toISOString(),
-    sync_attempts: parseInt(order.syncAttempts) || 0
+    sync_attempts: parseInt(order.syncAttempts) || 0,
+    validation_status: order.validationStatus || (isPublicOrder(order) ? 'pending' : 'trusted_staff'),
+    requires_server_validation: Boolean(order.requiresServerValidation)
   };
+  if (order.serverOrderId) remote.id = order.serverOrderId;
+  return remote;
 }
 
 function mapOrderToLocal(row) {
   return {
     id: row.id,
+    serverOrderId: row.id,
+    clientOrderId: row.client_order_id,
+    idempotencyKey: row.idempotency_key,
     orderNumber: row.order_number,
+    displayToken: row.display_token || String(row.order_number || row.id || '').split('-').pop(),
     type: row.type || 'takeaway',
     status: row.status || 'pending',
     channel: row.channel || 'pos',
@@ -150,6 +173,8 @@ function mapOrderToLocal(row) {
     createdAt: row.created_at,
     completedAt: row.completed_at || null,
     updatedAt: row.updated_at,
+    validationStatus: row.validation_status || 'accepted',
+    requiresServerValidation: Boolean(row.requires_server_validation),
     syncStatus: 'synced',
     syncAttempts: parseInt(row.sync_attempts) || 0,
     isSynced: 1
@@ -160,6 +185,7 @@ function mapStaffToRemote(staff) {
   return {
     id: staff.id,
     store_id: getStoreId(),
+    auth_user_id: staff.cloudUserId || null,
     name: staff.name,
     role: staff.role,
     pin_hash: staff.pinHash,
@@ -172,6 +198,7 @@ function mapStaffToRemote(staff) {
 function mapStaffToLocal(row) {
   return {
     id: row.id,
+    cloudUserId: row.auth_user_id || null,
     name: row.name,
     role: row.role,
     pinHash: row.pin_hash,
@@ -320,53 +347,6 @@ function mapCustomerToLocal(row) {
 
 let supabase = null;
 
-async function initSupabase() {
-  let url = await getSetting('supabaseUrl');
-  let key = await getSetting('supabaseKey');
-  let email = await getSetting('supabaseEmail');
-  let password = await getSetting('supabasePassword');
-
-  // Fallback to environment variables if settings are empty
-  if (!url || !key) {
-    url = import.meta.env.VITE_SUPABASE_URL || '';
-    key = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
-    email = email || import.meta.env.VITE_SUPABASE_EMAIL || '';
-    password = password || import.meta.env.VITE_SUPABASE_PASSWORD || '';
-  }
-
-  if (!url || !key) {
-    console.warn('[Sync] Supabase URL or Key is missing. Cloud synchronization is unconfigured.');
-    return null;
-  }
-
-  // Validate URL format to handle bad credential formats early
-  try {
-    new URL(url);
-  } catch (e) {
-    console.error('[Sync] Invalid Supabase URL format configured:', url, e);
-    return null;
-  }
-
-  try {
-    const client = createClient(url, key, {
-      auth: {
-        persistSession: true,
-        autoRefreshToken: true
-      }
-    });
-    if (email && password) {
-      const { error } = await client.auth.signInWithPassword({ email, password });
-      if (error) {
-        console.warn('[Sync] Supabase staff auth failed; continuing with anon permissions:', error.message);
-      }
-    }
-    return client;
-  } catch (e) {
-    console.error('[Sync] Failed to create Supabase client:', e);
-    return null;
-  }
-}
-
 /**
  * Exponential backoff helper for network calls.
  * Throws immediately for bad credentials or format errors.
@@ -488,6 +468,7 @@ class SyncService {
       }
       this.channel = null;
     }
+    resetSupabaseClient();
     supabase = null;
     this.isConnected = false;
     this.triggerStatusChange('connecting');
@@ -497,7 +478,7 @@ class SyncService {
       return;
     }
 
-    supabase = await initSupabase();
+    supabase = await getSupabaseClient({ persistSession: true });
     if (!supabase) {
       this.triggerStatusChange('unconfigured');
       return;
@@ -654,36 +635,43 @@ class SyncService {
 
       if (unsyncedOrders.length > 0) {
         console.log(`[Sync cache] Found ${unsyncedOrders.length} unsynced orders in local cache.`);
-        const remoteOrders = unsyncedOrders.map(mapOrderToRemote);
+        const publicOrders = unsyncedOrders.filter(needsServerValidation);
+        for (const order of publicOrders) {
+          await this.syncUpOrder(order);
+        }
+
+        const staffOrders = unsyncedOrders.filter(order => !needsServerValidation(order));
+        const remoteOrders = staffOrders.map(mapOrderToRemote);
         
-        try {
+        if (remoteOrders.length > 0) try {
           await retryWithBackoff(async () => {
-            const { error } = await supabase.from('orders').upsert(remoteOrders);
+            const { error } = await supabase.from('orders').upsert(remoteOrders, { onConflict: 'store_id,client_order_id' });
             if (error) throw error;
           }, { maxRetries: 3 });
 
           try {
             await db.transaction('rw', db.orders, async () => {
-              for (const o of unsyncedOrders) {
+              for (const o of staffOrders) {
                 await db.orders.update(o.id, {
                   isSynced: 1,
+                  validationStatus: o.validationStatus || 'trusted_staff',
                   syncStatus: 'synced',
                   lastSyncedAt: new Date().toISOString()
                 });
               }
             });
-            console.log(`[Sync cache] Successfully synced and updated cache for ${unsyncedOrders.length} orders.`);
+            console.log(`[Sync cache] Successfully synced and updated cache for ${staffOrders.length} staff-created orders.`);
           } catch (dbErr) {
             console.error('[Sync db] Error updating order sync status in local cache:', dbErr);
           }
         } catch (netErr) {
           console.error('[Sync net] Failed to push unsynced orders to cloud after retries:', netErr);
           await db.transaction('rw', db.orders, async () => {
-            for (const o of unsyncedOrders) {
+            for (const o of staffOrders) {
               await db.orders.update(o.id, {
                 isSynced: 0,
                 syncStatus: 'error',
-                syncError: netErr?.message || String(netErr),
+                lastSyncError: netErr?.message || String(netErr),
                 syncAttempts: (parseInt(o.syncAttempts) || 0) + 1,
                 lastSyncAttemptAt: new Date().toISOString()
               });
@@ -728,7 +716,7 @@ class SyncService {
       // 5. Sync Tables
       let unsyncedTables = [];
       try {
-        unsyncedTables = await db.tables.filter(t => !t.isSynced).toArray();
+        unsyncedTables = await tableStore().filter(t => !t.isSynced).toArray();
       } catch (dbErr) {
         console.error('[Sync db] Error fetching unsynced tables:', dbErr);
       }
@@ -743,9 +731,9 @@ class SyncService {
           }, { maxRetries: 3 });
 
           try {
-            await db.transaction('rw', db.tables, async () => {
+            await db.transaction('rw', tableStore(), async () => {
               for (const t of unsyncedTables) {
-                await db.tables.update(t.id, { isSynced: 1 });
+                await tableStore().update(t.id, { isSynced: 1 });
               }
             });
             console.log(`[Sync cache] Successfully synced and updated cache for ${unsyncedTables.length} tables.`);
@@ -1061,10 +1049,28 @@ class SyncService {
       return;
     }
     try {
+      if (needsServerValidation(order)) {
+        const result = await submitPublicOrder(order);
+        if (!result.accepted) {
+          throw new Error(result.message || 'Public order validation failed.');
+        }
+        await db.orders.update(order.id, {
+          ...result.order,
+          isSynced: 1,
+          syncStatus: 'synced',
+          validationStatus: 'accepted',
+          requiresServerValidation: false,
+          lastSyncError: '',
+          lastSyncedAt: new Date().toISOString()
+        });
+        console.log(`[Sync cache] Public order ${order.orderNumber} validated by Edge Function.`);
+        return;
+      }
+
       const remote = mapOrderToRemote(order);
       
       await retryWithBackoff(async () => {
-        const { error } = await supabase.from('orders').upsert(remote);
+        const { error } = await supabase.from('orders').upsert(remote, { onConflict: 'store_id,client_order_id' });
         if (error) throw error;
       }, {
         maxRetries: 3,
@@ -1091,9 +1097,9 @@ class SyncService {
       if (order?.id) {
         try {
           await db.orders.update(order.id, {
-            isSynced: 0,
-            syncStatus: 'error',
-            syncError: e?.message || String(e),
+          isSynced: 0,
+          syncStatus: 'error',
+            lastSyncError: e?.message || String(e),
             syncAttempts: (parseInt(order.syncAttempts) || 0) + 1,
             lastSyncAttemptAt: new Date().toISOString()
           });
@@ -1219,7 +1225,7 @@ class SyncService {
 
       this.isSyncingFromServer = true;
       try {
-        await db.tables.update(table.id, { isSynced: 1 });
+        await tableStore().update(table.id, { isSynced: 1 });
       } catch (dbErr) {
         console.error(`[Sync db] Error marking table ${table.id} as synced:`, dbErr);
       } finally {
@@ -1493,11 +1499,11 @@ class SyncService {
     });
 
     // Tables hooks
-    db.tables.hook('creating', (primKey, obj, transaction) => {
+    tableStore().hook('creating', (primKey, obj, transaction) => {
       setTimeout(async () => {
         if (this.isSyncingFromServer) return;
         try {
-          const t = await db.tables.get(primKey);
+          const t = await tableStore().get(primKey);
           if (t) await this.syncUpTable(t);
         } catch (dbErr) {
           console.error('[Sync db] Error in tables creating hook:', dbErr);
@@ -1505,11 +1511,11 @@ class SyncService {
       }, 50);
     });
 
-    db.tables.hook('updating', (mods, primKey, obj, transaction) => {
+    tableStore().hook('updating', (mods, primKey, obj, transaction) => {
       setTimeout(async () => {
         if (this.isSyncingFromServer) return;
         try {
-          const t = await db.tables.get(primKey);
+          const t = await tableStore().get(primKey);
           if (t) await this.syncUpTable(t);
         } catch (dbErr) {
           console.error('[Sync db] Error in tables updating hook:', dbErr);
@@ -1517,7 +1523,7 @@ class SyncService {
       }, 50);
     });
 
-    db.tables.hook('deleting', (primKey, obj, transaction) => {
+    tableStore().hook('deleting', (primKey, obj, transaction) => {
       setTimeout(async () => {
         if (this.isSyncingFromServer || !this.isConnected || !supabase) return;
         try {
@@ -1707,23 +1713,8 @@ class SyncService {
   }
 
   // Helper method to trigger manual connection test
-  async testConnection(url, key, email = '', password = '') {
-    if (!url || !key) {
-      return { success: false, message: 'URL and Key are required.' };
-    }
-    try {
-      new URL(url); // Verify URL format
-      const client = createClient(url, key, { auth: { persistSession: false } });
-      if (email && password) {
-        const { error: authError } = await client.auth.signInWithPassword({ email, password });
-        if (authError) throw authError;
-      }
-      const { error } = await client.from('menu_categories').select('id').limit(1);
-      if (error) throw error;
-      return { success: true, message: 'Connection successful!' };
-    } catch (e) {
-      return { success: false, message: e.message || String(e) };
-    }
+  async testConnection(url, key) {
+    return testSupabaseMenuRead(url, key);
   }
 }
 

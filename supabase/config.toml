@@ -1,0 +1,4 @@
+project_id = "the-taste-restaurant-os"
+
+[functions.public-order]
+verify_jwt = false

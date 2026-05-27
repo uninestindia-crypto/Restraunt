@@ -1,4 +1,4 @@
-import { db } from './database.js';
+import { db, generateLocalUuid, getDisplayToken } from './database.js';
 import { hashPin } from '../utils/crypto.js';
 
 /**
@@ -41,7 +41,8 @@ export async function seedDatabase() {
 
   // Ensure default tables exist
   try {
-    const tableCount = await db.tables.count();
+    const tableStore = db.table('tables');
+    const tableCount = await tableStore.count();
     if (tableCount === 0) {
       const defaultTables = [
         { number: 1, status: 'available', floorSection: 'Main Hall' },
@@ -53,7 +54,7 @@ export async function seedDatabase() {
         { number: 7, status: 'available', floorSection: 'Balcony' },
         { number: 8, status: 'available', floorSection: 'Balcony' }
       ];
-      await db.tables.bulkAdd(defaultTables);
+      await tableStore.bulkAdd(defaultTables);
       console.log('[Seed] Default tables seeded.');
     }
   } catch (err) {
@@ -194,7 +195,7 @@ export async function seedDatabase() {
       { key: 'orderNumberPrefix', value: 'TT' },
     ];
 
-    await db.settings.bulkAdd(defaultSettings);
+    await db.settings.bulkPut(defaultSettings);
 
     // ── Inventory Seeding ───────────────────────────────────────
     const inventoryItems = [
@@ -308,11 +309,16 @@ export async function seedDatabase() {
       const paymentMethod = paymentsPool[i % paymentsPool.length];
 
       const orderNumber = `TT-${orderDate.getFullYear()}${String(orderDate.getMonth() + 1).padStart(2, '0')}${String(orderDate.getDate()).padStart(2, '0')}-${String(i).padStart(3, '0')}`;
+      const clientOrderId = generateLocalUuid();
 
       historicalOrders.push({
+        clientOrderId,
+        idempotencyKey: clientOrderId,
         orderNumber,
+        displayToken: getDisplayToken(orderNumber, clientOrderId),
         type,
         channel: 'pos',
+        source: 'pos',
         status: 'completed',
         items: JSON.stringify(cartItems),
         subtotal,
@@ -323,6 +329,10 @@ export async function seedDatabase() {
         paymentStatus: 'paid',
         customerName: customer.name,
         customerPhone: customer.phone,
+        validationStatus: 'trusted_staff',
+        requiresServerValidation: false,
+        syncStatus: 'pending',
+        syncAttempts: 0,
         staffId: 1,
         staffName: 'Owner',
         tableId: type === 'dinein' ? (1 + (i % 8)) : null,

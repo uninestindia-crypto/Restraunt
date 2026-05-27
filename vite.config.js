@@ -31,8 +31,14 @@ export default defineConfig({
         ],
         shortcuts: [
           {
-            name: 'New Order',
+            name: 'Order Online',
             short_name: 'Order',
+            url: '/#/self-order',
+            icons: [{ src: 'icons/icon-192.png', sizes: '192x192' }]
+          },
+          {
+            name: 'Staff POS',
+            short_name: 'POS',
             url: '/#/pos',
             icons: [{ src: 'icons/icon-192.png', sizes: '192x192' }]
           }

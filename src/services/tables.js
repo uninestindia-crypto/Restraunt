@@ -10,10 +10,12 @@
 
 import { db } from '../db/database.js';
 
+const tablesStore = () => db.table('tables');
+
 class TableService {
   async getAllTables() {
     try {
-      return await db.tables.orderBy('number').toArray();
+      return await tablesStore().orderBy('number').toArray();
     } catch (e) {
       console.error('[TableService] Dexie database error in getAllTables:', e);
       return [];
@@ -22,7 +24,7 @@ class TableService {
 
   async updateTableStatus(id, status) {
     try {
-      return await db.tables.update(id, { status });
+      return await tablesStore().update(id, { status });
     } catch (e) {
       console.error(`[TableService] Dexie database error in updateTableStatus for ID ${id}:`, e);
       return 0;
@@ -31,7 +33,7 @@ class TableService {
 
   async addTable(table) {
     try {
-      return await db.tables.add({ ...table, status: 'available', isSynced: 0, _platform: 'nextgenos' });
+      return await tablesStore().add({ ...table, status: 'available', isSynced: 0, _platform: 'nextgenos' });
     } catch (e) {
       console.error('[TableService] Dexie database error in addTable:', e);
       return null;
@@ -40,7 +42,7 @@ class TableService {
 
   async deleteTable(id) {
     try {
-      return await db.tables.delete(id);
+      return await tablesStore().delete(id);
     } catch (e) {
       console.error(`[TableService] Dexie database error in deleteTable for ID ${id}:`, e);
       return null;
@@ -65,7 +67,7 @@ class TableService {
 
   async seedDefaultTables() {
     try {
-      const count = await db.tables.count();
+      const count = await tablesStore().count();
       if (count > 0) return;
 
       const defaults = [
@@ -79,7 +81,7 @@ class TableService {
         { number: 8, capacity: 2, floorSection: 'Patio', status: 'available' },
       ];
 
-      await db.tables.bulkAdd(defaults.map(t => ({ ...t, isSynced: 0, _platform: 'nextgenos' })));
+      await tablesStore().bulkAdd(defaults.map(t => ({ ...t, isSynced: 0, _platform: 'nextgenos' })));
     } catch (e) {
       console.error('[TableService] Dexie database error in seedDefaultTables:', e);
     }

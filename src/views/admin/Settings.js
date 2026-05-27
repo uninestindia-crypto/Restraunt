@@ -9,6 +9,7 @@ import { ReceiptBuilder } from '../../services/receipt.js';
 import { exportAllData, exportOrdersCSV, importData } from '../../utils/dataExport.js';
 import { logDataExported } from '../../utils/activityLogger.js';
 import { hashPin } from '../../utils/crypto.js';
+import { signInCloudStaff, signOutCloudStaff } from '../../services/supabaseClient.js';
 
 export class SettingsView {
   constructor(app) {
@@ -43,7 +44,6 @@ export class SettingsView {
         'supabaseUrl',
         'supabaseKey',
         'supabaseEmail',
-        'supabasePassword',
         // New profile fields
         'gstin',
         'fssaiNumber',
@@ -616,8 +616,8 @@ export class SettingsView {
                 <input type="email" id="supabaseEmail" class="input" value="${esc(this.config.supabaseEmail)}" placeholder="owner@example.com" style="${this._inputStyle()}">
               </div>
               <div class="input-group" style="flex:1;min-width:220px;">
-                <label for="supabasePassword" style="${this._labelStyle()}">Staff Cloud Password</label>
-                <input type="password" id="supabasePassword" class="input" value="${esc(this.config.supabasePassword)}" placeholder="Supabase Auth password" style="${this._inputStyle()}">
+                <label for="supabasePassword" style="${this._labelStyle()}">Staff Cloud Password (not saved)</label>
+                <input type="password" id="supabasePassword" class="input" value="" placeholder="Enter only to sign in this device" autocomplete="current-password" style="${this._inputStyle()}">
               </div>
             </div>
 
@@ -638,7 +638,40 @@ export class SettingsView {
                 <span class="material-symbols-rounded" style="font-size: 18px;">sync_saved_locally</span>
                 Test Cloud Connection
               </button>
+              <button class="btn btn-primary" id="btn-cloud-signin" style="
+                flex: 1;
+                font-family: 'Plus Jakarta Sans', sans-serif;
+                font-weight: 700;
+                font-size: var(--text-xs);
+                min-height: 40px;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                gap: 6px;
+              ">
+                <span class="material-symbols-rounded" style="font-size: 18px;">login</span>
+                Staff Cloud Sign In
+              </button>
+              <button class="btn btn-secondary" id="btn-cloud-signout" style="
+                flex: 1;
+                font-family: 'Plus Jakarta Sans', sans-serif;
+                font-weight: 700;
+                font-size: var(--text-xs);
+                min-height: 40px;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                gap: 6px;
+                border: 1px solid var(--border-glass);
+                background: rgba(255,255,255,0.02);
+              ">
+                <span class="material-symbols-rounded" style="font-size: 18px;">logout</span>
+                Sign Out Cloud
+              </button>
             </div>
+            <p style="font-size:var(--text-xs);color:var(--text-secondary);line-height:1.5;margin:0;">
+              Staff cloud password is used only for Supabase Auth session creation and is never saved in IndexedDB or localStorage by this settings screen.
+            </p>
           </div>
         </div>
 
@@ -1124,8 +1157,6 @@ export class SettingsView {
 
         const url = document.getElementById('supabaseUrl').value.trim();
         const key = document.getElementById('supabaseKey').value.trim();
-        const email = document.getElementById('supabaseEmail')?.value.trim() || '';
-        const password = document.getElementById('supabasePassword')?.value.trim() || '';
 
         if (!url || !key) {
           showToast('Please enter both Supabase URL and Anon Key to test.', 'warning');
@@ -1141,7 +1172,7 @@ export class SettingsView {
 
         try {
           const { syncService } = await import('../../services/sync.js');
-          const result = await syncService.testConnection(url, key, email, password);
+          const result = await syncService.testConnection(url, key);
           
           if (result.success) {
             showToast('Supabase connection successful! 🎉', 'success');
@@ -1154,6 +1185,39 @@ export class SettingsView {
           testSyncBtn.disabled = false;
           testSyncBtn.innerHTML = originalHtml;
         }
+      });
+    }
+
+    const signInBtn = document.getElementById('btn-cloud-signin');
+    if (signInBtn) {
+      signInBtn.addEventListener('click', async () => {
+        const email = document.getElementById('supabaseEmail')?.value.trim() || '';
+        const password = document.getElementById('supabasePassword')?.value.trim() || '';
+        const result = await signInCloudStaff(email, password);
+        if (!result.success) {
+          showToast('Cloud sign in failed: ' + result.message, 'error');
+          return;
+        }
+        document.getElementById('supabasePassword').value = '';
+        showToast('Cloud staff session active on this device', 'success');
+        try {
+          const { syncService } = await import('../../services/sync.js');
+          await syncService.connect();
+        } catch (syncErr) {
+          console.error('Failed to reconnect after cloud sign in:', syncErr);
+        }
+      });
+    }
+
+    const signOutBtn = document.getElementById('btn-cloud-signout');
+    if (signOutBtn) {
+      signOutBtn.addEventListener('click', async () => {
+        const result = await signOutCloudStaff();
+        if (!result.success) {
+          showToast('Cloud sign out failed: ' + result.message, 'error');
+          return;
+        }
+        showToast('Cloud staff session signed out', 'info');
       });
     }
 
@@ -1245,7 +1309,6 @@ export class SettingsView {
         'supabaseUrl',
         'supabaseKey',
         'supabaseEmail',
-        'supabasePassword',
         'printDensity',
         'printCopies',
         'googleClientId'
