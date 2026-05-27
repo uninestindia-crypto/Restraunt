@@ -70,21 +70,10 @@ class AuthService {
       }
     }
 
-    // 4. Fallback to email pattern matching if we still aren't sure (failsafe)
-    if (!isStaff) {
-      const userEmail = user.email || emailFallback || '';
-      const lowercaseEmail = userEmail.toLowerCase();
-      isStaff = lowercaseEmail.includes('admin') || 
-                lowercaseEmail.includes('staff') || 
-                lowercaseEmail.includes('owner') || 
-                lowercaseEmail.includes('manager') || 
-                lowercaseEmail.includes('cashier') || 
-                lowercaseEmail.includes('kitchen') || 
-                lowercaseEmail.includes('waiter');
-      if (isStaff) {
-        resolvedRole = lowercaseEmail.includes('admin') || lowercaseEmail.includes('owner') ? 'owner' : 'cashier';
-      }
-    }
+    // NOTE: Email-pattern-based role inference has been intentionally removed.
+    // Granting elevated roles based on an email string is a severe security vulnerability.
+    // If no membership record exists in Supabase, the user is treated as a customer only.
+    // Staff must be explicitly added via the Staff Management panel.
 
     const userEmail = user.email || emailFallback || '';
     const name = user.user_metadata?.name || userEmail.split('@')[0] || 'Cloud User';
@@ -165,14 +154,33 @@ class AuthService {
       console.error('[AuthService] Error restoring cloud session:', e);
     }
 
-    // 2. Fallback to PIN auto-login
-    const savedPin = localStorage.getItem('auth_staff_pin');
-    if (savedPin) {
+    // 2. Fallback: Verify saved PIN hash still matches a real active staff record
+    // We never auto-login blindly from localStorage - we must confirm the hash
+    // still points to a valid, active staff member in the database.
+    const savedPinHash = localStorage.getItem('auth_staff_pin');
+    if (savedPinHash && savedPinHash.length === 64) {
       try {
-        const staff = await this.login(savedPin);
-        return staff;
+        // Verify this hash maps to a real, currently-active staff record
+        const staffRecord = await db.staff
+          .where('pinHash')
+          .equals(savedPinHash)
+          .and(s => s.isActive === 1 || s.isActive === true)
+          .first();
+        if (staffRecord && staffRecord.pinHash) {
+          // Valid — restore session without re-prompting
+          this.currentStaff = staffRecord;
+          this.isAuthenticated = true;
+          this._startSessionTimer();
+          console.log(`[AuthService] Session restored for "${staffRecord.name}" via saved PIN hash.`);
+          return staffRecord;
+        } else {
+          // Hash no longer maps to any active staff — clear stale token
+          console.warn('[AuthService] Saved PIN hash no longer matches any active staff. Clearing.');
+          localStorage.removeItem('auth_staff_pin');
+        }
       } catch (e) {
         console.error('[AuthService] Error restoring PIN session:', e);
+        localStorage.removeItem('auth_staff_pin');
       }
     }
 
@@ -216,14 +224,22 @@ class AuthService {
       }
 
       const staff = await this.getStaffByPin(pin);
-      if (!staff) {
+
+      // Hard security check: staff must exist, be active, AND have a stored PIN hash.
+      // This prevents any ghost/partial records from granting access.
+      if (!staff || !staff.pinHash) {
         this.recordFailedAttempt();
-        console.warn('[AuthService] Login failed: no active staff found.');
+        console.warn('[AuthService] Login failed: no active staff with a valid PIN found.');
         return null;
       }
 
-      // Store hashed PIN in localStorage for security (never store plain-text!)
+      // Double-verify the hash matches (belt-and-suspenders)
       const hashedPin = pin.length === 64 ? pin : await hashPin(pin);
+      if (hashedPin !== staff.pinHash) {
+        this.recordFailedAttempt();
+        console.warn('[AuthService] Login failed: PIN hash mismatch.');
+        return null;
+      }
 
       this.currentStaff = staff;
       this.isAuthenticated = true;
