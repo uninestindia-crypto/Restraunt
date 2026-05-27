@@ -3,6 +3,18 @@
 
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
+-- Drop existing legacy tables to prevent "column store_id does not exist" on partial schema upgrades
+DROP TABLE IF EXISTS activity_log CASCADE;
+DROP TABLE IF EXISTS shifts CASCADE;
+DROP TABLE IF EXISTS staff CASCADE;
+DROP TABLE IF EXISTS suppliers CASCADE;
+DROP TABLE IF EXISTS inventory CASCADE;
+DROP TABLE IF EXISTS tables CASCADE;
+DROP TABLE IF EXISTS orders CASCADE;
+DROP TABLE IF EXISTS menu_items CASCADE;
+DROP TABLE IF EXISTS menu_categories CASCADE;
+DROP TABLE IF EXISTS customers CASCADE;
+
 CREATE TABLE IF NOT EXISTS menu_categories (
     id INT PRIMARY KEY,
     store_id TEXT NOT NULL DEFAULT 'the-taste',
