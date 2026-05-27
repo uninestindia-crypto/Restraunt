@@ -180,6 +180,10 @@ export async function seedDatabase(options = {}) {
 
     await db.settings.bulkPut(defaultSettings);
 
+    if (publicOnly) {
+      return;
+    }
+
     // ── Inventory Seeding ───────────────────────────────────────
     const inventoryItems = [
       { name: 'Chicken', unit: 'kg', quantity: 50, minThreshold: 10, maxCapacity: 100, categoryTag: 'Meat', isSynced: 0, _platform: 'nextgenos' },
@@ -328,4 +332,27 @@ export async function seedDatabase(options = {}) {
     await db.orders.bulkAdd(historicalOrders);
     console.log('[Seed] High-fidelity historical orders seeded.');
   });
+}
+
+async function ensureDefaultTables() {
+  try {
+    const tableStore = db.table('tables');
+    const tableCount = await tableStore.count();
+    if (tableCount === 0) {
+      const defaultTables = [
+        { number: 1, status: 'available', floorSection: 'Main Hall' },
+        { number: 2, status: 'available', floorSection: 'Main Hall' },
+        { number: 3, status: 'available', floorSection: 'Main Hall' },
+        { number: 4, status: 'available', floorSection: 'Main Hall' },
+        { number: 5, status: 'available', floorSection: 'Window Side' },
+        { number: 6, status: 'available', floorSection: 'Window Side' },
+        { number: 7, status: 'available', floorSection: 'Balcony' },
+        { number: 8, status: 'available', floorSection: 'Balcony' }
+      ];
+      await tableStore.bulkAdd(defaultTables);
+      console.log('[Seed] Default tables seeded.');
+    }
+  } catch (err) {
+    console.error('[Seed] Failed to seed default tables:', err);
+  }
 }

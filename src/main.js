@@ -23,19 +23,10 @@ import { seedDatabase } from './db/seed.js';
 // Router
 import { router } from './router.js';
 
-// Services
-import { printerService } from './services/printer.js';
 import { showToast } from './utils/helpers.js';
 
 // NextGenOS
 import { printConsoleSignature, injectBuildGlobal } from './utils/watermark.js';
-import { Sidebar } from './components/Sidebar.js';
-
-// Auth
-import { authService } from './services/auth.js';
-import { LoginScreen } from './components/LoginScreen.js';
-import { FirstRunSetup } from './components/FirstRunSetup.js';
-
 class App {
   constructor() {
     this.deferredInstallPrompt = null;
@@ -44,12 +35,21 @@ class App {
     this.loginScreen = null;
     this.syncStarted = false;
     this.syncServicePromise = null;
+    this.authServicePromise = null;
   }
 
   async init() {
     try {
-      // Initialize database and seed data
-      await seedDatabase();
+      const initialHash = window.location.hash || '#/self-order';
+      const initialPath = initialHash.split('?')[0];
+      const isPublicEntry = initialPath === '#/self-order';
+
+      if (!window.location.hash) {
+        window.location.hash = '#/self-order';
+      }
+
+      // Public customers only need catalog data. Staff/admin demo data is seeded on staff entry.
+      await seedDatabase({ publicOnly: isPublicEntry });
 
       // Hide loading screen
       this.hideLoadingScreen();
@@ -75,15 +75,12 @@ class App {
       });
 
       // Public website entry opens customer ordering. Staff use explicit staff routes.
-      const initialHash = window.location.hash || '#/self-order';
-      const initialPath = initialHash.split('?')[0];
-      if (!window.location.hash) {
-        window.location.hash = '#/self-order';
-      }
-      if (initialPath === '#/self-order') {
+      if (isPublicEntry) {
         this.startPublicRoute();
         return;
       }
+
+      const authService = await this.getAuthService();
 
       const activeOwner = await db.staff
         .where('role')
@@ -122,11 +119,10 @@ class App {
   }
 
   startPublicRoute() {
-    this.renderShell();
+    this.renderPublicShell();
     this.setupRouter();
     this.setupPWA();
     this.setupConnectivity();
-    this.setupMobileSidebar();
     router.start();
     this.initialized = true;
   }
