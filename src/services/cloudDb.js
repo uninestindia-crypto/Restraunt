@@ -565,12 +565,25 @@ export async function cloudHasData() {
   const client = await getClient();
   if (!client) return false;
   try {
-    const { data, error } = await client
+    const { data: categories, error: categoryError } = await client
       .from('menu_categories')
       .select('id')
       .eq('store_id', getStoreId())
       .limit(1);
-    return !error && data && data.length > 0;
+
+    if (categoryError || !categories?.length) return false;
+
+    const { data: items, error: itemError } = await client
+      .from('menu_items')
+      .select('id')
+      .eq('store_id', getStoreId())
+      .limit(1);
+
+    if (!itemError && !items?.length) {
+      console.warn('[CloudDB] Cloud categories exist but menu_items is empty. Local fallback seed will keep the storefront usable; run seed-cloud-menu to repair Supabase.');
+    }
+
+    return !itemError && items && items.length > 0;
   } catch {
     return false;
   }

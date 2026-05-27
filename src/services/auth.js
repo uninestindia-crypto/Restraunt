@@ -1,13 +1,3 @@
-/**
- * ═══════════════════════════════════════════════════
- *  NextGenOS Restaurant Operating System
- *  Module: Authentication Service
- *  Version: 2.0.0
- *  © 2026 NextGenOS. All Rights Reserved.
- *  This software is proprietary and confidential.
- * ═══════════════════════════════════════════════════
- */
-
 import { db } from '../db/database.js';
 import { hashPin } from '../utils/crypto.js';
 import {
@@ -19,7 +9,6 @@ import {
 } from './authGuards.js';
 import { signInCloudStaff, signOutCloudStaff } from './supabaseClient.js';
 
-/** 8-hour session duration in milliseconds */
 const SESSION_DURATION_MS = 8 * 60 * 60 * 1000;
 const LOCKOUT_MAX_ATTEMPTS = 5;
 const LOCKOUT_DURATION_MS = 5 * 60 * 1000;
@@ -32,200 +21,185 @@ class AuthService {
     this.sessionTimeout = null;
   }
 
-  /**
-   * Resolves a Supabase Auth user to a local staff or customer object.
-   * Checks local IndexedDB cache first, then checks user_metadata, and falls back to Supabase queries.
-   * @private
-   */
-  async _resolveStaffOrCustomer(user, emailFallback = '') {
-    if (!user) return null;
+  _getStoreId() {
+    return localStorage.getItem('store_id') || DEFAULT_STORE_ID;
+  }
 
-    // 1. Try to find local staff record by cloudUserId
-    let staff = await db.staff
-      .where('cloudUserId')
-      .equals(user.id)
-      .first();
-
-    if (staff) return staff;
-
-    // 2. Not found locally. Determine if user is staff or customer.
-    const staffRoles = ['owner', 'manager', 'cashier', 'kitchen', 'waiter', 'delivery'];
-    const metadataRole = user.user_metadata?.role;
-    let isStaff = metadataRole && staffRoles.includes(metadataRole.toLowerCase());
-    let resolvedRole = metadataRole || 'cashier';
-    let resolvedStaffId = null;
-
-    // 3. If metadata doesn't explicitly state staff role, query Supabase staff_memberships table
-    if (!isStaff) {
-      try {
-        const { getSupabaseClient } = await import('./supabaseClient.js');
-        const client = await getSupabaseClient();
-        if (client) {
-          const { data: membership } = await client
-            .from('staff_memberships')
-            .select('role, staff_id')
-            .eq('auth_user_id', user.id)
-            .eq('is_active', true)
-            .maybeSingle();
-          if (membership) {
-            isStaff = true;
-            resolvedRole = membership.role;
-            resolvedStaffId = membership.staff_id;
-          }
-        }
-      } catch (e) {
-        console.error('[AuthService] Error checking remote memberships:', e);
-      }
+  async _getRemoteStaffMembership(user) {
+    const { getSupabaseClient } = await import('./supabaseClient.js');
+    const client = await getSupabaseClient();
+    if (!client) {
+      throw new CloudStaffAccessError('Supabase is not configured for cloud staff login.');
     }
 
-    // NOTE: Email-pattern-based role inference has been intentionally removed.
-    // Granting elevated roles based on an email string is a severe security vulnerability.
-    // If no membership record exists in Supabase, the user is treated as a customer only.
-    // Staff must be explicitly added via the Staff Management panel.
+    const { data, error } = await client
+      .from('staff_memberships')
+      .select('role, staff_id, store_id, is_active')
+      .eq('store_id', this._getStoreId())
+      .eq('auth_user_id', user.id)
+      .eq('is_active', true)
+      .maybeSingle();
+
+    if (error) {
+      throw new CloudStaffAccessError(`Unable to verify staff membership: ${error.message}`);
+    }
+
+    return data || null;
+  }
+
+  async _getRemoteStaffRecord(user, access) {
+    const { getSupabaseClient } = await import('./supabaseClient.js');
+    const client = await getSupabaseClient();
+    if (!client) return null;
+
+    let query = client
+      .from('staff')
+      .select('*')
+      .eq('store_id', this._getStoreId())
+      .eq('is_active', true);
+
+    query = access.staffId
+      ? query.eq('id', access.staffId)
+      : query.eq('auth_user_id', user.id);
+
+    const { data, error } = await query.maybeSingle();
+    if (error) {
+      throw new CloudStaffAccessError(`Unable to load staff profile: ${error.message}`);
+    }
+    if (!data) return null;
+
+    return {
+      id: data.id,
+      cloudUserId: data.auth_user_id || user.id,
+      name: data.name,
+      role: normalizeStaffRole(data.role) || access.role,
+      pinHash: data.pin_hash || null,
+      allowExpress: data.allow_express ? 1 : 0,
+      isActive: data.is_active ? 1 : 0,
+      createdAt: data.created_at || new Date().toISOString(),
+      updatedAt: data.updated_at || new Date().toISOString(),
+      isSynced: 1
+    };
+  }
+
+  async _resolveCloudStaff(user, emailFallback = '') {
+    if (!user) return null;
+
+    const membership = await this._getRemoteStaffMembership(user);
+    const access = requireCloudStaffAccess(user, membership, this._getStoreId());
+    const remoteStaff = await this._getRemoteStaffRecord(user, access);
+    if (!remoteStaff || !isActiveFlag(remoteStaff.isActive)) {
+      throw new CloudStaffAccessError('Cloud staff profile is missing or inactive. Run the admin recovery tool.');
+    }
+
+    const userEmail = user.email || emailFallback || '';
+    const fallbackName = user.app_metadata?.name || user.user_metadata?.name || userEmail.split('@')[0] || 'Cloud User';
+    remoteStaff.name = remoteStaff.name || fallbackName;
+    remoteStaff.cloudUserId = user.id;
+    remoteStaff.role = access.role;
+
+    await db.staff.put(remoteStaff);
+    return remoteStaff;
+  }
+
+  async _resolveCustomer(user, emailFallback = '') {
+    if (!user) return null;
 
     const userEmail = user.email || emailFallback || '';
     const name = user.user_metadata?.name || userEmail.split('@')[0] || 'Cloud User';
 
-    if (isStaff) {
-      // SECURITY: When linking a cloud user to a local staff record, we must
-      // PRESERVE the existing pinHash. Creating a new pinHash-less record would
-      // allow cloud-session restore to bypass PIN authentication.
+    let customer = await db.customers
+      .where('authUserId')
+      .equals(user.id)
+      .first();
 
-      // First: try to find an existing local record by the resolved Supabase staff ID
-      let existingRecord = null;
-      if (resolvedStaffId) {
-        existingRecord = await db.staff.get(resolvedStaffId);
-      }
-
-      // Second: try to find by cloud user ID (already linked)
-      if (!existingRecord) {
-        existingRecord = await db.staff
-          .where('cloudUserId')
-          .equals(user.id)
-          .first();
-      }
-
-      // Third: try to find by name matching (case-insensitive)
-      if (!existingRecord) {
-        existingRecord = await db.staff
-          .filter(s => s.name.toLowerCase() === name.toLowerCase())
-          .first();
-      }
-
-      if (existingRecord) {
-        // Update only the cloudUserId link — never overwrite pinHash or role
-        await db.staff.update(existingRecord.id, {
-          cloudUserId: user.id,
-          isSynced: existingRecord.isSynced
-        });
-        staff = { ...existingRecord, cloudUserId: user.id };
-        return staff;
-      }
-
-      // No existing local record — create a minimal one so the session is tracked.
-      // NOTE: This record has NO pinHash intentionally. Cloud-session restore will
-      // only allow this user to log in via cloud (email+password), not via local PIN.
-      // The fullPull on next sync will hydrate the full record including pinHash.
-      const tempId = resolvedStaffId || Date.now();
-      staff = {
-        id: tempId,
-        name,
-        role: resolvedRole.toLowerCase(),
-        cloudUserId: user.id,
-        pinHash: null, // explicitly null — no PIN bypass possible
-        isActive: 1,
-        createdAt: new Date().toISOString(),
-        isSynced: 1
-      };
-      await db.staff.put(staff);
-      return staff;
-    } else {
-      // Customer flow
-      let customer = await db.customers
-        .where('authUserId')
-        .equals(user.id)
+    if (!customer) {
+      customer = await db.customers
+        .filter(c => (c.name || '').toLowerCase() === name.toLowerCase())
         .first();
+    }
 
-      if (!customer) {
-        customer = await db.customers
-          .filter(c => c.name.toLowerCase() === name.toLowerCase())
-          .first();
-      }
-
-      if (!customer) {
-        customer = {
-          id: Date.now(),
-          name,
-          phone: '',
-          authUserId: user.id,
-          totalSpent: 0,
-          visitCount: 0,
-          loyaltyPoints: 0,
-          tier: 'bronze',
-          createdAt: new Date().toISOString()
-        };
-        await db.customers.put(customer);
-      } else if (!customer.authUserId) {
-        await db.customers.update(customer.id, { authUserId: user.id, isSynced: 0 });
-      }
-
-      return {
-        id: customer.id,
-        name: customer.name,
-        role: 'customer',
-        cloudUserId: user.id,
-        isActive: true,
-        createdAt: customer.createdAt || new Date().toISOString()
+    if (!customer) {
+      customer = {
+        id: Date.now(),
+        name,
+        phone: '',
+        authUserId: user.id,
+        totalSpent: 0,
+        visitCount: 0,
+        loyaltyPoints: 0,
+        tier: 'bronze',
+        createdAt: new Date().toISOString()
       };
+      await db.customers.put(customer);
+    } else if (!customer.authUserId) {
+      await db.customers.update(customer.id, { authUserId: user.id, isSynced: 0 });
+    }
+
+    return {
+      id: customer.id,
+      name: customer.name,
+      role: 'customer',
+      cloudUserId: user.id,
+      isActive: true,
+      createdAt: customer.createdAt || new Date().toISOString()
+    };
+  }
+
+  async _hydrateStaffCloudData() {
+    try {
+      const { fullPull } = await import('./cloudDb.js');
+      const result = await fullPull({ publicOnly: false });
+      return result?.success === true;
+    } catch (error) {
+      console.warn('[AuthService] Cloud hydration after staff login failed:', error);
+      return false;
     }
   }
 
-  /**
-   * Attempt to restore a persistent session (both staff PIN, and Supabase Auth cloud user).
-   * @returns {Promise<Object|null>} The restored staff/customer object, or null
-   */
   async restoreSession() {
-    // 1. Check for active Supabase Auth cloud session first
     try {
       const { getCloudSession } = await import('./supabaseClient.js');
       const session = await getCloudSession();
       if (session?.user) {
-        const staff = await this._resolveStaffOrCustomer(session.user);
-        if (staff) {
-          this.currentStaff = staff;
+        let account = null;
+        try {
+          account = await this._resolveCloudStaff(session.user);
+        } catch (error) {
+          if (!(error instanceof CloudStaffAccessError)) throw error;
+          account = await this._resolveCustomer(session.user);
+        }
+
+        if (account) {
+          this.currentStaff = account;
           this.isAuthenticated = true;
           this._startSessionTimer();
-          return staff;
+          return account;
         }
       }
     } catch (e) {
       console.error('[AuthService] Error restoring cloud session:', e);
     }
 
-    // 2. Fallback: Verify saved PIN hash still matches a real active staff record
-    // We never auto-login blindly from localStorage - we must confirm the hash
-    // still points to a valid, active staff member in the database.
     const savedPinHash = localStorage.getItem('auth_staff_pin');
     if (savedPinHash && savedPinHash.length === 64) {
       try {
-        // Verify this hash maps to a real, currently-active staff record
         const staffRecord = await db.staff
           .where('pinHash')
           .equals(savedPinHash)
-          .and(s => s.isActive === 1 || s.isActive === true)
+          .and(s => isActiveStaffWithPin(s))
           .first();
-        if (staffRecord && staffRecord.pinHash) {
-          // Valid — restore session without re-prompting
+
+        if (staffRecord) {
           this.currentStaff = staffRecord;
           this.isAuthenticated = true;
           this._startSessionTimer();
           console.log(`[AuthService] Session restored for "${staffRecord.name}" via saved PIN hash.`);
           return staffRecord;
-        } else {
-          // Hash no longer maps to any active staff — clear stale token
-          console.warn('[AuthService] Saved PIN hash no longer matches any active staff. Clearing.');
-          localStorage.removeItem('auth_staff_pin');
         }
+
+        console.warn('[AuthService] Saved PIN hash no longer matches any active staff. Clearing.');
+        localStorage.removeItem('auth_staff_pin');
       } catch (e) {
         console.error('[AuthService] Error restoring PIN session:', e);
         localStorage.removeItem('auth_staff_pin');
@@ -235,12 +209,6 @@ class AuthService {
     return null;
   }
 
-  /**
-   * Look up a staff member by their PIN code.
-   * Supports both raw PINs (hashes it first) and pre-hashed PINs (for auto-login).
-   * @param {string} pin - The staff PIN (plain text or SHA-256 hash)
-   * @returns {Promise<Object|null>} The matching staff record or null
-   */
   async getStaffByPin(pin) {
     if (!pin) return null;
     try {
@@ -248,7 +216,7 @@ class AuthService {
       const staff = await db.staff
         .where('pinHash')
         .equals(hashedPin)
-        .and(s => s.isActive === 1 || s.isActive === true)
+        .and(s => isActiveStaffWithPin(s))
         .first();
       return staff || null;
     } catch (error) {
@@ -257,12 +225,6 @@ class AuthService {
     }
   }
 
-  /**
-   * Authenticate a staff member using their PIN (plain text or hash).
-   * Starts an 8-hour session timer and logs the login to activityLog.
-   * @param {string} pin - The staff PIN (plain text or SHA-256 hash)
-   * @returns {Promise<Object|null>} The authenticated staff object, or null on failure
-   */
   async login(pin) {
     if (!pin) return null;
     try {
@@ -272,16 +234,12 @@ class AuthService {
       }
 
       const staff = await this.getStaffByPin(pin);
-
-      // Hard security check: staff must exist, be active, AND have a stored PIN hash.
-      // This prevents any ghost/partial records from granting access.
-      if (!staff || !staff.pinHash) {
+      if (!staff) {
         this.recordFailedAttempt();
         console.warn('[AuthService] Login failed: no active staff with a valid PIN found.');
         return null;
       }
 
-      // Double-verify the hash matches (belt-and-suspenders)
       const hashedPin = pin.length === 64 ? pin : await hashPin(pin);
       if (hashedPin !== staff.pinHash) {
         this.recordFailedAttempt();
@@ -295,10 +253,8 @@ class AuthService {
       localStorage.removeItem('auth_failed_attempts');
       localStorage.removeItem('auth_lockout_until');
 
-      // Start session expiry timer (8 hours)
       this._startSessionTimer();
 
-      // Log the login activity
       try {
         await db.activityLog.add({
           staffId: staff.id,
@@ -317,13 +273,6 @@ class AuthService {
     }
   }
 
-  /**
-   * Authenticate a staff member using their Supabase Auth cloud credentials (email & password).
-   * Binds the live cloud session to the local staff record.
-   * @param {string} email - Supabase Auth cloud email
-   * @param {string} password - Supabase Auth cloud password
-   * @returns {Promise<Object|null>} The authenticated staff object, or null on failure
-   */
   async loginWithCloudCredentials(email, password) {
     if (!email || !password) return null;
     try {
@@ -336,8 +285,13 @@ class AuthService {
       const user = result.user;
       if (!user) return null;
 
-      const staff = await this._resolveStaffOrCustomer(user, email);
-      if (!staff) return null;
+      let staff = await this._resolveCloudStaff(user, email);
+      await this._hydrateStaffCloudData();
+
+      const hydratedStaff = await db.staff.get(staff.id);
+      if (hydratedStaff && isActiveFlag(hydratedStaff.isActive)) {
+        staff = hydratedStaff;
+      }
 
       this.currentStaff = staff;
       this.isAuthenticated = true;
@@ -345,10 +299,8 @@ class AuthService {
       localStorage.removeItem('auth_failed_attempts');
       localStorage.removeItem('auth_lockout_until');
 
-      // Start session expiry timer (8 hours)
       this._startSessionTimer();
 
-      // Log activity
       try {
         await db.activityLog.add({
           staffId: staff.id,
@@ -367,21 +319,29 @@ class AuthService {
     }
   }
 
-  /**
-   * Log out the current staff member.
-   * Clears authentication state, cancels the session timer, and logs the action.
-   */
+  async loginCustomerWithCloudCredentials(email, password) {
+    if (!email || !password) return null;
+    const result = await signInCloudStaff(email, password);
+    if (!result.success) {
+      throw new Error(result.message || 'Cloud authentication failed');
+    }
+
+    const customer = await this._resolveCustomer(result.user, email);
+    this.currentStaff = customer;
+    this.isAuthenticated = true;
+    this._startSessionTimer();
+    return customer;
+  }
+
   logout() {
     const staffName = this.currentStaff?.name || 'Unknown';
     const staffId = this.currentStaff?.id || null;
 
-    // Clear session timer
     if (this.sessionTimeout) {
       clearTimeout(this.sessionTimeout);
       this.sessionTimeout = null;
     }
 
-    // Call Supabase cloud sign-out asynchronously
     signOutCloudStaff().catch(err => {
       console.error('[AuthService] Supabase cloud signout error on logout:', err);
     });
@@ -391,7 +351,6 @@ class AuthService {
     localStorage.removeItem('auth_staff_pin');
     localStorage.removeItem('auth_staff_email');
 
-    // Log the logout activity
     if (staffId) {
       try {
         db.activityLog.add({
@@ -407,28 +366,16 @@ class AuthService {
     console.log(`[AuthService] Staff "${staffName}" logged out.`);
   }
 
-  /**
-   * Get the currently authenticated staff member.
-   * @returns {Object|null} The current staff object or null
-   */
   getCurrentStaff() {
     return this.currentStaff;
   }
 
-  /**
-   * Check if the current staff member has an owner or manager role.
-   * @returns {boolean} True if staff role is 'owner' or 'manager'
-   */
   isOwnerOrManager() {
     if (!this.currentStaff) return false;
     const role = this.currentStaff.role?.toLowerCase();
     return role === 'owner' || role === 'manager';
   }
 
-  /**
-   * Check whether a staff member is currently authenticated.
-   * @returns {boolean} True if authenticated
-   */
   requireAuth() {
     return this.isAuthenticated && this.currentStaff && this.currentStaff.role !== 'customer';
   }
@@ -452,11 +399,6 @@ class AuthService {
     }
   }
 
-  /**
-   * Start (or restart) the session expiry timer.
-   * Automatically logs out the staff member after session duration setting or fallback SESSION_DURATION_MS.
-   * @private
-   */
   async _startSessionTimer() {
     if (this.sessionTimeout) {
       clearTimeout(this.sessionTimeout);

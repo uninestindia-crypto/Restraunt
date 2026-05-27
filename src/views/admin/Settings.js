@@ -9,7 +9,7 @@ import { ReceiptBuilder } from '../../services/receipt.js';
 import { exportAllData, exportOrdersCSV, importData } from '../../utils/dataExport.js';
 import { logDataExported } from '../../utils/activityLogger.js';
 import { hashPin } from '../../utils/crypto.js';
-import { signInCloudStaff, signOutCloudStaff } from '../../services/supabaseClient.js';
+import { signOutCloudStaff } from '../../services/supabaseClient.js';
 
 export class SettingsView {
   constructor(app) {
@@ -98,8 +98,12 @@ export class SettingsView {
         this.config[key] = await getSetting(key) || '';
       }
 
-      // Always align adminPinHash setting with the synced owner staff member's PIN
-      const owner = await db.staff.where('role').equals('owner').first();
+      // Always align adminPinHash with an active owner that has a real PIN hash.
+      const owner = await db.staff
+        .where('role')
+        .equals('owner')
+        .and(s => (s.isActive === 1 || s.isActive === true) && /^[0-9a-f]{64}$/.test(s.pinHash || ''))
+        .first();
       if (owner && owner.pinHash && owner.pinHash !== this.config.adminPinHash) {
         await setSetting('adminPinHash', owner.pinHash);
         this.config.adminPinHash = owner.pinHash;
@@ -1428,11 +1432,8 @@ export class SettingsView {
       signInBtn.addEventListener('click', async () => {
         const email = document.getElementById('supabaseEmail')?.value.trim() || '';
         const password = document.getElementById('supabasePassword')?.value.trim() || '';
-        const result = await signInCloudStaff(email, password);
-        if (!result.success) {
-          showToast('Cloud sign in failed: ' + result.message, 'error');
-          return;
-        }
+        const { authService } = await import('../../services/auth.js');
+        await authService.loginWithCloudCredentials(email, password);
         document.getElementById('supabasePassword').value = '';
         showToast('Cloud staff session active on this device', 'success');
         try {

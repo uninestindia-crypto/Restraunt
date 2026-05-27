@@ -528,8 +528,8 @@ export class LoginScreen {
         throw new Error(signupResult.message || 'Failed to create account.');
       }
 
-      // Login using newly created credentials
-      const staff = await authService.loginWithCloudCredentials(email, password);
+      // Login using newly created customer credentials.
+      const staff = await authService.loginCustomerWithCloudCredentials(email, password);
       if (staff) {
         playSound(900, 100);
         vibrateDevice([40, 20, 40]);

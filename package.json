@@ -11,7 +11,8 @@
     "test:e2e": "playwright test",
     "test:a11y": "playwright test tests/e2e/accessibility.spec.js",
     "launch:verify": "npm run test && npm run build && npm audit --omit=dev",
-    "staff:manage": "node scripts/manage-staff.js"
+    "staff:manage": "node scripts/manage-staff.js",
+    "cloud:admin": "node scripts/provision-admin.js"
   },
   "dependencies": {
     "@capacitor/core": "^8.3.4",

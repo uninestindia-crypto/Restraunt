@@ -6,6 +6,7 @@
 import { db, getSetting, getTodayStats } from '../../db/database.js';
 import { formatCurrency, showToast, playSound, vibrateDevice } from '../../utils/helpers.js';
 import { authService } from '../../services/auth.js';
+import { canUnlockAdminPin } from '../../services/authGuards.js';
 import { hashPin } from '../../utils/crypto.js';
 import { MenuManager } from './MenuManager.js';
 import { OrderHistory } from './OrderHistory.js';
@@ -148,13 +149,17 @@ export class AdminView {
       
       const allowManagerAdminVal = await getSetting('allowManagerAdmin');
       const allowManager = allowManagerAdminVal === 'true' || allowManagerAdminVal === true || allowManagerAdminVal === undefined || allowManagerAdminVal === '';
-      const allowedRoles = ['owner'];
-      if (allowManager) allowedRoles.push('manager');
 
-      const canStaffUnlock = staff && allowedRoles.includes(staff.role?.toLowerCase());
-      const legacyAllowed = legacyPin && legacyPin !== '1234' && this.pinInput === legacyPin;
+      const canUnlock = canUnlockAdminPin({
+        staff,
+        inputHash,
+        configuredHash,
+        legacyPin,
+        inputPin: this.pinInput,
+        allowManager
+      });
 
-      if ((configuredHash && inputHash === configuredHash) || legacyAllowed || canStaffUnlock) {
+      if (canUnlock) {
         this.isAuthenticated = true;
         playSound(800, 100);
         setTimeout(() => playSound(1200, 120), 100);

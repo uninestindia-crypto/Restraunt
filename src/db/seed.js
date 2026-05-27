@@ -37,8 +37,13 @@ export async function seedDatabase(options = {}) {
   }
 
   const existingCategories = await db.menuCategories.count();
-  if (existingCategories > 0) {
+  const existingItems = await db.menuItems.count();
+  if (existingCategories > 0 && existingItems > 0) {
     return; // Data already exists
+  }
+  if (existingCategories > 0 && existingItems === 0) {
+    console.warn('[Seed] Local categories exist without menu items. Rebuilding public menu cache.');
+    await db.menuCategories.clear();
   }
 
   const seedStores = publicOnly
@@ -375,8 +380,8 @@ async function runMigrations() {
     }
 
     // ── Owner Recovery Migration ────────────────────────────────
-    // If the database has NO active owners, find any deactivated owner
-    // and reactivate them with the default PIN '1234' for local recovery.
+    // If the database has no active owners, do not recreate the removed
+    // default PIN. FirstRunSetup or cloud admin recovery must be used.
     try {
       const activeOwnerCount = await db.staff
         .where('role')
@@ -387,14 +392,8 @@ async function runMigrations() {
       if (activeOwnerCount === 0) {
         const deactivatedOwner = await db.staff.where('role').equals('owner').first();
         if (deactivatedOwner) {
-          console.log(`[Seed] Reactivating owner "${deactivatedOwner.name}" with default PIN '1234' for local recovery.`);
-          const recoveryHash = await hashPin('1234');
-          await db.staff.update(deactivatedOwner.id, {
-            isActive: 1,
-            pinHash: recoveryHash,
-            isSynced: 0
-          });
-          await db.settings.put({ key: 'adminPinHash', value: recoveryHash });
+          console.warn(`[Seed] No active owner remains. Owner "${deactivatedOwner.name}" stays inactive until secure recovery runs.`);
+          await db.settings.delete('adminPinHash');
         }
       }
     } catch (recoveryErr) {
