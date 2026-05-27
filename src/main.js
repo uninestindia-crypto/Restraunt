@@ -480,6 +480,10 @@ class App {
       if (confirm('Are you sure you want to logout?')) {
         const authService = await this.getAuthService();
         authService.logout();
+        if (this.inactivityTimeout) {
+          clearTimeout(this.inactivityTimeout);
+          this.inactivityTimeout = null;
+        }
         if (router.currentView && typeof router.currentView.unmount === 'function') {
           router.currentView.unmount();
         }
