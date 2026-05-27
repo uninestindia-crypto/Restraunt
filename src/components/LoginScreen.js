@@ -257,6 +257,45 @@ export class LoginScreen {
         .login-toggle-link:hover {
           color: var(--color-primary);
         }
+
+        /* ── Smartphone & Ultra-Narrow Compatibility ── */
+        @media (max-width: 360px) {
+          .login-card {
+            padding: 32px 20px 24px;
+            border-radius: var(--radius-lg);
+          }
+          .login-title {
+            font-size: 1.5rem;
+          }
+          .login-logo {
+            font-size: 2.2rem;
+            margin-bottom: 8px;
+          }
+          .login-tabs {
+            margin-bottom: 16px;
+            padding: 2px;
+          }
+          .login-tab-btn {
+            padding: 6px;
+            font-size: 0.68rem;
+          }
+          .numpad-btn {
+            height: 48px;
+            font-size: 1.15rem;
+          }
+          .login-numpad {
+            gap: 8px;
+            margin-bottom: 16px;
+          }
+          .login-input {
+            height: 42px;
+            font-size: var(--text-sm);
+          }
+          .login-error {
+            font-size: 0.68rem;
+            margin-bottom: 8px;
+          }
+        }
       </style>
     `;
 
