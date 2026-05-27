@@ -60,9 +60,9 @@ export class CartPanel {
       </div>
 
       <!-- Customer & Table Selectors -->
-      <div class="cart-meta-selectors" style="padding:6px 14px;display:flex;gap:6px;flex-wrap:wrap;">
-        <input type="text" id="cart-customer-phone" placeholder="📱 Customer phone" style="flex:1;min-width:100px;padding:6px 10px;background:rgba(255,255,255,0.02);border:1px solid var(--border-glass);border-radius:8px;color:var(--text-primary);font-size:0.7rem;outline:none;font-family:'Inter',sans-serif;">
-        <select id="cart-table-select" style="width:90px;padding:6px 8px;background:rgba(255,255,255,0.02);border:1px solid var(--border-glass);border-radius:8px;color:var(--text-primary);font-size:0.7rem;outline:none;font-family:'Inter',sans-serif;display:${this.orderType === 'dinein' ? 'block' : 'none'};">
+      <div class="cart-meta-selectors">
+        <input type="text" id="cart-customer-phone" placeholder="📱 Customer phone" class="input cart-meta-input">
+        <select id="cart-table-select" class="input cart-meta-input" style="display:${this.orderType === 'dinein' ? 'block' : 'none'}; max-width: 100px;">
           <option value="">🪑 Table</option>
         </select>
       </div>

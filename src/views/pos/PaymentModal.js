@@ -50,109 +50,38 @@ export class PaymentModal {
 
   renderModal() {
     return `
-      <div class="modal card-glass" tabindex="-1" role="dialog" aria-label="Payment" style="
-        background: rgba(17, 17, 30, 0.9);
-        backdrop-filter: blur(24px);
-        border: 1px solid var(--border-glass);
-        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), var(--shadow-primary);
-        max-width: 460px;
-        width: calc(100% - 32px);
-        border-radius: var(--radius-xl);
-        overflow: hidden;
-      ">
-        <div class="modal-header" style="
-          padding: 20px 24px;
-          border-bottom: 1px solid var(--border-glass);
-          background: rgba(255, 255, 255, 0.01);
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-        ">
-          <h3 style="
-            font-family: 'Plus Jakarta Sans', sans-serif;
-            font-size: var(--text-lg);
-            font-weight: 800;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            color: var(--text-primary);
-            margin: 0;
-            letter-spacing: -0.02em;
-          ">
-            <span class="material-symbols-rounded" style="color: var(--color-primary); font-size: 24px; filter: drop-shadow(0 0 8px rgba(255, 94, 54, 0.4));">payments</span>
+      <div class="modal" tabindex="-1" role="dialog" aria-label="Payment" style="max-width: 460px;">
+        <div class="modal-header">
+          <h3 class="txt-primary txt-bold flex-row-between" style="gap: 8px; margin: 0;">
+            <span class="material-symbols-rounded txt-brand" style="font-size: 24px; filter: drop-shadow(0 0 8px rgba(255, 94, 54, 0.4));">payments</span>
             Secure Checkout
           </h3>
-          <button class="btn-icon btn-secondary" id="payment-close-btn" aria-label="Close" style="
-            border-radius: 50%; 
-            border: 1px solid var(--border-glass); 
-            background: rgba(255,255,255,0.03);
-            width: 32px;
-            height: 32px;
-          ">
+          <button class="btn-icon btn-secondary" id="payment-close-btn" aria-label="Close" style="width: 32px; height: 32px;">
             <span class="material-symbols-rounded" style="font-size: 18px;">close</span>
           </button>
         </div>
 
-        <div class="modal-body" style="padding: 24px;">
+        <div class="modal-body scrollbar-none">
           <!-- Order Total -->
-          <div style="
-            text-align: center; 
-            margin-bottom: 24px; 
-            background: rgba(255,255,255,0.01);
-            border: 1px solid var(--border-glass);
-            border-radius: var(--radius-xl);
-            padding: 20px;
-            backdrop-filter: blur(8px);
-          ">
-            <div style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: var(--text-xs); color: var(--text-secondary); font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 6px;">AMOUNT PAYABLE</div>
-            <div style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: 2.6rem; font-weight: 800; color: var(--color-primary); line-height: 1; letter-spacing: -0.03em; filter: drop-shadow(0 0 12px rgba(255, 94, 54, 0.35));">
+          <div class="payment-payable-card">
+            <div class="payment-payable-label">Amount Payable</div>
+            <div class="payment-payable-value">
               ${formatCurrency(this.order.total)}
             </div>
-            <div style="font-size: var(--text-xs); color: var(--text-muted); margin-top: 10px; font-weight: 600; background: rgba(0,0,0,0.2); padding: 4px 12px; border-radius: var(--radius-full); display: inline-block;">
+            <div class="payment-payable-badge">
               Order #${this.order.orderNumber.split('-').pop()} · ${this.order.type === 'takeaway' ? 'Takeaway' : this.order.type === 'dinein' ? 'Dine In' : 'Delivery'}
             </div>
           </div>
 
           <!-- Payment Method Tabs -->
-          <div class="payment-methods" id="payment-methods" style="
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 12px;
-            margin-bottom: 24px;
-          ">
-            <button class="payment-method-btn ${this.selectedMethod === 'upi' ? 'active' : ''}" data-method="upi" style="
-              display: flex;
-              flex-direction: column;
-              align-items: center;
-              justify-content: center;
-              padding: 16px;
-              border-radius: var(--radius-lg);
-              border: 1.5px solid ${this.selectedMethod === 'upi' ? 'rgba(255, 94, 54, 0.4)' : 'var(--border-glass)'};
-              background: ${this.selectedMethod === 'upi' ? 'rgba(255, 94, 54, 0.06)' : 'rgba(255, 255, 255, 0.01)'};
-              color: ${this.selectedMethod === 'upi' ? 'var(--text-primary)' : 'var(--text-secondary)'};
-              box-shadow: ${this.selectedMethod === 'upi' ? '0 8px 20px rgba(255, 94, 54, 0.15)' : 'none'};
-              transition: all var(--transition-normal);
-              cursor: pointer;
-            ">
-              <span class="method-icon" style="font-size: 24px; margin-bottom: 6px;">📱</span>
-              <span class="method-label" style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: var(--text-xs); font-weight: 700; letter-spacing: -0.01em;">UPI QR Code</span>
+          <div class="payment-tab-grid" id="payment-methods">
+            <button class="payment-tab-btn ${this.selectedMethod === 'upi' ? 'active' : ''}" data-method="upi">
+              <span class="method-icon">📱</span>
+              <span class="method-label">UPI QR Code</span>
             </button>
-            <button class="payment-method-btn ${this.selectedMethod === 'cash' ? 'active' : ''}" data-method="cash" style="
-              display: flex;
-              flex-direction: column;
-              align-items: center;
-              justify-content: center;
-              padding: 16px;
-              border-radius: var(--radius-lg);
-              border: 1.5px solid ${this.selectedMethod === 'cash' ? 'rgba(255, 94, 54, 0.4)' : 'var(--border-glass)'};
-              background: ${this.selectedMethod === 'cash' ? 'rgba(255, 94, 54, 0.06)' : 'rgba(255, 255, 255, 0.01)'};
-              color: ${this.selectedMethod === 'cash' ? 'var(--text-primary)' : 'var(--text-secondary)'};
-              box-shadow: ${this.selectedMethod === 'cash' ? '0 8px 20px rgba(255, 94, 54, 0.15)' : 'none'};
-              transition: all var(--transition-normal);
-              cursor: pointer;
-            ">
-              <span class="method-icon" style="font-size: 24px; margin-bottom: 6px;">💵</span>
-              <span class="method-label" style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: var(--text-xs); font-weight: 700; letter-spacing: -0.01em;">Cash Payment</span>
+            <button class="payment-tab-btn ${this.selectedMethod === 'cash' ? 'active' : ''}" data-method="cash">
+              <span class="method-icon">💵</span>
+              <span class="method-label">Cash Payment</span>
             </button>
           </div>
 
@@ -160,54 +89,30 @@ export class PaymentModal {
           <div id="payment-upi-view" style="${this.selectedMethod !== 'upi' ? 'display:none;' : ''}">
             <!-- Split Payment Selector -->
             <div style="margin-bottom: 16px;">
-              <div style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: var(--text-xs); color: var(--text-secondary); font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 10px;">PAYMENT SPLIT</div>
-              <div id="split-selector" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;">
-                <button class="split-btn ${this.splitMode === 'full' ? 'active' : ''}" data-split="full" style="
-                  display: flex; flex-direction: column; align-items: center; justify-content: center;
-                  padding: 12px 8px; border-radius: var(--radius-lg); cursor: pointer;
-                  border: 1.5px solid ${this.splitMode === 'full' ? 'rgba(16, 185, 129, 0.5)' : 'var(--border-glass)'};
-                  background: ${this.splitMode === 'full' ? 'rgba(16, 185, 129, 0.08)' : 'rgba(255, 255, 255, 0.01)'};
-                  color: ${this.splitMode === 'full' ? '#10B981' : 'var(--text-secondary)'};
-                  box-shadow: ${this.splitMode === 'full' ? '0 4px 15px rgba(16, 185, 129, 0.15)' : 'none'};
-                  transition: all var(--transition-fast);
-                ">
+              <div class="payment-payable-label" style="margin-bottom: 10px;">Payment Split</div>
+              <div id="split-selector" class="split-tab-grid">
+                <button class="split-tab-btn ${this.splitMode === 'full' ? 'active' : ''}" data-split="full">
                   <span style="font-size: 18px; margin-bottom: 4px;">💰</span>
-                  <span style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 0.02em;">FULL BILL</span>
-                  <span style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: var(--text-xs); font-weight: 800; margin-top: 2px;">${formatCurrencyShort(this.order.total)}</span>
+                  <span style="font-size: 10px; font-weight: 700; letter-spacing: 0.02em;">FULL BILL</span>
+                  <span class="txt-primary txt-bold" style="font-size: var(--text-xs); margin-top: 2px;">${formatCurrencyShort(this.order.total)}</span>
                 </button>
-                <button class="split-btn ${this.splitMode === 'half' ? 'active' : ''}" data-split="half" style="
-                  display: flex; flex-direction: column; align-items: center; justify-content: center;
-                  padding: 12px 8px; border-radius: var(--radius-lg); cursor: pointer;
-                  border: 1.5px solid ${this.splitMode === 'half' ? 'rgba(99, 102, 241, 0.5)' : 'var(--border-glass)'};
-                  background: ${this.splitMode === 'half' ? 'rgba(99, 102, 241, 0.08)' : 'rgba(255, 255, 255, 0.01)'};
-                  color: ${this.splitMode === 'half' ? '#6366F1' : 'var(--text-secondary)'};
-                  box-shadow: ${this.splitMode === 'half' ? '0 4px 15px rgba(99, 102, 241, 0.15)' : 'none'};
-                  transition: all var(--transition-fast);
-                ">
+                <button class="split-tab-btn ${this.splitMode === 'half' ? 'active' : ''}" data-split="half">
                   <span style="font-size: 18px; margin-bottom: 4px;">✂️</span>
-                  <span style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 0.02em;">HALF BILL</span>
-                  <span style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: var(--text-xs); font-weight: 800; margin-top: 2px;">${formatCurrencyShort(Math.ceil(this.order.total / 2))}</span>
+                  <span style="font-size: 10px; font-weight: 700; letter-spacing: 0.02em;">HALF BILL</span>
+                  <span class="txt-primary txt-bold" style="font-size: var(--text-xs); margin-top: 2px;">${formatCurrencyShort(Math.ceil(this.order.total / 2))}</span>
                 </button>
-                <button class="split-btn ${this.splitMode === 'custom' ? 'active' : ''}" data-split="custom" style="
-                  display: flex; flex-direction: column; align-items: center; justify-content: center;
-                  padding: 12px 8px; border-radius: var(--radius-lg); cursor: pointer;
-                  border: 1.5px solid ${this.splitMode === 'custom' ? 'rgba(245, 158, 11, 0.5)' : 'var(--border-glass)'};
-                  background: ${this.splitMode === 'custom' ? 'rgba(245, 158, 11, 0.08)' : 'rgba(255, 255, 255, 0.01)'};
-                  color: ${this.splitMode === 'custom' ? '#F59E0B' : 'var(--text-secondary)'};
-                  box-shadow: ${this.splitMode === 'custom' ? '0 4px 15px rgba(245, 158, 11, 0.15)' : 'none'};
-                  transition: all var(--transition-fast);
-                ">
+                <button class="split-tab-btn ${this.splitMode === 'custom' ? 'active' : ''}" data-split="custom">
                   <span style="font-size: 18px; margin-bottom: 4px;">✏️</span>
-                  <span style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 0.02em;">CUSTOM</span>
-                  <span style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: var(--text-xs); font-weight: 800; margin-top: 2px;">${this.customAmount ? formatCurrencyShort(parseFloat(this.customAmount)) : '—'}</span>
+                  <span style="font-size: 10px; font-weight: 700; letter-spacing: 0.02em;">CUSTOM</span>
+                  <span class="txt-primary txt-bold" style="font-size: var(--text-xs); margin-top: 2px;">${this.customAmount ? formatCurrencyShort(parseFloat(this.customAmount)) : '—'}</span>
                 </button>
               </div>
             </div>
 
-            <!-- Custom Amount Input (shown only when custom split selected) -->
+            <!-- Custom Amount Input -->
             <div id="custom-amount-container" style="${this.splitMode !== 'custom' ? 'display:none;' : ''} margin-bottom: 16px;">
               <div class="input-group">
-                <label for="custom-qr-amount" style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: var(--text-xs); color: var(--text-secondary); font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;">ENTER QR AMOUNT (₹)</label>
+                <label for="custom-qr-amount" class="payment-payable-label">Enter QR Amount (₹)</label>
                 <input 
                   type="number" 
                   id="custom-qr-amount" 
@@ -218,65 +123,29 @@ export class PaymentModal {
                   max="${this.order.total}"
                   step="1"
                   value="${this.customAmount}"
-                  style="
-                    font-family: 'Plus Jakarta Sans', sans-serif;
-                    font-size: 1.3rem; 
-                    font-weight: 800; 
-                    text-align: center;
-                    padding: 12px;
-                    background: rgba(0, 0, 0, 0.2);
-                    border: 1px solid rgba(245, 158, 11, 0.3);
-                    border-radius: var(--radius-md);
-                    color: var(--text-primary);
-                  "
+                  style="font-size: 1.3rem; font-weight: 800; text-align: center; background: rgba(0, 0, 0, 0.2); border-color: rgba(245, 158, 11, 0.3);"
                 >
               </div>
-              <div id="custom-remaining-display" style="
-                font-size: var(--text-xs); color: var(--text-muted); margin-top: 8px; text-align: center; font-weight: 600;
-              ">${this.customAmount ? `Remaining ₹${(this.order.total - parseFloat(this.customAmount)).toFixed(2)} to be paid separately` : `Bill total: ${formatCurrency(this.order.total)}`}</div>
+              <div id="custom-remaining-display" class="txt-center txt-muted" style="font-size: var(--text-xs); margin-top: 8px; font-weight: 600;">
+                ${this.customAmount ? `Remaining ₹${(this.order.total - parseFloat(this.customAmount)).toFixed(2)} to be paid separately` : `Bill total: ${formatCurrency(this.order.total)}`}
+              </div>
             </div>
 
-            <div class="qr-display" style="
-              background: rgba(255, 255, 255, 0.01);
-              border: 1px solid var(--border-glass);
-              border-radius: var(--radius-xl);
-              padding: 24px;
-              text-align: center;
-              display: flex;
-              flex-direction: column;
-              align-items: center;
-            ">
-              <div style="
-                background: #FFFFFF;
-                padding: 12px;
-                border-radius: var(--radius-md);
-                box-shadow: 0 10px 30px rgba(0,0,0,0.25);
-                margin-bottom: 16px;
-                display: inline-block;
-              ">
+            <div class="payment-qr-card">
+              <div class="payment-qr-canvas-wrapper">
                 <canvas id="upi-qr-canvas" style="display: block;"></canvas>
               </div>
-              <div class="qr-amount" id="qr-display-amount" style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: 1.5rem; font-weight: 800; color: var(--color-primary); margin-bottom: 4px;">
+              <div class="payment-qr-amount" id="qr-display-amount">
                 ${formatCurrency(this.qrAmount)}
               </div>
-              ${this.splitMode !== 'full' ? `<div style="font-size: var(--text-xs); color: var(--text-muted); font-weight: 600; margin-bottom: 4px;">of ${formatCurrency(this.order.total)} total bill</div>` : ''}
-              <div class="qr-upi-id" id="qr-upi-id" style="
-                font-size: var(--text-xs); 
-                color: var(--text-secondary); 
-                font-weight: 600; 
-                background: rgba(255, 255, 255, 0.05); 
-                padding: 4px 12px; 
-                border-radius: var(--radius-full);
-                margin-bottom: 12px;
-              ">Loading UPI ID...</div>
-              <div class="qr-instruction" style="font-size: var(--text-xs); color: var(--text-muted); font-weight: 500; display: flex; align-items: center; gap: 4px;">
+              ${this.splitMode !== 'full' ? `<div class="txt-muted txt-medium" style="font-size: var(--text-xs); margin-bottom: 4px;">of ${formatCurrency(this.order.total)} total bill</div>` : ''}
+              <div class="payment-qr-upi-badge" id="qr-upi-id">Loading UPI ID...</div>
+              <div class="txt-muted txt-medium" style="font-size: var(--text-xs); display: flex; align-items: center; gap: 4px;">
                 <span class="material-symbols-rounded" style="font-size: 16px;">qr_code_scanner</span>
                 Ask customer to scan with any UPI App
               </div>
             </div>
-            <a href="#" id="upi-deeplink" target="_blank" 
-               class="btn btn-secondary btn-block btn-lg" 
-               style="margin-top: 14px; text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 8px; border: 1px solid var(--border-glass); font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700;">
+            <a href="#" id="upi-deeplink" target="_blank" class="btn btn-secondary btn-block btn-lg" style="margin-top: 14px; text-decoration: none;">
               <span class="material-symbols-rounded" style="font-size: 18px;">open_in_new</span>
               Open in UPI App
             </a>
@@ -286,7 +155,7 @@ export class PaymentModal {
           <div id="payment-cash-view" style="${this.selectedMethod !== 'cash' ? 'display:none;' : ''}">
             <div class="cash-form">
               <div class="input-group">
-                <label for="cash-received-input" style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: var(--text-xs); color: var(--text-secondary); font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;">CASH RECEIVED (₹)</label>
+                <label for="cash-received-input" class="payment-payable-label">Cash Received (₹)</label>
                 <input 
                   type="number" 
                   id="cash-received-input" 
@@ -296,17 +165,7 @@ export class PaymentModal {
                   min="0"
                   step="10"
                   value="${this.cashReceived}"
-                  style="
-                    font-family: 'Plus Jakarta Sans', sans-serif;
-                    font-size: 1.5rem; 
-                    font-weight: 800; 
-                    text-align: center;
-                    padding: 12px;
-                    background: rgba(0, 0, 0, 0.2);
-                    border: 1px solid var(--border-glass);
-                    border-radius: var(--radius-md);
-                    color: var(--text-primary);
-                  "
+                  style="font-size: 1.5rem; font-weight: 800; text-align: center; background: rgba(0, 0, 0, 0.2);"
                 >
               </div>
 
@@ -316,33 +175,16 @@ export class PaymentModal {
               </div>
 
               <!-- Change display -->
-              <div class="change-display" id="change-display" style="
-                display: none;
-                margin-top: 20px;
-                padding: 16px;
-                border-radius: var(--radius-lg);
-                border: 1px solid var(--border-glass);
-                background: rgba(255,255,255,0.01);
-                text-align: center;
-              ">
-                <div class="change-label" style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: var(--text-xs); color: var(--text-secondary); font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;">CHANGE TO RETURN</div>
-                <div class="change-amount" id="change-amount" style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: 1.8rem; font-weight: 800; margin-top: 4px;">₹0</div>
+              <div class="payment-change-card" id="change-display" style="display: none;">
+                <div class="payment-payable-label">Change to Return</div>
+                <div class="payment-payable-value" id="change-amount" style="font-size: 1.8rem; margin-top: 4px;">₹0</div>
               </div>
             </div>
           </div>
         </div>
 
-        <div class="modal-footer" style="padding: 20px 24px; border-top: 1px solid var(--border-glass); background: rgba(255, 255, 255, 0.01);">
-          <button class="btn btn-primary btn-block btn-lg" id="btn-confirm-payment" ${this.isProcessing ? 'disabled' : ''} style="
-            font-family: 'Plus Jakarta Sans', sans-serif; 
-            font-weight: 700;
-            box-shadow: var(--shadow-primary);
-            height: 48px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-          ">
+        <div class="modal-footer">
+          <button class="btn btn-primary btn-block btn-lg" id="btn-confirm-payment" ${this.isProcessing ? 'disabled' : ''}>
             <span class="material-symbols-rounded" style="font-size: 20px;">check_circle</span>
             <span id="confirm-btn-text">Confirm Payment</span>
           </button>
@@ -353,13 +195,8 @@ export class PaymentModal {
 
   renderQuickAmounts() {
     const total = this.order.total;
-    // Generate smart quick amounts
     const amounts = new Set();
-
-    // Exact amount
     amounts.add(Math.ceil(total));
-
-    // Round to nearest 10, 50, 100, 500
     amounts.add(Math.ceil(total / 10) * 10);
     amounts.add(Math.ceil(total / 50) * 50);
     amounts.add(Math.ceil(total / 100) * 100);
@@ -368,26 +205,13 @@ export class PaymentModal {
     amounts.add(1000);
     if (total > 500) amounts.add(2000);
 
-    // Filter and sort
     const sortedAmounts = [...amounts]
       .filter(a => a >= Math.ceil(total) && a <= 5000)
       .sort((a, b) => a - b)
       .slice(0, 5);
 
     return sortedAmounts.map(amount => `
-      <button class="btn btn-secondary btn-sm quick-amount-btn" data-amount="${amount}" style="
-        flex: 1; 
-        min-width: 68px;
-        padding: 8px 12px;
-        border-radius: var(--radius-md);
-        border: 1px solid var(--border-glass);
-        background: rgba(255, 255, 255, 0.02);
-        color: var(--text-primary);
-        font-family: 'Plus Jakarta Sans', sans-serif;
-        font-weight: 700;
-        transition: all var(--transition-fast);
-        cursor: pointer;
-      ">
+      <button class="btn btn-secondary btn-sm quick-amount-btn" data-amount="${amount}" style="flex: 1; min-width: 68px;">
         ₹${amount}
       </button>
     `).join('');
@@ -471,14 +295,14 @@ export class PaymentModal {
     const methodsContainer = document.getElementById('payment-methods');
     if (methodsContainer) {
       methodsContainer.addEventListener('click', (e) => {
-        const btn = e.target.closest('.payment-method-btn');
+        const btn = e.target.closest('.payment-tab-btn');
         if (!btn) return;
 
         const method = btn.dataset.method;
         this.selectedMethod = method;
 
         // Update active state
-        methodsContainer.querySelectorAll('.payment-method-btn').forEach(b => {
+        methodsContainer.querySelectorAll('.payment-tab-btn').forEach(b => {
           b.classList.toggle('active', b.dataset.method === method);
         });
 
@@ -527,22 +351,15 @@ export class PaymentModal {
     const splitSelector = this.overlay?.querySelector('#split-selector');
     if (splitSelector) {
       splitSelector.addEventListener('click', (e) => {
-        const btn = e.target.closest('.split-btn');
+        const btn = e.target.closest('.split-tab-btn');
         if (!btn) return;
 
         const split = btn.dataset.split;
         this.splitMode = split;
 
-        // Update button styles
-        splitSelector.querySelectorAll('.split-btn').forEach(b => {
-          const s = b.dataset.split;
-          const isActive = s === split;
-          const colors = { full: ['16, 185, 129', '#10B981'], half: ['99, 102, 241', '#6366F1'], custom: ['245, 158, 11', '#F59E0B'] };
-          const [rgb, hex] = colors[s] || colors.full;
-          b.style.border = `1.5px solid ${isActive ? `rgba(${rgb}, 0.5)` : 'var(--border-glass)'}`;
-          b.style.background = isActive ? `rgba(${rgb}, 0.08)` : 'rgba(255, 255, 255, 0.01)';
-          b.style.color = isActive ? hex : 'var(--text-secondary)';
-          b.style.boxShadow = isActive ? `0 4px 15px rgba(${rgb}, 0.15)` : 'none';
+        // Update button styles via CSS classes
+        splitSelector.querySelectorAll('.split-tab-btn').forEach(b => {
+          b.classList.toggle('active', b.dataset.split === split);
         });
 
         // Show/hide custom input

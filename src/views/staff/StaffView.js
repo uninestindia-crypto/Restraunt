@@ -34,22 +34,22 @@ export class StaffView {
 
   render() {
     this.container.innerHTML = `
-      <div style="flex:1;display:flex;flex-direction:column;height:100%;overflow:hidden;background:var(--bg-primary);">
-        <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 24px;background:rgba(9,9,14,0.8);backdrop-filter:blur(20px);border-bottom:1px solid var(--border-glass);z-index:10;flex-wrap:wrap;gap:12px;">
-          <div style="display:flex;align-items:center;gap:10px;">
-            <span class="material-symbols-rounded" style="color:var(--color-primary);font-size:24px;">groups</span>
-            <h2 style="font-family:'Plus Jakarta Sans',sans-serif;font-size:var(--text-lg);font-weight:800;color:var(--text-primary);margin:0;">Staff & Roles</h2>
+      <div class="main-area">
+        <div class="header-bar">
+          <div class="header-bar-title">
+            <span class="material-symbols-rounded">groups</span>
+            <h2>Staff & Roles</h2>
           </div>
-          <button id="add-staff-btn" style="padding:8px 14px;background:var(--gradient-primary);border:none;border-radius:8px;color:white;font-size:var(--text-xs);font-weight:700;cursor:pointer;display:flex;align-items:center;gap:4px;font-family:'Plus Jakarta Sans',sans-serif;">
+          <button id="add-staff-btn" class="btn btn-primary btn-sm">
             <span class="material-symbols-rounded" style="font-size:16px;">person_add</span> Add Staff
           </button>
         </div>
-        <div style="display:flex;gap:6px;padding:12px 24px;border-bottom:1px solid var(--border-glass);" id="staff-tabs">
-          <button class="staff-tab active" data-tab="directory" style="padding:6px 14px;border-radius:8px;font-size:0.75rem;font-weight:700;cursor:pointer;background:var(--gradient-primary);color:white;border:none;font-family:'Plus Jakarta Sans',sans-serif;">Directory</button>
-          <button class="staff-tab" data-tab="shifts" style="padding:6px 14px;border-radius:8px;font-size:0.75rem;font-weight:700;cursor:pointer;background:rgba(255,255,255,0.03);color:var(--text-secondary);border:1px solid var(--border-glass);font-family:'Plus Jakarta Sans',sans-serif;">Shifts</button>
-          <button class="staff-tab" data-tab="activity" style="padding:6px 14px;border-radius:8px;font-size:0.75rem;font-weight:700;cursor:pointer;background:rgba(255,255,255,0.03);color:var(--text-secondary);border:1px solid var(--border-glass);font-family:'Plus Jakarta Sans',sans-serif;">Activity Log</button>
+        <div class="tab-container" id="staff-tabs">
+          <button class="tab staff-tab active" data-tab="directory">Directory</button>
+          <button class="tab staff-tab" data-tab="shifts">Shifts</button>
+          <button class="tab staff-tab" data-tab="activity">Activity Log</button>
         </div>
-        <div style="flex:1;overflow-y:auto;padding:16px 24px;" id="staff-content"></div>
+        <div style="flex:1;overflow-y:auto;padding:24px;" id="staff-content"></div>
       </div>
       <div id="staff-modal" class="modal-overlay" style="display:none;">
         <div class="modal" style="max-width:400px;">
@@ -160,7 +160,7 @@ export class StaffView {
 
       this.editingStaffId = null;
       document.getElementById('staff-modal-title').textContent = 'Add Staff';
-      document.getElementById('staff-modal').style.display = 'none';
+      modal.style.display = 'none';
       ['staff-name', 'staff-pin', 'staff-phone'].forEach(id => document.getElementById(id).value = '');
       document.getElementById('staff-pin').placeholder = '4-digit PIN';
       document.getElementById('staff-role').value = 'cashier';
@@ -173,14 +173,8 @@ export class StaffView {
         this.tab = btn.dataset.tab;
         playSound(700, 80);
         this.container.querySelectorAll('.staff-tab').forEach(b => {
-          b.style.background = 'rgba(255,255,255,0.03)';
-          b.style.color = 'var(--text-secondary)';
-          b.style.border = '1px solid var(--border-glass)';
           b.classList.remove('active');
         });
-        btn.style.background = 'var(--gradient-primary)';
-        btn.style.color = 'white';
-        btn.style.border = 'none';
         btn.classList.add('active');
         await this.loadData();
       });
@@ -194,27 +188,29 @@ export class StaffView {
       const staffList = await db.staff.toArray();
       const owners = staffList.filter(s => s.role === 'owner' && s.isActive);
 
-      content.innerHTML = staffList.length === 0 ? '<div style="text-align:center;padding:60px;color:var(--text-muted);">No staff members yet.</div>' :
-        `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;">${staffList.map(s => {
+      content.innerHTML = staffList.length === 0 ? '<div class="empty-state"><span class="material-symbols-rounded">person_off</span><p>No staff members yet.</p></div>' :
+        `<div class="content-grid">${staffList.map(s => {
           const role = ROLES[s.role] || ROLES.cashier;
           const isDeletable = !(s.role === 'owner' && owners.length <= 1);
           return `
-            <div style="padding:18px;background:rgba(255,255,255,0.01);border:1px solid var(--border-glass);border-radius:14px;display:flex;align-items:center;gap:14px;position:relative;">
-              <div style="width:44px;height:44px;border-radius:12px;background:rgba(${s.role === 'owner' ? '255,107,53' : '108,92,231'},0.1);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:1.1rem;color:${role.color};font-family:'Plus Jakarta Sans',sans-serif;flex-shrink:0;">${escapeHtml((s.name || '?')[0].toUpperCase())}</div>
-              <div style="flex:1;min-width:0;">
-                <div style="font-size:var(--text-sm);font-weight:700;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(s.name)}</div>
+            <div class="premium-card">
+              <div class="premium-card-avatar" style="background:rgba(${s.role === 'owner' ? '255,107,53' : '108,92,231'},0.1); color:${role.color};">
+                ${escapeHtml((s.name || '?')[0].toUpperCase())}
+              </div>
+              <div class="premium-card-body">
+                <span class="premium-card-title">${escapeHtml(s.name)}</span>
                 <div style="display:flex;gap:6px;align-items:center;margin-top:4px;">
                   <span style="font-size:0.6rem;padding:2px 8px;border-radius:6px;font-weight:700;color:${role.color};background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.06);">${role.label}</span>
                   <span style="font-size:0.6rem;color:${s.isActive ? 'var(--color-success)' : 'var(--color-error)'};font-weight:700;">${s.isActive ? '● Active' : '● Inactive'}</span>
                 </div>
               </div>
-              <div style="display:flex;align-items:center;gap:10px;">
-                <div style="font-size:0.7rem;color:var(--text-muted);font-weight:600;letter-spacing:0.2em;">****</div>
-                <button class="edit-staff-btn" data-id="${s.id}" style="background:transparent;border:none;color:var(--text-secondary);cursor:pointer;display:flex;align-items:center;justify-content:center;padding:4px;border-radius:6px;transition:background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.08)'" onmouseout="this.style.background='transparent'">
+              <div style="display:flex;align-items:center;gap:4px;">
+                <div style="font-size:0.7rem;color:var(--text-muted);font-weight:600;letter-spacing:0.2em;margin-right:8px;">****</div>
+                <button class="btn-icon edit-staff-btn" data-id="${s.id}">
                   <span class="material-symbols-rounded" style="font-size:18px;">edit</span>
                 </button>
                 ${isDeletable ? `
-                  <button class="delete-staff-btn" data-id="${s.id}" style="background:transparent;border:none;color:var(--color-danger);cursor:pointer;display:flex;align-items:center;justify-content:center;padding:4px;border-radius:6px;transition:background 0.2s;" onmouseover="this.style.background='rgba(239,68,68,0.1)'" onmouseout="this.style.background='transparent'">
+                  <button class="btn-icon delete-staff-btn" data-id="${s.id}" style="color:var(--color-danger);">
                     <span class="material-symbols-rounded" style="font-size:18px;">delete</span>
                   </button>
                 ` : ''}
@@ -261,24 +257,30 @@ export class StaffView {
       const shifts = await db.shifts.reverse().sortBy('clockIn');
       const recent = shifts.slice(0, 20);
       content.innerHTML = recent.length === 0 ?
-        '<div style="text-align:center;padding:60px;color:var(--text-muted);"><span class="material-symbols-rounded" style="font-size:40px;display:block;margin-bottom:8px;opacity:0.3;">schedule</span>No shift records yet.</div>' :
-        `<div style="display:flex;flex-direction:column;gap:10px;">${recent.map(s => `
-          <div style="padding:14px 16px;background:rgba(255,255,255,0.01);border:1px solid var(--border-glass);border-radius:12px;display:flex;justify-content:space-between;align-items:center;">
-            <div><div style="font-size:var(--text-sm);font-weight:600;color:var(--text-primary);">Staff #${s.staffId}</div>
-            <div style="font-size:0.7rem;color:var(--text-muted);">${s.date || '—'}</div></div>
-            <div style="text-align:right;"><div style="font-size:var(--text-xs);color:var(--color-success);">${s.clockIn || '—'} → ${s.clockOut || 'Active'}</div></div>
+        '<div class="empty-state"><span class="material-symbols-rounded">schedule</span><p>No shift records yet.</p></div>' :
+        `<div class="content-grid">${recent.map(s => `
+          <div class="card" style="display:flex; justify-content:space-between; align-items:center; flex-direction:row;">
+            <div>
+              <div style="font-size:var(--text-sm);font-weight:600;color:var(--text-primary);">Staff #${s.staffId}</div>
+              <div style="font-size:0.7rem;color:var(--text-muted);margin-top:2px;">${s.date || '—'}</div>
+            </div>
+            <div style="text-align:right;">
+              <div style="font-size:var(--text-xs);color:var(--color-success);font-weight:600;">${s.clockIn || '—'} → ${s.clockOut || 'Active'}</div>
+            </div>
           </div>
         `).join('')}</div>`;
     } else {
       const logs = await db.activityLog.reverse().sortBy('timestamp');
       const recent = logs.slice(0, 30);
       content.innerHTML = recent.length === 0 ?
-        '<div style="text-align:center;padding:60px;color:var(--text-muted);"><span class="material-symbols-rounded" style="font-size:40px;display:block;margin-bottom:8px;opacity:0.3;">history</span>No activity logged yet.</div>' :
-        `<div style="display:flex;flex-direction:column;gap:8px;">${recent.map(l => `
-          <div style="padding:12px 14px;background:rgba(255,255,255,0.01);border:1px solid var(--border-glass);border-radius:10px;display:flex;gap:12px;align-items:center;">
-            <span class="material-symbols-rounded" style="font-size:18px;color:var(--color-primary);">history</span>
-            <div style="flex:1;"><div style="font-size:var(--text-xs);color:var(--text-primary);font-weight:600;">${escapeHtml(l.action || 'Action')}</div>
-            <div style="font-size:0.65rem;color:var(--text-muted);">${escapeHtml(l.staffName || 'System')} · ${new Date(l.timestamp).toLocaleString('en-IN')}</div></div>
+        '<div class="empty-state"><span class="material-symbols-rounded">history</span><p>No activity logged yet.</p></div>' :
+        `<div class="content-grid">${recent.map(l => `
+          <div class="card" style="display:flex; gap:12px; align-items:center; flex-direction:row;">
+            <span class="material-symbols-rounded" style="font-size:18px;color:var(--color-primary); flex-shrink:0;">history</span>
+            <div style="flex:1; min-width:0;">
+              <div style="font-size:var(--text-xs);color:var(--text-primary);font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(l.action || 'Action')}</div>
+              <div style="font-size:0.65rem;color:var(--text-muted);margin-top:2px;">${escapeHtml(l.staffName || 'System')} · ${new Date(l.timestamp).toLocaleString('en-IN')}</div>
+            </div>
           </div>
         `).join('')}</div>`;
     }

@@ -33,19 +33,19 @@ export class TablesView {
 
   render() {
     this.container.innerHTML = `
-      <div style="flex:1;display:flex;flex-direction:column;height:100%;overflow:hidden;background:var(--bg-primary);">
-        <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 24px;background:rgba(9,9,14,0.8);backdrop-filter:blur(20px);border-bottom:1px solid var(--border-glass);z-index:10;flex-wrap:wrap;gap:12px;">
-          <div style="display:flex;align-items:center;gap:10px;">
-            <span class="material-symbols-rounded" style="color:var(--color-primary);font-size:24px;">table_bar</span>
-            <h2 style="font-family:'Plus Jakarta Sans',sans-serif;font-size:var(--text-lg);font-weight:800;color:var(--text-primary);margin:0;">Table Management</h2>
+      <div class="main-area">
+        <div class="header-bar">
+          <div class="header-bar-title">
+            <span class="material-symbols-rounded">table_bar</span>
+            <h2>Table Management</h2>
           </div>
-          <button id="add-table-btn" style="padding:8px 14px;background:var(--gradient-primary);border:none;border-radius:8px;color:white;font-size:var(--text-xs);font-weight:700;cursor:pointer;display:flex;align-items:center;gap:4px;font-family:'Plus Jakarta Sans',sans-serif;">
+          <button id="add-table-btn" class="btn btn-primary btn-sm">
             <span class="material-symbols-rounded" style="font-size:16px;">add</span> Add Table
           </button>
         </div>
-        <div id="table-stats" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;padding:16px 24px;"></div>
+        <div id="table-stats" class="stats-grid"></div>
         <div style="padding:4px 24px 8px;display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
-          ${Object.entries(STATUS_CONFIG).map(([k, v]) => `<span style="display:flex;align-items:center;gap:4px;font-size:0.65rem;color:var(--text-muted);font-weight:600;"><span style="width:8px;height:8px;border-radius:50%;background:${v.color};"></span>${v.label}</span>`).join('')}
+          ${Object.entries(STATUS_CONFIG).map(([k, v]) => `<span style="display:flex;align-items:center;gap:6px;font-size:0.65rem;color:var(--text-secondary);font-weight:600;"><span style="width:8px;height:8px;border-radius:50%;background:${v.color};display:inline-block;box-shadow: 0 0 6px ${v.color};"></span>${v.label}</span>`).join('')}
         </div>
         <div style="flex:1;overflow-y:auto;padding:8px 24px 24px;" id="tables-grid"></div>
       </div>
@@ -114,9 +114,9 @@ export class TablesView {
         { label: 'OCCUPIED', value: stats.occupied, color: '#EF4444' },
         { label: 'RESERVED', value: stats.reserved, color: '#F59E0B' },
       ].map(k => `
-        <div style="padding:12px 14px;background:rgba(255,255,255,0.01);border:1px solid var(--border-glass);border-radius:10px;text-align:center;">
-          <div style="font-size:0.55rem;color:var(--text-muted);font-weight:700;letter-spacing:0.08em;">${k.label}</div>
-          <div style="font-size:1.3rem;font-weight:800;color:${k.color};font-family:'Plus Jakarta Sans',sans-serif;margin-top:2px;">${k.value}</div>
+        <div class="stats-card" style="text-align: center;">
+          <div class="stats-card-label">${k.label}</div>
+          <div class="stats-card-value" style="color:${k.color};">${k.value}</div>
         </div>
       `).join('');
     }
@@ -124,14 +124,14 @@ export class TablesView {
     // Grid
     const grid = document.getElementById('tables-grid');
     if (!grid) return;
-    grid.innerHTML = `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:14px;">${tables.map(t => {
+    grid.innerHTML = `<div class="content-grid" style="grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));">${tables.map(t => {
       const cfg = STATUS_CONFIG[t.status] || STATUS_CONFIG.available;
       return `
-        <div class="table-card" data-id="${t.id}" style="padding:20px;background:${cfg.bg};border:2px solid ${cfg.border};border-radius:16px;text-align:center;cursor:pointer;transition:all 0.2s;user-select:none;">
-          <div style="font-family:'Plus Jakarta Sans',sans-serif;font-size:1.4rem;font-weight:800;color:${cfg.color};margin-bottom:6px;">T${t.number}</div>
-          <span class="material-symbols-rounded" style="font-size:24px;color:${cfg.color};display:block;margin-bottom:6px;">${cfg.icon}</span>
-          <div style="font-size:0.7rem;color:var(--text-muted);font-weight:600;">${t.capacity} seats · ${t.floorSection || 'Main'}</div>
-          <div style="font-size:0.6rem;color:${cfg.color};font-weight:700;margin-top:6px;text-transform:uppercase;letter-spacing:0.06em;">${cfg.label}</div>
+        <div class="card" data-id="${t.id}" style="border: 1.5px solid ${cfg.border}; background: ${cfg.bg}; text-align: center; cursor: pointer; padding: 18px 14px;">
+          <div style="font-family:var(--font-display); font-size:1.45rem; font-weight:800; color:${cfg.color}; margin-bottom:6px;">T${t.number}</div>
+          <span class="material-symbols-rounded" style="font-size:24px; color:${cfg.color}; display:block; margin-bottom:6px; filter: drop-shadow(0 0 6px ${cfg.border});">${cfg.icon}</span>
+          <div style="font-size:0.7rem; color:var(--text-muted); font-weight:600;">${t.capacity} seats · ${t.floorSection || 'Main'}</div>
+          <div style="font-size:0.6rem; color:${cfg.color}; font-weight:700; margin-top:6px; text-transform:uppercase; letter-spacing:0.06em;">${cfg.label}</div>
         </div>
       `;
     }).join('')}</div>`;

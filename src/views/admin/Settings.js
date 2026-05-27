@@ -115,102 +115,27 @@ export class SettingsView {
     }
   }
 
-  /** Helper: generates the standard input style string */
+  /** Helper: generates class name instead of style */
   _inputStyle(extra = '') {
-    return `
-      background: rgba(0,0,0,0.25);
-      border: 1px solid var(--border-glass);
-      color: var(--text-primary);
-      font-family: 'Inter', sans-serif;
-      font-size: var(--text-sm);
-      padding: 12px 14px;
-      border-radius: var(--radius-md);
-      width: 100%;
-      box-sizing: border-box;
-      outline: none;
-      transition: border var(--transition-fast);
-      ${extra}
-    `;
+    return extra;
   }
 
-  /** Helper: generates the standard label style */
+  /** Helper: returns empty for labels as class is used directly */
   _labelStyle() {
-    return `font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: var(--text-xs); color: var(--text-secondary); margin-bottom: 8px; display: block; text-transform: uppercase; letter-spacing: 0.05em;`;
+    return '';
   }
 
-  /** Helper: generates the standard card opening */
+  /** Helper: generates the standard card opening with css class */
   _cardOpen() {
-    return `<div class="card card-glass" style="
-      padding: 24px;
-      background: rgba(255,255,255,0.01);
-      border: 1px solid var(--border-glass);
-      border-radius: var(--radius-xl);
-      box-shadow: 0 10px 30px rgba(0,0,0,0.15);
-    ">`;
+    return `<div class="settings-card">`;
   }
 
-  /** Helper: generates card heading */
+  /** Helper: generates card heading with css class */
   _cardHeading(icon, title) {
-    return `<h3 style="
-      font-family: 'Plus Jakarta Sans', sans-serif; 
-      font-size: var(--text-base); 
-      font-weight: 800; 
-      color: var(--text-primary); 
-      display: flex; 
-      align-items: center; 
-      gap: 10px; 
-      margin-top: 0;
-      margin-bottom: 20px;
-      letter-spacing: -0.02em;
-    ">
-      <span class="material-symbols-rounded" style="color: var(--color-primary); filter: drop-shadow(0 0 4px rgba(255,94,54,0.3));">${icon}</span>
+    return `<h3 class="settings-card-heading">
+      <span class="material-symbols-rounded settings-card-heading-icon">${icon}</span>
       ${title}
     </h3>`;
-  }
-
-  /** Helper: build a toggle switch row */
-  _toggleRow(id, label, checked) {
-    const isChecked = checked === 'true' || checked === true;
-    return `
-      <div style="
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 10px 0;
-        border-bottom: 1px solid rgba(255,255,255,0.04);
-      ">
-        <span style="font-family: 'Inter', sans-serif; font-size: var(--text-sm); color: var(--text-primary); font-weight: 500;">${label}</span>
-        <label style="
-          position: relative;
-          display: inline-block;
-          width: 44px;
-          height: 24px;
-          cursor: pointer;
-          flex-shrink: 0;
-        ">
-          <input type="checkbox" id="${id}" class="receipt-toggle" ${isChecked ? 'checked' : ''} style="opacity: 0; width: 0; height: 0; position: absolute;">
-          <span style="
-            position: absolute;
-            inset: 0;
-            background: ${isChecked ? 'var(--color-primary)' : 'rgba(255,255,255,0.1)'};
-            border-radius: 24px;
-            transition: all 0.3s ease;
-            border: 1px solid ${isChecked ? 'rgba(255,94,54,0.5)' : 'var(--border-glass)'};
-          "></span>
-          <span style="
-            position: absolute;
-            top: 3px;
-            left: ${isChecked ? '22px' : '3px'};
-            width: 18px;
-            height: 18px;
-            background: white;
-            border-radius: 50%;
-            transition: all 0.3s ease;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.3);
-          "></span>
-        </label>
-      </div>
-    `;
   }
 
   render() {
@@ -221,93 +146,7 @@ export class SettingsView {
     const esc = (v) => escapeHtml(v || '');
 
     this.container.innerHTML = `
-      <style>
-        .settings-toggle-switch {
-          position: relative;
-          display: inline-block;
-          width: 44px;
-          height: 24px;
-          cursor: pointer;
-          flex-shrink: 0;
-        }
-        .settings-toggle-switch input {
-          opacity: 0;
-          width: 0;
-          height: 0;
-          position: absolute;
-        }
-        .settings-toggle-track {
-          position: absolute;
-          inset: 0;
-          background: rgba(255,255,255,0.1);
-          border-radius: 24px;
-          transition: all 0.3s ease;
-          border: 1px solid var(--border-glass);
-        }
-        .settings-toggle-switch input:checked + .settings-toggle-track {
-          background: var(--color-primary);
-          border-color: rgba(255,94,54,0.5);
-        }
-        .settings-toggle-thumb {
-          position: absolute;
-          top: 3px;
-          left: 3px;
-          width: 18px;
-          height: 18px;
-          background: white;
-          border-radius: 50%;
-          transition: all 0.3s ease;
-          box-shadow: 0 1px 3px rgba(0,0,0,0.3);
-        }
-        .settings-toggle-switch input:checked ~ .settings-toggle-thumb {
-          left: 22px;
-        }
-        .receipt-preview-paper {
-          background: #FAFAF8;
-          color: #1a1a1a;
-          font-family: 'Courier New', 'Consolas', monospace;
-          padding: 20px 12px;
-          border-radius: 4px;
-          box-shadow: 0 4px 20px rgba(0,0,0,0.35), inset 0 0 30px rgba(0,0,0,0.02);
-          max-width: 320px;
-          margin: 0 auto;
-          font-size: 12px;
-          line-height: 1.5;
-          white-space: pre-wrap;
-          word-break: break-all;
-          border: 1px solid rgba(0,0,0,0.08);
-          position: relative;
-          overflow: hidden;
-        }
-        .receipt-preview-paper::before {
-          content: '';
-          position: absolute;
-          top: 0; left: 0; right: 0;
-          height: 6px;
-          background: repeating-linear-gradient(
-            90deg,
-            transparent 0px,
-            transparent 4px,
-            rgba(0,0,0,0.06) 4px,
-            rgba(0,0,0,0.06) 5px
-          );
-        }
-        .receipt-preview-paper::after {
-          content: '';
-          position: absolute;
-          bottom: 0; left: 0; right: 0;
-          height: 12px;
-          background: linear-gradient(to bottom, #FAFAF8, #f0f0ec);
-          mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12'%3E%3Ccircle cx='6' cy='6' r='4'/%3E%3C/svg%3E");
-        }
-        .receipt-line { text-align: center; }
-        .receipt-line-left { text-align: left; }
-        .receipt-line-bold { font-weight: 700; }
-        .receipt-line-big { font-size: 16px; font-weight: 800; }
-        .receipt-divider { text-align: center; opacity: 0.6; }
-      </style>
-
-      <div style="padding: 0 24px 24px 24px; max-width: 800px; margin: 0 auto; width: 100%; display: flex; flex-direction: column; gap: 24px;">
+      <div class="settings-container">
         
         <!-- Bluetooth Printer Section -->
         ${this._cardOpen()}
@@ -962,19 +801,6 @@ export class SettingsView {
       </div>
     `;
 
-    // Add focus listeners for input controls border glows
-    const inputs = this.container.querySelectorAll('.input');
-    inputs.forEach(input => {
-      input.addEventListener('focus', () => {
-        input.style.borderColor = 'var(--color-primary)';
-        input.style.boxShadow = '0 0 10px rgba(255, 94, 54, 0.25)';
-      });
-      input.addEventListener('blur', () => {
-        input.style.borderColor = 'var(--border-glass)';
-        input.style.boxShadow = 'none';
-      });
-    });
-
     // Render initial receipt preview
     this._renderReceiptPreview();
   }
@@ -983,14 +809,8 @@ export class SettingsView {
   _buildToggleRow(id, label, value) {
     const isChecked = value === 'true' || value === true;
     return `
-      <div style="
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 11px 0;
-        border-bottom: 1px solid rgba(255,255,255,0.04);
-      ">
-        <span style="font-family: 'Inter', sans-serif; font-size: var(--text-sm); color: var(--text-primary); font-weight: 500;">${label}</span>
+      <div class="settings-toggle-row">
+        <span class="settings-toggle-row-label">${label}</span>
         <label class="settings-toggle-switch">
           <input type="checkbox" id="${id}" class="receipt-toggle" ${isChecked ? 'checked' : ''}>
           <span class="settings-toggle-track"></span>

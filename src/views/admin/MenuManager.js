@@ -36,25 +36,11 @@ export class MenuManager {
 
   render() {
     const tabsHtml = `
-      <div style="display: flex; gap: 8px; margin-bottom: 24px; padding: 0 24px;">
-        <button class="tab sub-tab ${this.activeTab === 'items' ? 'active' : ''}" data-sub-tab="items" style="
-          border-radius: var(--radius-md); 
-          padding: 8px 20px;
-          font-family: 'Plus Jakarta Sans', sans-serif;
-          font-weight: 700;
-          font-size: var(--text-xs);
-          transition: all var(--transition-normal);
-        ">
+      <div class="tab-container" style="padding: 0 24px; border-bottom: none; margin-bottom: 12px;">
+        <button class="tab sub-tab ${this.activeTab === 'items' ? 'active' : ''}" data-sub-tab="items">
           Menu Items
         </button>
-        <button class="tab sub-tab ${this.activeTab === 'categories' ? 'active' : ''}" data-sub-tab="categories" style="
-          border-radius: var(--radius-md); 
-          padding: 8px 20px;
-          font-family: 'Plus Jakarta Sans', sans-serif;
-          font-weight: 700;
-          font-size: var(--text-xs);
-          transition: all var(--transition-normal);
-        ">
+        <button class="tab sub-tab ${this.activeTab === 'categories' ? 'active' : ''}" data-sub-tab="categories">
           Categories
         </button>
       </div>
@@ -87,47 +73,22 @@ export class MenuManager {
       const vegClass = item.isVeg === 1 ? 'badge-primary' : 'badge-danger';
 
       return `
-        <tr style="border-bottom: 1px solid var(--border-glass); font-size: var(--text-sm); transition: background var(--transition-fast);">
-          <td style="padding: 16px 20px; font-weight: 600; color: var(--text-primary);">${escapeHtml(item.name)}</td>
-          <td style="padding: 16px 20px; color: var(--text-secondary); font-weight: 500;">${escapeHtml(catName)}</td>
-          <td style="padding: 16px 20px; font-weight: 700; color: var(--color-primary);">${formatCurrency(item.price)}</td>
-          <td style="padding: 16px 20px;">
-            <span class="badge ${vegClass}" style="
-              font-family: 'Plus Jakarta Sans', sans-serif; 
-              font-weight: 700;
-              letter-spacing: 0.02em;
-            ">${vegDot}</span>
+        <tr>
+          <td style="font-weight: 600; color: var(--text-primary);">${escapeHtml(item.name)}</td>
+          <td>${escapeHtml(catName)}</td>
+          <td style="font-weight: 700; color: var(--color-primary);">${formatCurrency(item.price)}</td>
+          <td>
+            <span class="badge ${vegClass}">${vegDot}</span>
           </td>
-          <td style="padding: 16px 20px;">
-            <span class="badge ${availableClass}" style="
-              font-family: 'Plus Jakarta Sans', sans-serif; 
-              font-weight: 700;
-              letter-spacing: 0.02em;
-            ">${availableLabel}</span>
+          <td>
+            <span class="badge ${availableClass}">${availableLabel}</span>
           </td>
-          <td style="padding: 16px 20px; text-align: right;">
+          <td style="text-align: right;">
             <div style="display: flex; gap: 8px; justify-content: flex-end; align-items: center;">
-              <button class="btn btn-secondary btn-sm edit-item-btn" data-id="${item.id}" style="
-                min-height: 32px; 
-                padding: 6px 12px;
-                font-family: 'Plus Jakarta Sans', sans-serif;
-                font-weight: 700;
-                font-size: var(--text-xs);
-                border: 1px solid var(--border-glass);
-                background: rgba(255,255,255,0.02);
-              ">
+              <button class="btn btn-secondary btn-sm edit-item-btn" data-id="${item.id}">
                 Edit
               </button>
-              <button class="btn btn-sm delete-item-btn" data-id="${item.id}" style="
-                min-height: 32px; 
-                padding: 6px 12px;
-                font-family: 'Plus Jakarta Sans', sans-serif;
-                font-weight: 700;
-                font-size: var(--text-xs);
-                background: rgba(239, 68, 68, 0.05); 
-                color: #FF4D4D; 
-                border: 1px solid rgba(239, 68, 68, 0.2);
-              ">
+              <button class="btn btn-sm delete-item-btn" data-id="${item.id}" style="background: rgba(239, 68, 68, 0.05); color: #FF4D4D; border: 1px solid rgba(239, 68, 68, 0.2);">
                 Delete
               </button>
             </div>
@@ -139,33 +100,22 @@ export class MenuManager {
     return `
       <div style="padding: 0 24px; display: flex; flex-direction: column; gap: 20px;">
         <div style="display: flex; justify-content: space-between; align-items: center;">
-          <h3 style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: 1.15rem; font-weight: 800; color: var(--text-primary); letter-spacing: -0.02em; margin: 0;">Menu Items (${this.items.length})</h3>
-          <button class="btn btn-primary btn-sm" id="btn-add-item" style="
-            font-family: 'Plus Jakarta Sans', sans-serif;
-            font-weight: 700;
-            box-shadow: var(--shadow-primary);
-            padding: 8px 16px;
-          ">
+          <h3 style="font-family: var(--font-display); font-size: 1.15rem; font-weight: 800; color: var(--text-primary); letter-spacing: -0.02em; margin: 0;">Menu Items (${this.items.length})</h3>
+          <button class="btn btn-primary btn-sm" id="btn-add-item">
             Add New Item +
           </button>
         </div>
 
-        <div style="
-          overflow-x: auto; 
-          border: 1px solid var(--border-glass); 
-          border-radius: var(--radius-xl); 
-          background: rgba(17,17,30,0.3);
-          box-shadow: 0 10px 30px rgba(0,0,0,0.15);
-        " class="scrollbar-none">
-          <table style="width: 100%; border-collapse: collapse; text-align: left;">
+        <div class="table-container scrollbar-none">
+          <table class="premium-table">
             <thead>
-              <tr style="border-bottom: 1px solid var(--border-glass); background: rgba(255, 255, 255, 0.01); font-size: var(--text-xs); text-transform: uppercase; color: var(--text-secondary); letter-spacing: 0.05em;">
-                <th style="padding: 16px 20px; font-weight: 700;">Name</th>
-                <th style="padding: 16px 20px; font-weight: 700;">Category</th>
-                <th style="padding: 16px 20px; font-weight: 700;">Price</th>
-                <th style="padding: 16px 20px; font-weight: 700;">Type</th>
-                <th style="padding: 16px 20px; font-weight: 700;">Status</th>
-                <th style="padding: 16px 20px; font-weight: 700; text-align: right;">Actions</th>
+              <tr>
+                <th>Name</th>
+                <th>Category</th>
+                <th>Price</th>
+                <th>Type</th>
+                <th>Status</th>
+                <th style="text-align: right;">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -189,39 +139,18 @@ export class MenuManager {
       const activeClass = cat.isActive === 1 ? 'badge-success' : 'badge-danger';
 
       return `
-        <tr style="border-bottom: 1px solid var(--border-glass); font-size: var(--text-sm); transition: background var(--transition-fast);">
-          <td style="padding: 16px 20px; font-weight: 600; color: var(--text-primary);">${escapeHtml(cat.name)}</td>
-          <td style="padding: 16px 20px; color: var(--text-secondary); font-weight: 500;">${cat.sortOrder}</td>
-          <td style="padding: 16px 20px;">
-            <span class="badge ${activeClass}" style="
-              font-family: 'Plus Jakarta Sans', sans-serif; 
-              font-weight: 700;
-              letter-spacing: 0.02em;
-            ">${activeLabel}</span>
+        <tr>
+          <td style="font-weight: 600; color: var(--text-primary);">${escapeHtml(cat.name)}</td>
+          <td>${cat.sortOrder}</td>
+          <td>
+            <span class="badge ${activeClass}">${activeLabel}</span>
           </td>
-          <td style="padding: 16px 20px; text-align: right;">
+          <td style="text-align: right;">
             <div style="display: flex; gap: 8px; justify-content: flex-end; align-items: center;">
-              <button class="btn btn-secondary btn-sm edit-cat-btn" data-id="${cat.id}" style="
-                min-height: 32px; 
-                padding: 6px 12px;
-                font-family: 'Plus Jakarta Sans', sans-serif;
-                font-weight: 700;
-                font-size: var(--text-xs);
-                border: 1px solid var(--border-glass);
-                background: rgba(255,255,255,0.02);
-              ">
+              <button class="btn btn-secondary btn-sm edit-cat-btn" data-id="${cat.id}">
                 Edit
               </button>
-              <button class="btn btn-sm delete-cat-btn" data-id="${cat.id}" style="
-                min-height: 32px; 
-                padding: 6px 12px;
-                font-family: 'Plus Jakarta Sans', sans-serif;
-                font-weight: 700;
-                font-size: var(--text-xs);
-                background: rgba(239, 68, 68, 0.05); 
-                color: #FF4D4D; 
-                border: 1px solid rgba(239, 68, 68, 0.2);
-              ">
+              <button class="btn btn-sm delete-cat-btn" data-id="${cat.id}" style="background: rgba(239, 68, 68, 0.05); color: #FF4D4D; border: 1px solid rgba(239, 68, 68, 0.2);">
                 Delete
               </button>
             </div>
@@ -233,31 +162,20 @@ export class MenuManager {
     return `
       <div style="padding: 0 24px; display: flex; flex-direction: column; gap: 20px;">
         <div style="display: flex; justify-content: space-between; align-items: center;">
-          <h3 style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: 1.15rem; font-weight: 800; color: var(--text-primary); letter-spacing: -0.02em; margin: 0;">Manage Categories (${this.categories.length})</h3>
-          <button class="btn btn-primary btn-sm" id="btn-add-cat" style="
-            font-family: 'Plus Jakarta Sans', sans-serif;
-            font-weight: 700;
-            box-shadow: var(--shadow-primary);
-            padding: 8px 16px;
-          ">
+          <h3 style="font-family: var(--font-display); font-size: 1.15rem; font-weight: 800; color: var(--text-primary); letter-spacing: -0.02em; margin: 0;">Manage Categories (${this.categories.length})</h3>
+          <button class="btn btn-primary btn-sm" id="btn-add-cat">
             Add Category +
           </button>
         </div>
 
-        <div style="
-          overflow-x: auto; 
-          border: 1px solid var(--border-glass); 
-          border-radius: var(--radius-xl); 
-          background: rgba(17,17,30,0.3);
-          box-shadow: 0 10px 30px rgba(0,0,0,0.15);
-        " class="scrollbar-none">
-          <table style="width: 100%; border-collapse: collapse; text-align: left;">
+        <div class="table-container scrollbar-none">
+          <table class="premium-table">
             <thead>
-              <tr style="border-bottom: 1px solid var(--border-glass); background: rgba(255, 255, 255, 0.01); font-size: var(--text-xs); text-transform: uppercase; color: var(--text-secondary); letter-spacing: 0.05em;">
-                <th style="padding: 16px 20px; font-weight: 700;">Name</th>
-                <th style="padding: 16px 20px; font-weight: 700;">Sort Order</th>
-                <th style="padding: 16px 20px; font-weight: 700;">Status</th>
-                <th style="padding: 16px 20px; font-weight: 700; text-align: right;">Actions</th>
+              <tr>
+                <th>Name</th>
+                <th>Sort Order</th>
+                <th>Status</th>
+                <th style="text-align: right;">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -362,112 +280,43 @@ export class MenuManager {
   showItemModal() {
     const isNew = !this.editingItem.id;
     const modalHtml = `
-      <div class="modal-overlay" id="crud-modal-overlay" style="background: rgba(0,0,0,0.65); backdrop-filter: blur(12px); display: flex; align-items: center; justify-content: center; z-index: 999;">
-        <div class="modal card-glass" style="
-          background: rgba(17,17,30,0.85); 
-          border: 1px solid var(--border-glass); 
-          border-radius: var(--radius-xl); 
-          width: 100%; 
-          max-width: 460px; 
-          box-shadow: 0 25px 50px rgba(0,0,0,0.3);
-          overflow: hidden;
-          animation: modalFadeIn 300ms ease-out;
-        ">
-          <div class="modal-header" style="border-bottom: 1px solid var(--border-glass); padding: 20px 24px; display: flex; align-items: center; justify-content: space-between;">
-            <h3 style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: 1.15rem; font-weight: 800; color: var(--text-primary); letter-spacing: -0.02em; margin: 0;">${isNew ? 'Create Menu Item' : 'Modify Menu Item'}</h3>
-            <button class="btn-icon" id="crud-modal-close" style="background: transparent; border: none; cursor: pointer;"><span class="material-symbols-rounded" style="color: var(--text-secondary);">close</span></button>
+      <div class="modal-overlay" id="crud-modal-overlay">
+        <div class="modal" style="max-width: 460px;">
+          <div class="modal-header">
+            <h3>${isNew ? 'Create Menu Item' : 'Modify Menu Item'}</h3>
+            <button class="btn-icon" id="crud-modal-close"><span class="material-symbols-rounded">close</span></button>
           </div>
           
-          <div class="modal-body scrollbar-none" style="display:flex; flex-direction:column; gap:18px; padding: 24px; max-height: 70vh; overflow-y: auto;">
+          <div class="modal-body" style="display:flex; flex-direction:column; gap:18px;">
             <div class="input-group">
-              <label class="login-label" for="item-name">Item Name</label>
-              <input type="text" id="item-name" class="input" value="${escapeHtml(this.editingItem.name)}" placeholder="e.g. Schezwan Noodles" style="
-                background: rgba(0,0,0,0.25);
-                border: 1px solid var(--border-glass);
-                color: var(--text-primary);
-                font-family: 'Inter', sans-serif;
-                font-size: var(--text-sm);
-                padding: 12px 14px;
-                border-radius: var(--radius-md);
-                width: 100%;
-                box-sizing: border-box;
-                outline: none;
-                transition: border var(--transition-fast);
-              ">
+              <label for="item-name">Item Name</label>
+              <input type="text" id="item-name" class="input" value="${escapeHtml(this.editingItem.name)}" placeholder="e.g. Schezwan Noodles">
             </div>
 
             <div class="input-group">
-              <label for="item-cat" style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: var(--text-xs); color: var(--text-secondary); margin-bottom: 8px; display: block; text-transform: uppercase; letter-spacing: 0.05em;">Category</label>
-              <select id="item-cat" class="input" style="
-                background: rgba(0,0,0,0.25);
-                border: 1px solid var(--border-glass);
-                color: var(--text-primary);
-                font-family: 'Inter', sans-serif;
-                font-size: var(--text-sm);
-                padding: 12px 14px;
-                border-radius: var(--radius-md);
-                width: 100%;
-                box-sizing: border-box;
-                outline: none;
-                transition: border var(--transition-fast);
-              ">
+              <label for="item-cat">Category</label>
+              <select id="item-cat" class="input">
                 ${this.categories.map(c => `<option value="${c.id}" ${c.id === this.editingItem.categoryId ? 'selected' : ''}>${escapeHtml(c.name)}</option>`).join('')}
               </select>
             </div>
 
             <div class="input-group">
-              <label for="item-price" style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: var(--text-xs); color: var(--text-secondary); margin-bottom: 8px; display: block; text-transform: uppercase; letter-spacing: 0.05em;">Price (₹)</label>
-              <input type="number" id="item-price" class="input" value="${this.editingItem.price}" style="
-                background: rgba(0,0,0,0.25);
-                border: 1px solid var(--border-glass);
-                color: var(--text-primary);
-                font-family: 'Inter', sans-serif;
-                font-size: var(--text-sm);
-                padding: 12px 14px;
-                border-radius: var(--radius-md);
-                width: 100%;
-                box-sizing: border-box;
-                outline: none;
-                transition: border var(--transition-fast);
-              ">
+              <label for="item-price">Price (₹)</label>
+              <input type="number" id="item-price" class="input" value="${this.editingItem.price}">
             </div>
 
-            <div style="display:flex; gap:16px;">
-              <div class="input-group" style="flex:1;">
-                <label for="item-veg" style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: var(--text-xs); color: var(--text-secondary); margin-bottom: 8px; display: block; text-transform: uppercase; letter-spacing: 0.05em;">Dietary Type</label>
-                <select id="item-veg" class="input" style="
-                  background: rgba(0,0,0,0.25);
-                  border: 1px solid var(--border-glass);
-                  color: var(--text-primary);
-                  font-family: 'Inter', sans-serif;
-                  font-size: var(--text-sm);
-                  padding: 12px 14px;
-                  border-radius: var(--radius-md);
-                  width: 100%;
-                  box-sizing: border-box;
-                  outline: none;
-                  transition: border var(--transition-fast);
-                ">
+            <div class="form-row">
+              <div class="input-group">
+                <label for="item-veg">Dietary Type</label>
+                <select id="item-veg" class="input">
                   <option value="1" ${this.editingItem.isVeg === 1 ? 'selected' : ''}>🟢 Veg</option>
                   <option value="0" ${this.editingItem.isVeg === 0 ? 'selected' : ''}>🔺 Non-Veg</option>
                 </select>
               </div>
 
-              <div class="input-group" style="flex:1;">
-                <label for="item-avail" style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: var(--text-xs); color: var(--text-secondary); margin-bottom: 8px; display: block; text-transform: uppercase; letter-spacing: 0.05em;">Availability</label>
-                <select id="item-avail" class="input" style="
-                  background: rgba(0,0,0,0.25);
-                  border: 1px solid var(--border-glass);
-                  color: var(--text-primary);
-                  font-family: 'Inter', sans-serif;
-                  font-size: var(--text-sm);
-                  padding: 12px 14px;
-                  border-radius: var(--radius-md);
-                  width: 100%;
-                  box-sizing: border-box;
-                  outline: none;
-                  transition: border var(--transition-fast);
-                ">
+              <div class="input-group">
+                <label for="item-avail">Availability</label>
+                <select id="item-avail" class="input">
                   <option value="1" ${this.editingItem.isAvailable === 1 ? 'selected' : ''}>Available</option>
                   <option value="0" ${this.editingItem.isAvailable === 0 ? 'selected' : ''}>Sold Out</option>
                 </select>
@@ -475,41 +324,14 @@ export class MenuManager {
             </div>
 
             <div class="input-group">
-              <label for="item-sort" style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: var(--text-xs); color: var(--text-secondary); margin-bottom: 8px; display: block; text-transform: uppercase; letter-spacing: 0.05em;">Sort Order</label>
-              <input type="number" id="item-sort" class="input" value="${this.editingItem.sortOrder}" style="
-                background: rgba(0,0,0,0.25);
-                border: 1px solid var(--border-glass);
-                color: var(--text-primary);
-                font-family: 'Inter', sans-serif;
-                font-size: var(--text-sm);
-                padding: 12px 14px;
-                border-radius: var(--radius-md);
-                width: 100%;
-                box-sizing: border-box;
-                outline: none;
-                transition: border var(--transition-fast);
-              ">
+              <label for="item-sort">Sort Order</label>
+              <input type="number" id="item-sort" class="input" value="${this.editingItem.sortOrder}">
             </div>
           </div>
           
-          <div class="modal-footer" style="border-top: 1px solid var(--border-glass); padding: 16px 24px; display: flex; justify-content: flex-end; gap: 12px;">
-            <button class="btn btn-secondary" id="crud-modal-cancel" style="
-              font-family: 'Plus Jakarta Sans', sans-serif;
-              font-weight: 700;
-              font-size: var(--text-xs);
-              min-height: 38px;
-              padding: 8px 18px;
-              background: rgba(255,255,255,0.02);
-              border: 1px solid var(--border-glass);
-            ">Cancel</button>
-            <button class="btn btn-primary" id="crud-modal-save" style="
-              font-family: 'Plus Jakarta Sans', sans-serif;
-              font-weight: 700;
-              font-size: var(--text-xs);
-              min-height: 38px;
-              padding: 8px 18px;
-              box-shadow: var(--shadow-primary);
-            ">Save Item</button>
+          <div class="modal-footer">
+            <button class="btn btn-secondary btn-sm" id="crud-modal-cancel">Cancel</button>
+            <button class="btn btn-primary btn-sm" id="crud-modal-save">Save Item</button>
           </div>
         </div>
       </div>
@@ -519,19 +341,6 @@ export class MenuManager {
     wrapper.id = 'modal-wrapper';
     wrapper.innerHTML = modalHtml;
     document.body.appendChild(wrapper);
-
-    // Add CSS Focus glows for input fields
-    const inputs = wrapper.querySelectorAll('.input');
-    inputs.forEach(input => {
-      input.addEventListener('focus', () => {
-        input.style.borderColor = 'var(--color-primary)';
-        input.style.boxShadow = '0 0 10px rgba(255, 94, 54, 0.25)';
-      });
-      input.addEventListener('blur', () => {
-        input.style.borderColor = 'var(--border-glass)';
-        input.style.boxShadow = 'none';
-      });
-    });
 
     // Bind modal actions
     const close = () => {
@@ -585,96 +394,36 @@ export class MenuManager {
   showCategoryModal() {
     const isNew = !this.editingCategory.id;
     const modalHtml = `
-      <div class="modal-overlay" id="crud-modal-overlay" style="background: rgba(0,0,0,0.65); backdrop-filter: blur(12px); display: flex; align-items: center; justify-content: center; z-index: 999;">
-        <div class="modal card-glass" style="
-          background: rgba(17,17,30,0.85); 
-          border: 1px solid var(--border-glass); 
-          border-radius: var(--radius-xl); 
-          width: 100%; 
-          max-width: 460px; 
-          box-shadow: 0 25px 50px rgba(0,0,0,0.3);
-          overflow: hidden;
-          animation: modalFadeIn 300ms ease-out;
-        ">
-          <div class="modal-header" style="border-bottom: 1px solid var(--border-glass); padding: 20px 24px; display: flex; align-items: center; justify-content: space-between;">
-            <h3 style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: 1.15rem; font-weight: 800; color: var(--text-primary); letter-spacing: -0.02em; margin: 0;">${isNew ? 'Create Category' : 'Modify Category'}</h3>
-            <button class="btn-icon" id="crud-modal-close" style="background: transparent; border: none; cursor: pointer;"><span class="material-symbols-rounded" style="color: var(--text-secondary);">close</span></button>
+      <div class="modal-overlay" id="crud-modal-overlay">
+        <div class="modal" style="max-width: 460px;">
+          <div class="modal-header">
+            <h3>${isNew ? 'Create Category' : 'Modify Category'}</h3>
+            <button class="btn-icon" id="crud-modal-close"><span class="material-symbols-rounded">close</span></button>
           </div>
           
-          <div class="modal-body scrollbar-none" style="display:flex; flex-direction:column; gap:18px; padding: 24px; max-height: 70vh; overflow-y: auto;">
+          <div class="modal-body" style="display:flex; flex-direction:column; gap:18px;">
             <div class="input-group">
-              <label class="login-label" for="cat-name">Category Name</label>
-              <input type="text" id="cat-name" class="input" value="${escapeHtml(this.editingCategory.name)}" placeholder="e.g. Starter Momos" style="
-                background: rgba(0,0,0,0.25);
-                border: 1px solid var(--border-glass);
-                color: var(--text-primary);
-                font-family: 'Inter', sans-serif;
-                font-size: var(--text-sm);
-                padding: 12px 14px;
-                border-radius: var(--radius-md);
-                width: 100%;
-                box-sizing: border-box;
-                outline: none;
-                transition: border var(--transition-fast);
-              ">
+              <label for="cat-name">Category Name</label>
+              <input type="text" id="cat-name" class="input" value="${escapeHtml(this.editingCategory.name)}" placeholder="e.g. Starter Momos">
             </div>
 
             <div class="input-group">
-              <label for="cat-sort" style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: var(--text-xs); color: var(--text-secondary); margin-bottom: 8px; display: block; text-transform: uppercase; letter-spacing: 0.05em;">Sort Order</label>
-              <input type="number" id="cat-sort" class="input" value="${this.editingCategory.sortOrder}" style="
-                background: rgba(0,0,0,0.25);
-                border: 1px solid var(--border-glass);
-                color: var(--text-primary);
-                font-family: 'Inter', sans-serif;
-                font-size: var(--text-sm);
-                padding: 12px 14px;
-                border-radius: var(--radius-md);
-                width: 100%;
-                box-sizing: border-box;
-                outline: none;
-                transition: border var(--transition-fast);
-              ">
+              <label for="cat-sort">Sort Order</label>
+              <input type="number" id="cat-sort" class="input" value="${this.editingCategory.sortOrder}">
             </div>
 
             <div class="input-group">
-              <label for="cat-active" style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: var(--text-xs); color: var(--text-secondary); margin-bottom: 8px; display: block; text-transform: uppercase; letter-spacing: 0.05em;">Status</label>
-              <select id="cat-active" class="input" style="
-                background: rgba(0,0,0,0.25);
-                border: 1px solid var(--border-glass);
-                color: var(--text-primary);
-                font-family: 'Inter', sans-serif;
-                font-size: var(--text-sm);
-                padding: 12px 14px;
-                border-radius: var(--radius-md);
-                width: 100%;
-                box-sizing: border-box;
-                outline: none;
-                transition: border var(--transition-fast);
-              ">
+              <label for="cat-active">Status</label>
+              <select id="cat-active" class="input">
                 <option value="1" ${this.editingCategory.isActive === 1 ? 'selected' : ''}>Active</option>
                 <option value="0" ${this.editingCategory.isActive === 0 ? 'selected' : ''}>Disabled</option>
               </select>
             </div>
           </div>
           
-          <div class="modal-footer" style="border-top: 1px solid var(--border-glass); padding: 16px 24px; display: flex; justify-content: flex-end; gap: 12px;">
-            <button class="btn btn-secondary" id="crud-modal-cancel" style="
-              font-family: 'Plus Jakarta Sans', sans-serif;
-              font-weight: 700;
-              font-size: var(--text-xs);
-              min-height: 38px;
-              padding: 8px 18px;
-              background: rgba(255,255,255,0.02);
-              border: 1px solid var(--border-glass);
-            ">Cancel</button>
-            <button class="btn btn-primary" id="crud-modal-save" style="
-              font-family: 'Plus Jakarta Sans', sans-serif;
-              font-weight: 700;
-              font-size: var(--text-xs);
-              min-height: 38px;
-              padding: 8px 18px;
-              box-shadow: var(--shadow-primary);
-            ">Save Category</button>
+          <div class="modal-footer">
+            <button class="btn btn-secondary btn-sm" id="crud-modal-cancel">Cancel</button>
+            <button class="btn btn-primary btn-sm" id="crud-modal-save">Save Category</button>
           </div>
         </div>
       </div>
@@ -684,19 +433,6 @@ export class MenuManager {
     wrapper.id = 'modal-wrapper';
     wrapper.innerHTML = modalHtml;
     document.body.appendChild(wrapper);
-
-    // Add CSS Focus glows for input fields
-    const inputs = wrapper.querySelectorAll('.input');
-    inputs.forEach(input => {
-      input.addEventListener('focus', () => {
-        input.style.borderColor = 'var(--color-primary)';
-        input.style.boxShadow = '0 0 10px rgba(255, 94, 54, 0.25)';
-      });
-      input.addEventListener('blur', () => {
-        input.style.borderColor = 'var(--border-glass)';
-        input.style.boxShadow = 'none';
-      });
-    });
 
     // Bind modal actions
     const close = () => {

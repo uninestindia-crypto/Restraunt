@@ -24,30 +24,36 @@ export class InventoryView {
 
   render() {
     this.container.innerHTML = `
-      <div style="flex:1;display:flex;flex-direction:column;height:100%;overflow:hidden;background:var(--bg-primary);">
-        <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 24px;background:rgba(9,9,14,0.8);backdrop-filter:blur(20px);border-bottom:1px solid var(--border-glass);z-index:10;flex-wrap:wrap;gap:12px;">
-          <div style="display:flex;align-items:center;gap:10px;">
-            <span class="material-symbols-rounded" style="color:var(--color-primary);font-size:24px;">inventory_2</span>
-            <h2 style="font-family:'Plus Jakarta Sans',sans-serif;font-size:var(--text-lg);font-weight:800;color:var(--text-primary);margin:0;">Inventory & Stock</h2>
+      <div class="main-area">
+        <div class="header-bar">
+          <div class="header-bar-title">
+            <span class="material-symbols-rounded">inventory_2</span>
+            <h2>Inventory & Stock</h2>
           </div>
-          <button id="add-inventory-btn" style="padding:8px 14px;background:var(--gradient-primary);border:none;border-radius:8px;color:white;font-size:var(--text-xs);font-weight:700;cursor:pointer;display:flex;align-items:center;gap:4px;font-family:'Plus Jakarta Sans',sans-serif;">
+          <button id="add-inventory-btn" class="btn btn-primary btn-sm">
             <span class="material-symbols-rounded" style="font-size:16px;">add</span> Add Item
           </button>
         </div>
         <div id="low-stock-alert" style="display:none;padding:10px 24px;background:rgba(239,68,68,0.08);border-bottom:1px solid rgba(239,68,68,0.2);"></div>
-        <div style="display:flex;gap:6px;padding:12px 24px;border-bottom:1px solid var(--border-glass);">
-          <button class="inv-tab active" data-tab="stock" style="padding:6px 14px;border-radius:8px;font-size:0.75rem;font-weight:700;cursor:pointer;background:var(--gradient-primary);color:white;border:none;font-family:'Plus Jakarta Sans',sans-serif;">Stock Levels</button>
-          <button class="inv-tab" data-tab="suppliers" style="padding:6px 14px;border-radius:8px;font-size:0.75rem;font-weight:700;cursor:pointer;background:rgba(255,255,255,0.03);color:var(--text-secondary);border:1px solid var(--border-glass);font-family:'Plus Jakarta Sans',sans-serif;">Suppliers</button>
+        
+        <div class="tab-container">
+          <button class="tab inv-tab active" data-tab="stock">Stock Levels</button>
+          <button class="tab inv-tab" data-tab="suppliers">Suppliers</button>
         </div>
-        <div style="flex:1;overflow-y:auto;padding:16px 24px;" id="inv-content"></div>
+        
+        <div style="flex:1;overflow-y:auto;padding:24px;" id="inv-content"></div>
       </div>
-      <div id="inv-modal" style="display:none;position:fixed;inset:0;z-index:999;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);align-items:center;justify-content:center;">
-        <div style="background:var(--bg-secondary);border:1px solid var(--border-glass);border-radius:20px;padding:28px;width:90%;max-width:400px;">
-          <h3 style="font-family:'Plus Jakarta Sans',sans-serif;font-size:var(--text-md);font-weight:800;color:var(--text-primary);margin:0 0 20px;" id="inv-modal-title">Add Item</h3>
-          <div style="display:flex;flex-direction:column;gap:14px;" id="inv-modal-fields"></div>
-          <div style="display:flex;gap:10px;margin-top:20px;">
-            <button id="inv-cancel" style="flex:1;padding:10px;background:rgba(255,255,255,0.03);border:1px solid var(--border-glass);border-radius:10px;color:var(--text-secondary);font-weight:700;cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif;">Cancel</button>
-            <button id="inv-save" style="flex:1;padding:10px;background:var(--gradient-primary);border:none;border-radius:10px;color:white;font-weight:700;cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif;">Save</button>
+
+      <div id="inv-modal" class="modal-overlay" style="display:none;">
+        <div class="modal" style="max-width:400px;">
+          <div class="modal-header">
+            <h3 id="inv-modal-title">Add Item</h3>
+            <button class="btn-icon" id="inv-close-icon"><span class="material-symbols-rounded">close</span></button>
+          </div>
+          <div class="modal-body" id="inv-modal-fields" style="display:flex;flex-direction:column;gap:14px;"></div>
+          <div class="modal-footer">
+            <button id="inv-cancel" class="btn btn-secondary btn-sm">Cancel</button>
+            <button id="inv-save" class="btn btn-primary btn-sm">Save</button>
           </div>
         </div>
       </div>
@@ -55,26 +61,71 @@ export class InventoryView {
   }
 
   bindEvents() {
-    const inputStyle = 'padding:10px 14px;background:rgba(255,255,255,0.03);border:1px solid var(--border-glass);border-radius:10px;color:var(--text-primary);font-size:var(--text-sm);outline:none;font-family:Inter,sans-serif;';
+    const modal = document.getElementById('inv-modal');
+    
     document.getElementById('add-inventory-btn').addEventListener('click', () => {
       playSound(700, 80);
       const isStock = this.tab === 'stock';
       document.getElementById('inv-modal-title').textContent = isStock ? 'Add Inventory Item' : 'Add Supplier';
       document.getElementById('inv-modal-fields').innerHTML = isStock ? `
-        <input type="text" id="inv-name" placeholder="Item name (e.g., Chicken)" style="${inputStyle}">
-        <select id="inv-unit" style="${inputStyle}"><option value="kg">Kilograms (kg)</option><option value="liters">Liters</option><option value="pieces">Pieces</option><option value="packs">Packs</option></select>
-        <input type="number" id="inv-qty" placeholder="Current quantity" style="${inputStyle}">
-        <input type="number" id="inv-min" placeholder="Minimum threshold" style="${inputStyle}">
-        <input type="number" id="inv-max" placeholder="Max capacity" style="${inputStyle}">
+        <div class="input-group">
+          <label for="inv-name">Item Name</label>
+          <input type="text" id="inv-name" class="input" placeholder="e.g. Chicken">
+        </div>
+        <div class="input-group">
+          <label for="inv-unit">Measurement Unit</label>
+          <select id="inv-unit" class="input">
+            <option value="kg">Kilograms (kg)</option>
+            <option value="liters">Liters</option>
+            <option value="pieces">Pieces</option>
+            <option value="packs">Packs</option>
+          </select>
+        </div>
+        <div class="input-group">
+          <label for="inv-qty">Current Quantity</label>
+          <input type="number" id="inv-qty" class="input" placeholder="0">
+        </div>
+        <div class="input-group">
+          <label for="inv-min">Minimum Threshold</label>
+          <input type="number" id="inv-min" class="input" placeholder="e.g. 5">
+        </div>
+        <div class="input-group">
+          <label for="inv-max">Maximum Capacity</label>
+          <input type="number" id="inv-max" class="input" placeholder="e.g. 100">
+        </div>
       ` : `
-        <input type="text" id="sup-name" placeholder="Supplier name" style="${inputStyle}">
-        <input type="tel" id="sup-phone" placeholder="Phone" style="${inputStyle}">
-        <input type="email" id="sup-email" placeholder="Email" style="${inputStyle}">
-        <select id="sup-category" style="${inputStyle}"><option value="Produce">Produce</option><option value="Dairy">Dairy</option><option value="Meat">Meat</option><option value="Dry Goods">Dry Goods</option><option value="Beverages">Beverages</option><option value="Other">Other</option></select>
+        <div class="input-group">
+          <label for="sup-name">Supplier Name</label>
+          <input type="text" id="sup-name" class="input" placeholder="Supplier name">
+        </div>
+        <div class="input-group">
+          <label for="sup-phone">Phone Number</label>
+          <input type="tel" id="sup-phone" class="input" placeholder="Phone">
+        </div>
+        <div class="input-group">
+          <label for="sup-email">Email Address</label>
+          <input type="email" id="sup-email" class="input" placeholder="Email">
+        </div>
+        <div class="input-group">
+          <label for="sup-category">Category</label>
+          <select id="sup-category" class="input">
+            <option value="Produce">Produce</option>
+            <option value="Dairy">Dairy</option>
+            <option value="Meat">Meat</option>
+            <option value="Dry Goods">Dry Goods</option>
+            <option value="Beverages">Beverages</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
       `;
-      document.getElementById('inv-modal').style.display = 'flex';
+      modal.style.display = 'flex';
     });
-    document.getElementById('inv-cancel').addEventListener('click', () => { document.getElementById('inv-modal').style.display = 'none'; });
+
+    const closeModal = () => { modal.style.display = 'none'; };
+    document.getElementById('inv-cancel').addEventListener('click', closeModal);
+    document.getElementById('inv-close-icon')?.addEventListener('click', closeModal);
+    modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
+
     document.getElementById('inv-save').addEventListener('click', async () => {
       if (this.tab === 'stock') {
         const name = document.getElementById('inv-name')?.value.trim();
@@ -92,19 +143,20 @@ export class InventoryView {
         if (!name) { showToast('Name is required', 'error'); return; }
         await inventoryService.addSupplier({ name, phone, email, category });
       }
-      document.getElementById('inv-modal').style.display = 'none';
+      modal.style.display = 'none';
       playSound(900, 100); vibrateDevice([40]);
       showToast('Saved!', 'success');
       await this.loadData();
     });
+
     this.container.querySelectorAll('.inv-tab').forEach(btn => {
       btn.addEventListener('click', async () => {
         this.tab = btn.dataset.tab;
         playSound(700, 80);
         this.container.querySelectorAll('.inv-tab').forEach(b => {
-          b.style.background = 'rgba(255,255,255,0.03)'; b.style.color = 'var(--text-secondary)'; b.style.border = '1px solid var(--border-glass)'; b.classList.remove('active');
+          b.classList.remove('active');
         });
-        btn.style.background = 'var(--gradient-primary)'; btn.style.color = 'white'; btn.style.border = 'none'; btn.classList.add('active');
+        btn.classList.add('active');
         await this.loadData();
       });
     });
@@ -127,14 +179,14 @@ export class InventoryView {
     if (this.tab === 'stock') {
       const items = await inventoryService.getStockLevels();
       content.innerHTML = items.length === 0 ?
-        '<div style="text-align:center;padding:60px;color:var(--text-muted);"><span class="material-symbols-rounded" style="font-size:48px;display:block;margin-bottom:12px;opacity:0.3;">inventory_2</span>No inventory items yet. Add items to track stock.</div>' :
-        `<div style="display:flex;flex-direction:column;gap:12px;">${items.map(item => {
+        '<div class="empty-state"><span class="material-symbols-rounded">inventory_2</span><p>No inventory items yet. Add items to track stock.</p></div>' :
+        `<div class="content-grid">${items.map(item => {
           const max = item.maxCapacity || 100;
           const pct = Math.min(100, (item.quantity / max) * 100);
-          const barColor = pct > 50 ? '#10B981' : pct > 20 ? '#F59E0B' : '#EF4444';
+          const barColor = pct > 50 ? 'var(--color-success)' : pct > 20 ? 'var(--color-warning)' : 'var(--color-danger)';
           const status = pct > 50 ? '✅' : pct > 20 ? '⚠️' : '🔴';
           return `
-            <div style="padding:16px;background:rgba(255,255,255,0.01);border:1px solid var(--border-glass);border-radius:14px;">
+            <div class="card">
               <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
                 <div>
                   <span style="font-size:var(--text-sm);font-weight:700;color:var(--text-primary);">${item.name}</span>
@@ -151,9 +203,9 @@ export class InventoryView {
     } else {
       const suppliers = await inventoryService.getSuppliers();
       content.innerHTML = suppliers.length === 0 ?
-        '<div style="text-align:center;padding:60px;color:var(--text-muted);"><span class="material-symbols-rounded" style="font-size:48px;display:block;margin-bottom:12px;opacity:0.3;">local_shipping</span>No suppliers yet.</div>' :
-        `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;">${suppliers.map(s => `
-          <div style="padding:16px;background:rgba(255,255,255,0.01);border:1px solid var(--border-glass);border-radius:14px;">
+        '<div class="empty-state"><span class="material-symbols-rounded">local_shipping</span><p>No suppliers yet.</p></div>' :
+        `<div class="content-grid">${suppliers.map(s => `
+          <div class="card">
             <div style="font-size:var(--text-sm);font-weight:700;color:var(--text-primary);">${s.name}</div>
             <div style="font-size:0.7rem;color:var(--text-muted);margin-top:4px;">📱 ${s.phone || '—'} · ✉️ ${s.email || '—'}</div>
             <span style="display:inline-block;margin-top:8px;font-size:0.6rem;padding:2px 8px;border-radius:6px;font-weight:700;color:var(--color-primary);background:rgba(255,107,53,0.08);border:1px solid rgba(255,107,53,0.15);">${s.category || 'Other'}</span>

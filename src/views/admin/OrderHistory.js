@@ -46,48 +46,51 @@ export class OrderHistory {
 
   render() {
     const rows = this.filteredOrders.map(order => `
-      <tr class="order-row" data-id="${order.id}" style="border-bottom:1px solid var(--border-glass);cursor:pointer;">
-        <td style="${this.tdStyle('font-weight:900;color:var(--text-primary);')}">#${escapeHtml(order.orderNumber.split('-').pop())}</td>
-        <td style="${this.tdStyle()}">${escapeHtml(formatDateTime(order.createdAt))}</td>
-        <td style="${this.tdStyle('font-weight:800;color:var(--text-primary);')}">${this.typeBadge(order)}</td>
-        <td style="${this.tdStyle('font-weight:900;color:var(--color-primary);')}">${formatCurrency(order.total)}</td>
-        <td style="${this.tdStyle()}">${this.paymentBadge(order)}</td>
-        <td style="${this.tdStyle()}">${this.statusBadge(order.status)}</td>
-        <td style="${this.tdStyle()}">${this.deliveryBadge(order)}</td>
-        <td style="${this.tdStyle('text-align:right;')}">
-          <button class="btn btn-secondary btn-sm print-btn" data-id="${order.id}" style="min-height:32px;padding:6px 10px;border:1px solid var(--border-glass);background:rgba(255,255,255,0.02);">
-            <span class="material-symbols-rounded" style="font-size:16px;">print</span>
+      <tr class="order-row clickable-row" data-id="${order.id}">
+        <td class="txt-primary txt-extrabold">#${escapeHtml(order.orderNumber.split('-').pop())}</td>
+        <td>${escapeHtml(formatDateTime(order.createdAt))}</td>
+        <td class="txt-primary txt-bold">${this.typeBadge(order)}</td>
+        <td class="txt-brand txt-extrabold">${formatCurrency(order.total)}</td>
+        <td>${this.paymentBadge(order)}</td>
+        <td>${this.statusBadge(order.status)}</td>
+        <td>${this.deliveryBadge(order)}</td>
+        <td class="txt-right">
+          <button class="btn btn-secondary btn-sm print-btn" data-id="${order.id}">
+            <span class="material-symbols-rounded">print</span>
           </button>
         </td>
       </tr>
     `).join('');
 
     this.container.innerHTML = `
-      <div style="padding:0 24px 24px;max-width:1180px;margin:0 auto;width:100%;display:flex;flex-direction:column;gap:18px;">
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;">
-          <h3 style="font-family:'Plus Jakarta Sans',sans-serif;font-size:1.15rem;font-weight:900;color:var(--text-primary);margin:0;">Orders & Delivery (${this.filteredOrders.length})</h3>
-          <div style="position:relative;width:100%;max-width:360px;">
-            <span class="material-symbols-rounded" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:20px;color:var(--text-secondary);">search</span>
-            <input id="order-search" class="input" value="${escapeHtml(this.searchQuery)}" placeholder="Search order, customer, driver..." style="padding-left:42px;height:38px;background:rgba(0,0,0,0.2);border:1px solid var(--border-glass);border-radius:8px;width:100%;box-sizing:border-box;color:var(--text-primary);">
+      <div class="main-area">
+        <div class="header-bar">
+          <div class="header-bar-title">
+            <span class="material-symbols-rounded">receipt_long</span>
+            <h2>Orders & Delivery (${this.filteredOrders.length})</h2>
+          </div>
+          <div class="input-group" style="max-width:360px; margin:0;">
+            <input id="order-search" class="input" value="${escapeHtml(this.searchQuery)}" placeholder="Search order, customer, driver..." style="padding-left:42px;">
+            <span class="material-symbols-rounded" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:20px;color:var(--text-secondary);pointer-events:none;">search</span>
           </div>
         </div>
 
-        <div style="overflow-x:auto;border:1px solid var(--border-glass);border-radius:8px;background:rgba(17,17,30,0.28);" class="scrollbar-none">
-          <table style="width:100%;border-collapse:collapse;text-align:left;min-width:920px;">
+        <div class="table-container scrollbar-none">
+          <table class="premium-table" style="min-width:920px;">
             <thead>
-              <tr style="border-bottom:1px solid var(--border-glass);background:rgba(255,255,255,0.02);font-size:var(--text-xs);color:var(--text-secondary);text-transform:uppercase;">
-                <th style="${this.thStyle()}">Token</th>
-                <th style="${this.thStyle()}">Date</th>
-                <th style="${this.thStyle()}">Type</th>
-                <th style="${this.thStyle()}">Amount</th>
-                <th style="${this.thStyle()}">Payment</th>
-                <th style="${this.thStyle()}">Kitchen</th>
-                <th style="${this.thStyle()}">Delivery</th>
-                <th style="${this.thStyle('text-align:right;')}">Receipt</th>
+              <tr>
+                <th>Token</th>
+                <th>Date</th>
+                <th>Type</th>
+                <th>Amount</th>
+                <th>Payment</th>
+                <th>Kitchen</th>
+                <th>Delivery</th>
+                <th class="txt-right">Receipt</th>
               </tr>
             </thead>
             <tbody>
-              ${rows || `<tr><td colspan="8" style="padding:44px;text-align:center;color:var(--text-muted);">No matching orders found.</td></tr>`}
+              ${rows || `<tr><td colspan="8" class="txt-center txt-muted" style="padding:44px;">No matching orders found.</td></tr>`}
             </tbody>
           </table>
         </div>
@@ -130,42 +133,42 @@ export class OrderHistory {
     const wrapper = document.createElement('div');
     wrapper.id = 'detail-modal-wrapper';
     wrapper.innerHTML = `
-      <div id="order-detail-overlay" class="modal-overlay" style="background:rgba(0,0,0,0.65);backdrop-filter:blur(12px);display:flex;align-items:center;justify-content:center;z-index:999;">
-        <div class="modal card-glass" style="width:100%;max-width:560px;max-height:88vh;overflow:hidden;background:rgba(17,17,30,0.92);border:1px solid var(--border-glass);border-radius:8px;box-shadow:var(--shadow-modal);">
-          <header style="padding:18px 22px;border-bottom:1px solid var(--border-glass);display:flex;align-items:center;justify-content:space-between;">
+      <div id="order-detail-overlay" class="modal-overlay">
+        <div class="modal" style="max-width:560px;">
+          <header class="modal-header">
             <div>
-              <h3 style="font-family:'Plus Jakarta Sans',sans-serif;font-size:1.1rem;font-weight:900;color:var(--text-primary);margin:0;">Order #${escapeHtml(order.orderNumber.split('-').pop())}</h3>
-              <div style="font-size:var(--text-xs);color:var(--text-muted);font-weight:700;margin-top:4px;">${escapeHtml(formatDateTime(order.createdAt))}</div>
+              <h3 class="txt-primary txt-bold">Order #${escapeHtml(order.orderNumber.split('-').pop())}</h3>
+              <div class="txt-muted txt-medium" style="font-size:var(--text-xs);margin-top:4px;">${escapeHtml(formatDateTime(order.createdAt))}</div>
             </div>
-            <button class="btn-icon" id="order-detail-close" style="background:transparent;border:0;"><span class="material-symbols-rounded">close</span></button>
+            <button class="btn-icon" id="order-detail-close"><span class="material-symbols-rounded">close</span></button>
           </header>
 
-          <main style="padding:20px 22px;overflow-y:auto;max-height:calc(88vh - 190px);display:flex;flex-direction:column;gap:16px;" class="scrollbar-none">
+          <main class="modal-body scrollbar-none flex-column-gap">
             ${this.detailSection('Items', items.map(item => `
-              <div style="display:flex;justify-content:space-between;gap:12px;font-size:var(--text-sm);padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.04);">
-                <div><strong>${item.quantity || 1}x</strong> ${escapeHtml(item.itemName || item.name || 'Item')}${item.notes ? `<div style="font-size:var(--text-xs);color:var(--color-warning);margin-top:2px;">${escapeHtml(item.notes)}</div>` : ''}</div>
-                <strong>${formatCurrency((item.price || 0) * (item.quantity || 1))}</strong>
+              <div class="flex-row-between txt-secondary" style="font-size:var(--text-sm);padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.04);">
+                <div><strong class="txt-primary">${item.quantity || 1}x</strong> ${escapeHtml(item.itemName || item.name || 'Item')}${item.notes ? `<div style="font-size:var(--text-xs);color:var(--color-warning);margin-top:2px;">${escapeHtml(item.notes)}</div>` : ''}</div>
+                <strong class="txt-primary">${formatCurrency((item.price || 0) * (item.quantity || 1))}</strong>
               </div>
             `).join(''))}
 
             ${this.detailSection('Bill', `
-              <div style="display:flex;justify-content:space-between;"><span>Subtotal</span><strong>${formatCurrency(order.subtotal)}</strong></div>
-              <div style="display:flex;justify-content:space-between;"><span>Tax</span><strong>${formatCurrency(order.tax)}</strong></div>
-              ${order.deliveryFee ? `<div style="display:flex;justify-content:space-between;"><span>Delivery fee</span><strong>${formatCurrency(order.deliveryFee)}</strong></div>` : ''}
-              <div style="display:flex;justify-content:space-between;font-size:1.1rem;color:var(--color-primary);font-weight:900;border-top:1px solid var(--border-glass);padding-top:8px;"><span>Total</span><span>${formatCurrency(order.total)}</span></div>
+              <div class="flex-row-between"><span>Subtotal</span><strong class="txt-primary">${formatCurrency(order.subtotal)}</strong></div>
+              <div class="flex-row-between"><span>Tax</span><strong class="txt-primary">${formatCurrency(order.tax)}</strong></div>
+              ${order.deliveryFee ? `<div class="flex-row-between"><span>Delivery fee</span><strong class="txt-primary">${formatCurrency(order.deliveryFee)}</strong></div>` : ''}
+              <div class="flex-row-between txt-brand txt-extrabold" style="font-size:1.1rem;border-top:1px solid var(--border-glass);padding-top:8px;"><span>Total</span><span>${formatCurrency(order.total)}</span></div>
             `)}
 
             ${this.detailSection('Customer', `
-              <div><strong>Name:</strong> ${escapeHtml(order.customerName || 'Not provided')}</div>
-              <div><strong>Phone:</strong> ${escapeHtml(order.customerPhone || 'Not provided')}</div>
+              <div><strong class="txt-primary">Name:</strong> ${escapeHtml(order.customerName || 'Not provided')}</div>
+              <div><strong class="txt-primary">Phone:</strong> ${escapeHtml(order.customerPhone || 'Not provided')}</div>
               ${order.type === 'delivery' ? `
-                <div><strong>Address:</strong> ${escapeHtml(order.deliveryAddress || 'Missing')}</div>
-                ${order.deliveryLandmark ? `<div><strong>Landmark:</strong> ${escapeHtml(order.deliveryLandmark)}</div>` : ''}
+                <div><strong class="txt-primary">Address:</strong> ${escapeHtml(order.deliveryAddress || 'Missing')}</div>
+                ${order.deliveryLandmark ? `<div><strong class="txt-primary">Landmark:</strong> ${escapeHtml(order.deliveryLandmark)}</div>` : ''}
               ` : ''}
             `)}
 
             ${this.detailSection('Payment', `
-              <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
+              <div class="flex-row-between" style="gap:10px;flex-wrap:wrap;">
                 ${this.paymentBadge(order)}
                 <div style="display:flex;gap:8px;flex-wrap:wrap;">
                   ${order.paymentStatus !== 'paid' ? `
@@ -177,9 +180,9 @@ export class OrderHistory {
             `)}
 
             ${order.type === 'delivery' ? this.detailSection('Delivery Dispatch', `
-              <div style="display:flex;flex-direction:column;gap:10px;">
+              <div class="flex-column-gap" style="gap:10px;">
                 <div>${this.deliveryBadge(order)}</div>
-                <select id="delivery-staff-select" class="input" style="padding:10px 12px;background:rgba(0,0,0,0.22);border:1px solid var(--border-glass);border-radius:8px;color:var(--text-primary);">
+                <select id="delivery-staff-select" class="input">
                   <option value="">Select delivery staff</option>
                   ${staffOptions}
                 </select>
@@ -193,7 +196,7 @@ export class OrderHistory {
             `) : ''}
           </main>
 
-          <footer style="padding:16px 22px;border-top:1px solid var(--border-glass);display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;">
+          <footer class="modal-footer" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;">
             <button class="btn btn-primary btn-sm" id="btn-modal-reprint">Print Receipt</button>
             <button class="btn btn-secondary btn-sm" id="btn-modal-whatsapp">WhatsApp Bill</button>
             <button class="btn btn-secondary btn-sm" id="btn-modal-close-footer">Close</button>
@@ -330,8 +333,8 @@ export class OrderHistory {
 
   detailSection(title, body) {
     return `
-      <section style="padding:14px;border:1px solid var(--border-glass);border-radius:8px;background:rgba(255,255,255,0.02);font-size:var(--text-sm);color:var(--text-secondary);display:flex;flex-direction:column;gap:8px;">
-        <h4 style="font-family:'Plus Jakarta Sans',sans-serif;font-size:var(--text-xs);font-weight:900;color:var(--text-primary);text-transform:uppercase;letter-spacing:0.06em;margin:0;">${escapeHtml(title)}</h4>
+      <section class="order-detail-section">
+        <h4>${escapeHtml(title)}</h4>
         ${body}
       </section>
     `;

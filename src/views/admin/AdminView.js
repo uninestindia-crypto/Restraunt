@@ -39,16 +39,7 @@ export class AdminView {
   renderPinScreen() {
     this.container.innerHTML = `
       <div style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 80vh; max-width: 380px; margin: 0 auto; padding: 20px;">
-        <div style="
-          background: rgba(17, 17, 30, 0.7); 
-          border: 1px solid var(--border-glass); 
-          padding: 40px 32px; 
-          border-radius: var(--radius-xl); 
-          width: 100%; 
-          text-align: center; 
-          backdrop-filter: blur(24px);
-          box-shadow: 0 20px 40px rgba(0,0,0,0.3);
-        " class="card-glass">
+        <div class="card" style="width: 100%; text-align: center; padding: 40px 32px;">
           <div style="
             width: 56px; 
             height: 56px; 
@@ -64,7 +55,7 @@ export class AdminView {
             <span class="material-symbols-rounded" style="font-size: 28px; color: var(--color-primary); filter: drop-shadow(0 0 6px var(--color-primary));">lock</span>
           </div>
           
-          <h2 style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: var(--text-lg); font-weight: 800; color: var(--text-primary); margin-bottom: 6px; letter-spacing: -0.02em;">Terminal Access</h2>
+          <h2 style="font-family: var(--font-display); font-size: var(--text-lg); font-weight: 800; color: var(--text-primary); margin-bottom: 6px; letter-spacing: -0.02em;">Terminal Access</h2>
           <p style="color: var(--text-secondary); font-size: var(--text-xs); margin-bottom: 28px; font-weight: 500;">Enter your 4-digit master PIN code to unlock console</p>
           
           <!-- PIN Dots -->
@@ -77,18 +68,18 @@ export class AdminView {
 
           <!-- Numpad -->
           <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px;" id="numpad">
-            <button class="btn btn-secondary num-key" data-val="1" style="height: 52px; border-radius: var(--radius-md); font-family: 'Plus Jakarta Sans', sans-serif; font-size: 1.25rem; font-weight: 700; background: rgba(255,255,255,0.01); border: 1px solid var(--border-glass);">1</button>
-            <button class="btn btn-secondary num-key" data-val="2" style="height: 52px; border-radius: var(--radius-md); font-family: 'Plus Jakarta Sans', sans-serif; font-size: 1.25rem; font-weight: 700; background: rgba(255,255,255,0.01); border: 1px solid var(--border-glass);">2</button>
-            <button class="btn btn-secondary num-key" data-val="3" style="height: 52px; border-radius: var(--radius-md); font-family: 'Plus Jakarta Sans', sans-serif; font-size: 1.25rem; font-weight: 700; background: rgba(255,255,255,0.01); border: 1px solid var(--border-glass);">3</button>
-            <button class="btn btn-secondary num-key" data-val="4" style="height: 52px; border-radius: var(--radius-md); font-family: 'Plus Jakarta Sans', sans-serif; font-size: 1.25rem; font-weight: 700; background: rgba(255,255,255,0.01); border: 1px solid var(--border-glass);">4</button>
-            <button class="btn btn-secondary num-key" data-val="5" style="height: 52px; border-radius: var(--radius-md); font-family: 'Plus Jakarta Sans', sans-serif; font-size: 1.25rem; font-weight: 700; background: rgba(255,255,255,0.01); border: 1px solid var(--border-glass);">5</button>
-            <button class="btn btn-secondary num-key" data-val="6" style="height: 52px; border-radius: var(--radius-md); font-family: 'Plus Jakarta Sans', sans-serif; font-size: 1.25rem; font-weight: 700; background: rgba(255,255,255,0.01); border: 1px solid var(--border-glass);">6</button>
-            <button class="btn btn-secondary num-key" data-val="7" style="height: 52px; border-radius: var(--radius-md); font-family: 'Plus Jakarta Sans', sans-serif; font-size: 1.25rem; font-weight: 700; background: rgba(255,255,255,0.01); border: 1px solid var(--border-glass);">7</button>
-            <button class="btn btn-secondary num-key" data-val="8" style="height: 52px; border-radius: var(--radius-md); font-family: 'Plus Jakarta Sans', sans-serif; font-size: 1.25rem; font-weight: 700; background: rgba(255,255,255,0.01); border: 1px solid var(--border-glass);">8</button>
-            <button class="btn btn-secondary num-key" data-val="9" style="height: 52px; border-radius: var(--radius-md); font-family: 'Plus Jakarta Sans', sans-serif; font-size: 1.25rem; font-weight: 700; background: rgba(255,255,255,0.01); border: 1px solid var(--border-glass);">9</button>
-            <button class="btn btn-danger num-key" data-val="clear" style="height: 52px; border-radius: var(--radius-md); font-family: 'Plus Jakarta Sans', sans-serif; font-size: var(--text-sm); font-weight: 800; background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239,68,68,0.25); color: #FF4D4D;">C</button>
-            <button class="btn btn-secondary num-key" data-val="0" style="height: 52px; border-radius: var(--radius-md); font-family: 'Plus Jakarta Sans', sans-serif; font-size: 1.25rem; font-weight: 700; background: rgba(255,255,255,0.01); border: 1px solid var(--border-glass);">0</button>
-            <button class="btn btn-secondary num-key" data-val="backspace" style="height: 52px; border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.01); border: 1px solid var(--border-glass);"><span class="material-symbols-rounded" style="font-size: 18px; color: var(--text-secondary);">backspace</span></button>
+            <button class="btn btn-secondary num-key" data-val="1" style="height: 52px;">1</button>
+            <button class="btn btn-secondary num-key" data-val="2" style="height: 52px;">2</button>
+            <button class="btn btn-secondary num-key" data-val="3" style="height: 52px;">3</button>
+            <button class="btn btn-secondary num-key" data-val="4" style="height: 52px;">4</button>
+            <button class="btn btn-secondary num-key" data-val="5" style="height: 52px;">5</button>
+            <button class="btn btn-secondary num-key" data-val="6" style="height: 52px;">6</button>
+            <button class="btn btn-secondary num-key" data-val="7" style="height: 52px;">7</button>
+            <button class="btn btn-secondary num-key" data-val="8" style="height: 52px;">8</button>
+            <button class="btn btn-secondary num-key" data-val="9" style="height: 52px;">9</button>
+            <button class="btn btn-danger num-key" data-val="clear" style="height: 52px; background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239,68,68,0.25); color: #FF4D4D;">C</button>
+            <button class="btn btn-secondary num-key" data-val="0" style="height: 52px;">0</button>
+            <button class="btn btn-secondary num-key" data-val="backspace" style="height: 52px; display: flex; align-items: center; justify-content: center;"><span class="material-symbols-rounded" style="font-size: 18px; color: var(--text-secondary);">backspace</span></button>
           </div>
         </div>
       </div>
@@ -172,88 +163,28 @@ export class AdminView {
 
   async renderAdminConsole() {
     this.container.innerHTML = `
-      <div style="flex: 1; display: flex; flex-direction: column; height: 100%; overflow: hidden; background: var(--bg-primary);">
+      <div class="main-area">
         <!-- Admin Views Header Tabs -->
-        <div style="
-          background: rgba(9, 9, 14, 0.8); 
-          backdrop-filter: blur(20px);
-          border-bottom: 1px solid var(--border-glass); 
-          padding: 10px 24px; 
-          overflow-x: auto; 
-          display: flex; 
-          align-items: center;
-          gap: 12px;
-          z-index: 10;
-        " class="scrollbar-none">
-          <button class="tab admin-tab ${this.activeTab === 'dashboard' ? 'active' : ''}" data-tab="dashboard" style="
-            font-family: 'Plus Jakarta Sans', sans-serif;
-            font-weight: 700;
-            font-size: var(--text-xs);
-            gap: 6px;
-            display: inline-flex;
-            align-items: center;
-            padding: 8px 16px;
-            border-radius: var(--radius-md);
-            transition: all var(--transition-normal);
-          ">
-            <span class="material-symbols-rounded" style="font-size: 18px;">dashboard</span>
-            Dashboard
-          </button>
-          <button class="tab admin-tab ${this.activeTab === 'menu' ? 'active' : ''}" data-tab="menu" style="
-            font-family: 'Plus Jakarta Sans', sans-serif;
-            font-weight: 700;
-            font-size: var(--text-xs);
-            gap: 6px;
-            display: inline-flex;
-            align-items: center;
-            padding: 8px 16px;
-            border-radius: var(--radius-md);
-            transition: all var(--transition-normal);
-          ">
-            <span class="material-symbols-rounded" style="font-size: 18px;">edit_document</span>
-            Menu CRUD
-          </button>
-          <button class="tab admin-tab ${this.activeTab === 'orders' ? 'active' : ''}" data-tab="orders" style="
-            font-family: 'Plus Jakarta Sans', sans-serif;
-            font-weight: 700;
-            font-size: var(--text-xs);
-            gap: 6px;
-            display: inline-flex;
-            align-items: center;
-            padding: 8px 16px;
-            border-radius: var(--radius-md);
-            transition: all var(--transition-normal);
-          ">
-            <span class="material-symbols-rounded" style="font-size: 18px;">history</span>
-            Order Log
-          </button>
-          <button class="tab admin-tab ${this.activeTab === 'settings' ? 'active' : ''}" data-tab="settings" style="
-            font-family: 'Plus Jakarta Sans', sans-serif;
-            font-weight: 700;
-            font-size: var(--text-xs);
-            gap: 6px;
-            display: inline-flex;
-            align-items: center;
-            padding: 8px 16px;
-            border-radius: var(--radius-md);
-            transition: all var(--transition-normal);
-          ">
-            <span class="material-symbols-rounded" style="font-size: 18px;">settings</span>
-            Settings
-          </button>
-          <button class="btn btn-secondary btn-sm" id="btn-admin-logout" style="
-            margin-left: auto; 
-            min-height: 36px; 
-            padding: 6px 16px; 
-            font-family: 'Plus Jakarta Sans', sans-serif;
-            font-weight: 700;
-            font-size: var(--text-xs); 
-            background: rgba(239, 68, 68, 0.03);
-            border: 1px solid rgba(239, 68, 68, 0.2); 
-            color: #FF4D4D;
-            border-radius: var(--radius-md);
-            transition: all var(--transition-fast);
-          ">
+        <div class="header-bar" style="padding: 10px 24px;">
+          <div class="tab-container" style="padding: 0; border-bottom: none; overflow-x: auto; flex: 1; margin-right: 12px;" class="scrollbar-none">
+            <button class="tab admin-tab ${this.activeTab === 'dashboard' ? 'active' : ''}" data-tab="dashboard">
+              <span class="material-symbols-rounded" style="font-size: 18px; vertical-align: middle; margin-right: 4px;">dashboard</span>
+              Dashboard
+            </button>
+            <button class="tab admin-tab ${this.activeTab === 'menu' ? 'active' : ''}" data-tab="menu">
+              <span class="material-symbols-rounded" style="font-size: 18px; vertical-align: middle; margin-right: 4px;">edit_document</span>
+              Menu CRUD
+            </button>
+            <button class="tab admin-tab ${this.activeTab === 'orders' ? 'active' : ''}" data-tab="orders">
+              <span class="material-symbols-rounded" style="font-size: 18px; vertical-align: middle; margin-right: 4px;">history</span>
+              Order Log
+            </button>
+            <button class="tab admin-tab ${this.activeTab === 'settings' ? 'active' : ''}" data-tab="settings">
+              <span class="material-symbols-rounded" style="font-size: 18px; vertical-align: middle; margin-right: 4px;">settings</span>
+              Settings
+            </button>
+          </div>
+          <button class="btn btn-secondary btn-sm" id="btn-admin-logout" style="background: rgba(239, 68, 68, 0.04); border-color: rgba(239, 68, 68, 0.15); color: #FF4D4D;">
             <span class="material-symbols-rounded" style="font-size: 16px; margin-right: 4px;">lock</span>
             Lock Terminal
           </button>
@@ -325,62 +256,29 @@ export class AdminView {
   async renderDashboard(viewport) {
     viewport.innerHTML = `
       <div style="padding: 28px 24px; display: flex; flex-direction: column; gap: 24px; max-width: 1000px; margin: 0 auto; width: 100%;">
-        <div style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: var(--text-lg); font-weight: 800; color: var(--text-primary); letter-spacing: -0.02em;">
+        <div style="font-family: var(--font-display); font-size: var(--text-lg); font-weight: 800; color: var(--text-primary); letter-spacing: -0.02em;">
           Console Overview (Today)
         </div>
 
         <!-- Dashboard Stats Grid -->
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px;">
-          <div class="card card-glass" style="
-            padding: 24px; 
-            display: flex; 
-            flex-direction: column; 
-            gap: 10px;
-            background: rgba(255,255,255,0.01);
-            border: 1px solid var(--border-glass);
-            border-radius: var(--radius-xl);
-            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
-          ">
-            <div style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: var(--text-xs); color: var(--text-secondary); font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;">TODAY'S REVENUE</div>
-            <div style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: 2.4rem; font-weight: 800; color: var(--color-success); line-height: 1; letter-spacing: -0.03em; filter: drop-shadow(0 0 10px rgba(16, 185, 129, 0.25));" id="dash-revenue">₹0.00</div>
+        <div class="stats-grid" style="padding: 0;">
+          <div class="stats-card">
+            <div class="stats-card-label">TODAY'S REVENUE</div>
+            <div class="stats-card-value" style="color: var(--color-success); filter: drop-shadow(0 0 10px rgba(16, 185, 129, 0.25));" id="dash-revenue">₹0.00</div>
           </div>
-          <div class="card card-glass" style="
-            padding: 24px; 
-            display: flex; 
-            flex-direction: column; 
-            gap: 10px;
-            background: rgba(255,255,255,0.01);
-            border: 1px solid var(--border-glass);
-            border-radius: var(--radius-xl);
-            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
-          ">
-            <div style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: var(--text-xs); color: var(--text-secondary); font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;">COMPLETED ORDERS</div>
-            <div style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: 2.4rem; font-weight: 800; color: var(--color-primary); line-height: 1; letter-spacing: -0.03em; filter: drop-shadow(0 0 10px rgba(255, 94, 54, 0.25));" id="dash-orders">0</div>
+          <div class="stats-card">
+            <div class="stats-card-label">COMPLETED ORDERS</div>
+            <div class="stats-card-value" style="color: var(--color-primary); filter: drop-shadow(0 0 10px rgba(255, 94, 54, 0.25));" id="dash-orders">0</div>
           </div>
-          <div class="card card-glass" style="
-            padding: 24px; 
-            display: flex; 
-            flex-direction: column; 
-            gap: 10px;
-            background: rgba(255,255,255,0.01);
-            border: 1px solid var(--border-glass);
-            border-radius: var(--radius-xl);
-            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
-          ">
-            <div style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: var(--text-xs); color: var(--text-secondary); font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;">AVERAGE BILL VALUE</div>
-            <div style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: 2.4rem; font-weight: 800; color: var(--color-info); line-height: 1; letter-spacing: -0.03em; filter: drop-shadow(0 0 10px rgba(59, 130, 246, 0.25));" id="dash-avg">₹0.00</div>
+          <div class="stats-card">
+            <div class="stats-card-label">AVERAGE BILL VALUE</div>
+            <div class="stats-card-value" style="color: var(--color-info); filter: drop-shadow(0 0 10px rgba(59, 130, 246, 0.25));" id="dash-avg">₹0.00</div>
           </div>
         </div>
 
         <!-- Payment split card -->
-        <div class="card card-glass" style="
-          padding: 24px;
-          background: rgba(255,255,255,0.01);
-          border: 1px solid var(--border-glass);
-          border-radius: var(--radius-xl);
-          box-shadow: 0 15px 35px rgba(0,0,0,0.15);
-        ">
-          <div style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: var(--text-sm); font-weight: 700; color: var(--text-primary); margin-bottom: 20px; letter-spacing: -0.01em;">Revenue Split by Method</div>
+        <div class="card">
+          <div style="font-family: var(--font-display); font-size: var(--text-sm); font-weight: 700; color: var(--text-primary); margin-bottom: 20px; letter-spacing: -0.01em;">Revenue Split by Method</div>
           <div style="display: flex; flex-direction: column; gap: 16px;" id="dash-payments-list">
             <!-- Loaded dynamically -->
           </div>
