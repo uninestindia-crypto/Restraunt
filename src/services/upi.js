@@ -31,7 +31,7 @@ export function buildUPILink({ payeeVPA, payeeName, amount, transactionNote, ref
  * @returns {Promise<string>} The UPI deep link URL
  */
 export async function generateUPIQR(canvasElement, { amount, orderId }) {
-  const upiId = (await getSetting('upiId')) || 'thetaste@upi';
+  const upiId = (await getSetting('upiId')) || 'paytmqr6zfcsx@ptys';
   const upiName = (await getSetting('upiName')) || 'The Taste';
 
   const upiLink = buildUPILink({
@@ -63,7 +63,7 @@ export async function generateUPIQR(canvasElement, { amount, orderId }) {
  * @returns {Promise<string>} Base64 data URL of the QR code
  */
 export async function generateUPIQRDataURL({ amount, orderId }) {
-  const upiId = (await getSetting('upiId')) || 'thetaste@upi';
+  const upiId = (await getSetting('upiId')) || 'paytmqr6zfcsx@ptys';
   const upiName = (await getSetting('upiName')) || 'The Taste';
 
   const upiLink = buildUPILink({

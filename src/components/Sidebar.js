@@ -38,7 +38,7 @@ const NAV_GROUPS = [
   {
     label: 'System',
     items: [
-      { hash: '#/orders', icon: 'receipt_long', label: 'Orders', roles: ['owner', 'manager', 'cashier'] },
+      { hash: '#/orders', icon: 'receipt_long', label: 'Orders', roles: ['owner', 'manager', 'cashier', 'delivery'] },
       { hash: '#/admin', icon: 'admin_panel_settings', label: 'Admin', roles: ['owner', 'manager'] },
     ],
   },
@@ -124,4 +124,3 @@ export class Sidebar {
     }
   }
 }
-

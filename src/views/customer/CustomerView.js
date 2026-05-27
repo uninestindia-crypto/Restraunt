@@ -1,5 +1,5 @@
 import { getCategories, getItemsByCategory, createOrder, getNextOrderNumber, getSetting, db } from '../../db/database.js';
-import { formatCurrency, showToast, playSound, vibrateDevice } from '../../utils/helpers.js';
+import { escapeHtml, formatCurrency, showToast, playSound, vibrateDevice } from '../../utils/helpers.js';
 import { generateUPIQR } from '../../services/upi.js';
 import { deductInventoryForOrder } from '../../services/inventoryHook.js';
 
@@ -15,8 +15,12 @@ export class CustomerView {
     this.cart = [];
     this.tables = [];
     this.detectedTable = null;
-    this.orderType = 'takeaway';
+    this.orderType = 'delivery';
     this.selectedTableId = null;
+    this.customerName = '';
+    this.customerPhone = '';
+    this.deliveryAddress = '';
+    this.deliveryLandmark = '';
     
     // View state: 'menu' | 'cart' | 'checkout' | 'success'
     this.state = 'menu';
@@ -34,8 +38,12 @@ export class CustomerView {
     this.cart = [];
     this.tables = [];
     this.detectedTable = null;
-    this.orderType = 'takeaway';
+    this.orderType = 'delivery';
     this.selectedTableId = null;
+    this.customerName = '';
+    this.customerPhone = '';
+    this.deliveryAddress = '';
+    this.deliveryLandmark = '';
     this.successPollInterval = null;
     this.countdownInterval = null;
     await this.loadData();
@@ -902,7 +910,7 @@ export class CustomerView {
         const upiIdDisplay = document.getElementById('self-upi-id-success');
         if (canvas) {
           try {
-            const upiId = await getSetting('upiId') || 'thetaste@upi';
+            const upiId = await getSetting('upiId') || 'paytmqr6zfcsx@ptys';
             if (upiIdDisplay) upiIdDisplay.textContent = upiId;
             
             // Build the QR code

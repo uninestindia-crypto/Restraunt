@@ -180,7 +180,7 @@ export async function seedDatabase() {
       { key: 'restaurantTagline', value: 'Fast Food & Chinese' },
       { key: 'restaurantPhone', value: '' },
       { key: 'restaurantAddress', value: '' },
-      { key: 'upiId', value: 'thetaste@upi' },
+      { key: 'upiId', value: 'paytmqr6zfcsx@ptys' },
       { key: 'upiName', value: 'The Taste' },
       { key: 'gstPercent', value: '5' },
       { key: 'printerWidth', value: '58' },

@@ -8,6 +8,7 @@ import { printerService } from '../../services/printer.js';
 import { ReceiptBuilder } from '../../services/receipt.js';
 import { exportAllData, exportOrdersCSV, importData } from '../../utils/dataExport.js';
 import { logDataExported } from '../../utils/activityLogger.js';
+import { hashPin } from '../../utils/crypto.js';
 
 export class SettingsView {
   constructor(app) {
@@ -37,9 +38,12 @@ export class SettingsView {
         'gstPercent',
         'printerWidth',
         'adminPin',
+        'adminPinHash',
         'orderNumberPrefix',
         'supabaseUrl',
         'supabaseKey',
+        'supabaseEmail',
+        'supabasePassword',
         // New profile fields
         'gstin',
         'fssaiNumber',
@@ -571,8 +575,8 @@ export class SettingsView {
           ${this._cardHeading('security', 'Security Credentials')}
           
           <div class="input-group" style="max-width: 320px;">
-            <label for="adminPin" style="${this._labelStyle()}">Admin Lock PIN (4 digits)</label>
-            <input type="password" id="adminPin" class="input" value="${esc(this.config.adminPin)}" maxlength="4" style="
+            <label for="adminPin" style="${this._labelStyle()}">Admin Lock PIN (leave blank to keep)</label>
+            <input type="password" id="adminPin" class="input" value="" maxlength="4" placeholder="${this.config.adminPinHash ? 'Set' : 'Required'}" style="
               background: rgba(0,0,0,0.25);
               border: 1px solid var(--border-glass);
               color: var(--text-primary);
@@ -604,6 +608,17 @@ export class SettingsView {
             <div class="input-group">
               <label for="supabaseKey" style="${this._labelStyle()}">Supabase Anon Key</label>
               <input type="password" id="supabaseKey" class="input" value="${esc(this.config.supabaseKey)}" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." style="${this._inputStyle()}">
+            </div>
+
+            <div style="display:flex;gap:16px;flex-wrap:wrap;">
+              <div class="input-group" style="flex:1;min-width:220px;">
+                <label for="supabaseEmail" style="${this._labelStyle()}">Staff Cloud Email</label>
+                <input type="email" id="supabaseEmail" class="input" value="${esc(this.config.supabaseEmail)}" placeholder="owner@example.com" style="${this._inputStyle()}">
+              </div>
+              <div class="input-group" style="flex:1;min-width:220px;">
+                <label for="supabasePassword" style="${this._labelStyle()}">Staff Cloud Password</label>
+                <input type="password" id="supabasePassword" class="input" value="${esc(this.config.supabasePassword)}" placeholder="Supabase Auth password" style="${this._inputStyle()}">
+              </div>
             </div>
 
             <div style="display: flex; gap: 12px; margin-top: 4px;">
@@ -1199,8 +1214,12 @@ export class SettingsView {
         showToast('UPI ID is required for generating checkout QR codes', 'warning');
         return;
       }
-      if (adminPin.length !== 4 || isNaN(adminPin)) {
-        showToast('Admin lock PIN must be exactly 4 digits', 'warning');
+      if (adminPin && (adminPin.length !== 4 || isNaN(adminPin))) {
+        showToast('Admin lock PIN must be exactly 4 digits when changed', 'warning');
+        return;
+      }
+      if (!this.config.adminPinHash && !adminPin) {
+        showToast('Set an admin lock PIN before launch', 'warning');
         return;
       }
 
@@ -1220,10 +1239,11 @@ export class SettingsView {
         'upiName',
         'gstPercent',
         'printerWidth',
-        'adminPin',
         'orderNumberPrefix',
         'supabaseUrl',
         'supabaseKey',
+        'supabaseEmail',
+        'supabasePassword',
         'printDensity',
         'printCopies',
         'googleClientId'
@@ -1250,6 +1270,14 @@ export class SettingsView {
             await setSetting(f, val);
             this.config[f] = val; // update local config
           }
+        }
+
+        if (adminPin) {
+          const adminPinHash = await hashPin(adminPin);
+          await setSetting('adminPinHash', adminPinHash);
+          await db.settings.delete('adminPin');
+          this.config.adminPinHash = adminPinHash;
+          this.config.adminPin = '';
         }
 
         for (const f of toggleFields) {

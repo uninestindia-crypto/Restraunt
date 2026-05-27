@@ -16,6 +16,11 @@ export class PaymentModal {
     this.cashReceived = '';
     this.overlay = null;
     this.isProcessing = false;
+
+    // Split payment state
+    this.splitMode = 'full'; // 'full' | 'half' | 'custom'
+    this.customAmount = '';
+    this.qrAmount = this.order.total; // amount encoded in QR
   }
 
   show() {
@@ -153,6 +158,84 @@ export class PaymentModal {
 
           <!-- UPI Payment View -->
           <div id="payment-upi-view" style="${this.selectedMethod !== 'upi' ? 'display:none;' : ''}">
+            <!-- Split Payment Selector -->
+            <div style="margin-bottom: 16px;">
+              <div style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: var(--text-xs); color: var(--text-secondary); font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 10px;">PAYMENT SPLIT</div>
+              <div id="split-selector" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;">
+                <button class="split-btn ${this.splitMode === 'full' ? 'active' : ''}" data-split="full" style="
+                  display: flex; flex-direction: column; align-items: center; justify-content: center;
+                  padding: 12px 8px; border-radius: var(--radius-lg); cursor: pointer;
+                  border: 1.5px solid ${this.splitMode === 'full' ? 'rgba(16, 185, 129, 0.5)' : 'var(--border-glass)'};
+                  background: ${this.splitMode === 'full' ? 'rgba(16, 185, 129, 0.08)' : 'rgba(255, 255, 255, 0.01)'};
+                  color: ${this.splitMode === 'full' ? '#10B981' : 'var(--text-secondary)'};
+                  box-shadow: ${this.splitMode === 'full' ? '0 4px 15px rgba(16, 185, 129, 0.15)' : 'none'};
+                  transition: all var(--transition-fast);
+                ">
+                  <span style="font-size: 18px; margin-bottom: 4px;">💰</span>
+                  <span style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 0.02em;">FULL BILL</span>
+                  <span style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: var(--text-xs); font-weight: 800; margin-top: 2px;">${formatCurrencyShort(this.order.total)}</span>
+                </button>
+                <button class="split-btn ${this.splitMode === 'half' ? 'active' : ''}" data-split="half" style="
+                  display: flex; flex-direction: column; align-items: center; justify-content: center;
+                  padding: 12px 8px; border-radius: var(--radius-lg); cursor: pointer;
+                  border: 1.5px solid ${this.splitMode === 'half' ? 'rgba(99, 102, 241, 0.5)' : 'var(--border-glass)'};
+                  background: ${this.splitMode === 'half' ? 'rgba(99, 102, 241, 0.08)' : 'rgba(255, 255, 255, 0.01)'};
+                  color: ${this.splitMode === 'half' ? '#6366F1' : 'var(--text-secondary)'};
+                  box-shadow: ${this.splitMode === 'half' ? '0 4px 15px rgba(99, 102, 241, 0.15)' : 'none'};
+                  transition: all var(--transition-fast);
+                ">
+                  <span style="font-size: 18px; margin-bottom: 4px;">✂️</span>
+                  <span style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 0.02em;">HALF BILL</span>
+                  <span style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: var(--text-xs); font-weight: 800; margin-top: 2px;">${formatCurrencyShort(Math.ceil(this.order.total / 2))}</span>
+                </button>
+                <button class="split-btn ${this.splitMode === 'custom' ? 'active' : ''}" data-split="custom" style="
+                  display: flex; flex-direction: column; align-items: center; justify-content: center;
+                  padding: 12px 8px; border-radius: var(--radius-lg); cursor: pointer;
+                  border: 1.5px solid ${this.splitMode === 'custom' ? 'rgba(245, 158, 11, 0.5)' : 'var(--border-glass)'};
+                  background: ${this.splitMode === 'custom' ? 'rgba(245, 158, 11, 0.08)' : 'rgba(255, 255, 255, 0.01)'};
+                  color: ${this.splitMode === 'custom' ? '#F59E0B' : 'var(--text-secondary)'};
+                  box-shadow: ${this.splitMode === 'custom' ? '0 4px 15px rgba(245, 158, 11, 0.15)' : 'none'};
+                  transition: all var(--transition-fast);
+                ">
+                  <span style="font-size: 18px; margin-bottom: 4px;">✏️</span>
+                  <span style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 0.02em;">CUSTOM</span>
+                  <span style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: var(--text-xs); font-weight: 800; margin-top: 2px;">${this.customAmount ? formatCurrencyShort(parseFloat(this.customAmount)) : '—'}</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Custom Amount Input (shown only when custom split selected) -->
+            <div id="custom-amount-container" style="${this.splitMode !== 'custom' ? 'display:none;' : ''} margin-bottom: 16px;">
+              <div class="input-group">
+                <label for="custom-qr-amount" style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: var(--text-xs); color: var(--text-secondary); font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;">ENTER QR AMOUNT (₹)</label>
+                <input 
+                  type="number" 
+                  id="custom-qr-amount" 
+                  class="input" 
+                  placeholder="Enter amount for QR"
+                  inputmode="numeric"
+                  min="1"
+                  max="${this.order.total}"
+                  step="1"
+                  value="${this.customAmount}"
+                  style="
+                    font-family: 'Plus Jakarta Sans', sans-serif;
+                    font-size: 1.3rem; 
+                    font-weight: 800; 
+                    text-align: center;
+                    padding: 12px;
+                    background: rgba(0, 0, 0, 0.2);
+                    border: 1px solid rgba(245, 158, 11, 0.3);
+                    border-radius: var(--radius-md);
+                    color: var(--text-primary);
+                  "
+                >
+              </div>
+              <div id="custom-remaining-display" style="
+                font-size: var(--text-xs); color: var(--text-muted); margin-top: 8px; text-align: center; font-weight: 600;
+              ">${this.customAmount ? `Remaining ₹${(this.order.total - parseFloat(this.customAmount)).toFixed(2)} to be paid separately` : `Bill total: ${formatCurrency(this.order.total)}`}</div>
+            </div>
+
             <div class="qr-display" style="
               background: rgba(255, 255, 255, 0.01);
               border: 1px solid var(--border-glass);
@@ -173,9 +256,10 @@ export class PaymentModal {
               ">
                 <canvas id="upi-qr-canvas" style="display: block;"></canvas>
               </div>
-              <div class="qr-amount" style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: 1.5rem; font-weight: 800; color: var(--color-primary); margin-bottom: 4px;">
-                ${formatCurrency(this.order.total)}
+              <div class="qr-amount" id="qr-display-amount" style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: 1.5rem; font-weight: 800; color: var(--color-primary); margin-bottom: 4px;">
+                ${formatCurrency(this.qrAmount)}
               </div>
+              ${this.splitMode !== 'full' ? `<div style="font-size: var(--text-xs); color: var(--text-muted); font-weight: 600; margin-bottom: 4px;">of ${formatCurrency(this.order.total)} total bill</div>` : ''}
               <div class="qr-upi-id" id="qr-upi-id" style="
                 font-size: var(--text-xs); 
                 color: var(--text-secondary); 
@@ -318,13 +402,17 @@ export class PaymentModal {
 
     try {
       const upiLink = await generateUPIQR(canvas, {
-        amount: this.order.total,
+        amount: this.qrAmount,
         orderId: this.order.orderNumber,
       });
 
       // Show UPI ID
-      const upiId = await getSetting('upiId') || 'thetaste@upi';
+      const upiId = await getSetting('upiId') || 'paytmqr6zfcsx@ptys';
       if (upiIdDisplay) upiIdDisplay.textContent = upiId;
+
+      // Update displayed amount
+      const amountDisplay = document.getElementById('qr-display-amount');
+      if (amountDisplay) amountDisplay.textContent = formatCurrency(this.qrAmount);
 
       // Set deep link
       if (deeplink) {
@@ -342,6 +430,28 @@ export class PaymentModal {
         `;
       }
     }
+  }
+
+  /**
+   * Recalculate QR amount based on split mode and regenerate the QR code.
+   */
+  async updateSplitAndRegenerate() {
+    switch (this.splitMode) {
+      case 'full':
+        this.qrAmount = this.order.total;
+        break;
+      case 'half':
+        this.qrAmount = Math.ceil(this.order.total / 2);
+        break;
+      case 'custom':
+        const parsed = parseFloat(this.customAmount);
+        this.qrAmount = (parsed > 0 && parsed <= this.order.total) ? parsed : this.order.total;
+        break;
+      default:
+        this.qrAmount = this.order.total;
+    }
+
+    await this.generateQR();
   }
 
   bindEvents() {
@@ -413,6 +523,81 @@ export class PaymentModal {
       });
     }
 
+    // Split payment selector
+    const splitSelector = this.overlay?.querySelector('#split-selector');
+    if (splitSelector) {
+      splitSelector.addEventListener('click', (e) => {
+        const btn = e.target.closest('.split-btn');
+        if (!btn) return;
+
+        const split = btn.dataset.split;
+        this.splitMode = split;
+
+        // Update button styles
+        splitSelector.querySelectorAll('.split-btn').forEach(b => {
+          const s = b.dataset.split;
+          const isActive = s === split;
+          const colors = { full: ['16, 185, 129', '#10B981'], half: ['99, 102, 241', '#6366F1'], custom: ['245, 158, 11', '#F59E0B'] };
+          const [rgb, hex] = colors[s] || colors.full;
+          b.style.border = `1.5px solid ${isActive ? `rgba(${rgb}, 0.5)` : 'var(--border-glass)'}`;
+          b.style.background = isActive ? `rgba(${rgb}, 0.08)` : 'rgba(255, 255, 255, 0.01)';
+          b.style.color = isActive ? hex : 'var(--text-secondary)';
+          b.style.boxShadow = isActive ? `0 4px 15px rgba(${rgb}, 0.15)` : 'none';
+        });
+
+        // Show/hide custom input
+        const customContainer = document.getElementById('custom-amount-container');
+        if (customContainer) customContainer.style.display = split === 'custom' ? '' : 'none';
+
+        // Focus custom input
+        if (split === 'custom') {
+          setTimeout(() => {
+            const inp = document.getElementById('custom-qr-amount');
+            if (inp) inp.focus();
+          }, 100);
+        }
+
+        // Recalculate and regenerate
+        this.updateSplitAndRegenerate();
+      });
+    }
+
+    // Custom amount input
+    const customQrInput = document.getElementById('custom-qr-amount');
+    if (customQrInput) {
+      let debounceTimer = null;
+      customQrInput.addEventListener('input', (e) => {
+        this.customAmount = e.target.value;
+
+        // Update remaining display
+        const remainingDisplay = document.getElementById('custom-remaining-display');
+        const parsed = parseFloat(this.customAmount) || 0;
+        if (remainingDisplay) {
+          if (parsed > 0 && parsed <= this.order.total) {
+            const remaining = this.order.total - parsed;
+            remainingDisplay.textContent = remaining > 0
+              ? `Remaining ₹${remaining.toFixed(2)} to be paid separately`
+              : 'Full amount covered';
+            remainingDisplay.style.color = 'var(--text-muted)';
+          } else if (parsed > this.order.total) {
+            remainingDisplay.textContent = 'Amount exceeds bill total';
+            remainingDisplay.style.color = 'var(--color-danger)';
+          } else {
+            remainingDisplay.textContent = `Bill total: ${formatCurrency(this.order.total)}`;
+            remainingDisplay.style.color = 'var(--text-muted)';
+          }
+        }
+
+        // Debounce QR regeneration (500ms)
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => {
+          if (parsed > 0 && parsed <= this.order.total) {
+            this.updateSplitAndRegenerate();
+          }
+        }, 500);
+      });
+    }
+
     // Confirm payment
     const confirmBtn = document.getElementById('btn-confirm-payment');
     if (confirmBtn) {
@@ -457,6 +642,15 @@ export class PaymentModal {
       }
     }
 
+    // Validate custom split amount
+    if (this.selectedMethod === 'upi' && this.splitMode === 'custom') {
+      const parsed = parseFloat(this.customAmount) || 0;
+      if (parsed <= 0 || parsed > this.order.total) {
+        showToast('Please enter a valid custom amount between ₹1 and the bill total', 'warning');
+        return;
+      }
+    }
+
     this.isProcessing = true;
 
     const confirmBtn = document.getElementById('btn-confirm-payment');
@@ -466,7 +660,13 @@ export class PaymentModal {
 
     try {
       if (this.onConfirmPayment) {
-        await this.onConfirmPayment(this.selectedMethod);
+        // Pass split payment details along with the method
+        await this.onConfirmPayment(this.selectedMethod, {
+          splitMode: this.splitMode,
+          paidAmount: this.selectedMethod === 'upi' ? this.qrAmount : this.order.total,
+          totalAmount: this.order.total,
+          remainingAmount: this.selectedMethod === 'upi' ? Math.max(0, this.order.total - this.qrAmount) : 0
+        });
       }
     } catch (error) {
       console.error('Payment confirmation failed:', error);

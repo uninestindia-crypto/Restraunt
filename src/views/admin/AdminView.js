@@ -4,6 +4,8 @@
 
 import { getSetting, getTodayStats } from '../../db/database.js';
 import { formatCurrency, showToast, playSound, vibrateDevice } from '../../utils/helpers.js';
+import { authService } from '../../services/auth.js';
+import { hashPin } from '../../utils/crypto.js';
 import { MenuManager } from './MenuManager.js';
 import { OrderHistory } from './OrderHistory.js';
 import { SettingsView } from './Settings.js';
@@ -142,8 +144,14 @@ export class AdminView {
 
   async verifyPin() {
     try {
-      const correctPin = await getSetting('adminPin') || '1234';
-      if (this.pinInput === correctPin) {
+      const configuredHash = await getSetting('adminPinHash');
+      const legacyPin = await getSetting('adminPin');
+      const inputHash = await hashPin(this.pinInput);
+      const staff = await authService.getStaffByPin(this.pinInput);
+      const canStaffUnlock = ['owner', 'manager'].includes(staff?.role?.toLowerCase());
+      const legacyAllowed = legacyPin && legacyPin !== '1234' && this.pinInput === legacyPin;
+
+      if ((configuredHash && inputHash === configuredHash) || legacyAllowed || canStaffUnlock) {
         this.isAuthenticated = true;
         playSound(800, 100);
         setTimeout(() => playSound(1200, 120), 100);

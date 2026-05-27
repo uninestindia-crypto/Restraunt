@@ -2,10 +2,29 @@ import { createClient } from '@supabase/supabase-js';
 import { db, getSetting } from '../db/database.js';
 import { showToast } from '../utils/helpers.js';
 
+const DEFAULT_STORE_ID = 'the-taste';
+
+function getStoreId() {
+  return localStorage.getItem('store_id') || DEFAULT_STORE_ID;
+}
+
+function normalizeRemoteItems(items) {
+  if (Array.isArray(items)) return items;
+  if (typeof items !== 'string' || !items.trim()) return [];
+  try {
+    const parsed = JSON.parse(items);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (error) {
+    console.warn('[Sync] Failed to parse order items for remote sync:', error);
+    return [];
+  }
+}
+
 // Table mapping helper functions
 function mapCategoryToRemote(cat) {
   return {
     id: cat.id,
+    store_id: getStoreId(),
     name: cat.name,
     icon: cat.icon || '',
     sort_order: parseInt(cat.sortOrder) || 0,
@@ -27,6 +46,7 @@ function mapCategoryToLocal(row) {
 function mapItemToRemote(item) {
   return {
     id: item.id,
+    store_id: getStoreId(),
     category_id: item.categoryId,
     name: item.name,
     price: parseFloat(item.price) || 0,
@@ -52,20 +72,43 @@ function mapItemToLocal(row) {
 function mapOrderToRemote(order) {
   return {
     id: order.id,
+    store_id: getStoreId(),
     order_number: order.orderNumber,
     type: order.type || 'takeaway',
     status: order.status || 'pending',
-    items: order.items || [], // array of items, stored as jsonb in Supabase
+    channel: order.channel || 'pos',
+    source: order.source || order.channel || 'pos',
+    items: normalizeRemoteItems(order.items), // array of items, stored as jsonb in Supabase
     subtotal: parseFloat(order.subtotal) || 0,
     tax: parseFloat(order.tax) || 0,
+    tax_percent: parseFloat(order.taxPercent) || 0,
+    delivery_fee: parseFloat(order.deliveryFee) || 0,
     total: parseFloat(order.total) || 0,
     payment_method: order.paymentMethod || null,
     payment_status: order.paymentStatus || 'unpaid',
+    payment_reference: order.paymentReference || '',
+    payment_verified_at: order.paymentVerifiedAt || null,
+    payment_verified_by: order.paymentVerifiedBy || '',
+    payment_collected_at: order.paymentCollectedAt || null,
     customer_name: order.customerName || '',
     customer_phone: order.customerPhone || '',
+    delivery_address: order.deliveryAddress || '',
+    delivery_landmark: order.deliveryLandmark || '',
+    delivery_notes: order.deliveryNotes || '',
+    delivery_status: order.deliveryStatus || (order.type === 'delivery' ? 'pending' : 'none'),
+    delivery_staff_id: order.deliveryStaffId || null,
+    delivery_staff_name: order.deliveryStaffName || '',
+    delivery_assigned_at: order.deliveryAssignedAt || null,
+    delivery_out_at: order.deliveryOutAt || null,
+    delivered_at: order.deliveredAt || null,
+    staff_id: order.staffId || null,
+    staff_name: order.staffName || '',
+    table_id: order.tableId || null,
     notes: order.notes || '',
     created_at: order.createdAt || new Date().toISOString(),
-    completed_at: order.completedAt || null
+    completed_at: order.completedAt || null,
+    updated_at: order.updatedAt || new Date().toISOString(),
+    sync_attempts: parseInt(order.syncAttempts) || 0
   };
 }
 
@@ -75,17 +118,40 @@ function mapOrderToLocal(row) {
     orderNumber: row.order_number,
     type: row.type || 'takeaway',
     status: row.status || 'pending',
-    items: row.items || [],
+    channel: row.channel || 'pos',
+    source: row.source || row.channel || 'pos',
+    items: JSON.stringify(row.items || []),
     subtotal: parseFloat(row.subtotal) || 0,
     tax: parseFloat(row.tax) || 0,
+    taxPercent: parseFloat(row.tax_percent) || 0,
+    deliveryFee: parseFloat(row.delivery_fee) || 0,
     total: parseFloat(row.total) || 0,
     paymentMethod: row.payment_method || null,
     paymentStatus: row.payment_status || 'unpaid',
+    paymentReference: row.payment_reference || '',
+    paymentVerifiedAt: row.payment_verified_at || null,
+    paymentVerifiedBy: row.payment_verified_by || '',
+    paymentCollectedAt: row.payment_collected_at || null,
     customerName: row.customer_name || '',
     customerPhone: row.customer_phone || '',
+    deliveryAddress: row.delivery_address || '',
+    deliveryLandmark: row.delivery_landmark || '',
+    deliveryNotes: row.delivery_notes || '',
+    deliveryStatus: row.delivery_status || (row.type === 'delivery' ? 'pending' : 'none'),
+    deliveryStaffId: row.delivery_staff_id || null,
+    deliveryStaffName: row.delivery_staff_name || '',
+    deliveryAssignedAt: row.delivery_assigned_at || null,
+    deliveryOutAt: row.delivery_out_at || null,
+    deliveredAt: row.delivered_at || null,
+    staffId: row.staff_id || null,
+    staffName: row.staff_name || '',
+    tableId: row.table_id || null,
     notes: row.notes || '',
     createdAt: row.created_at,
     completedAt: row.completed_at || null,
+    updatedAt: row.updated_at,
+    syncStatus: 'synced',
+    syncAttempts: parseInt(row.sync_attempts) || 0,
     isSynced: 1
   };
 }
@@ -93,6 +159,7 @@ function mapOrderToLocal(row) {
 function mapStaffToRemote(staff) {
   return {
     id: staff.id,
+    store_id: getStoreId(),
     name: staff.name,
     role: staff.role,
     pin_hash: staff.pinHash,
@@ -118,6 +185,7 @@ function mapStaffToLocal(row) {
 function mapTableToRemote(table) {
   return {
     id: table.id,
+    store_id: getStoreId(),
     number: parseInt(table.number),
     capacity: parseInt(table.capacity) || 2,
     floor_section: table.floorSection || 'Main',
@@ -139,6 +207,7 @@ function mapTableToLocal(row) {
 function mapInventoryToRemote(inv) {
   return {
     id: inv.id,
+    store_id: getStoreId(),
     name: inv.name,
     quantity: parseFloat(inv.quantity) || 0.00,
     min_threshold: parseFloat(inv.minThreshold) || 0.00
@@ -158,6 +227,7 @@ function mapInventoryToLocal(row) {
 function mapSupplierToRemote(sup) {
   return {
     id: sup.id,
+    store_id: getStoreId(),
     name: sup.name,
     contact: sup.phone || sup.contact || ''
   };
@@ -175,6 +245,7 @@ function mapSupplierToLocal(row) {
 function mapShiftToRemote(shift) {
   return {
     id: shift.id,
+    store_id: getStoreId(),
     staff_id: parseInt(shift.staffId),
     clock_in: shift.clockIn || '',
     clock_out: shift.clockOut || '',
@@ -196,6 +267,7 @@ function mapShiftToLocal(row) {
 function mapActivityToRemote(log) {
   return {
     id: log.id,
+    store_id: getStoreId(),
     timestamp: log.timestamp || new Date().toISOString(),
     action: log.action,
     staff_name: log.staffName || 'System',
@@ -217,6 +289,7 @@ function mapActivityToLocal(row) {
 function mapCustomerToRemote(cust) {
   return {
     id: cust.id,
+    store_id: getStoreId(),
     name: cust.name,
     phone: cust.phone,
     birthday: cust.birthday || null,
@@ -250,11 +323,15 @@ let supabase = null;
 async function initSupabase() {
   let url = await getSetting('supabaseUrl');
   let key = await getSetting('supabaseKey');
+  let email = await getSetting('supabaseEmail');
+  let password = await getSetting('supabasePassword');
 
   // Fallback to environment variables if settings are empty
   if (!url || !key) {
     url = import.meta.env.VITE_SUPABASE_URL || '';
     key = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+    email = email || import.meta.env.VITE_SUPABASE_EMAIL || '';
+    password = password || import.meta.env.VITE_SUPABASE_PASSWORD || '';
   }
 
   if (!url || !key) {
@@ -271,11 +348,19 @@ async function initSupabase() {
   }
 
   try {
-    return createClient(url, key, {
+    const client = createClient(url, key, {
       auth: {
-        persistSession: false
+        persistSession: true,
+        autoRefreshToken: true
       }
     });
+    if (email && password) {
+      const { error } = await client.auth.signInWithPassword({ email, password });
+      if (error) {
+        console.warn('[Sync] Supabase staff auth failed; continuing with anon permissions:', error.message);
+      }
+    }
+    return client;
   } catch (e) {
     console.error('[Sync] Failed to create Supabase client:', e);
     return null;
@@ -580,7 +665,11 @@ class SyncService {
           try {
             await db.transaction('rw', db.orders, async () => {
               for (const o of unsyncedOrders) {
-                await db.orders.update(o.id, { isSynced: 1 });
+                await db.orders.update(o.id, {
+                  isSynced: 1,
+                  syncStatus: 'synced',
+                  lastSyncedAt: new Date().toISOString()
+                });
               }
             });
             console.log(`[Sync cache] Successfully synced and updated cache for ${unsyncedOrders.length} orders.`);
@@ -589,6 +678,17 @@ class SyncService {
           }
         } catch (netErr) {
           console.error('[Sync net] Failed to push unsynced orders to cloud after retries:', netErr);
+          await db.transaction('rw', db.orders, async () => {
+            for (const o of unsyncedOrders) {
+              await db.orders.update(o.id, {
+                isSynced: 0,
+                syncStatus: 'error',
+                syncError: netErr?.message || String(netErr),
+                syncAttempts: (parseInt(o.syncAttempts) || 0) + 1,
+                lastSyncAttemptAt: new Date().toISOString()
+              });
+            }
+          });
         }
       }
 
@@ -974,7 +1074,11 @@ class SyncService {
 
       this.isSyncingFromServer = true;
       try {
-        await db.orders.update(order.id, { isSynced: 1 });
+        await db.orders.update(order.id, {
+          isSynced: 1,
+          syncStatus: 'synced',
+          lastSyncedAt: new Date().toISOString()
+        });
       } catch (dbErr) {
         console.error(`[Sync db] Error marking order ${order.id} as synced:`, dbErr);
       } finally {
@@ -984,6 +1088,19 @@ class SyncService {
       console.log(`[Sync cache] Order ${order.orderNumber} successfully replicated to cloud and updated in cache.`);
     } catch (e) {
       console.error(`[Sync net] Cloud replication failed for order ${order?.orderNumber || order?.id}:`, e);
+      if (order?.id) {
+        try {
+          await db.orders.update(order.id, {
+            isSynced: 0,
+            syncStatus: 'error',
+            syncError: e?.message || String(e),
+            syncAttempts: (parseInt(order.syncAttempts) || 0) + 1,
+            lastSyncAttemptAt: new Date().toISOString()
+          });
+        } catch (dbErr) {
+          console.error(`[Sync db] Error marking order ${order.id} sync failure:`, dbErr);
+        }
+      }
     }
   }
 

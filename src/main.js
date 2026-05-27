@@ -366,7 +366,7 @@ class App {
     router.register('#/orders', async () => {
       const { OrderHistory } = await import('./views/admin/OrderHistory.js');
       return new OrderHistory(this);
-    }, ['owner', 'manager', 'cashier']);
+    }, ['owner', 'manager', 'cashier', 'delivery']);
 
     router.register('#/admin', async () => {
       const { AdminView } = await import('./views/admin/AdminView.js');

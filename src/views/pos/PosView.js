@@ -187,8 +187,8 @@ export class PosView {
     // Show payment modal
     this.paymentModal = new PaymentModal({
       order: orderData,
-      onConfirmPayment: async (paymentMethod) => {
-        await this.finalizeOrder(orderData, paymentMethod);
+      onConfirmPayment: async (paymentMethod, splitDetails) => {
+        await this.finalizeOrder(orderData, paymentMethod, splitDetails);
       },
       onClose: () => {
         this.paymentModal = null;
@@ -197,12 +197,19 @@ export class PosView {
     this.paymentModal.show();
   }
 
-  async finalizeOrder(orderData, paymentMethod) {
+  async finalizeOrder(orderData, paymentMethod, splitDetails = {}) {
     try {
       orderData.paymentMethod = paymentMethod;
-      orderData.paymentStatus = 'paid';
+      orderData.paymentStatus = splitDetails.remainingAmount > 0 ? 'partial' : 'paid';
       orderData.status = 'confirmed';
       orderData.completedAt = new Date().toISOString();
+
+      // Store split payment details
+      if (splitDetails.splitMode && splitDetails.splitMode !== 'full') {
+        orderData.splitMode = splitDetails.splitMode;
+        orderData.paidAmount = splitDetails.paidAmount;
+        orderData.remainingAmount = splitDetails.remainingAmount;
+      }
 
       // Read customer phone from cart input
       const phoneInput = document.getElementById('cart-customer-phone');
@@ -291,7 +298,10 @@ export class PosView {
       playSound(1200, 150);
       vibrateDevice([50, 30, 50]);
 
-      showToast(`Order #${orderData.orderNumber} confirmed! ${paymentMethod === 'upi' ? '(UPI)' : '(Cash)'}`, 'success', 4000);
+      const splitInfo = splitDetails.splitMode && splitDetails.splitMode !== 'full'
+        ? ` (${splitDetails.splitMode === 'half' ? 'Half' : 'Custom'}: ₹${splitDetails.paidAmount})`
+        : '';
+      showToast(`Order #${orderData.orderNumber} confirmed! ${paymentMethod === 'upi' ? '(UPI)' : '(Cash)'}${splitInfo}`, 'success', 4000);
 
       // Close payment modal
       if (this.paymentModal) {

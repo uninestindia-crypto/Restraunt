@@ -78,6 +78,74 @@ db.version(3).stores({
   }
 });
 
+// Schema v4: launch ordering fields, delivery workflow, and category availability index.
+db.version(4).stores({
+  menuCategories: '++id, name, sortOrder, isActive, updatedAt',
+  menuItems: '++id, categoryId, [categoryId+isAvailable], name, price, isAvailable, isVeg, sortOrder, updatedAt',
+  orders: '++id, orderNumber, type, status, paymentMethod, paymentStatus, createdAt, completedAt, customerId, staffId, tableId, channel, source, deliveryStatus, deliveryStaffId, updatedAt, syncStatus',
+  settings: 'key',
+  customers: '++id, phone, name, totalSpent, visitCount, loyaltyPoints, tier, lastVisit, createdAt',
+  staff: '++id, name, role, pinHash, isActive, createdAt',
+  shifts: '++id, staffId, date, clockIn, clockOut',
+  inventory: '++id, name, unit, quantity, minThreshold, categoryTag',
+  suppliers: '++id, name, phone, category',
+  recipes: '++id, menuItemId',
+  tables: '++id, number, status, floorSection',
+  reservations: '++id, tableId, customerId, date, time, status',
+  activityLog: '++id, staffId, action, timestamp',
+  aiConversations: '++id, createdAt, title',
+}).upgrade(async (tx) => {
+  const now = new Date().toISOString();
+  const orders = await tx.table('orders').toArray();
+  for (const order of orders) {
+    await tx.table('orders').update(order.id, {
+      channel: order.channel || 'pos',
+      source: order.source || order.channel || 'pos',
+      deliveryStatus: order.type === 'delivery' ? (order.deliveryStatus || 'pending') : (order.deliveryStatus || 'none'),
+      updatedAt: order.updatedAt || now,
+      syncStatus: order.syncStatus || (order.isSynced ? 'synced' : 'pending')
+    });
+  }
+
+  const staffMembers = await tx.table('staff').toArray();
+  for (const staff of staffMembers) {
+    if (staff.pin && !staff.pinHash) {
+      const encoder = new TextEncoder();
+      const data = encoder.encode(staff.pin.trim());
+      const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+      await tx.table('staff').update(staff.id, { pinHash: hashHex, pin: undefined, updatedAt: now });
+    }
+  }
+});
+
+function normalizeOrderItems(items) {
+  if (Array.isArray(items)) return items;
+  if (typeof items !== 'string' || !items.trim()) return [];
+  try {
+    const parsed = JSON.parse(items);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (error) {
+    console.warn('[Database] Failed to parse order items:', error);
+    return [];
+  }
+}
+
+function serializeOrderItems(items) {
+  return JSON.stringify(normalizeOrderItems(items));
+}
+
+function syncOrderInBackground(order, context = 'order update') {
+  import('../services/sync.js').then(({ syncService }) => {
+    syncService.syncUpOrder(order).catch(err => {
+      console.error(`[Database] Async syncUpOrder failed on ${context}:`, err);
+    });
+  }).catch(err => {
+    console.error(`[Database] Async sync import failed on ${context}:`, err);
+  });
+}
+
 /**
  * Get all active categories sorted by sortOrder.
  * @returns {Promise<Array>} Active categories
@@ -106,8 +174,19 @@ export async function getItemsByCategory(categoryId) {
       .equals([categoryId, 1])
       .sortBy('sortOrder');
   } catch (error) {
-    console.error(`[Database] Dexie database error in getItemsByCategory(${categoryId}):`, error);
-    return [];
+    console.warn(`[Database] Compound category index unavailable; using fallback for category ${categoryId}:`, error);
+    try {
+      const items = await db.menuItems
+        .where('categoryId')
+        .equals(categoryId)
+        .toArray();
+      return items
+        .filter(item => item.isAvailable === 1 || item.isAvailable === true)
+        .sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
+    } catch (fallbackError) {
+      console.error(`[Database] Dexie database error in getItemsByCategory(${categoryId}):`, fallbackError);
+      return [];
+    }
   }
 }
 
@@ -164,17 +243,40 @@ export async function createOrder(orderData) {
         orderNumber: orderData.orderNumber,
         type: orderData.type || 'takeaway',
         status: orderData.status || 'pending',
-        items: orderData.items || [],
+        channel: orderData.channel || (orderData.source === 'online' ? 'online' : 'pos'),
+        source: orderData.source || orderData.channel || 'pos',
+        items: serializeOrderItems(orderData.items || []),
         subtotal: orderData.subtotal || 0,
         tax: orderData.tax || 0,
+        taxPercent: orderData.taxPercent || 0,
+        deliveryFee: orderData.deliveryFee || 0,
         total: orderData.total || 0,
         paymentMethod: orderData.paymentMethod || null,
         paymentStatus: orderData.paymentStatus || 'unpaid',
+        paymentReference: orderData.paymentReference || '',
+        paymentVerifiedAt: orderData.paymentVerifiedAt || null,
+        paymentVerifiedBy: orderData.paymentVerifiedBy || '',
+        paymentCollectedAt: orderData.paymentCollectedAt || null,
         customerName: orderData.customerName || '',
         customerPhone: orderData.customerPhone || '',
+        deliveryAddress: orderData.deliveryAddress || '',
+        deliveryLandmark: orderData.deliveryLandmark || '',
+        deliveryNotes: orderData.deliveryNotes || '',
+        deliveryStatus: orderData.deliveryStatus || (orderData.type === 'delivery' ? 'pending' : 'none'),
+        deliveryStaffId: orderData.deliveryStaffId || null,
+        deliveryStaffName: orderData.deliveryStaffName || '',
+        deliveryAssignedAt: orderData.deliveryAssignedAt || null,
+        deliveryOutAt: orderData.deliveryOutAt || null,
+        deliveredAt: orderData.deliveredAt || null,
+        staffId: orderData.staffId || null,
+        staffName: orderData.staffName || '',
+        tableId: orderData.tableId || null,
         notes: orderData.notes || '',
         createdAt: orderData.createdAt || new Date().toISOString(),
         completedAt: orderData.completedAt || null,
+        updatedAt: orderData.updatedAt || new Date().toISOString(),
+        syncStatus: 'pending',
+        syncAttempts: 0,
         isSynced: 0
       };
 
@@ -187,13 +289,7 @@ export async function createOrder(orderData) {
   }
 
   // Replicate to cloud asynchronously in the background
-  import('../services/sync.js').then(({ syncService }) => {
-    syncService.syncUpOrder(result).catch(err => {
-      console.error('[Database] Async syncUpOrder failed:', err);
-    });
-  }).catch(err => {
-    console.error('[Database] Async sync import failed:', err);
-  });
+  syncOrderInBackground(result, 'order creation');
 
   return result;
 }
@@ -246,9 +342,18 @@ export async function getOrder(id) {
 export async function updateOrderStatus(id, status) {
   let result = 0;
   try {
-    const updates = { status, isSynced: 0 };
+    const existing = await db.orders.get(id);
+    const updates = {
+      status,
+      updatedAt: new Date().toISOString(),
+      syncStatus: 'pending',
+      isSynced: 0
+    };
     if (status === 'completed') {
       updates.completedAt = new Date().toISOString();
+    }
+    if (existing?.type === 'delivery' && status === 'ready') {
+      updates.deliveryStatus = 'ready_for_dispatch';
     }
     result = await db.orders.update(id, updates);
   } catch (error) {
@@ -259,11 +364,7 @@ export async function updateOrderStatus(id, status) {
   if (result > 0) {
     getOrder(id).then(order => {
       if (order) {
-        import('../services/sync.js').then(({ syncService }) => {
-          syncService.syncUpOrder(order).catch(err => {
-            console.error('[Database] Async syncUpOrder failed on status update:', err);
-          });
-        }).catch(err => console.error('[Database] Async sync import failed on status update:', err));
+        syncOrderInBackground(order, 'status update');
       }
     }).catch(err => console.error('[Database] Failed to get order for status sync:', err));
   }
@@ -278,10 +379,20 @@ export async function updateOrderStatus(id, status) {
  * @param {string} paymentStatus
  * @returns {Promise<number>} Number of updated records
  */
-export async function updatePayment(id, paymentMethod, paymentStatus) {
+export async function updatePayment(id, paymentMethod, paymentStatus, metadata = {}) {
   let result = 0;
   try {
-    result = await db.orders.update(id, { paymentMethod, paymentStatus, isSynced: 0 });
+    result = await db.orders.update(id, {
+      paymentMethod,
+      paymentStatus,
+      paymentReference: metadata.paymentReference || '',
+      paymentVerifiedAt: metadata.paymentVerifiedAt || (paymentStatus === 'paid' ? new Date().toISOString() : null),
+      paymentVerifiedBy: metadata.paymentVerifiedBy || '',
+      paymentCollectedAt: metadata.paymentCollectedAt || (paymentStatus === 'paid' ? new Date().toISOString() : null),
+      updatedAt: new Date().toISOString(),
+      syncStatus: 'pending',
+      isSynced: 0
+    });
   } catch (error) {
     console.error(`[Database] Dexie database error in updatePayment(${id}):`, error);
     return 0;
@@ -290,13 +401,33 @@ export async function updatePayment(id, paymentMethod, paymentStatus) {
   if (result > 0) {
     getOrder(id).then(order => {
       if (order) {
-        import('../services/sync.js').then(({ syncService }) => {
-          syncService.syncUpOrder(order).catch(err => {
-            console.error('[Database] Async syncUpOrder failed on payment update:', err);
-          });
-        }).catch(err => console.error('[Database] Async sync import failed on payment update:', err));
+        syncOrderInBackground(order, 'payment update');
       }
     }).catch(err => console.error('[Database] Failed to get order for payment sync:', err));
+  }
+
+  return result;
+}
+
+export async function updateOrderFields(id, fields) {
+  let result = 0;
+  try {
+    const updates = {
+      ...fields,
+      updatedAt: new Date().toISOString(),
+      syncStatus: 'pending',
+      isSynced: 0
+    };
+    result = await db.orders.update(id, updates);
+  } catch (error) {
+    console.error(`[Database] Dexie database error in updateOrderFields(${id}):`, error);
+    return 0;
+  }
+
+  if (result > 0) {
+    getOrder(id).then(order => {
+      if (order) syncOrderInBackground(order, 'field update');
+    }).catch(err => console.error('[Database] Failed to get order for field sync:', err));
   }
 
   return result;
@@ -414,9 +545,7 @@ export async function getTodayStats() {
       .between(todayStart, todayEnd)
       .toArray();
 
-    const completedOrders = todayOrders.filter(o =>
-      o.paymentStatus === 'paid' || o.status === 'completed'
-    );
+    const completedOrders = todayOrders.filter(o => o.paymentStatus === 'paid');
 
     const totalOrders = completedOrders.length;
     const totalRevenue = completedOrders.reduce((sum, o) => sum + (o.total || 0), 0);
