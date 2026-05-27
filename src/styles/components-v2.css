@@ -363,7 +363,9 @@
   overflow-y: auto;
   max-height: calc(90vh - 140px);
   flex: 1;
+  min-height: 0; /* Highly critical for flexbox scrollability */
 }
+
 
 .modal-footer {
   padding: 16px 24px;
