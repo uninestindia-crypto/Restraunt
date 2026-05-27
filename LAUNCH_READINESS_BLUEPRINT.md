@@ -79,6 +79,7 @@ Last updated: 2026-05-27
 
 ## Remaining Risks
 
+- The public storefront is locally green, but the product is not honestly 100/100 until live domain routing, staff account seeding, real-device QA, backup restore, and monitoring are complete.
 - RLS is active on production, but must be verified with live authenticated staff accounts once they are seeded.
 - Client is still a vanilla JS SPA with many inline templates; the public route has been improved, but remaining admin/staff legacy XSS and accessibility audit must continue.
 - Local PIN unlock is operationally fast but not enterprise-grade without cloud staff session enforcement and device approval policy.
