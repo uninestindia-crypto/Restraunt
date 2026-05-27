@@ -145,6 +145,10 @@ class App {
 
       // Listen for session expiry
       window.addEventListener('auth-session-expired', () => {
+        if (this.inactivityTimeout) {
+          clearTimeout(this.inactivityTimeout);
+          this.inactivityTimeout = null;
+        }
         if (router.currentView && typeof router.currentView.unmount === 'function') {
           router.currentView.unmount();
         }
