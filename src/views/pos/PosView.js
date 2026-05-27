@@ -226,6 +226,29 @@ export class PosView {
     const total = subtotal + tax;
     const orderNumber = await getNextOrderNumber();
 
+    let staffId = authService.getCurrentStaff()?.id || null;
+    let staffName = authService.getCurrentStaff()?.name || '';
+
+    const requirePinForOrderVal = await getSetting('requirePinForOrder');
+    const requirePinForOrder = requirePinForOrderVal === 'true' || requirePinForOrderVal === true;
+
+    if (requirePinForOrder) {
+      const pin = prompt('Enter your 4-digit PIN to place order:');
+      if (!pin) {
+        showToast('PIN is required to place an order', 'warning');
+        return;
+      }
+      const staff = await authService.getStaffByPin(pin);
+      if (!staff) {
+        playSound(300, 200, 'square');
+        vibrateDevice([150]);
+        showToast('Invalid PIN code', 'error');
+        return;
+      }
+      staffId = staff.id;
+      staffName = staff.name;
+    }
+
     const orderData = {
       orderNumber,
       type: this.orderType,
@@ -240,8 +263,8 @@ export class PosView {
       paymentStatus: 'pending',
       customerName: this.customerName,
       customerPhone: this.customerPhone,
-      staffId: authService.getCurrentStaff()?.id || null,
-      staffName: authService.getCurrentStaff()?.name || '',
+      staffId,
+      staffName,
       tableId: this.selectedTableId,
       createdAt: new Date().toISOString(),
       completedAt: null,
