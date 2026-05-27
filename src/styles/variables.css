@@ -29,21 +29,21 @@
 
   /* ── HSL Base Values ── */
   --primary-h: 12;
-  --primary-s: 95%;
-  --primary-l: 60%; /* Luxurious Matte Vermillion */
+  --primary-s: 98%;
+  --primary-l: 58%; /* Elevated Vermillion */
   
   /* ── Dark Mode Core Palette (NextGenOS Obsidian & Titanium) ── */
-  --bg-primary: #08080C;
-  --bg-surface: #111116;
-  --bg-card: rgba(255, 255, 255, 0.035);
-  --bg-card-hover: rgba(255, 255, 255, 0.07);
-  --bg-input: rgba(255, 255, 255, 0.015);
-
+  --bg-primary: #040406; /* Apple-level pure obsidian depth */
+  --bg-surface: #0B0B0F; /* Layered titanium-graphite */
+  --bg-card: rgba(255, 255, 255, 0.02); /* Extremely thin card backdrop */
+  --bg-card-hover: rgba(255, 255, 255, 0.05);
+  --bg-input: rgba(255, 255, 255, 0.01);
+  
   --color-primary: #FF5E36;
-  --color-primary-hover: #FF7B59;
+  --color-primary-hover: #FF704D;
   --color-primary-rgb: 255, 94, 54;
-  --color-primary-glow: rgba(255, 94, 54, 0.18);
-
+  --color-primary-glow: rgba(255, 94, 54, 0.22);
+  
   --color-success: #10B981;
   --color-success-rgb: 16, 185, 129;
   --color-danger: #EF4444;
@@ -52,28 +52,28 @@
   --color-warning-rgb: 245, 158, 11;
   --color-info: #3B82F6;
   --color-info-rgb: 59, 130, 246;
-
-  --text-primary: #F3F4F6;
-  --text-secondary: #9CA3AF;
-  --text-muted: #575765;
-
-  /* ── Glassmorphism & Borders ── */
-  --border-color: rgba(255, 255, 255, 0.045);
-  --border-active: rgba(255, 255, 255, 0.12);
-  --border-glass: rgba(255, 255, 255, 0.06);
   
-  --glass-bg: rgba(18, 18, 22, 0.65);
-  --glass-bg-hover: rgba(255, 255, 255, 0.06);
-  --glass-border: rgba(255, 255, 255, 0.05);
-  --glass-border-active: rgba(255, 94, 54, 0.25);
-  --glass-backdrop-filter: blur(24px) saturate(220%);
-
+  --text-primary: #F9FAFB; /* Alabaster white, highly readable */
+  --text-secondary: #94A3B8; /* Slate gray, Stripe-inspired */
+  --text-muted: #575765;
+  
+  /* ── Glassmorphism & Borders ── */
+  --border-color: rgba(255, 255, 255, 0.04);
+  --border-active: rgba(255, 255, 255, 0.12);
+  --border-glass: rgba(255, 255, 255, 0.05);
+  
+  --glass-bg: rgba(11, 11, 15, 0.75);
+  --glass-bg-hover: rgba(255, 255, 255, 0.04);
+  --glass-border: rgba(255, 255, 255, 0.045);
+  --glass-border-active: rgba(255, 94, 54, 0.22);
+  --glass-backdrop-filter: blur(28px) saturate(220%);
+  
   /* ── Elite Gradients ── */
-  --gradient-cosmic: linear-gradient(180deg, #08080C 0%, #111116 100%);
+  --gradient-cosmic: linear-gradient(180deg, #040406 0%, #0B0B0F 100%);
   --gradient-primary: linear-gradient(135deg, #FF5E36 0%, #FF8960 100%);
   --gradient-success: linear-gradient(135deg, #10B981 0%, #059669 100%);
-  --gradient-glass: linear-gradient(180deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.01) 100%);
-
+  --gradient-glass: linear-gradient(180deg, rgba(255, 255, 255, 0.04) 0%, rgba(255, 255, 255, 0.005) 100%);
+  
   /* ── Typography Scale (Dynamic Hierarchy) ── */
   --text-xs: 0.75rem;
   --text-sm: 0.8125rem;
@@ -82,14 +82,14 @@
   --text-xl: 1.25rem;
   --text-2xl: 1.5rem;
   --text-3xl: 1.875rem;
-
+  
   /* ── Font Weights ── */
   --font-normal: 400;
   --font-medium: 500;
   --font-semibold: 600;
   --font-bold: 700;
   --font-extrabold: 800;
-
+  
   /* ── Spacing (8pt Spacing Grid) ── */
   --space-1: 4px;
   --space-2: 8px;
@@ -102,51 +102,52 @@
   --space-12: 48px;
   --space-16: 64px;
   --space-20: 80px;
-
+  
   /* ── Border Radius ── */
   --radius-sm: 8px;
   --radius-md: 12px;
-  --radius-lg: 20px;
+  --radius-lg: 20px; /* Squircle curvature */
   --radius-xl: 32px;
   --radius-full: 9999px;
-
+  
   /* ── Premium Ambient Occlusion Shadows (Apple & Stripe Caliber) ── */
   --shadow-sm:
-    0 1px 2px rgba(0, 0, 0, 0.4),
-    0 0 0 1px rgba(255, 255, 255, 0.03);
+    0 1px 2px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(255, 255, 255, 0.02);
   --shadow-md:
-    0 4px 16px rgba(0, 0, 0, 0.5),
+    0 8px 24px rgba(0, 0, 0, 0.6),
     0 2px 4px rgba(0, 0, 0, 0.3),
-    0 0 0 1px rgba(255, 255, 255, 0.05);
+    0 0 0 1px rgba(255, 255, 255, 0.04);
   --shadow-lg:
-    0 12px 32px rgba(0, 0, 0, 0.6),
-    0 8px 12px rgba(0, 0, 0, 0.4),
-    0 0 0 1px rgba(255, 255, 255, 0.07);
+    0 16px 40px rgba(0, 0, 0, 0.7),
+    0 8px 16px rgba(0, 0, 0, 0.4),
+    0 0 0 1px rgba(255, 255, 255, 0.06);
   --shadow-xl:
-    0 24px 64px -12px rgba(0, 0, 0, 0.7),
-    0 18px 32px -10px rgba(0, 0, 0, 0.5),
-    0 0 0 1px rgba(255, 255, 255, 0.08);
+    0 32px 80px -12px rgba(0, 0, 0, 0.8),
+    0 18px 36px -10px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(255, 255, 255, 0.07);
   
-  --shadow-modal: 0 25px 60px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(255, 255, 255, 0.08);
+  --shadow-modal: 0 25px 60px rgba(0, 0, 0, 0.75), 0 0 0 1px rgba(255, 255, 255, 0.08);
   --shadow-primary:
-    0 0 24px rgba(255, 94, 54, 0.12),
-    0 0 48px rgba(255, 94, 54, 0.04);
+    0 0 24px rgba(255, 94, 54, 0.14),
+    0 0 48px rgba(255, 94, 54, 0.05);
   --shadow-glow-purple:
-    0 0 24px rgba(139, 92, 246, 0.12);
+    0 0 24px rgba(143, 85, 255, 0.15);
   --shadow-glow-success:
-    0 0 24px rgba(16, 185, 129, 0.12);
-
+    0 0 24px rgba(16, 185, 129, 0.15);
+  
   /* ── Dynamic Physics-Based Transition Curves (Framer & Apple Caliber) ── */
-  --transition-fast: 180ms cubic-bezier(0.16, 1, 0.3, 1);
+  --transition-fast: 160ms cubic-bezier(0.16, 1, 0.3, 1);
   --transition-normal: 320ms cubic-bezier(0.16, 1, 0.3, 1);
   --transition-slow: 550ms cubic-bezier(0.16, 1, 0.3, 1);
-  --transition-spring: transform 0.45s cubic-bezier(0.25, 1.4, 0.5, 1);
-  --transition-spring-all: all 0.45s cubic-bezier(0.25, 1.4, 0.5, 1);
-  --transition-spring-slow: transform 0.55s cubic-bezier(0.175, 0.885, 0.32, 1.2);
-
+  --transition-spring: transform 0.52s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  --transition-spring-all: all 0.52s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  --transition-spring-slow: transform 0.65s cubic-bezier(0.175, 0.885, 0.32, 1.2);
+  
   /* ── Z-Index Scale ── */
   --z-sticky: 100;
   --z-dropdown: 1000;
   --z-modal: 2000;
   --z-toast: 3000;
 }
+
