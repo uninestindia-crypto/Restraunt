@@ -23,7 +23,7 @@ const TARGET_EMAIL    = 'mohammadjalaluddin1010@gmail.com';
 const TARGET_PASSWORD = '123456';
 const TARGET_NAME     = 'Mohammad Jalaluddin';
 const TARGET_ROLE     = 'owner';
-const TARGET_PIN      = '5678';  // Local backup PIN (not 1234!)
+const TARGET_PIN      = '6070';  // Local backup PIN (not 1234!)
 const STORE_ID        = 'the-taste';
 
 // ── Load .env ───────────────────────────────────────
