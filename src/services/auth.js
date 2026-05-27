@@ -10,12 +10,20 @@
 
 import { db } from '../db/database.js';
 import { hashPin } from '../utils/crypto.js';
+import {
+  CloudStaffAccessError,
+  isActiveFlag,
+  isActiveStaffWithPin,
+  normalizeStaffRole,
+  requireCloudStaffAccess
+} from './authGuards.js';
 import { signInCloudStaff, signOutCloudStaff } from './supabaseClient.js';
 
 /** 8-hour session duration in milliseconds */
 const SESSION_DURATION_MS = 8 * 60 * 60 * 1000;
 const LOCKOUT_MAX_ATTEMPTS = 5;
 const LOCKOUT_DURATION_MS = 5 * 60 * 1000;
+const DEFAULT_STORE_ID = 'the-taste';
 
 class AuthService {
   constructor() {
