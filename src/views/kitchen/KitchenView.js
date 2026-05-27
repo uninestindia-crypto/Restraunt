@@ -203,7 +203,6 @@ export class KitchenView {
           #kds-grid-container {
             grid-template-columns: 1fr !important;
             overflow-y: auto !important;
-            height: auto !important;
             gap: 16px !important;
             padding: 16px !important;
           }

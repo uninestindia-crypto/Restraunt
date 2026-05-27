@@ -37,6 +37,80 @@ body {
   min-height: 100vh;
   min-height: 100dvh;
   overflow-x: hidden;
+  transition: background-color 0.35s ease, color 0.35s ease;
+}
+
+/* ── Light Theme: fix hardcoded dark backgrounds ── */
+:root[data-theme="light"] .card,
+:root[data-theme="light"] .settings-card,
+:root[data-theme="light"] .premium-card,
+:root[data-theme="light"] .modal {
+  background: rgba(255, 255, 255, 0.85);
+  border-color: rgba(0, 0, 0, 0.08);
+}
+
+:root[data-theme="light"] .pin-dot {
+  border-color: rgba(0, 0, 0, 0.2) !important;
+}
+
+:root[data-theme="light"] .sidebar {
+  background: #FFFFFF;
+  border-color: rgba(0, 0, 0, 0.06);
+}
+
+:root[data-theme="light"] .app-header {
+  background: rgba(255, 255, 255, 0.9);
+  border-color: rgba(0, 0, 0, 0.06);
+}
+
+:root[data-theme="light"] .btn-secondary {
+  background: rgba(0, 0, 0, 0.03);
+  border-color: rgba(0, 0, 0, 0.1);
+  color: var(--text-primary);
+}
+
+:root[data-theme="light"] .input {
+  background: rgba(0, 0, 0, 0.02);
+  border-color: rgba(0, 0, 0, 0.12);
+  color: var(--text-primary);
+}
+
+:root[data-theme="light"] .tab.active {
+  color: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+/* System theme - same overrides via media query */
+@media (prefers-color-scheme: light) {
+  :root[data-theme="system"] .card,
+  :root[data-theme="system"] .settings-card,
+  :root[data-theme="system"] .premium-card,
+  :root[data-theme="system"] .modal {
+    background: rgba(255, 255, 255, 0.85);
+    border-color: rgba(0, 0, 0, 0.08);
+  }
+
+  :root[data-theme="system"] .sidebar {
+    background: #FFFFFF;
+    border-color: rgba(0, 0, 0, 0.06);
+  }
+
+  :root[data-theme="system"] .app-header {
+    background: rgba(255, 255, 255, 0.9);
+    border-color: rgba(0, 0, 0, 0.06);
+  }
+
+  :root[data-theme="system"] .btn-secondary {
+    background: rgba(0, 0, 0, 0.03);
+    border-color: rgba(0, 0, 0, 0.1);
+    color: var(--text-primary);
+  }
+
+  :root[data-theme="system"] .input {
+    background: rgba(0, 0, 0, 0.02);
+    border-color: rgba(0, 0, 0, 0.12);
+    color: var(--text-primary);
+  }
 }
 
 h1, h2, h3, h4, h5, h6 {

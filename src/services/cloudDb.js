@@ -143,6 +143,7 @@ function mapStaffToLocal(row) {
     name: row.name,
     role: row.role,
     pinHash: row.pin_hash,
+    allowExpress: row.allow_express ? 1 : 0,
     isActive: row.is_active ? 1 : 0,
     createdAt: row.created_at,
     updatedAt: row.updated_at,

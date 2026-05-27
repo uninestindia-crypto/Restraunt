@@ -78,7 +78,7 @@ export class ChannelHub {
                       <span class="material-symbols-rounded" style="font-size:18px;color:${chCfg.color};">${chCfg.icon}</span>
                       <div style="flex:1;min-width:0;">
                         <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
-                          <span style="font-size:var(--text-xs);font-weight:700;color:var(--text-primary);">#${o.orderNumber}</span>
+                          <span style="font-size:var(--text-xs);font-weight:700;color:var(--text-primary);">#${o.displayToken || o.orderNumber.split('-').pop()}</span>
                           <span style="font-size:0.55rem;padding:1px 6px;border-radius:4px;font-weight:700;color:${chCfg.color};background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.06);">${chCfg.name}</span>
                         </div>
                         <div style="font-size:0.65rem;color:var(--text-muted);margin-top:2px;">${items.length} items · ${timeAgo}</div>

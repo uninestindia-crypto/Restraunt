@@ -81,6 +81,10 @@ export class StaffView {
               <label for="staff-phone">Phone Number</label>
               <input type="tel" id="staff-phone" class="input" placeholder="e.g. 9876543210">
             </div>
+            <div class="input-group" style="flex-direction:row; align-items:center; gap:8px; margin-top:8px;">
+              <input type="checkbox" id="staff-allow-express" style="width:auto; cursor:pointer; height: 18px; margin: 0;">
+              <label for="staff-allow-express" style="margin:0; cursor:pointer; font-weight: 500;">Allow access to Express Panel</label>
+            </div>
           </div>
           <div class="modal-footer">
             <button id="staff-cancel" class="btn btn-secondary btn-sm">Cancel</button>
@@ -100,6 +104,7 @@ export class StaffView {
       ['staff-name', 'staff-pin', 'staff-phone'].forEach(id => document.getElementById(id).value = '');
       document.getElementById('staff-pin').placeholder = '4-digit PIN';
       document.getElementById('staff-role').value = 'cashier';
+      document.getElementById('staff-allow-express').checked = false;
       modal.style.display = 'flex';
     });
     const closeModal = () => {
@@ -108,6 +113,7 @@ export class StaffView {
       ['staff-name', 'staff-pin', 'staff-phone'].forEach(id => document.getElementById(id).value = '');
       document.getElementById('staff-pin').placeholder = '4-digit PIN';
       document.getElementById('staff-role').value = 'cashier';
+      document.getElementById('staff-allow-express').checked = false;
       modal.style.display = 'none';
     };
     document.getElementById('staff-cancel').addEventListener('click', closeModal);
@@ -118,6 +124,7 @@ export class StaffView {
       const role = document.getElementById('staff-role').value;
       const pin = document.getElementById('staff-pin').value;
       const phone = document.getElementById('staff-phone').value.trim();
+      const allowExpress = document.getElementById('staff-allow-express').checked ? 1 : 0;
       
       if (!name) { showToast('Name is required', 'error'); return; }
       
@@ -149,14 +156,14 @@ export class StaffView {
       }
 
       if (isEdit) {
-        const updateData = { name, role, phone, isSynced: 0 };
+        const updateData = { name, role, phone, allowExpress, isSynced: 0 };
         if (pin) {
           updateData.pinHash = hashedPin;
         }
         await db.staff.update(this.editingStaffId, updateData);
         showToast('Staff member updated!', 'success');
       } else {
-        await db.staff.add({ name, role, pinHash: hashedPin, phone, isActive: true, createdAt: new Date().toISOString(), isSynced: 0, _platform: 'nextgenos' });
+        await db.staff.add({ name, role, pinHash: hashedPin, phone, allowExpress, isActive: true, createdAt: new Date().toISOString(), isSynced: 0, _platform: 'nextgenos' });
         showToast('Staff member added!', 'success');
       }
 
@@ -198,6 +205,8 @@ export class StaffView {
         `<div class="content-grid">${staffList.map(s => {
           const role = ROLES[s.role] || ROLES.cashier;
           const isDeletable = !(s.role === 'owner' && owners.length <= 1);
+          const hasExpress = s.allowExpress === 1 || s.allowExpress === true || s.role === 'owner';
+          const expressBadge = hasExpress ? `<span style="font-size:0.6rem;padding:2px 8px;border-radius:6px;font-weight:700;color:var(--nextgenos-purple);background:var(--nextgenos-purple-bg);border:1px solid var(--nextgenos-purple-border);margin-left:4px;">Express Panel</span>` : '';
           return `
             <div class="premium-card">
               <div class="premium-card-avatar" style="background:rgba(${s.role === 'owner' ? '255,107,53' : '108,92,231'},0.1); color:${role.color};">
@@ -207,6 +216,7 @@ export class StaffView {
                 <span class="premium-card-title">${escapeHtml(s.name)}</span>
                 <div style="display:flex;gap:6px;align-items:center;margin-top:4px;">
                   <span style="font-size:0.6rem;padding:2px 8px;border-radius:6px;font-weight:700;color:${role.color};background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.06);">${role.label}</span>
+                  ${expressBadge}
                   <span style="font-size:0.6rem;color:${s.isActive ? 'var(--color-success)' : 'var(--color-error)'};font-weight:700;">${s.isActive ? '● Active' : '● Inactive'}</span>
                 </div>
               </div>
@@ -238,6 +248,7 @@ export class StaffView {
           document.getElementById('staff-pin').value = '';
           document.getElementById('staff-pin').placeholder = '•••• (leave blank to keep)';
           document.getElementById('staff-phone').value = staffMember.phone || '';
+          document.getElementById('staff-allow-express').checked = staffMember.allowExpress === 1 || staffMember.allowExpress === true;
           
           document.getElementById('staff-modal').style.display = 'flex';
         });

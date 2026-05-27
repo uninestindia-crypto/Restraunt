@@ -98,6 +98,19 @@ export class Router {
         }
         return;
       }
+
+      // Explicit administrative access check for Express Panel
+      if (path === '#/pos-kitchen') {
+        const isOwner = staffRole === 'owner';
+        const hasExpressAccess = currentStaff?.allowExpress === 1 || currentStaff?.allowExpress === true;
+        if (!isOwner && !hasExpressAccess) {
+          console.warn(`[Router] Access to "#/pos-kitchen" denied: Express Panel permission not granted for "${currentStaff?.name}".`);
+          const { showToast } = await import('./utils/helpers.js');
+          showToast('Access denied: Express Panel permission not granted by administrator', 'error');
+          this.navigate('#/pos');
+          return;
+        }
+      }
     }
 
     // Unmount current view

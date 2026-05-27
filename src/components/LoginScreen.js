@@ -26,11 +26,18 @@ export class LoginScreen {
 
     container.innerHTML = `
       <div class="login-screen">
-        <div class="login-card">
-          <div class="login-logo-container">
+        <div class="login-card" style="position: relative;">
+          <!-- Home Navigation Button -->
+          <div style="display: flex; justify-content: flex-start; margin-bottom: -24px; position: relative; z-index: 10;">
+            <button id="login-home-btn" class="btn btn-secondary btn-sm" style="padding: 6px 12px; font-size: 0.68rem; display: flex; align-items: center; gap: 4px; border: 1px solid var(--border-glass); background: rgba(255,255,255,0.02); border-radius: var(--radius-sm); color: var(--text-secondary); cursor: pointer; transition: all var(--transition-fast);">
+              <span class="material-symbols-rounded" style="font-size: 14px;">home</span>
+              Home
+            </button>
+          </div>
+          <div class="login-logo-container" id="login-logo-btn" style="cursor: pointer; margin-top: 16px;">
             <img src="/assets/aether-icon.png" class="login-logo-img" alt="The Taste Logo" />
           </div>
-          <h1 class="login-title" id="login-brand-title">The Taste</h1>
+          <h1 class="login-title" id="login-brand-title" style="cursor: pointer; display: inline-block; margin-bottom: 6px;">The Taste</h1>
           <p class="login-subtitle">Restaurant Operating System</p>
 
           <div class="login-tabs" id="login-tabs-container">
@@ -316,6 +323,24 @@ export class LoginScreen {
   }
 
   bindEvents() {
+    const logoBtn = document.getElementById('login-logo-btn');
+    const titleBtn = document.getElementById('login-brand-title');
+    const homeBtn = document.getElementById('login-home-btn');
+
+    const goHome = (e) => {
+      e?.preventDefault();
+      playSound(700, 80);
+      this.destroy();
+      window.location.hash = '#/self-order';
+      if (window.location.hash === '#/self-order') {
+        window.location.reload();
+      }
+    };
+
+    logoBtn?.addEventListener('click', goHome);
+    titleBtn?.addEventListener('click', goHome);
+    homeBtn?.addEventListener('click', goHome);
+
     const tabCloud = document.getElementById('tab-cloud');
     const tabPin = document.getElementById('tab-pin');
     const secCloud = document.getElementById('section-cloud');

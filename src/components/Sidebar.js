@@ -15,6 +15,7 @@ const NAV_GROUPS = [
     label: 'Operations',
     items: [
       { hash: '#/pos', icon: 'point_of_sale', label: 'POS', roles: ['owner', 'manager', 'cashier', 'waiter'] },
+      { hash: '#/pos-kitchen', icon: 'bolt', label: 'Express Panel', roles: ['owner', 'manager', 'cashier', 'waiter', 'kitchen'] },
       { hash: '#/kitchen', icon: 'restaurant', label: 'Kitchen', roles: ['owner', 'manager', 'cashier', 'kitchen'] },
       { hash: '#/tables', icon: 'table_bar', label: 'Tables', roles: ['owner', 'manager', 'cashier', 'waiter', 'kitchen'] },
       { hash: '#/channels', icon: 'hub', label: 'Channels', roles: ['owner', 'manager', 'cashier'] },
@@ -59,7 +60,17 @@ export class Sidebar {
     const groupsHTML = NAV_GROUPS.map(group => {
       // Filter items that this role can view
       const visibleItems = group.items.filter(item => {
-        return !item.roles || item.roles.includes(staffRole);
+        const hasRole = !item.roles || item.roles.includes(staffRole);
+        if (!hasRole) return false;
+
+        // Custom Express Panel permission check
+        if (item.hash === '#/pos-kitchen') {
+          const isOwner = staffRole === 'owner';
+          const hasExpressAccess = currentStaff?.allowExpress === 1 || currentStaff?.allowExpress === true;
+          return isOwner || hasExpressAccess;
+        }
+
+        return true;
       });
 
       // Hide group if no items are visible
@@ -90,6 +101,10 @@ export class Sidebar {
       </nav>
 
       <div class="sidebar-footer">
+        <button class="sidebar-theme-toggle" id="sidebar-theme-btn" title="Toggle Theme">
+          <span class="material-symbols-rounded" id="sidebar-theme-icon" style="font-size: 16px;">${this._getThemeIcon()}</span>
+          <span class="sidebar-theme-label" id="sidebar-theme-label">${this._getThemeLabel()}</span>
+        </button>
         <div class="nextgenos-attr">
           <span class="ng-diamond">◆</span>
           <span class="ng-text-small">Powered by</span>
@@ -105,6 +120,51 @@ export class Sidebar {
         window.location.hash = hash;
       });
     });
+
+    // Bind theme toggle
+    const themeBtn = container.querySelector('#sidebar-theme-btn');
+    if (themeBtn) {
+      themeBtn.addEventListener('click', () => {
+        const current = localStorage.getItem('app_theme') || 'dark';
+        const cycle = { dark: 'light', light: 'system', system: 'dark' };
+        const next = cycle[current] || 'dark';
+        // Use App.setTheme if available, otherwise manual
+        localStorage.setItem('app_theme', next);
+        document.documentElement.setAttribute('data-theme', next);
+        window.dispatchEvent(new CustomEvent('theme-changed', { detail: { theme: next } }));
+        this._updateThemeUI();
+        // Update header toggle icon too
+        const headerIcon = document.getElementById('theme-toggle-icon');
+        if (headerIcon) {
+          const resolved = next === 'system'
+            ? (window.matchMedia?.('(prefers-color-scheme: light)').matches ? 'light' : 'dark')
+            : next;
+          headerIcon.textContent = resolved === 'dark' ? 'light_mode' : 'dark_mode';
+        }
+      });
+    }
+
+    // Listen for external theme changes
+    window.addEventListener('theme-changed', () => this._updateThemeUI());
+  }
+
+  _getThemeIcon() {
+    const theme = localStorage.getItem('app_theme') || 'dark';
+    const icons = { dark: 'dark_mode', light: 'light_mode', system: 'computer' };
+    return icons[theme] || 'dark_mode';
+  }
+
+  _getThemeLabel() {
+    const theme = localStorage.getItem('app_theme') || 'dark';
+    const labels = { dark: 'Dark', light: 'Light', system: 'System' };
+    return labels[theme] || 'Dark';
+  }
+
+  _updateThemeUI() {
+    const icon = this.container?.querySelector('#sidebar-theme-icon');
+    const label = this.container?.querySelector('#sidebar-theme-label');
+    if (icon) icon.textContent = this._getThemeIcon();
+    if (label) label.textContent = this._getThemeLabel();
   }
 
   setActive(hash) {

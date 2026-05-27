@@ -108,6 +108,7 @@ CREATE TABLE IF NOT EXISTS staff (
   name VARCHAR(100) NOT NULL,
   role VARCHAR(30) NOT NULL CHECK (role IN ('owner', 'manager', 'cashier', 'kitchen', 'waiter', 'delivery')),
   pin_hash VARCHAR(64) NOT NULL,
+  allow_express BOOLEAN DEFAULT FALSE,
   is_active BOOLEAN DEFAULT TRUE,
   created_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL,
   updated_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL
@@ -186,6 +187,7 @@ ALTER TABLE orders ADD COLUMN IF NOT EXISTS display_token VARCHAR(20);
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS requires_server_validation BOOLEAN DEFAULT FALSE;
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS validation_status VARCHAR(30) DEFAULT 'trusted_staff';
 ALTER TABLE staff ADD COLUMN IF NOT EXISTS auth_user_id UUID;
+ALTER TABLE staff ADD COLUMN IF NOT EXISTS allow_express BOOLEAN DEFAULT FALSE;
 ALTER TABLE menu_items ADD COLUMN IF NOT EXISTS image_url VARCHAR(500) DEFAULT '';
 ALTER TABLE customers ADD COLUMN IF NOT EXISTS auth_user_id UUID;
 

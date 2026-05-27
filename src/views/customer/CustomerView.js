@@ -542,6 +542,13 @@ export class CustomerView {
       <option value="${table.id}" ${String(this.selectedTableId) === String(table.id) ? 'selected' : ''}>Table ${escapeHtml(table.number)} (${escapeHtml(table.floorSection || 'Main')})</option>
     `).join('');
 
+    const loginPromptHtml = !this.loggedInCustomer ? `
+      <div style="font-size:0.75rem; color:var(--text-secondary); background:rgba(212,175,55,0.04); border:1px solid rgba(212,175,55,0.12); padding:10px 14px; border-radius:var(--radius-md); margin-bottom:14px; display:flex; justify-content:space-between; align-items:center; gap:12px;">
+        <span>🔒 Sign in to autofill details and earn points!</span>
+        <button class="btn btn-secondary btn-sm" id="checkout-login-btn" type="button" style="padding:4px 10px; font-size:0.7rem; border-color:#D4AF37; color:#D4AF37; font-weight:700; flex-shrink:0;">Sign In</button>
+      </div>
+    ` : '';
+
     this.container.innerHTML = `
       <div class="store-checkout-shell">
         ${this.renderTopBar('Checkout', 'btn-back-cart')}
@@ -552,6 +559,7 @@ export class CustomerView {
           </div>
 
           ${this.renderPanel('Contact details', `
+            ${loginPromptHtml}
             ${this.renderInput('self-name', 'Your name', this.customerName, 'Enter your name')}
             ${this.renderInput('self-phone', 'Phone number', this.customerPhone, '10-digit mobile number', 'tel')}
           `)}
@@ -601,6 +609,18 @@ export class CustomerView {
 
   bindCheckoutEvents() {
     this.container.querySelector('#btn-back-cart')?.addEventListener('click', () => { this.state = 'cart'; this.render(); });
+    this.container.querySelector('#checkout-login-btn')?.addEventListener('click', async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      playSound(700, 80);
+      const appEl = document.getElementById('app');
+      const { LoginScreen } = await import('../../components/LoginScreen.js');
+      const login = new LoginScreen(async (staff) => {
+        await this.loadData();
+        this.renderCheckout();
+      });
+      login.render(appEl);
+    });
     this.container.querySelector('#self-name')?.addEventListener('input', e => { this.customerName = e.target.value.trim(); });
     this.container.querySelector('#self-phone')?.addEventListener('input', e => { this.customerPhone = e.target.value.trim(); });
     this.container.querySelector('#self-delivery-address')?.addEventListener('input', e => { this.deliveryAddress = e.target.value.trim(); });
@@ -672,7 +692,13 @@ export class CustomerView {
               <div class="store-upi-qr"><canvas id="upi-qr"></canvas></div>
               <strong>${formatCurrency(order.total)}</strong>
               <span id="upi-id-label">Loading UPI ID...</span>
-              <p>After paying, staff will verify UPI before marking this order as paid.</p>
+              <div style="margin-top: 12px; width: 100%;">
+                <a href="#" id="customer-upi-deeplink" class="btn btn-primary btn-block" style="text-decoration:none; display:none; align-items:center; justify-content:center; gap:8px; height:44px; font-weight:700; background:linear-gradient(135deg, #10B981 0%, #059669 100%); border:none; box-shadow:0 4px 15px rgba(16, 185, 129, 0.35);">
+                  <span class="material-symbols-rounded">open_in_new</span>
+                  Pay via UPI App
+                </a>
+              </div>
+              <p style="margin-top: 12px;">After paying, staff will verify UPI before marking this order as paid.</p>
             </div>
           ` : `
             <div class="store-payment-box cash">
@@ -702,14 +728,24 @@ export class CustomerView {
   async renderUpiQr() {
     const canvas = this.container.querySelector('#upi-qr');
     const upiLabel = this.container.querySelector('#upi-id-label');
+    const deeplink = this.container.querySelector('#customer-upi-deeplink');
     if (!canvas || !this.placedOrder) return;
     const upiId = await getSetting('upiId') || 'paytmqr6zfcsx@ptys';
     if (upiLabel) upiLabel.textContent = upiId;
     const { generateUPIQR } = await import('../../services/upi.js');
-    await generateUPIQR(canvas, {
+    const upiLink = await generateUPIQR(canvas, {
       amount: this.placedOrder.total,
       orderId: this.placedOrder.orderNumber
     });
+    if (deeplink) {
+      deeplink.href = upiLink;
+      const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+      if (isMobile) {
+        deeplink.style.display = 'flex';
+      } else {
+        deeplink.style.display = 'none';
+      }
+    }
   }
 
   triggerOrderNotification(latest, statusChanged, deliveryChanged) {

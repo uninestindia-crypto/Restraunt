@@ -36,6 +36,61 @@ class App {
     this.syncStarted = false;
     this.syncServicePromise = null;
     this.authServicePromise = null;
+
+    // Initialize theme immediately to prevent FOUC
+    this.initTheme();
+  }
+
+  /**
+   * Initialize theme from localStorage. Called synchronously in constructor
+   * to avoid flash of wrong theme on page load.
+   */
+  initTheme() {
+    const saved = localStorage.getItem('app_theme') || 'dark';
+    document.documentElement.setAttribute('data-theme', saved);
+
+    // Listen for OS preference changes when using 'system' theme
+    if (window.matchMedia) {
+      window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+        const current = localStorage.getItem('app_theme') || 'dark';
+        if (current === 'system') {
+          // Re-apply system attribute to trigger CSS media query re-evaluation
+          document.documentElement.setAttribute('data-theme', 'system');
+        }
+      });
+    }
+  }
+
+  /**
+   * Set the app theme and persist to localStorage.
+   * @param {'dark'|'light'|'system'} theme
+   */
+  static setTheme(theme) {
+    const validThemes = ['dark', 'light', 'system'];
+    if (!validThemes.includes(theme)) theme = 'dark';
+    localStorage.setItem('app_theme', theme);
+    document.documentElement.setAttribute('data-theme', theme);
+    window.dispatchEvent(new CustomEvent('theme-changed', { detail: { theme } }));
+  }
+
+  /**
+   * Get the current theme setting.
+   * @returns {'dark'|'light'|'system'}
+   */
+  static getTheme() {
+    return localStorage.getItem('app_theme') || 'dark';
+  }
+
+  /**
+   * Get the resolved theme (what is actually visually applied).
+   * @returns {'dark'|'light'}
+   */
+  static getResolvedTheme() {
+    const theme = App.getTheme();
+    if (theme === 'system') {
+      return window.matchMedia?.('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+    }
+    return theme;
   }
 
   async init() {
@@ -296,6 +351,9 @@ class App {
               <img src="/assets/aether-icon.png" class="logo-img" alt="Logo" style="width:28px;height:28px;border-radius:6px;object-fit:contain;margin-right:8px;border:1px solid var(--border-active);box-shadow:var(--shadow-glow-active);" />
               <span style="font-weight: 800; font-family: var(--font-display); letter-spacing: -0.04em;">The Taste</span>
             </a>
+            <button class="btn-icon" id="btn-theme-toggle" title="Toggle Theme" style="margin-left: 4px; color: var(--text-muted);">
+              <span class="material-symbols-rounded" id="theme-toggle-icon" style="font-size: 18px;">${App.getResolvedTheme() === 'dark' ? 'light_mode' : 'dark_mode'}</span>
+            </button>
             <span class="nextgenos-header-badge" style="background: var(--nextgenos-purple-bg); color: var(--nextgenos-purple); border: 1px solid var(--nextgenos-purple-border); box-shadow: var(--shadow-glow-purple); font-weight: 700; padding: 2px 8px; border-radius: var(--radius-full); font-size: 0.65rem; letter-spacing: 0.08em; text-transform: uppercase;">NextGenOS</span>
             <div class="header-actions">
               <div class="header-printer-status" id="header-staff-display" title="Logged in staff" style="gap:4px;">
@@ -350,6 +408,23 @@ class App {
       }
     });
 
+    // Theme toggle button
+    const themeBtn = document.getElementById('btn-theme-toggle');
+    if (themeBtn) {
+      themeBtn.addEventListener('click', () => {
+        const current = App.getTheme();
+        const cycle = { dark: 'light', light: 'system', system: 'dark' };
+        const next = cycle[current] || 'dark';
+        App.setTheme(next);
+        const icon = document.getElementById('theme-toggle-icon');
+        if (icon) {
+          const resolved = App.getResolvedTheme();
+          icon.textContent = resolved === 'dark' ? 'light_mode' : 'dark_mode';
+        }
+        showToast(`Theme: ${next.charAt(0).toUpperCase() + next.slice(1)}`, 'info');
+      });
+    }
+
     // Logout button
     document.getElementById('btn-logout').addEventListener('click', async () => {
       if (confirm('Are you sure you want to logout?')) {
@@ -402,6 +477,11 @@ class App {
       const { KitchenView } = await import('./views/kitchen/KitchenView.js');
       return new KitchenView(this);
     }, ['owner', 'manager', 'cashier', 'kitchen']);
+
+    router.register('#/pos-kitchen', async () => {
+      const { ExpressView } = await import('./views/express/ExpressView.js');
+      return new ExpressView(this);
+    }, ['owner', 'manager', 'cashier', 'waiter', 'kitchen']);
 
     router.register('#/tables', async () => {
       const { TablesView } = await import('./views/tables/TablesView.js');
@@ -738,8 +818,12 @@ class App {
     if (goKiosk) {
       goKiosk.addEventListener('click', () => {
         import('./utils/helpers.js').then(({ playSound }) => playSound(800, 80));
-        window.location.hash = '#/self-order';
         widget.classList.remove('is-expanded');
+        if (window.location.hash === '#/self-order' || window.location.hash === '') {
+          window.location.reload();
+        } else {
+          window.location.hash = '#/self-order';
+        }
       });
     }
 
