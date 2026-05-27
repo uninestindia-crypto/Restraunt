@@ -206,6 +206,16 @@ export class LoginScreen {
 
   async attemptLogin() {
     try {
+      const lockoutRemaining = authService.getLockoutRemaining();
+      if (lockoutRemaining > 0) {
+        const seconds = Math.ceil(lockoutRemaining / 1000);
+        const errEl = document.getElementById('login-error');
+        if (errEl) errEl.textContent = `Too many attempts. Try again in ${seconds}s.`;
+        this.pinInput = '';
+        this.updateDots();
+        return;
+      }
+
       const staff = await authService.login(this.pinInput);
       if (staff) {
         playSound(900, 100);
@@ -219,7 +229,12 @@ export class LoginScreen {
         const dots = document.querySelectorAll('#login-pin-dots .pin-dot');
         dots.forEach(d => d.classList.add('error'));
         const errEl = document.getElementById('login-error');
-        if (errEl) errEl.textContent = 'Invalid PIN. Try again.';
+        const remaining = authService.getLockoutRemaining();
+        if (errEl) {
+          errEl.textContent = remaining > 0
+            ? `Too many attempts. Try again in ${Math.ceil(remaining / 1000)}s.`
+            : 'Invalid PIN. Try again.';
+        }
         this.pinInput = '';
         setTimeout(() => this.updateDots(), 800);
       }

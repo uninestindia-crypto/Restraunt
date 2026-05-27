@@ -6,22 +6,10 @@ import { hashPin } from '../utils/crypto.js';
  * Checks for existing categories before seeding.
  */
 export async function seedDatabase() {
-  // Ensure default staff exists
+  // Migrate existing staff/admin credentials. New installs use the owner setup wizard.
   try {
     const staffCount = await db.staff.count();
-    if (staffCount === 0) {
-      const ownerPinHash = await hashPin('1234');
-      await db.staff.add({
-        name: 'Owner',
-        role: 'owner',
-        pinHash: ownerPinHash,
-        isActive: 1,
-        createdAt: new Date().toISOString(),
-        isSynced: 0,
-        _platform: 'nextgenos'
-      });
-      console.log('[Seed] Default owner staff seeded.');
-    } else {
+    if (staffCount > 0) {
       const staffMembers = await db.staff.toArray();
       for (const staff of staffMembers) {
         if (staff.pin && !staff.pinHash) {
@@ -33,8 +21,15 @@ export async function seedDatabase() {
         }
       }
     }
+
+    const legacyAdminPin = await db.settings.get('adminPin');
+    const adminPinHash = await db.settings.get('adminPinHash');
+    if (legacyAdminPin?.value && !adminPinHash?.value && legacyAdminPin.value !== '1234') {
+      await db.settings.put({ key: 'adminPinHash', value: await hashPin(legacyAdminPin.value) });
+      await db.settings.delete('adminPin');
+    }
   } catch (err) {
-    console.error('[Seed] Failed to seed default staff:', err);
+    console.error('[Seed] Failed to migrate staff credentials:', err);
   }
 
   // Ensure default tables exist
@@ -189,7 +184,6 @@ export async function seedDatabase() {
       { key: 'upiName', value: 'The Taste' },
       { key: 'gstPercent', value: '5' },
       { key: 'printerWidth', value: '58' },
-      { key: 'adminPin', value: '1234' },
       { key: 'orderNumberPrefix', value: 'TT' },
     ];
 

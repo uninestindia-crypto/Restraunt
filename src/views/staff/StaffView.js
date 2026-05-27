@@ -19,6 +19,7 @@ const ROLES = {
   cashier: { label: 'Cashier', color: '#10B981' },
   kitchen: { label: 'Kitchen', color: '#F59E0B' },
   waiter: { label: 'Waiter', color: '#3B82F6' },
+  delivery: { label: 'Delivery', color: '#06B6D4' },
 };
 
 export class StaffView {
@@ -26,17 +27,9 @@ export class StaffView {
 
   async mount(container) {
     this.container = container;
-    await this.seedDefault();
     this.render();
     this.bindEvents();
     await this.loadData();
-  }
-
-  async seedDefault() {
-    const count = await db.staff.count();
-    if (count === 0) {
-      await db.staff.add({ name: 'Owner', role: 'owner', pinHash: '03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4', isActive: true, createdAt: new Date().toISOString(), isSynced: 0, _platform: 'nextgenos' });
-    }
   }
 
   render() {
@@ -67,6 +60,7 @@ export class StaffView {
               <option value="cashier">Cashier</option>
               <option value="kitchen">Kitchen Staff</option>
               <option value="waiter">Waiter</option>
+              <option value="delivery">Delivery Staff</option>
               <option value="manager">Manager</option>
               <option value="owner">Owner</option>
             </select>

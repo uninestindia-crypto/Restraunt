@@ -52,6 +52,37 @@ export function formatDateTime(date) {
 }
 
 /**
+ * Escape untrusted text before placing it inside HTML templates.
+ * @param {unknown} value
+ * @returns {string}
+ */
+export function escapeHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+/**
+ * Parse the app's historical order item shapes safely.
+ * @param {string|Array|unknown} items
+ * @returns {Array}
+ */
+export function parseOrderItems(items) {
+  if (Array.isArray(items)) return items;
+  if (typeof items !== 'string' || !items.trim()) return [];
+  try {
+    const parsed = JSON.parse(items);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (error) {
+    console.warn('[Helpers] Failed to parse order items:', error);
+    return [];
+  }
+}
+
+/**
  * Debounce a function call.
  * @param {Function} fn - Function to debounce
  * @param {number} ms - Delay in milliseconds
@@ -85,10 +116,15 @@ export function showToast(message, type = 'info', duration = 3000) {
     info: 'info'
   };
 
-  toast.innerHTML = `
-    <span class="material-symbols-rounded toast-icon">${icons[type] || 'info'}</span>
-    <span class="toast-message">${message}</span>
-  `;
+  const icon = document.createElement('span');
+  icon.className = 'material-symbols-rounded toast-icon';
+  icon.textContent = icons[type] || 'info';
+
+  const text = document.createElement('span');
+  text.className = 'toast-message';
+  text.textContent = String(message ?? '');
+
+  toast.append(icon, text);
 
   container.appendChild(toast);
 

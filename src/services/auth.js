@@ -13,6 +13,8 @@ import { hashPin } from '../utils/crypto.js';
 
 /** 8-hour session duration in milliseconds */
 const SESSION_DURATION_MS = 8 * 60 * 60 * 1000;
+const LOCKOUT_MAX_ATTEMPTS = 5;
+const LOCKOUT_DURATION_MS = 5 * 60 * 1000;
 
 class AuthService {
   constructor() {
@@ -52,8 +54,14 @@ class AuthService {
   async login(pin) {
     if (!pin) return null;
     try {
+      if (this.getLockoutRemaining() > 0) {
+        console.warn('[AuthService] Login blocked by PIN lockout.');
+        return null;
+      }
+
       const staff = await this.getStaffByPin(pin);
       if (!staff) {
+        this.recordFailedAttempt();
         console.warn('[AuthService] Login failed: no active staff found.');
         return null;
       }
@@ -64,6 +72,8 @@ class AuthService {
       this.currentStaff = staff;
       this.isAuthenticated = true;
       localStorage.setItem('auth_staff_pin', hashedPin);
+      localStorage.removeItem('auth_failed_attempts');
+      localStorage.removeItem('auth_lockout_until');
 
       // Start session expiry timer (8 hours)
       this._startSessionTimer();
@@ -145,6 +155,25 @@ class AuthService {
    */
   requireAuth() {
     return this.isAuthenticated;
+  }
+
+  getLockoutRemaining() {
+    const lockoutUntil = parseInt(localStorage.getItem('auth_lockout_until') || '0', 10);
+    const remaining = lockoutUntil - Date.now();
+    if (remaining <= 0) {
+      localStorage.removeItem('auth_lockout_until');
+      return 0;
+    }
+    return remaining;
+  }
+
+  recordFailedAttempt() {
+    const attempts = parseInt(localStorage.getItem('auth_failed_attempts') || '0', 10) + 1;
+    localStorage.setItem('auth_failed_attempts', String(attempts));
+    if (attempts >= LOCKOUT_MAX_ATTEMPTS) {
+      localStorage.setItem('auth_lockout_until', String(Date.now() + LOCKOUT_DURATION_MS));
+      localStorage.setItem('auth_failed_attempts', '0');
+    }
   }
 
   /**

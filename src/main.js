@@ -34,6 +34,7 @@ import { Sidebar } from './components/Sidebar.js';
 // Auth
 import { authService } from './services/auth.js';
 import { LoginScreen } from './components/LoginScreen.js';
+import { FirstRunSetup } from './components/FirstRunSetup.js';
 
 class App {
   constructor() {
@@ -74,10 +75,25 @@ class App {
         showToast('Session expired. Please log in again.', 'warning');
       });
 
-      // Customer self-order must be reachable from public links without staff PIN.
-      const initialPath = (window.location.hash || '#/pos').split('?')[0];
+      // Public website entry opens customer ordering. Staff use explicit staff routes.
+      const initialHash = window.location.hash || '#/self-order';
+      const initialPath = initialHash.split('?')[0];
+      if (!window.location.hash) {
+        window.location.hash = '#/self-order';
+      }
       if (initialPath === '#/self-order') {
         this.startPublicRoute();
+        return;
+      }
+
+      const activeOwner = await db.staff
+        .where('role')
+        .equals('owner')
+        .and(staff => staff.isActive === 1 || staff.isActive === true)
+        .first();
+
+      if (!activeOwner) {
+        this.showFirstRunSetup();
         return;
       }
 
@@ -124,6 +140,15 @@ class App {
       this.onLoginSuccess(staff);
     });
     this.loginScreen.render(appEl);
+  }
+
+  showFirstRunSetup() {
+    const appEl = document.getElementById('app');
+    appEl.innerHTML = '';
+    const setup = new FirstRunSetup(() => {
+      this.showLogin();
+    });
+    setup.render(appEl);
   }
 
   async onLoginSuccess(staff) {

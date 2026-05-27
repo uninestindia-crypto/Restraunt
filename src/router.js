@@ -47,7 +47,7 @@ export class Router {
    * Handle route change
    */
   async handleRoute() {
-    const fullHash = window.location.hash || '#/pos';
+    const fullHash = window.location.hash || '#/self-order';
     const path = fullHash.split('?')[0];
 
     // Don't re-render same view
@@ -56,8 +56,8 @@ export class Router {
     // Check if route exists
     const routeConfig = this.routes[path];
     if (!routeConfig) {
-      // Fallback to POS view
-      this.navigate('#/pos');
+      // Fallback to the public customer ordering entry.
+      this.navigate('#/self-order');
       return;
     }
 
@@ -146,7 +146,7 @@ export class Router {
    * Get current route hash
    */
   getCurrentRoute() {
-    const hash = window.location.hash || '#/pos';
+    const hash = window.location.hash || '#/self-order';
     return hash.split('?')[0];
   }
 
@@ -159,4 +159,3 @@ export class Router {
 }
 
 export const router = new Router();
-
