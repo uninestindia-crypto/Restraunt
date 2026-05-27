@@ -778,7 +778,7 @@ export class SettingsView {
                 border: 1px solid var(--border-glass);
                 background: rgba(255,255,255,0.02);
               ">
-                <span class="material-symbols-rounded" style="font-size: 18px;">sync_saved_locally</span>
+                <span class="material-symbols-rounded" style="font-size: 18px;">sync</span>
                 Test Cloud Connection
               </button>
               <button class="btn btn-primary" id="btn-cloud-signin" style="

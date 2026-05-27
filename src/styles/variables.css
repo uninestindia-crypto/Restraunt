@@ -33,6 +33,7 @@
   /* ── Dark Mode Core Palette (NextGenOS Obsidian & Titanium) ── */
   --bg-primary: #040406; /* Apple-level pure obsidian depth */
   --bg-surface: #0B0B0F; /* Layered titanium-graphite */
+  --bg-secondary: #0E0E14; /* Slightly elevated dark surface for modals and dialog cards */
   --bg-card: rgba(255, 255, 255, 0.02); /* Extremely thin card backdrop */
   --bg-card-hover: rgba(255, 255, 255, 0.05);
   --bg-input: rgba(255, 255, 255, 0.01);
