@@ -1,4 +1,4 @@
-﻿/* ============================================
+/* ============================================
    THE TASTE — Component Library
    Premium UI components with micro-animations
    ============================================ */
@@ -368,7 +368,9 @@
   overflow-y: auto;
   max-height: calc(90vh - 140px);
   flex: 1;
+  min-height: 0; /* Highly critical for flexbox scrollability */
 }
+
 
 .modal-footer {
   padding: 16px 24px;
@@ -698,3 +700,22 @@ textarea.input {
   transform: translateX(20px);
   background: #FFFFFF;
 }
+
+/* Smartphone keyboard & small screens override */
+@media (max-width: 768px) {
+  .modal-overlay {
+    align-items: flex-end; /* Elegant slide-up sheet aesthetic on mobile */
+    padding: 0;
+  }
+  .modal {
+    max-height: 80vh !important;
+    max-height: 80dvh !important;
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0 !important;
+    margin: 0 !important;
+  }
+  .modal-body {
+    max-height: calc(80vh - 120px) !important;
+    max-height: calc(80dvh - 120px) !important;
+  }
+}
+
