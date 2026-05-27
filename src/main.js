@@ -106,18 +106,9 @@ class App {
 
       const authService = await this.getAuthService();
 
-      const activeOwner = await db.staff
-        .where('role')
-        .equals('owner')
-        .and(staff => staff.isActive === 1 || staff.isActive === true)
-        .first();
-
-      if (!activeOwner) {
-        this.showFirstRunSetup();
-        return;
-      }
-
-      // Check for persistent session
+      // Check for persistent session first (both staff PIN, and Supabase Auth cloud user)
+      // This ensures that on a new device, we restore the cloud session first which pulls
+      // the latest synced staff members before deciding to show FirstRunSetup.
       let autoLoggedIn = false;
       try {
         const staff = await authService.restoreSession();
@@ -129,10 +120,25 @@ class App {
         console.error('[App] Auto-login failed:', e);
       }
 
-      if (!autoLoggedIn) {
-        // Show login screen
-        this.showLogin();
+      if (autoLoggedIn) {
+        return;
       }
+
+      // Verify if we have an active owner in the local database.
+      // If we don't, we show first-run setup.
+      const activeOwner = await db.staff
+        .where('role')
+        .equals('owner')
+        .and(staff => staff.isActive === 1 || staff.isActive === true)
+        .first();
+
+      if (!activeOwner) {
+        this.showFirstRunSetup();
+        return;
+      }
+
+      // Show login screen
+      this.showLogin();
     } catch (error) {
       console.error('Failed to initialize app:', error);
       this.showFatalError(error);

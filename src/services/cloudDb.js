@@ -293,9 +293,19 @@ export async function fullPull(options = {}) {
       const localStaff = staff.map(mapStaffToLocal);
       await db.transaction('rw', db.staff, async () => {
         for (const s of localStaff) {
-          const existing = await db.staff.where('name').equals(s.name).first();
-          if (existing) {
-            s.id = existing.id; // Keep local ID
+          let existing = null;
+          if (s.cloudUserId) {
+            existing = await db.staff.where('cloudUserId').equals(s.cloudUserId).first();
+          }
+          if (!existing) {
+            existing = await db.staff.where('name').equals(s.name).first();
+          }
+          if (!existing) {
+            existing = await db.staff.get(s.id);
+          }
+
+          if (existing && existing.id !== s.id) {
+            await db.staff.delete(existing.id);
           }
           await db.staff.put(s);
         }

@@ -79,15 +79,55 @@ class AuthService {
     const name = user.user_metadata?.name || userEmail.split('@')[0] || 'Cloud User';
 
     if (isStaff) {
-      // Build and insert a staff profile locally
+      // SECURITY: When linking a cloud user to a local staff record, we must
+      // PRESERVE the existing pinHash. Creating a new pinHash-less record would
+      // allow cloud-session restore to bypass PIN authentication.
+
+      // First: try to find an existing local record by the resolved Supabase staff ID
+      let existingRecord = null;
+      if (resolvedStaffId) {
+        existingRecord = await db.staff.get(resolvedStaffId);
+      }
+
+      // Second: try to find by cloud user ID (already linked)
+      if (!existingRecord) {
+        existingRecord = await db.staff
+          .where('cloudUserId')
+          .equals(user.id)
+          .first();
+      }
+
+      // Third: try to find by name matching (case-insensitive)
+      if (!existingRecord) {
+        existingRecord = await db.staff
+          .filter(s => s.name.toLowerCase() === name.toLowerCase())
+          .first();
+      }
+
+      if (existingRecord) {
+        // Update only the cloudUserId link — never overwrite pinHash or role
+        await db.staff.update(existingRecord.id, {
+          cloudUserId: user.id,
+          isSynced: existingRecord.isSynced
+        });
+        staff = { ...existingRecord, cloudUserId: user.id };
+        return staff;
+      }
+
+      // No existing local record — create a minimal one so the session is tracked.
+      // NOTE: This record has NO pinHash intentionally. Cloud-session restore will
+      // only allow this user to log in via cloud (email+password), not via local PIN.
+      // The fullPull on next sync will hydrate the full record including pinHash.
       const tempId = resolvedStaffId || Date.now();
       staff = {
         id: tempId,
         name,
         role: resolvedRole.toLowerCase(),
         cloudUserId: user.id,
-        isActive: true,
-        createdAt: new Date().toISOString()
+        pinHash: null, // explicitly null — no PIN bypass possible
+        isActive: 1,
+        createdAt: new Date().toISOString(),
+        isSynced: 1
       };
       await db.staff.put(staff);
       return staff;
