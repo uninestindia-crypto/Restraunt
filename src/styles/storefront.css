@@ -45,7 +45,7 @@
   background-image:
     linear-gradient(90deg, rgba(10, 8, 7, 0.94) 0%, rgba(10, 8, 7, 0.70) 38%, rgba(10, 8, 7, 0.08) 74%),
     linear-gradient(180deg, rgba(10, 8, 7, 0.35), rgba(10, 8, 7, 0.20)),
-    url('/assets/the-taste-hero.png');
+    url('/assets/the-taste-hero.jpg');
   background-size: cover;
   background-position: center;
 }
@@ -923,7 +923,7 @@
     background-image:
       linear-gradient(90deg, rgba(10, 8, 7, 0.96) 0%, rgba(10, 8, 7, 0.84) 48%, rgba(10, 8, 7, 0.36) 100%),
       linear-gradient(180deg, rgba(10, 8, 7, 0.28), rgba(10, 8, 7, 0.34)),
-      url('/assets/the-taste-hero.png');
+      url('/assets/the-taste-hero.jpg');
     background-size: auto 100%;
     background-position: 78% bottom;
   }

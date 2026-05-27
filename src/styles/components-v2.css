@@ -683,12 +683,10 @@ textarea.input {
   width: 44px;
   height: 24px;
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1.5px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1.5px solid rgba(255, 255, 255, 0.06);
   position: relative;
-  transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1),
-              background-color 0.25s ease,
-              border-color 0.25s ease;
+  transition: var(--transition-spring-all);
   cursor: pointer;
   flex-shrink: 0;
 }
@@ -702,13 +700,13 @@ textarea.input {
   background: var(--text-secondary);
   top: 2.5px;
   left: 3px;
-  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), background-color 0.25s ease;
+  transition: var(--transition-spring-all);
 }
 
 .toggle.active {
   background: var(--color-primary);
-  border-color: rgba(255, 255, 255, 0.1);
-  box-shadow: 0 0 10px rgba(var(--color-primary-rgb), 0.3);
+  border-color: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 0 14px rgba(var(--color-primary-rgb), 0.35);
 }
 
 .toggle.active::after {
@@ -717,10 +715,10 @@ textarea.input {
 }
 
 .toggle-container:hover .toggle {
-  border-color: rgba(255, 255, 255, 0.2);
-  transform: scale(1.05);
+  border-color: rgba(255, 255, 255, 0.18);
+  transform: scale(1.06);
 }
 
 .toggle-container:active .toggle {
-  transform: scale(0.95);
+  transform: scale(0.94);
 }
