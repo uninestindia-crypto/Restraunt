@@ -3,7 +3,7 @@
  */
 
 import { db } from '../../db/database.js';
-import { formatCurrency, showToast, playSound, vibrateDevice } from '../../utils/helpers.js';
+import { escapeHtml, formatCurrency, showToast, playSound, vibrateDevice } from '../../utils/helpers.js';
 
 export class MenuManager {
   constructor(app) {
@@ -88,8 +88,8 @@ export class MenuManager {
 
       return `
         <tr style="border-bottom: 1px solid var(--border-glass); font-size: var(--text-sm); transition: background var(--transition-fast);">
-          <td style="padding: 16px 20px; font-weight: 600; color: var(--text-primary);">${item.name}</td>
-          <td style="padding: 16px 20px; color: var(--text-secondary); font-weight: 500;">${catName}</td>
+          <td style="padding: 16px 20px; font-weight: 600; color: var(--text-primary);">${escapeHtml(item.name)}</td>
+          <td style="padding: 16px 20px; color: var(--text-secondary); font-weight: 500;">${escapeHtml(catName)}</td>
           <td style="padding: 16px 20px; font-weight: 700; color: var(--color-primary);">${formatCurrency(item.price)}</td>
           <td style="padding: 16px 20px;">
             <span class="badge ${vegClass}" style="
@@ -190,7 +190,7 @@ export class MenuManager {
 
       return `
         <tr style="border-bottom: 1px solid var(--border-glass); font-size: var(--text-sm); transition: background var(--transition-fast);">
-          <td style="padding: 16px 20px; font-weight: 600; color: var(--text-primary);">${cat.name}</td>
+          <td style="padding: 16px 20px; font-weight: 600; color: var(--text-primary);">${escapeHtml(cat.name)}</td>
           <td style="padding: 16px 20px; color: var(--text-secondary); font-weight: 500;">${cat.sortOrder}</td>
           <td style="padding: 16px 20px;">
             <span class="badge ${activeClass}" style="
@@ -380,8 +380,8 @@ export class MenuManager {
           
           <div class="modal-body scrollbar-none" style="display:flex; flex-direction:column; gap:18px; padding: 24px; max-height: 70vh; overflow-y: auto;">
             <div class="input-group">
-              <label for="item-name" style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: var(--text-xs); color: var(--text-secondary); margin-bottom: 8px; display: block; text-transform: uppercase; letter-spacing: 0.05em;">Item Name</label>
-              <input type="text" id="item-name" class="input" value="${this.editingItem.name}" placeholder="e.g. Schezwan Noodles" style="
+              <label class="login-label" for="item-name">Item Name</label>
+              <input type="text" id="item-name" class="input" value="${escapeHtml(this.editingItem.name)}" placeholder="e.g. Schezwan Noodles" style="
                 background: rgba(0,0,0,0.25);
                 border: 1px solid var(--border-glass);
                 color: var(--text-primary);
@@ -411,7 +411,7 @@ export class MenuManager {
                 outline: none;
                 transition: border var(--transition-fast);
               ">
-                ${this.categories.map(c => `<option value="${c.id}" ${c.id === this.editingItem.categoryId ? 'selected' : ''}>${c.name}</option>`).join('')}
+                ${this.categories.map(c => `<option value="${c.id}" ${c.id === this.editingItem.categoryId ? 'selected' : ''}>${escapeHtml(c.name)}</option>`).join('')}
               </select>
             </div>
 
@@ -603,8 +603,8 @@ export class MenuManager {
           
           <div class="modal-body scrollbar-none" style="display:flex; flex-direction:column; gap:18px; padding: 24px; max-height: 70vh; overflow-y: auto;">
             <div class="input-group">
-              <label for="cat-name" style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: var(--text-xs); color: var(--text-secondary); margin-bottom: 8px; display: block; text-transform: uppercase; letter-spacing: 0.05em;">Category Name</label>
-              <input type="text" id="cat-name" class="input" value="${this.editingCategory.name}" placeholder="e.g. Starter Momos" style="
+              <label class="login-label" for="cat-name">Category Name</label>
+              <input type="text" id="cat-name" class="input" value="${escapeHtml(this.editingCategory.name)}" placeholder="e.g. Starter Momos" style="
                 background: rgba(0,0,0,0.25);
                 border: 1px solid var(--border-glass);
                 color: var(--text-primary);
