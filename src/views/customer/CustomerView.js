@@ -163,13 +163,12 @@ export class CustomerView {
           <div class="store-hero-bg" aria-hidden="true"></div>
           <header class="store-nav">
             <a class="store-brand" href="#/self-order">
-              <span class="store-brand-mark">TT</span>
+              <img src="/assets/aether-icon.png" class="store-brand-mark" alt="The Taste Logo" style="object-fit:contain;padding:2px;background:#fff;" />
               <div>THE TASTE</div>
             </a>
             <nav class="store-nav-links" aria-label="Public navigation">
               <a href="#menu">Menu</a>
-              <a href="#order-options">Order</a>
-              <a href="${phoneLink}">Call</a>
+              <a href="#loyalty" id="nav-loyalty-btn" style="color:#D4AF37;font-weight:700;"><span class="material-symbols-rounded" style="font-size:16px;vertical-align:middle;margin-right:2px;">star</span>Rewards</a>
               <a href="#/pos" class="store-staff-link">Staff</a>
             </nav>
           </header>
@@ -262,7 +261,7 @@ export class CustomerView {
     const cartItem = this.cart.find(ci => ci.itemId === item.id);
     const qty = cartItem?.quantity || 0;
     return `
-      <article class="store-menu-item ${qty ? 'is-selected' : ''}">
+      <article class="store-menu-item ${qty ? 'is-selected' : ''}" data-id="${item.id}">
         <img class="store-menu-item-image" src="${this.getItemImage(item)}" alt="${escapeHtml(item.name)}" width="640" height="420" loading="lazy" decoding="async">
         <div class="store-menu-item-body">
           <div class="store-menu-item-title">
@@ -295,7 +294,7 @@ export class CustomerView {
 
   renderFeaturedItem(item) {
     return `
-      <button class="store-featured-item btn-add" data-id="${item.id}" type="button" aria-label="Add ${escapeHtml(item.name)}">
+      <button class="store-featured-item" data-id="${item.id}" type="button" aria-label="Add ${escapeHtml(item.name)}">
         <img src="${this.getItemImage(item)}" alt="" width="640" height="420" loading="lazy" decoding="async">
         <span>${escapeHtml(item.name)}</span>
         <strong>${formatCurrency(item.price)}</strong>
@@ -348,21 +347,58 @@ export class CustomerView {
       this.container.querySelector('#menu')?.scrollIntoView({ block: 'start' });
     });
 
-    this.container.querySelectorAll('.btn-add').forEach(btn => {
+    // Card click opens the premium detail drawer
+    this.container.querySelectorAll('.store-menu-item').forEach(card => {
+      card.addEventListener('click', (e) => {
+        if (e.target.closest('.stepper') || e.target.closest('.btn-step')) {
+          return;
+        }
+        const id = parseInt(card.dataset.id, 10);
+        const item = this.findItemById(id);
+        if (item) {
+          this.openItemDetailsDrawer(item);
+        }
+      });
+    });
+
+    this.container.querySelectorAll('.store-featured-item').forEach(btn => {
       btn.addEventListener('click', () => {
-        const item = this.findItemById(parseInt(btn.dataset.id, 10));
-        if (item) this.addToCart(item);
+        const id = parseInt(btn.dataset.id, 10);
+        const item = this.findItemById(id);
+        if (item) {
+          this.openItemDetailsDrawer(item);
+        }
+      });
+    });
+
+    this.container.querySelectorAll('.store-add-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const id = parseInt(btn.dataset.id, 10);
+        const item = this.findItemById(id);
+        if (item) {
+          this.openItemDetailsDrawer(item);
+        }
       });
     });
 
     this.container.querySelectorAll('.btn-step').forEach(btn => {
-      btn.addEventListener('click', () => this.adjustCart(parseInt(btn.dataset.id, 10), btn.dataset.action === 'plus' ? 1 : -1));
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.adjustCart(parseInt(btn.dataset.id, 10), btn.dataset.action === 'plus' ? 1 : -1);
+      });
     });
 
     this.container.querySelector('#btn-view-cart')?.addEventListener('click', () => {
       this.state = 'cart';
       playSound(800, 80);
       this.render();
+    });
+
+    this.container.querySelector('#nav-loyalty-btn')?.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      this.openLoyaltyDrawer();
     });
   }
 
@@ -530,11 +566,19 @@ export class CustomerView {
 
     this.container.innerHTML = `
       <div class="store-success-shell">
-        <div class="store-success-panel">
-          <div class="store-success-icon">
-            <span class="material-symbols-rounded" aria-hidden="true">check_circle</span>
+        <div class="store-success-panel animate-fade-in">
+          <div class="aether-telemetry-ring-wrapper">
+            <svg class="aether-telemetry-svg" viewBox="0 0 100 100">
+              <circle cx="50" cy="50" r="40" class="aether-track" />
+              <circle cx="50" cy="50" r="40" class="aether-fill" id="telemetry-ring-fill" />
+            </svg>
+            <div class="aether-telemetry-ring-label">
+              <span class="material-symbols-rounded" id="telemetry-ring-icon">receipt</span>
+              <strong id="telemetry-ring-percentage">15%</strong>
+              <small id="telemetry-ring-step">Received</small>
+            </div>
           </div>
-          <p class="store-kicker">Order Confirmed</p>
+          <p class="store-kicker">Live Order Telemetry</p>
           <h1>Thank you, ${escapeHtml(order.customerName || 'guest')}</h1>
           <p>${escapeHtml(deliveryText)}</p>
           <div class="store-token">
@@ -588,10 +632,50 @@ export class CustomerView {
 
   startOrderPoll() {
     if (!this.placedOrder) return;
-    this.pollInterval = setInterval(async () => {
-      const latest = await db.orders.get(this.placedOrder.id);
-      if (!latest) return;
-      this.placedOrder = latest;
+
+    const updateTelemetry = (latest) => {
+      const fillEl = this.container?.querySelector('#telemetry-ring-fill');
+      const percentageEl = this.container?.querySelector('#telemetry-ring-percentage');
+      const stepEl = this.container?.querySelector('#telemetry-ring-step');
+      const iconEl = this.container?.querySelector('#telemetry-ring-icon');
+
+      let percentage = 15;
+      let label = 'Received';
+      let icon = 'receipt';
+
+      const orderStatus = (latest.status || 'pending').toLowerCase();
+      const delivStatus = (latest.deliveryStatus || 'pending').toLowerCase();
+
+      if (orderStatus === 'confirmed') {
+        percentage = 30;
+        label = 'Confirmed';
+        icon = 'thumb_up';
+      } else if (orderStatus === 'preparing' || orderStatus === 'cooking') {
+        percentage = 60;
+        label = 'Cooking';
+        icon = 'skillet';
+      } else if (orderStatus === 'plated' || orderStatus === 'ready') {
+        percentage = 85;
+        label = 'Plated';
+        icon = 'room_service';
+      } else if (orderStatus === 'dispatched' || delivStatus === 'dispatched' || delivStatus === 'out_for_delivery') {
+        percentage = 92;
+        label = 'En Route';
+        icon = 'local_shipping';
+      } else if (orderStatus === 'completed' || orderStatus === 'served' || delivStatus === 'delivered') {
+        percentage = 100;
+        label = 'Served';
+        icon = 'check_circle';
+      }
+
+      if (fillEl) {
+        const offset = 251.2 - (percentage / 100) * 251.2;
+        fillEl.style.strokeDashoffset = offset;
+      }
+      if (percentageEl) percentageEl.textContent = `${percentage}%`;
+      if (stepEl) stepEl.textContent = label;
+      if (iconEl && iconEl.textContent !== icon) iconEl.textContent = icon;
+
       const status = this.container?.querySelector('#prep-status');
       if (status) {
         const parts = [];
@@ -601,6 +685,17 @@ export class CustomerView {
         if (latest.paymentStatus === 'paid') parts.push('Payment verified');
         status.textContent = parts.join(' | ');
       }
+    };
+
+    db.orders.get(this.placedOrder.id).then(latest => {
+      if (latest) updateTelemetry(latest);
+    });
+
+    this.pollInterval = setInterval(async () => {
+      const latest = await db.orders.get(this.placedOrder.id);
+      if (!latest) return;
+      this.placedOrder = latest;
+      updateTelemetry(latest);
     }, 3000);
   }
 
@@ -610,7 +705,10 @@ export class CustomerView {
         <button class="btn-icon btn-secondary" id="${backId}" type="button" aria-label="Go back">
           <span class="material-symbols-rounded" aria-hidden="true">arrow_back</span>
         </button>
-        <a href="#/self-order" class="store-subheader-brand">THE TASTE</a>
+        <a href="#/self-order" class="store-subheader-brand">
+          <img src="/assets/aether-icon.png" class="store-brand-mark" style="width:24px;height:24px;border-radius:4px;object-fit:contain;background:#fff;margin-right:4px;" alt="Logo" />
+          THE TASTE
+        </a>
         <h2>${escapeHtml(title)}</h2>
       </header>
     `;
@@ -854,6 +952,474 @@ export class CustomerView {
     } catch (error) {
       console.error('Loyalty update failed:', error);
     }
+  }
+
+  openItemDetailsDrawer(item) {
+    playSound(600, 70);
+    vibrateDevice([15]);
+
+    const overlay = document.createElement('div');
+    overlay.className = 'aether-drawer-overlay';
+    overlay.id = 'item-detail-drawer';
+
+    const isVeg = item.isVeg ? 'veg' : 'nonveg';
+
+    overlay.innerHTML = `
+      <div class="aether-drawer-sheet">
+        <div class="aether-drawer-handle"></div>
+        <button class="aether-drawer-close-btn" type="button" aria-label="Close">
+          <span class="material-symbols-rounded">close</span>
+        </button>
+
+        <div class="aether-drawer-scroll-content">
+          <div class="aether-drawer-hero-wrapper">
+            <img class="aether-drawer-hero-img" src="${this.getItemImage(item)}" alt="${escapeHtml(item.name)}" />
+            <span class="store-food-mark ${isVeg}" style="position:absolute;top:16px;right:16px;z-index:2;box-shadow:0 4px 10px rgba(0,0,0,0.3);"></span>
+          </div>
+
+          <div class="aether-drawer-body">
+            <div class="aether-drawer-header">
+              <h2>${escapeHtml(item.name)}</h2>
+              <span class="aether-drawer-price">${formatCurrency(item.price)}</span>
+            </div>
+            <p class="aether-drawer-desc">${escapeHtml(this.getItemDescription(item))}</p>
+
+            <div class="aether-drawer-section">
+              <h3>Spicy Level</h3>
+              <div class="aether-spicy-grid">
+                <label class="aether-spicy-option">
+                  <input type="radio" name="spicy-level" value="Mild" checked />
+                  <span class="aether-spicy-card">
+                    <span class="material-symbols-rounded" style="color:#10B981;">nature</span>
+                    <strong>Mild</strong>
+                    <small>Default prep</small>
+                  </span>
+                </label>
+                <label class="aether-spicy-option">
+                  <input type="radio" name="spicy-level" value="Hot" />
+                  <span class="aether-spicy-card">
+                    <span class="material-symbols-rounded" style="color:#F59E0B;">local_fire_department</span>
+                    <strong>Hot</strong>
+                    <small>Chef spicy</small>
+                  </span>
+                </label>
+                <label class="aether-spicy-option">
+                  <input type="radio" name="spicy-level" value="Volcanic" />
+                  <span class="aether-spicy-card">
+                    <span class="material-symbols-rounded" style="color:#EF4444;">volcano</span>
+                    <strong>Volcanic</strong>
+                    <small>Extra high heat</small>
+                  </span>
+                </label>
+              </div>
+            </div>
+
+            <div class="aether-drawer-section">
+              <h3>Culinary Modifiers</h3>
+              <div class="aether-modifiers-list">
+                <label class="aether-modifier-item">
+                  <input type="checkbox" name="modifier" value="Extra Cheese" />
+                  <span class="aether-checkbox-visual"></span>
+                  <div class="aether-modifier-label">
+                    <strong>Extra Melted Cheese</strong>
+                    <small>Rich visual pull (+${formatCurrency(30)})</small>
+                  </div>
+                </label>
+                <label class="aether-modifier-item">
+                  <input type="checkbox" name="modifier" value="Gluten Free" />
+                  <span class="aether-checkbox-visual"></span>
+                  <div class="aether-modifier-label">
+                    <strong>Gluten Free Preparation</strong>
+                    <small>Organic substitute ingredients</small>
+                  </div>
+                </label>
+                <label class="aether-modifier-item">
+                  <input type="checkbox" name="modifier" value="No Onions" />
+                  <span class="aether-checkbox-visual"></span>
+                  <div class="aether-modifier-label">
+                    <strong>No Onions or Garlic</strong>
+                    <small>Classic customization</small>
+                  </div>
+                </label>
+              </div>
+            </div>
+
+            <div class="aether-drawer-section">
+              <h3>Special Kitchen Notes</h3>
+              <textarea id="drawer-kitchen-instructions" class="aether-textarea" rows="2" placeholder="E.g. Make it extra crispy, packing sauce separately..."></textarea>
+            </div>
+          </div>
+        </div>
+
+        <div class="aether-drawer-action-bar">
+          <div class="aether-drawer-quantity-stepper">
+            <button class="aether-qty-btn minus" type="button">-</button>
+            <span class="aether-qty-count">1</span>
+            <button class="aether-qty-btn plus" type="button">+</button>
+          </div>
+          <button class="btn btn-primary" id="drawer-add-to-cart-btn" type="button" style="flex:1;height:48px;font-weight:800;border-radius:var(--radius-md);">
+            Add to Cart — ${formatCurrency(item.price)}
+          </button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(overlay);
+
+    requestAnimationFrame(() => {
+      overlay.classList.add('is-open');
+    });
+
+    let qty = 1;
+    const qtyCountEl = overlay.querySelector('.aether-qty-count');
+    const addToCartBtn = overlay.querySelector('#drawer-add-to-cart-btn');
+
+    const updateDrawerButton = () => {
+      qtyCountEl.textContent = qty;
+      let modCost = 0;
+      const extraCheeseChecked = overlay.querySelector('input[value="Extra Cheese"]').checked;
+      if (extraCheeseChecked) modCost += 30;
+
+      const totalPrice = (item.price + modCost) * qty;
+      addToCartBtn.textContent = `Add to Cart — ${formatCurrency(totalPrice)}`;
+    };
+
+    overlay.querySelector('.aether-qty-btn.minus').addEventListener('click', () => {
+      if (qty > 1) {
+        qty--;
+        playSound(600, 60);
+        updateDrawerButton();
+      }
+    });
+
+    overlay.querySelector('.aether-qty-btn.plus').addEventListener('click', () => {
+      qty++;
+      playSound(650, 70);
+      updateDrawerButton();
+    });
+
+    overlay.querySelectorAll('input[name="modifier"]').forEach(checkbox => {
+      checkbox.addEventListener('change', () => {
+        playSound(620, 60);
+        updateDrawerButton();
+      });
+    });
+
+    const closeDrawer = () => {
+      overlay.classList.remove('is-open');
+      playSound(550, 60);
+      setTimeout(() => {
+        overlay.remove();
+      }, 300);
+    };
+
+    overlay.querySelector('.aether-drawer-close-btn').addEventListener('click', closeDrawer);
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) closeDrawer();
+    });
+
+    addToCartBtn.addEventListener('click', () => {
+      const spicyLevel = overlay.querySelector('input[name="spicy-level"]:checked').value;
+      const modifiers = Array.from(overlay.querySelectorAll('input[name="modifier"]:checked')).map(cb => cb.value);
+      const customNotes = overlay.querySelector('#drawer-kitchen-instructions').value.trim();
+
+      let modCost = 0;
+      if (modifiers.includes('Extra Cheese')) modCost += 30;
+      const finalPrice = item.price + modCost;
+
+      let consolidatedNotes = `Spicy: ${spicyLevel}`;
+      if (modifiers.length > 0) consolidatedNotes += ` | Mods: ${modifiers.join(', ')}`;
+      if (customNotes) consolidatedNotes += ` | Note: ${customNotes}`;
+
+      const existingIndex = this.cart.findIndex(ci => ci.itemId === item.id && ci.notes === consolidatedNotes);
+      if (existingIndex !== -1) {
+        this.cart[existingIndex].quantity += qty;
+      } else {
+        this.cart.push({
+          itemId: item.id,
+          itemName: item.name,
+          price: finalPrice,
+          quantity: qty,
+          isVeg: item.isVeg,
+          notes: consolidatedNotes
+        });
+      }
+
+      playSound(900, 100);
+      vibrateDevice([40, 20, 40]);
+      showToast(`${item.name} added to cart!`, 'success');
+
+      closeDrawer();
+      this.render();
+    });
+  }
+
+  async openLoyaltyDrawer() {
+    playSound(600, 70);
+    vibrateDevice([15]);
+
+    const overlay = document.createElement('div');
+    overlay.className = 'aether-drawer-overlay';
+    overlay.id = 'crm-loyalty-drawer';
+
+    overlay.innerHTML = `
+      <div class="aether-drawer-sheet crm-drawer">
+        <div class="aether-drawer-handle"></div>
+        <button class="aether-drawer-close-btn" type="button" aria-label="Close">
+          <span class="material-symbols-rounded">close</span>
+        </button>
+
+        <div class="aether-drawer-scroll-content">
+          <div class="crm-hero-section">
+            <span class="material-symbols-rounded crm-hero-icon" style="color:var(--color-primary);font-size:2.5rem;filter:drop-shadow(0 2px 8px var(--color-primary-glow));">reward</span>
+            <h2>TasteRewards Club</h2>
+            <p>Earn 1 point for every ${formatCurrency(10)} spent. Unlock silver, gold, and platinum culinary tiers.</p>
+          </div>
+
+          <div class="crm-body-content" id="crm-drawer-inner">
+            <div class="crm-auth-view">
+              <div class="input-group store-input-group">
+                <label class="store-field-label" for="crm-phone-input">Enter Phone Number</label>
+                <input type="tel" id="crm-phone-input" class="input store-input" placeholder="10-digit mobile number" maxlength="10" />
+              </div>
+              <button class="btn btn-primary btn-block" id="crm-lookup-btn" type="button" style="height:46px;margin-top:12px;font-weight:700;">
+                Access Account
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(overlay);
+
+    requestAnimationFrame(() => {
+      overlay.classList.add('is-open');
+    });
+
+    const closeDrawer = () => {
+      overlay.classList.remove('is-open');
+      playSound(550, 60);
+      setTimeout(() => {
+        overlay.remove();
+      }, 300);
+    };
+
+    overlay.querySelector('.aether-drawer-close-btn').addEventListener('click', closeDrawer);
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) closeDrawer();
+    });
+
+    const innerContainer = overlay.querySelector('#crm-drawer-inner');
+    const lookupBtn = overlay.querySelector('#crm-lookup-btn');
+    const phoneInput = overlay.querySelector('#crm-phone-input');
+
+    const handleLookup = async () => {
+      const phone = phoneInput.value.trim();
+      if (!/^[6-9]\d{9}$/.test(phone)) {
+        showToast('Please enter a valid 10-digit mobile number', 'warning');
+        return;
+      }
+
+      playSound(700, 80);
+      vibrateDevice([20]);
+
+      innerContainer.innerHTML = `<div style="text-align:center;padding:32px;"><div class="spinner store-spinner" style="margin:0 auto 12px;"></div>Loading rewards profile...</div>`;
+
+      try {
+        const customer = await db.customers.where('phone').equals(phone).first();
+        const orders = await db.orders.where('customerPhone').equals(phone).reverse().toArray();
+
+        if (customer) {
+          renderProfileView(customer, orders);
+        } else {
+          renderRegisterView(phone);
+        }
+      } catch (err) {
+        console.error('CRM lookup error:', err);
+        showToast('Failed to load profile', 'error');
+        closeDrawer();
+      }
+    };
+
+    if (lookupBtn) {
+      lookupBtn.addEventListener('click', handleLookup);
+    }
+    if (phoneInput) {
+      phoneInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') handleLookup();
+      });
+    }
+
+    const renderProfileView = (cust, orders) => {
+      const tierGradients = {
+        bronze: 'linear-gradient(135deg, #8C7853 0%, #4E3E28 100%)',
+        silver: 'linear-gradient(135deg, #BDC3C7 0%, #2C3E50 100%)',
+        gold: 'linear-gradient(135deg, #F39C12 0%, #F1C40F 100%)',
+        platinum: 'linear-gradient(135deg, #34495E 0%, #2C3E50 100%)'
+      };
+
+      const tierBadge = cust.tier || 'bronze';
+      const bgStyle = tierGradients[tierBadge.toLowerCase()] || tierGradients.bronze;
+
+      let nextTier = 'Silver';
+      let nextPointsNeeded = 50 - (cust.loyaltyPoints || 0);
+      let percentage = Math.min(((cust.loyaltyPoints || 0) / 50) * 100, 100);
+
+      if (tierBadge === 'silver') {
+        nextTier = 'Gold';
+        nextPointsNeeded = 200 - (cust.loyaltyPoints || 0);
+        percentage = Math.min(((cust.loyaltyPoints || 0) / 200) * 100, 100);
+      } else if (tierBadge === 'gold') {
+        nextTier = 'Platinum';
+        nextPointsNeeded = 500 - (cust.loyaltyPoints || 0);
+        percentage = Math.min(((cust.loyaltyPoints || 0) / 500) * 100, 100);
+      } else if (tierBadge === 'platinum') {
+        nextTier = 'Maximum Status';
+        nextPointsNeeded = 0;
+        percentage = 100;
+      }
+
+      let ordersHtml = `<p class="crm-no-orders">No past order history found.</p>`;
+      if (orders.length > 0) {
+        ordersHtml = orders.map(order => {
+          const itemsDesc = order.items.map(i => `${i.quantity}x ${escapeHtml(i.itemName)}`).join(', ');
+          const dateStr = new Date(order.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+          return `
+            <div class="crm-order-card">
+              <div class="crm-order-card-header">
+                <strong>Order on ${dateStr}</strong>
+                <span class="crm-order-price">${formatCurrency(order.total)}</span>
+              </div>
+              <p class="crm-order-items">${itemsDesc}</p>
+              <button class="btn btn-secondary btn-sm btn-reorder" data-order-id="${order.id}" type="button" style="margin-top:8px;font-size:0.65rem;padding:4px 8px;border-radius:var(--radius-sm);font-weight:700;">
+                <span class="material-symbols-rounded" style="font-size:12px;vertical-align:middle;margin-right:2px;">replay</span>
+                1-Click Reorder
+              </button>
+            </div>
+          `;
+        }).join('');
+      }
+
+      innerContainer.innerHTML = `
+        <div class="crm-profile-view">
+          <div class="crm-loyalty-card" style="background:${bgStyle};">
+            <div class="crm-card-top">
+              <div class="crm-brand-name">THE TASTE</div>
+              <span class="crm-tier-tag">${tierBadge.toUpperCase()} TIER</span>
+            </div>
+            <div class="crm-card-middle">
+              <h3 class="crm-cust-name">${escapeHtml(cust.name)}</h3>
+              <p class="crm-cust-phone">${cust.phone.replace(/(\d{3})(\d{3})(\d{4})/, '$1-$2-$3')}</p>
+            </div>
+            <div class="crm-card-bottom">
+              <div>
+                <small>LOYALTY POINTS</small>
+                <strong>${cust.loyaltyPoints || 0} pts</strong>
+              </div>
+              <div>
+                <small>VISITS</small>
+                <strong>${cust.visitCount || 0}</strong>
+              </div>
+            </div>
+          </div>
+
+          <div class="crm-tier-meter-box">
+            <div class="crm-meter-labels">
+              <span>Progress to ${nextTier}</span>
+              <span>${cust.loyaltyPoints || 0} pts</span>
+            </div>
+            <div class="crm-meter-track">
+              <div class="crm-meter-fill" style="width:${percentage}%;"></div>
+            </div>
+            ${nextPointsNeeded > 0 ? `<p class="crm-meter-hint">Earn ${nextPointsNeeded} more points for ${nextTier} status.</p>` : `<p class="crm-meter-hint">You are at maximum elite status!</p>`}
+          </div>
+
+          <div class="crm-history-section">
+            <h3>Order History</h3>
+            <div class="crm-orders-scroll-list">
+              ${ordersHtml}
+            </div>
+          </div>
+        </div>
+      `;
+
+      innerContainer.querySelectorAll('.btn-reorder').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const orderId = parseInt(btn.dataset.orderId, 10);
+          const matchedOrder = orders.find(o => o.id === orderId);
+          if (matchedOrder) {
+            this.cart = matchedOrder.items.map(item => ({
+              itemId: item.itemId,
+              itemName: item.itemName,
+              price: item.price,
+              quantity: item.quantity,
+              isVeg: item.isVeg,
+              notes: item.notes || ''
+            }));
+
+            playSound(900, 100);
+            vibrateDevice([40, 20, 40]);
+            showToast('Cart loaded with past items!', 'success');
+
+            closeDrawer();
+            this.state = 'cart';
+            this.render();
+          }
+        });
+      });
+    };
+
+    const renderRegisterView = (phone) => {
+      innerContainer.innerHTML = `
+        <div class="crm-register-view" style="text-align:center;padding:16px 8px;">
+          <span class="material-symbols-rounded" style="font-size:48px;color:var(--color-primary);margin-bottom:8px;">app_registration</span>
+          <h3>Join TasteRewards</h3>
+          <p style="color:var(--text-secondary);font-size:0.75rem;margin-bottom:18px;">You don't have a rewards profile yet. Register your details to start earning points on every dish!</p>
+
+          <div class="input-group store-input-group" style="text-align:left;">
+            <label class="store-field-label" for="crm-reg-name">Your Full Name</label>
+            <input type="text" id="crm-reg-name" class="input store-input" placeholder="E.g. Alexander Mercer" />
+          </div>
+
+          <button class="btn btn-primary btn-block" id="crm-reg-submit" type="button" style="height:46px;margin-top:16px;font-weight:700;">
+            Activate Account
+          </button>
+        </div>
+      `;
+
+      overlay.querySelector('#crm-reg-submit').addEventListener('click', async () => {
+        const name = overlay.querySelector('#crm-reg-name').value.trim();
+        if (!name) {
+          showToast('Please enter your name', 'warning');
+          return;
+        }
+
+        playSound(900, 80);
+        vibrateDevice([30]);
+
+        try {
+          const newProfile = {
+            phone,
+            name,
+            totalSpent: 0,
+            visitCount: 0,
+            loyaltyPoints: 0,
+            tier: 'bronze',
+            lastVisit: new Date().toISOString(),
+            createdAt: new Date().toISOString(),
+            isSynced: 0,
+            _platform: 'nextgenos'
+          };
+          await db.customers.add(newProfile);
+          showToast('Welcome to TasteRewards!', 'success');
+          renderProfileView(newProfile, []);
+        } catch (err) {
+          console.error('Registration failed:', err);
+          showToast('Failed to register profile', 'error');
+        }
+      });
+    };
   }
 
   unmount() {

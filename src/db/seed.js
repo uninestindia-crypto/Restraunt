@@ -49,7 +49,11 @@ export async function seedDatabase(options = {}) {
     return; // Data already exists
   }
 
-  await db.transaction('rw', db.menuCategories, db.menuItems, db.settings, db.inventory, db.suppliers, db.customers, db.orders, async () => {
+  const seedStores = publicOnly
+    ? [db.menuCategories, db.menuItems, db.settings]
+    : [db.menuCategories, db.menuItems, db.settings, db.inventory, db.suppliers, db.customers, db.orders];
+
+  await db.transaction('rw', ...seedStores, async () => {
     // ── Categories ──────────────────────────────────────────────
     const categories = [
       { name: 'Momos', icon: '🥟', sortOrder: 1, isActive: 1, isSynced: 0 },

@@ -27,7 +27,9 @@ export class LoginScreen {
     container.innerHTML = `
       <div class="login-screen">
         <div class="login-card">
-          <div class="login-logo">🍜</div>
+          <div class="login-logo-container">
+            <img src="/assets/aether-icon.png" class="login-logo-img" alt="The Taste Logo" />
+          </div>
           <h1 class="login-title" id="login-brand-title">The Taste</h1>
           <p class="login-subtitle">Restaurant Operating System</p>
 
@@ -125,13 +127,23 @@ export class LoginScreen {
           from { opacity: 0; transform: translateY(30px) scale(0.96); }
           to { opacity: 1; transform: translateY(0) scale(1); }
         }
-        .login-logo {
-          font-size: 2.8rem; margin-bottom: 12px;
-          filter: drop-shadow(0 6px 16px var(--color-primary-glow));
+        .login-logo-container {
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          margin-bottom: 16px;
+        }
+        .login-logo-img {
+          width: 72px;
+          height: 72px;
+          object-fit: contain;
+          border-radius: var(--radius-md);
+          border: 1px solid var(--border-active);
+          box-shadow: var(--shadow-glow-active), 0 4px 12px rgba(0, 0, 0, 0.15);
           transition: transform var(--transition-fast) var(--ease-spring);
         }
-        .login-logo:hover {
-          transform: scale(1.1);
+        .login-logo-img:hover {
+          transform: scale(1.1) rotate(3deg);
         }
         .login-title {
           font-family: var(--font-display);
@@ -267,8 +279,9 @@ export class LoginScreen {
           .login-title {
             font-size: 1.5rem;
           }
-          .login-logo {
-            font-size: 2.2rem;
+          .login-logo-img {
+            width: 56px;
+            height: 56px;
             margin-bottom: 8px;
           }
           .login-tabs {

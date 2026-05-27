@@ -14,7 +14,9 @@ export class FirstRunSetup {
       <div class="login-screen">
         <div class="login-card" style="max-width:420px;text-align:left;">
           <div style="text-align:center;">
-            <div class="login-logo">TT</div>
+            <div class="login-logo-container" style="display:flex;justify-content:center;margin-bottom:12px;">
+              <img src="/assets/aether-icon.png" class="login-logo-img" alt="The Taste Logo" style="width:64px;height:64px;border-radius:var(--radius-md);border:1px solid var(--border-active);box-shadow:var(--shadow-glow-active);" />
+            </div>
             <h1 class="login-title">The Taste</h1>
             <p class="login-subtitle">Owner setup required</p>
           </div>

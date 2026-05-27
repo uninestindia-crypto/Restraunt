@@ -2,9 +2,6 @@
  * Simple hash-based SPA router with Role-Based Access Control (RBAC)
  */
 
-import { authService } from './services/auth.js';
-import { showToast } from './utils/helpers.js';
-
 export class Router {
   constructor() {
     this.routes = {};
@@ -66,6 +63,11 @@ export class Router {
     // Kiosk view (#/self-order) is public, all other routes require authentication
     const isPublic = path === '#/self-order';
 
+    let authService = null;
+    if (!isPublic) {
+      ({ authService } = await import('./services/auth.js'));
+    }
+
     if (!isPublic && !authService.requireAuth()) {
       console.warn(`[Router] Access to protected route "${path}" blocked: User is not authenticated.`);
       
@@ -83,6 +85,7 @@ export class Router {
       
       if (!staffRole || !allowedRoles.includes(staffRole)) {
         console.warn(`[Router] Access to "${path}" denied for role "${staffRole}". Required: [${allowedRoles.join(', ')}]`);
+        const { showToast } = await import('./utils/helpers.js');
         showToast('Access denied: Insufficient permissions', 'error');
         
         // Redirect to a safe default view based on their role

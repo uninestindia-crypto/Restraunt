@@ -127,18 +127,20 @@ class App {
     this.initialized = true;
   }
 
-  showLogin() {
+  async showLogin() {
     const appEl = document.getElementById('app');
     appEl.innerHTML = '';
+    const { LoginScreen } = await import('./components/LoginScreen.js');
     this.loginScreen = new LoginScreen((staff) => {
       this.onLoginSuccess(staff);
     });
     this.loginScreen.render(appEl);
   }
 
-  showFirstRunSetup() {
+  async showFirstRunSetup() {
     const appEl = document.getElementById('app');
     appEl.innerHTML = '';
+    const { FirstRunSetup } = await import('./components/FirstRunSetup.js');
     const setup = new FirstRunSetup(() => {
       this.showLogin();
     });
@@ -158,6 +160,7 @@ class App {
     this.renderShell();
 
     // Initialize sidebar
+    const { Sidebar } = await import('./components/Sidebar.js');
     this.sidebar = new Sidebar();
     this.sidebar.render(document.getElementById('app-sidebar'));
 
@@ -207,11 +210,25 @@ class App {
     return this.syncServicePromise;
   }
 
+  async getAuthService() {
+    if (!this.authServicePromise) {
+      this.authServicePromise = import('./services/auth.js').then(module => module.authService);
+    }
+    return this.authServicePromise;
+  }
+
   updateStaffDisplay(staff) {
     const staffEl = document.getElementById('header-staff-name');
     if (staffEl) staffEl.textContent = staff.name;
     const roleEl = document.getElementById('header-staff-role');
     if (roleEl) roleEl.textContent = staff.role;
+  }
+
+  renderPublicShell() {
+    const app = document.getElementById('app');
+    app.innerHTML = `
+      <main id="main-content" class="public-main" style="min-height: 100vh;"></main>
+    `;
   }
 
   renderShell() {
@@ -232,7 +249,7 @@ class App {
               <span class="material-symbols-rounded">menu</span>
             </button>
             <a href="#/pos" class="logo" id="app-logo">
-              <span class="logo-icon" style="color: var(--color-primary); filter: drop-shadow(0 2px 8px var(--color-primary-glow));">🍜</span>
+              <img src="/assets/aether-icon.png" class="logo-img" alt="Logo" style="width:28px;height:28px;border-radius:6px;object-fit:contain;margin-right:8px;border:1px solid var(--border-active);box-shadow:var(--shadow-glow-active);" />
               <span style="font-weight: 800; font-family: var(--font-display); letter-spacing: -0.04em;">The Taste</span>
             </a>
             <span class="nextgenos-header-badge" style="background: var(--nextgenos-purple-bg); color: var(--nextgenos-purple); border: 1px solid var(--nextgenos-purple-border); box-shadow: var(--shadow-glow-purple); font-weight: 700; padding: 2px 8px; border-radius: var(--radius-full); font-size: 0.65rem; letter-spacing: 0.08em; text-transform: uppercase;">NextGenOS</span>
@@ -269,6 +286,7 @@ class App {
 
     // Printer status button
     document.getElementById('printer-status-btn').addEventListener('click', async () => {
+      const { printerService } = await import('./services/printer.js');
       if (printerService.isConnected) {
         showToast('Printer is connected', 'success');
       } else {
@@ -289,8 +307,9 @@ class App {
     });
 
     // Logout button
-    document.getElementById('btn-logout').addEventListener('click', () => {
+    document.getElementById('btn-logout').addEventListener('click', async () => {
       if (confirm('Are you sure you want to logout?')) {
+        const authService = await this.getAuthService();
         authService.logout();
         if (router.currentView && typeof router.currentView.unmount === 'function') {
           router.currentView.unmount();
@@ -447,7 +466,8 @@ class App {
     });
   }
 
-  setupPrinter() {
+  async setupPrinter() {
+    const { printerService } = await import('./services/printer.js');
     printerService.onStatusChange = (isConnected) => {
       const dot = document.getElementById('printer-status-dot');
       const text = document.getElementById('printer-status-text');
