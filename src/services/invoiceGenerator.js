@@ -203,6 +203,8 @@ export class InvoiceGenerator {
       `;
     }
 
+    const currencySymbol = settings.currencySymbol || '₹';
+
     // Build invoice items table rows
     const rowsHtml = items.map((item, idx) => {
       const name = item.itemName || item.name || 'Item';
@@ -213,15 +215,15 @@ export class InvoiceGenerator {
         <tr>
           <td style="text-align: center; width: 6%; color: #64748b;">${idx + 1}</td>
           <td style="text-align: left; font-weight: 600; color: #1e293b;">${escapeHtml(name)}</td>
-          <td style="text-align: center; width: 12%; color: #475569;">₹${price.toFixed(2)}</td>
+          <td style="text-align: center; width: 12%; color: #475569;">${currencySymbol}${price.toFixed(2)}</td>
           <td style="text-align: center; width: 12%; color: #475569;">${qty}</td>
-          <td style="text-align: right; width: 18%; font-weight: 700; color: #0f172a;">₹${rowTotal.toFixed(2)}</td>
+          <td style="text-align: right; width: 18%; font-weight: 700; color: #0f172a;">${currencySymbol}${rowTotal.toFixed(2)}</td>
         </tr>
       `;
     }).join('');
 
     // Format tax label
-    const taxLabel = settings.gstPercent ? `GST / TAX (${settings.gstPercent}%)` : 'GST / TAX';
+    const taxLabel = settings.taxLabel ? `${settings.taxLabel} (${settings.gstPercent || 5}%)` : (settings.gstPercent ? `GST (${settings.gstPercent}%)` : 'GST');
 
     return `
       <!DOCTYPE html>
