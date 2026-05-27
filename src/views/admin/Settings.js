@@ -90,13 +90,11 @@ export class SettingsView {
         this.config[key] = await getSetting(key) || '';
       }
 
-      // If adminPinHash setting is missing, check if we have a synced owner staff member with a PIN
-      if (!this.config.adminPinHash) {
-        const owner = await db.staff.where('role').equals('owner').first();
-        if (owner && owner.pinHash) {
-          await setSetting('adminPinHash', owner.pinHash);
-          this.config.adminPinHash = owner.pinHash;
-        }
+      // Always align adminPinHash setting with the synced owner staff member's PIN
+      const owner = await db.staff.where('role').equals('owner').first();
+      if (owner && owner.pinHash && owner.pinHash !== this.config.adminPinHash) {
+        await setSetting('adminPinHash', owner.pinHash);
+        this.config.adminPinHash = owner.pinHash;
       }
 
       // Set sensible defaults for toggles (default ON for most)
@@ -1525,6 +1523,12 @@ export class SettingsView {
           await db.settings.delete('adminPin');
           this.config.adminPinHash = adminPinHash;
           this.config.adminPin = '';
+
+          // Also update the PIN of all active owner staff members so it syncs to the cloud
+          const owners = await db.staff.where('role').equals('owner').toArray();
+          for (const o of owners) {
+            await db.staff.update(o.id, { pinHash: adminPinHash, isSynced: 0 });
+          }
         }
 
         for (const f of toggleFields) {
