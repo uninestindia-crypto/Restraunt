@@ -14,6 +14,7 @@ import './styles/base.css';
 import './styles/components-v2.css';
 import './styles/layout.css';
 import './styles/sidebar.css';
+import './styles/storefront.css';
 
 // Database
 import { db } from './db/database.js';

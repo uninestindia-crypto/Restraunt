@@ -6,12 +6,37 @@ import { escapeHtml, formatCurrency, parseOrderItems, playSound, showToast, vibr
 
 const PHONE_RE = /^[6-9]\d{9}$/;
 
+const CATEGORY_IMAGE_MAP = {
+  momos: '/assets/dish-momos.png',
+  starters: '/assets/dish-starters.png',
+  noodles: '/assets/dish-noodles.png',
+  rice: '/assets/dish-rice.png',
+  'main course': '/assets/dish-main.png',
+  burgers: '/assets/dish-burgers.png',
+  sides: '/assets/dish-sides.png',
+  beverages: '/assets/dish-beverages.png',
+  desserts: '/assets/dish-desserts.png'
+};
+
+const CATEGORY_COPY = {
+  momos: 'Hand-folded, steamed or tossed hot.',
+  starters: 'Crisp, saucy plates made for sharing.',
+  noodles: 'Wok-tossed and packed for travel.',
+  rice: 'Comfort bowls with bold Indo-Chinese flavor.',
+  'main course': 'Gravy, soups, and full-meal favorites.',
+  burgers: 'Fast, filling, and freshly assembled.',
+  sides: 'Fries, breads, and quick add-ons.',
+  beverages: 'Cold sips, shakes, and chai.',
+  desserts: 'Sweet finishes for the table.'
+};
+
 export class CustomerView {
   constructor(app) {
     this.app = app;
     this.container = null;
     this.categories = [];
     this.items = [];
+    this.menuByCategory = new Map();
     this.tables = [];
     this.activeCategoryId = null;
     this.detectedTable = null;
@@ -26,6 +51,12 @@ export class CustomerView {
     this.deliveryAddress = '';
     this.deliveryLandmark = '';
     this.pollInterval = null;
+    this.storeSettings = {
+      name: 'The Taste',
+      tagline: 'Fast Food & Chinese',
+      phone: '',
+      address: ''
+    };
   }
 
   async mount(container) {
@@ -43,6 +74,20 @@ export class CustomerView {
   }
 
   async loadData() {
+    const [name, tagline, phone, address] = await Promise.all([
+      getSetting('restaurantName'),
+      getSetting('restaurantTagline'),
+      getSetting('restaurantPhone'),
+      getSetting('restaurantAddress')
+    ]);
+
+    this.storeSettings = {
+      name: name || 'The Taste',
+      tagline: tagline || 'Fast Food & Chinese',
+      phone: phone || '',
+      address: address || ''
+    };
+
     this.categories = await getCategories();
     const tablesStore = db.table('tables');
     this.tables = await tablesStore.toArray();
@@ -51,6 +96,12 @@ export class CustomerView {
       this.orderType = 'dinein';
       this.selectedTableId = String(this.detectedTable.id);
     }
+
+    this.menuByCategory = new Map();
+    for (const category of this.categories) {
+      this.menuByCategory.set(category.id, await getItemsByCategory(category.id));
+    }
+
     if (this.categories.length) {
       this.activeCategoryId = this.categories[0].id;
       await this.loadItems();
@@ -70,7 +121,11 @@ export class CustomerView {
   }
 
   async loadItems() {
-    this.items = this.activeCategoryId ? await getItemsByCategory(this.activeCategoryId) : [];
+    if (!this.activeCategoryId) {
+      this.items = [];
+      return;
+    }
+    this.items = this.menuByCategory.get(this.activeCategoryId) || await getItemsByCategory(this.activeCategoryId);
   }
 
   render() {
@@ -89,57 +144,113 @@ export class CustomerView {
     const categories = this.categories.map(cat => {
       const active = cat.id === this.activeCategoryId;
       return `
-        <button class="category-tab" data-id="${cat.id}" style="padding:8px 14px;border-radius:999px;border:1px solid ${active ? 'rgba(255,94,54,0.45)' : 'var(--border-glass)'};background:${active ? 'var(--gradient-primary)' : 'rgba(255,255,255,0.02)'};color:${active ? '#fff' : 'var(--text-secondary)'};font-family:'Plus Jakarta Sans',sans-serif;font-size:var(--text-xs);font-weight:800;white-space:nowrap;cursor:pointer;">
-          ${escapeHtml(cat.name)}
+        <button class="store-category-tab ${active ? 'is-active' : ''}" data-id="${cat.id}" aria-pressed="${active}">
+          <span>${escapeHtml(cat.name)}</span>
         </button>
       `;
     }).join('');
 
-    const items = this.items.map(item => {
-      const cartItem = this.cart.find(ci => ci.itemId === item.id);
-      const qty = cartItem?.quantity || 0;
-      return `
-        <div class="card card-glass" style="display:flex;flex-direction:column;gap:12px;padding:14px;background:rgba(255,255,255,0.02);border:1px solid ${qty ? 'rgba(255,94,54,0.45)' : 'var(--border-glass)'};border-radius:8px;min-height:156px;">
-          <div style="height:52px;display:flex;align-items:center;justify-content:center;border-radius:8px;background:rgba(255,255,255,0.03);">
-            <span class="material-symbols-rounded" style="font-size:30px;color:var(--color-primary);">ramen_dining</span>
-          </div>
-          <div style="font-family:'Plus Jakarta Sans',sans-serif;font-size:var(--text-sm);font-weight:800;color:var(--text-primary);line-height:1.35;min-height:38px;">${escapeHtml(item.name)}</div>
-          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:auto;">
-            <span style="font-family:'Plus Jakarta Sans',sans-serif;font-weight:900;color:var(--color-primary);">${formatCurrency(item.price)}</span>
-            ${qty ? `
-              <div class="stepper">
-                <button class="btn-step" data-action="minus" data-id="${item.id}">-</button>
-                <div class="stepper-count">${qty}</div>
-                <button class="btn-step" data-action="plus" data-id="${item.id}">+</button>
-              </div>
-            ` : `
-              <button class="btn btn-primary btn-add" data-id="${item.id}" style="min-height:32px;padding:4px 14px;border-radius:999px;font-size:var(--text-xs);font-weight:800;">ADD</button>
-            `}
-          </div>
-        </div>
-      `;
-    }).join('');
-
+    const items = this.items.map(item => this.renderMenuItem(item)).join('');
+    const featuredItems = this.getFeaturedItems().map(item => this.renderFeaturedItem(item)).join('');
     const cartCount = this.cart.reduce((sum, item) => sum + item.quantity, 0);
     const cartTotal = this.cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
     const mode = this.detectedTable ? `Table ${this.detectedTable.number}` : 'Order online from home';
+    const address = this.storeSettings.address || 'Fresh Indo-Chinese comfort food, packed hot for your table or home.';
+    const phoneLink = this.storeSettings.phone ? `tel:${this.storeSettings.phone.replace(/\D/g, '')}` : '#menu';
 
     this.container.innerHTML = `
-      <div style="height:100%;display:flex;flex-direction:column;overflow:hidden;background:var(--bg-primary);">
-        <header style="padding:18px 16px 14px;text-align:center;background:rgba(9,9,14,0.9);border-bottom:1px solid var(--border-glass);">
-          <div style="font-family:'Plus Jakarta Sans',sans-serif;font-size:1.7rem;font-weight:900;color:var(--color-primary);letter-spacing:0;">THE TASTE</div>
-          <div style="font-size:var(--text-xs);color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:0.08em;">${escapeHtml(mode)}</div>
-        </header>
-        <div style="padding:12px 16px;display:flex;gap:8px;overflow-x:auto;border-bottom:1px solid var(--border-glass);background:rgba(9,9,14,0.72);" class="scrollbar-none">${categories}</div>
-        <main style="flex:1;overflow-y:auto;padding:16px 16px 104px;">
-          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:12px;">
-            ${items || '<div class="empty-state" style="grid-column:1/-1;height:45vh;"><span class="material-symbols-rounded">restaurant_menu</span><p>No items available</p></div>'}
+      <div class="storefront-shell">
+        <section class="store-hero" aria-label="The Taste storefront">
+          <div class="store-hero-bg" aria-hidden="true"></div>
+          <header class="store-nav">
+            <a class="store-brand" href="#/self-order" aria-label="The Taste home">
+              <span class="store-brand-mark">TT</span>
+              <div>THE TASTE</div>
+            </a>
+            <nav class="store-nav-links" aria-label="Public navigation">
+              <a href="#menu">Menu</a>
+              <a href="#order-options">Order</a>
+              <a href="${phoneLink}">Call</a>
+              <a href="#/pos" class="store-staff-link">Staff</a>
+            </nav>
+          </header>
+
+          <div class="store-hero-content">
+            <p class="store-kicker">${escapeHtml(mode)}</p>
+            <h1>${escapeHtml(this.storeSettings.name)}</h1>
+            <p class="store-hero-copy">${escapeHtml(this.storeSettings.tagline)} for delivery, pickup, and dine-in QR ordering. Freshly made, clearly priced, and ready for manual UPI or cash.</p>
+            <div class="store-hero-actions">
+              <a class="store-primary-action" href="#menu">
+                <span class="material-symbols-rounded" aria-hidden="true">restaurant_menu</span>
+                Order now
+              </a>
+              <button class="store-secondary-action" id="hero-pickup-btn" type="button">
+                <span class="material-symbols-rounded" aria-hidden="true">shopping_bag</span>
+                Pickup
+              </button>
+            </div>
+            <dl class="store-proof">
+              <div><dt>30 min</dt><dd>Typical prep</dd></div>
+              <div><dt>UPI</dt><dd>Manual verify</dd></div>
+              <div><dt>COD</dt><dd>Cash accepted</dd></div>
+            </dl>
           </div>
-        </main>
+        </section>
+
+        <section class="store-service-band" id="order-options" aria-label="Ordering options">
+          ${this.renderServiceButton('delivery', 'local_shipping', 'Home delivery', 'Delivered by restaurant staff')}
+          ${this.renderServiceButton('takeaway', 'shopping_bag', 'Pickup', 'Order ahead and collect')}
+          ${this.renderServiceButton('dinein', 'table_restaurant', this.detectedTable ? `Table ${this.detectedTable.number}` : 'Dine-in QR', 'Order from your table')}
+        </section>
+
+        <section class="store-section store-section-tight" aria-label="Highlights">
+          <div class="store-section-head">
+            <p>Popular right now</p>
+            <h2>Fresh, fast, and built for home ordering</h2>
+          </div>
+          <div class="store-featured-grid">
+            ${featuredItems || this.renderEmptyMenu('Featured items are loading.')}
+          </div>
+        </section>
+
+        <section class="store-section" id="menu" aria-label="Online menu">
+          <div class="store-section-head store-menu-head">
+            <div>
+              <p>Order online</p>
+              <h2>Choose your favorites</h2>
+            </div>
+            <div class="store-menu-note">${escapeHtml(address)}</div>
+          </div>
+          <div class="store-category-strip scrollbar-none" role="tablist" aria-label="Menu categories">
+            ${categories}
+          </div>
+          <div class="store-menu-grid">
+            ${items || this.renderEmptyMenu('No items are available in this category right now.')}
+          </div>
+        </section>
+
+        <section class="store-info-band" aria-label="Payment and ordering details">
+          <div>
+            <span class="material-symbols-rounded" aria-hidden="true">qr_code_2</span>
+            <strong>UPI orders stay pending</strong>
+            <p>Staff verifies the payment reference before marking the order paid.</p>
+          </div>
+          <div>
+            <span class="material-symbols-rounded" aria-hidden="true">payments</span>
+            <strong>Cash and COD supported</strong>
+            <p>Payment is collected at pickup or delivery and reconciled by staff.</p>
+          </div>
+          <div>
+            <span class="material-symbols-rounded" aria-hidden="true">local_shipping</span>
+            <strong>Delivery tracked in-house</strong>
+            <p>Orders move from kitchen prep to assignment, out-for-delivery, and delivered.</p>
+          </div>
+        </section>
+
         ${cartCount ? `
-          <button id="btn-view-cart" style="position:fixed;left:50%;bottom:20px;transform:translateX(-50%);width:calc(100% - 32px);max-width:460px;border:0;border-radius:8px;background:var(--gradient-primary);color:white;padding:14px 18px;display:flex;align-items:center;justify-content:space-between;font-family:'Plus Jakarta Sans',sans-serif;font-weight:900;box-shadow:var(--shadow-primary);cursor:pointer;">
+          <button id="btn-view-cart" class="store-floating-cart" type="button" aria-label="${cartCount} item${cartCount === 1 ? '' : 's'} in cart, total ${formatCurrency(cartTotal)}">
             <span>${cartCount} item${cartCount === 1 ? '' : 's'} in cart</span>
-            <span>${formatCurrency(cartTotal)}</span>
+            <strong>${formatCurrency(cartTotal)}</strong>
           </button>
         ` : ''}
       </div>
@@ -148,24 +259,106 @@ export class CustomerView {
     this.bindMenuEvents();
   }
 
+  renderMenuItem(item) {
+    const cartItem = this.cart.find(ci => ci.itemId === item.id);
+    const qty = cartItem?.quantity || 0;
+    return `
+      <article class="store-menu-item ${qty ? 'is-selected' : ''}">
+        <img class="store-menu-item-image" src="${this.getItemImage(item)}" alt="${escapeHtml(item.name)}">
+        <div class="store-menu-item-body">
+          <div class="store-menu-item-title">
+            <div>
+              <h3>${escapeHtml(item.name)}</h3>
+              <p>${escapeHtml(this.getItemDescription(item))}</p>
+            </div>
+            <span class="${item.isVeg ? 'store-food-mark veg' : 'store-food-mark nonveg'}" aria-label="${item.isVeg ? 'Vegetarian' : 'Non vegetarian'}"></span>
+          </div>
+          <div class="store-menu-item-footer">
+            <strong>${formatCurrency(item.price)}</strong>
+            ${qty ? `
+              <div class="stepper store-stepper" aria-label="Quantity for ${escapeHtml(item.name)}">
+                <button class="btn-step" data-action="minus" data-id="${item.id}" type="button" aria-label="Remove ${escapeHtml(item.name)}">-</button>
+                <div class="stepper-count">${qty}</div>
+                <button class="btn-step" data-action="plus" data-id="${item.id}" type="button" aria-label="Add another ${escapeHtml(item.name)}">+</button>
+              </div>
+            ` : `
+              <button class="btn btn-primary btn-add store-add-btn" data-id="${item.id}" type="button">
+                <span class="material-symbols-rounded" aria-hidden="true">add</span>
+                Add
+              </button>
+            `}
+          </div>
+        </div>
+      </article>
+    `;
+  }
+
+  renderFeaturedItem(item) {
+    return `
+      <button class="store-featured-item btn-add" data-id="${item.id}" type="button" aria-label="Add ${escapeHtml(item.name)}">
+        <img src="${this.getItemImage(item)}" alt="">
+        <span>${escapeHtml(item.name)}</span>
+        <strong>${formatCurrency(item.price)}</strong>
+      </button>
+    `;
+  }
+
+  renderServiceButton(type, icon, label, detail) {
+    const active = this.orderType === type;
+    return `
+      <button class="store-service-option ${active ? 'is-active' : ''}" data-service-type="${type}" type="button" aria-pressed="${active}">
+        <span class="material-symbols-rounded" aria-hidden="true">${icon}</span>
+        <strong>${escapeHtml(label)}</strong>
+        <small>${escapeHtml(detail)}</small>
+      </button>
+    `;
+  }
+
+  renderEmptyMenu(text) {
+    return `
+      <div class="store-empty-state">
+        <span class="material-symbols-rounded" aria-hidden="true">restaurant_menu</span>
+        <p>${escapeHtml(text)}</p>
+      </div>
+    `;
+  }
+
   bindMenuEvents() {
-    this.container.querySelectorAll('.category-tab').forEach(btn => {
+    this.container.querySelectorAll('.store-category-tab').forEach(btn => {
       btn.addEventListener('click', async () => {
         this.activeCategoryId = parseInt(btn.dataset.id, 10);
         await this.loadItems();
         playSound(650, 70);
         this.renderMenu();
+        this.container.querySelector('#menu')?.scrollIntoView({ block: 'start' });
       });
     });
+
+    this.container.querySelectorAll('[data-service-type]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        this.orderType = btn.dataset.serviceType;
+        this.renderMenu();
+        this.container.querySelector('#menu')?.scrollIntoView({ block: 'start' });
+      });
+    });
+
+    this.container.querySelector('#hero-pickup-btn')?.addEventListener('click', () => {
+      this.orderType = 'takeaway';
+      this.renderMenu();
+      this.container.querySelector('#menu')?.scrollIntoView({ block: 'start' });
+    });
+
     this.container.querySelectorAll('.btn-add').forEach(btn => {
       btn.addEventListener('click', () => {
-        const item = this.items.find(i => i.id === parseInt(btn.dataset.id, 10));
+        const item = this.findItemById(parseInt(btn.dataset.id, 10));
         if (item) this.addToCart(item);
       });
     });
+
     this.container.querySelectorAll('.btn-step').forEach(btn => {
       btn.addEventListener('click', () => this.adjustCart(parseInt(btn.dataset.id, 10), btn.dataset.action === 'plus' ? 1 : -1));
     });
+
     this.container.querySelector('#btn-view-cart')?.addEventListener('click', () => {
       this.state = 'cart';
       playSound(800, 80);
@@ -176,31 +369,41 @@ export class CustomerView {
   renderCart() {
     const total = this.cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
     const rows = this.cart.map((item, index) => `
-      <div class="card card-glass" style="padding:14px;border:1px solid var(--border-glass);border-radius:8px;background:rgba(255,255,255,0.02);display:flex;flex-direction:column;gap:10px;">
-        <div style="display:flex;justify-content:space-between;gap:12px;">
-          <div style="font-family:'Plus Jakarta Sans',sans-serif;font-size:var(--text-sm);font-weight:800;color:var(--text-primary);">${escapeHtml(item.itemName)}</div>
-          <div style="font-weight:900;color:var(--color-primary);">${formatCurrency(item.price * item.quantity)}</div>
+      <article class="store-cart-row">
+        <div>
+          <h3>${escapeHtml(item.itemName)}</h3>
+          <p>${formatCurrency(item.price)} each</p>
         </div>
-        <div style="display:flex;gap:10px;align-items:center;">
-          <input class="input note-input" data-index="${index}" value="${escapeHtml(item.notes || '')}" placeholder="Special instructions" style="flex:1;min-height:34px;padding:8px 10px;background:rgba(0,0,0,0.2);border:1px solid var(--border-glass);border-radius:8px;">
-          <div class="stepper">
-            <button class="btn-step" data-action="minus" data-id="${item.itemId}">-</button>
+        <div class="store-cart-row-controls">
+          <strong>${formatCurrency(item.price * item.quantity)}</strong>
+          <div class="stepper store-stepper">
+            <button class="btn-step" data-action="minus" data-id="${item.itemId}" type="button" aria-label="Remove one ${escapeHtml(item.itemName)}">-</button>
             <div class="stepper-count">${item.quantity}</div>
-            <button class="btn-step" data-action="plus" data-id="${item.itemId}">+</button>
+            <button class="btn-step" data-action="plus" data-id="${item.itemId}" type="button" aria-label="Add one ${escapeHtml(item.itemName)}">+</button>
           </div>
         </div>
-      </div>
+        <input class="input note-input store-note-input" data-index="${index}" value="${escapeHtml(item.notes || '')}" placeholder="Special instructions">
+      </article>
     `).join('');
 
     this.container.innerHTML = `
-      <div style="height:100%;display:flex;flex-direction:column;background:var(--bg-primary);">
-        ${this.renderTopBar('Your Cart', 'btn-back-menu')}
-        <main style="flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:10px;">${rows}</main>
-        <footer style="padding:18px 20px;background:rgba(17,17,30,0.96);border-top:1px solid var(--border-glass);">
-          <div style="display:flex;justify-content:space-between;font-family:'Plus Jakarta Sans',sans-serif;font-size:1.3rem;font-weight:900;margin-bottom:14px;">
-            <span>Total</span><span style="color:var(--color-primary);">${formatCurrency(total)}</span>
+      <div class="store-checkout-shell">
+        ${this.renderTopBar('Your cart', 'btn-back-menu')}
+        <main class="store-cart-page">
+          <div class="store-checkout-head">
+            <p>${this.cart.length} selected item${this.cart.length === 1 ? '' : 's'}</p>
+            <h1>Review your order</h1>
           </div>
-          <button class="btn btn-primary btn-block btn-lg" id="btn-checkout">Proceed to Checkout</button>
+          <div class="store-cart-list">
+            ${rows || this.renderEmptyMenu('Your cart is empty.')}
+          </div>
+        </main>
+        <footer class="store-checkout-footer">
+          <div>
+            <span>Total</span>
+            <strong>${formatCurrency(total)}</strong>
+          </div>
+          <button class="btn btn-primary btn-block btn-lg" id="btn-checkout" type="button">Proceed to Checkout</button>
         </footer>
       </div>
     `;
@@ -228,28 +431,33 @@ export class CustomerView {
     `).join('');
 
     this.container.innerHTML = `
-      <div style="height:100%;display:flex;flex-direction:column;background:var(--bg-primary);">
+      <div class="store-checkout-shell">
         ${this.renderTopBar('Checkout', 'btn-back-cart')}
-        <main style="flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:14px;">
-          ${this.renderPanel('Contact Details', `
-            ${this.renderInput('self-name', 'YOUR NAME', this.customerName, 'Enter your name')}
-            ${this.renderInput('self-phone', 'PHONE NUMBER', this.customerPhone, '10-digit mobile number', 'tel')}
+        <main class="store-checkout-page">
+          <div class="store-checkout-head">
+            <p>${escapeHtml(this.getOrderTypeLabel())}</p>
+            <h1>Almost there</h1>
+          </div>
+
+          ${this.renderPanel('Contact details', `
+            ${this.renderInput('self-name', 'Your name', this.customerName, 'Enter your name')}
+            ${this.renderInput('self-phone', 'Phone number', this.customerPhone, '10-digit mobile number', 'tel')}
           `)}
 
           ${this.detectedTable ? '' : this.renderPanel('How should we serve this order?', `
-            <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;">
+            <div class="store-option-grid">
               ${this.renderTypeButton('delivery', 'local_shipping', 'Delivery')}
               ${this.renderTypeButton('takeaway', 'shopping_bag', 'Pickup')}
-              ${this.renderTypeButton('dinein', 'table_restaurant', 'Dine-In')}
+              ${this.renderTypeButton('dinein', 'table_restaurant', 'Dine-in')}
             </div>
-            <div id="delivery-fields" style="display:${this.orderType === 'delivery' ? 'block' : 'none'};margin-top:12px;">
-              <label style="${this.labelStyle()}">DELIVERY ADDRESS</label>
-              <textarea id="self-delivery-address" class="input" rows="3" placeholder="House/flat, street, area" style="${this.inputStyle('min-height:82px;resize:vertical;')}">${escapeHtml(this.deliveryAddress)}</textarea>
-              ${this.renderInput('self-delivery-landmark', 'LANDMARK / DELIVERY NOTES', this.deliveryLandmark, 'Nearby landmark, gate code, etc.')}
+            <div id="delivery-fields" class="store-conditional-fields" style="display:${this.orderType === 'delivery' ? 'block' : 'none'};">
+              <label class="store-field-label" for="self-delivery-address">Delivery address</label>
+              <textarea id="self-delivery-address" class="input store-input" rows="3" placeholder="House/flat, street, area">${escapeHtml(this.deliveryAddress)}</textarea>
+              ${this.renderInput('self-delivery-landmark', 'Landmark / delivery notes', this.deliveryLandmark, 'Nearby landmark, gate code, etc.')}
             </div>
-            <div id="table-fields" style="display:${this.orderType === 'dinein' ? 'block' : 'none'};margin-top:12px;">
-              <label style="${this.labelStyle()}">TABLE NUMBER</label>
-              <select id="self-table-select" class="input" style="${this.inputStyle()}">
+            <div id="table-fields" class="store-conditional-fields" style="display:${this.orderType === 'dinein' ? 'block' : 'none'};">
+              <label class="store-field-label" for="self-table-select">Table number</label>
+              <select id="self-table-select" class="input store-input">
                 <option value="">Select a table</option>
                 ${tableOptions}
               </select>
@@ -257,20 +465,19 @@ export class CustomerView {
           `)}
 
           ${this.renderPanel('Payment', `
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+            <div class="store-option-grid two">
               ${this.renderPaymentButton('upi', 'qr_code_2', 'UPI QR', 'Staff verifies')}
               ${this.renderPaymentButton('cash', 'payments', 'Cash/COD', 'Collected later')}
             </div>
           `)}
-
-          ${this.renderPanel('Total Payable', `
-            <div style="font-family:'Plus Jakarta Sans',sans-serif;font-size:2rem;font-weight:900;color:var(--color-primary);">${formatCurrency(total)}</div>
-            <div id="checkout-summary" style="font-size:var(--text-xs);color:var(--text-muted);font-weight:700;">${escapeHtml(this.getOrderTypeLabel())}</div>
-          `)}
         </main>
-        <footer style="padding:18px 20px;background:rgba(17,17,30,0.96);border-top:1px solid var(--border-glass);">
-          <button class="btn btn-primary btn-block btn-lg" id="btn-submit-self-order">
-            <span class="material-symbols-rounded">send_and_archive</span>
+        <footer class="store-checkout-footer">
+          <div>
+            <span>Total payable</span>
+            <strong>${formatCurrency(total)}</strong>
+          </div>
+          <button class="btn btn-primary btn-block btn-lg" id="btn-submit-self-order" type="button">
+            <span class="material-symbols-rounded" aria-hidden="true">send_and_archive</span>
             Place Order
           </button>
         </footer>
@@ -308,10 +515,7 @@ export class CustomerView {
   updateCheckoutVisibility(rerender = false) {
     if (rerender) {
       this.renderCheckout();
-      return;
     }
-    const summary = this.container.querySelector('#checkout-summary');
-    if (summary) summary.textContent = this.getOrderTypeLabel();
   }
 
   renderSuccess() {
@@ -325,34 +529,37 @@ export class CustomerView {
         : 'Your table order has been sent to the kitchen.';
 
     this.container.innerHTML = `
-      <div style="height:100%;overflow-y:auto;background:var(--bg-primary);padding:36px 20px;display:flex;flex-direction:column;align-items:center;text-align:center;">
-        <div style="width:74px;height:74px;border-radius:50%;background:rgba(16,185,129,0.09);border:1px solid rgba(16,185,129,0.28);display:flex;align-items:center;justify-content:center;margin-bottom:18px;">
-          <span class="material-symbols-rounded" style="font-size:42px;color:var(--color-success);">check_circle</span>
-        </div>
-        <h1 style="font-family:'Plus Jakarta Sans',sans-serif;font-size:var(--text-2xl);font-weight:900;color:var(--text-primary);margin:0 0 8px;">Order Confirmed</h1>
-        <p style="max-width:340px;color:var(--text-secondary);font-size:var(--text-sm);line-height:1.55;margin:0;">${escapeHtml(deliveryText)}</p>
-        <div style="margin-top:24px;padding:22px 42px;border:1px solid var(--border-glass);border-radius:8px;background:rgba(255,255,255,0.02);">
-          <div style="font-size:var(--text-xs);color:var(--text-muted);font-weight:800;letter-spacing:0.08em;">TOKEN</div>
-          <div style="font-family:'Plus Jakarta Sans',sans-serif;font-size:3.2rem;font-weight:900;color:var(--color-primary);line-height:1;">${escapeHtml(token)}</div>
-        </div>
-
-        ${isUpi ? `
-          <div style="margin-top:22px;padding:20px;border:1px solid var(--border-glass);border-radius:8px;background:rgba(255,255,255,0.02);max-width:360px;width:100%;">
-            <div style="background:white;padding:14px;border-radius:8px;display:inline-block;margin-bottom:12px;"><canvas id="upi-qr"></canvas></div>
-            <div style="font-family:'Plus Jakarta Sans',sans-serif;font-size:1.4rem;font-weight:900;color:var(--color-primary);">${formatCurrency(order.total)}</div>
-            <div id="upi-id-label" style="font-size:var(--text-xs);color:var(--text-secondary);font-weight:700;margin-top:4px;">Loading UPI ID...</div>
-            <p style="font-size:var(--text-xs);color:var(--text-muted);line-height:1.45;margin:10px 0 0;">After paying, staff will verify UPI before marking this order as paid.</p>
+      <div class="store-success-shell">
+        <div class="store-success-panel">
+          <div class="store-success-icon">
+            <span class="material-symbols-rounded" aria-hidden="true">check_circle</span>
           </div>
-        ` : `
-          <div style="margin-top:22px;padding:18px;border:1px solid rgba(245,158,11,0.28);border-radius:8px;background:rgba(245,158,11,0.04);max-width:360px;">
-            <span class="material-symbols-rounded" style="color:var(--color-warning);font-size:34px;">payments</span>
-            <div style="font-weight:900;color:var(--text-primary);margin-top:6px;">Cash on ${order.type === 'delivery' ? 'Delivery' : 'Pickup'}</div>
-            <p style="font-size:var(--text-xs);color:var(--text-secondary);line-height:1.45;margin:8px 0 0;">Payment will be collected and marked paid by staff.</p>
+          <p class="store-kicker">Order Confirmed</p>
+          <h1>Thank you, ${escapeHtml(order.customerName || 'guest')}</h1>
+          <p>${escapeHtml(deliveryText)}</p>
+          <div class="store-token">
+            <span>Token</span>
+            <strong>${escapeHtml(token)}</strong>
           </div>
-        `}
 
-        <div id="prep-status" style="margin-top:18px;font-size:var(--text-xs);color:var(--text-muted);font-weight:700;">Waiting for kitchen prep time...</div>
-        <button class="btn btn-secondary btn-block btn-lg" id="btn-order-again" style="margin-top:22px;max-width:360px;">Order Something Else</button>
+          ${isUpi ? `
+            <div class="store-payment-box">
+              <div class="store-upi-qr"><canvas id="upi-qr"></canvas></div>
+              <strong>${formatCurrency(order.total)}</strong>
+              <span id="upi-id-label">Loading UPI ID...</span>
+              <p>After paying, staff will verify UPI before marking this order as paid.</p>
+            </div>
+          ` : `
+            <div class="store-payment-box cash">
+              <span class="material-symbols-rounded" aria-hidden="true">payments</span>
+              <strong>Cash on ${order.type === 'delivery' ? 'Delivery' : 'Pickup'}</strong>
+              <p>Payment will be collected and marked paid by staff.</p>
+            </div>
+          `}
+
+          <div id="prep-status" class="store-prep-status">Waiting for kitchen prep time...</div>
+          <button class="btn btn-secondary btn-block btn-lg" id="btn-order-again" type="button">Order Something Else</button>
+        </div>
       </div>
     `;
 
@@ -399,19 +606,20 @@ export class CustomerView {
 
   renderTopBar(title, backId) {
     return `
-      <header style="padding:14px 16px;border-bottom:1px solid var(--border-glass);display:flex;align-items:center;gap:12px;background:rgba(9,9,14,0.86);">
-        <button class="btn-icon btn-secondary" id="${backId}" style="border-radius:50%;border:1px solid var(--border-glass);background:rgba(255,255,255,0.03);">
-          <span class="material-symbols-rounded">arrow_back</span>
+      <header class="store-subheader">
+        <button class="btn-icon btn-secondary" id="${backId}" type="button" aria-label="Go back">
+          <span class="material-symbols-rounded" aria-hidden="true">arrow_back</span>
         </button>
-        <h2 style="font-family:'Plus Jakarta Sans',sans-serif;font-size:var(--text-lg);font-weight:900;color:var(--text-primary);margin:0;">${escapeHtml(title)}</h2>
+        <a href="#/self-order" class="store-subheader-brand">THE TASTE</a>
+        <h2>${escapeHtml(title)}</h2>
       </header>
     `;
   }
 
   renderPanel(title, body) {
     return `
-      <section class="card card-glass" style="padding:18px;background:rgba(255,255,255,0.02);border:1px solid var(--border-glass);border-radius:8px;">
-        <h3 style="font-family:'Plus Jakarta Sans',sans-serif;font-size:var(--text-sm);font-weight:900;color:var(--text-primary);margin:0 0 14px;">${escapeHtml(title)}</h3>
+      <section class="store-checkout-panel">
+        <h3>${escapeHtml(title)}</h3>
         ${body}
       </section>
     `;
@@ -419,9 +627,9 @@ export class CustomerView {
 
   renderInput(id, label, value, placeholder, type = 'text') {
     return `
-      <div class="input-group" style="margin-bottom:12px;">
-        <label style="${this.labelStyle()}">${escapeHtml(label)}</label>
-        <input type="${type}" id="${id}" class="input" value="${escapeHtml(value || '')}" placeholder="${escapeHtml(placeholder)}" style="${this.inputStyle()}">
+      <div class="input-group store-input-group">
+        <label class="store-field-label" for="${id}">${escapeHtml(label)}</label>
+        <input type="${type}" id="${id}" class="input store-input" value="${escapeHtml(value || '')}" placeholder="${escapeHtml(placeholder)}">
       </div>
     `;
   }
@@ -429,8 +637,8 @@ export class CustomerView {
   renderTypeButton(type, icon, label) {
     const active = this.orderType === type;
     return `
-      <button class="type-btn" data-type="${type}" style="${this.optionButtonStyle(active)}">
-        <span class="material-symbols-rounded" style="font-size:22px;">${icon}</span>
+      <button class="type-btn store-choice-btn ${active ? 'is-active' : ''}" data-type="${type}" type="button" aria-pressed="${active}">
+        <span class="material-symbols-rounded" aria-hidden="true">${icon}</span>
         <span>${escapeHtml(label)}</span>
       </button>
     `;
@@ -439,32 +647,12 @@ export class CustomerView {
   renderPaymentButton(method, icon, label, sublabel) {
     const active = this.selectedPaymentMethod === method;
     return `
-      <button class="pay-btn" data-method="${method}" style="${this.optionButtonStyle(active)}">
-        <span class="material-symbols-rounded" style="font-size:22px;">${icon}</span>
+      <button class="pay-btn store-choice-btn ${active ? 'is-active' : ''}" data-method="${method}" type="button" aria-pressed="${active}">
+        <span class="material-symbols-rounded" aria-hidden="true">${icon}</span>
         <span>${escapeHtml(label)}</span>
-        <small style="font-size:10px;color:var(--text-muted);font-weight:700;">${escapeHtml(sublabel)}</small>
+        <small>${escapeHtml(sublabel)}</small>
       </button>
     `;
-  }
-
-  optionButtonStyle(active) {
-    return `
-      min-height:82px;padding:12px 8px;border-radius:8px;
-      border:1.5px solid ${active ? 'rgba(255,94,54,0.45)' : 'var(--border-glass)'};
-      background:${active ? 'rgba(255,94,54,0.08)' : 'rgba(255,255,255,0.01)'};
-      color:${active ? 'var(--text-primary)' : 'var(--text-secondary)'};
-      box-shadow:${active ? '0 8px 20px rgba(255,94,54,0.14)' : 'none'};
-      display:flex;flex-direction:column;gap:4px;align-items:center;justify-content:center;
-      font-family:'Plus Jakarta Sans',sans-serif;font-size:var(--text-xs);font-weight:900;cursor:pointer;
-    `;
-  }
-
-  labelStyle() {
-    return "display:block;margin-bottom:7px;font-family:'Plus Jakarta Sans',sans-serif;font-size:var(--text-xs);color:var(--text-secondary);font-weight:800;";
-  }
-
-  inputStyle(extra = '') {
-    return `padding:12px 14px;background:rgba(0,0,0,0.22);border:1px solid var(--border-glass);border-radius:8px;color:var(--text-primary);outline:none;width:100%;box-sizing:border-box;${extra}`;
   }
 
   getOrderTypeLabel() {
@@ -473,6 +661,37 @@ export class CustomerView {
     if (this.orderType === 'takeaway') return 'Pickup Order';
     const table = this.tables.find(t => String(t.id) === String(this.selectedTableId));
     return `Dine-In Order${table ? ` Table ${table.number}` : ''}`;
+  }
+
+  getFeaturedItems() {
+    const all = this.categories.flatMap(category => this.menuByCategory.get(category.id) || []);
+    const names = ['Steamed Veg Momos', 'Veg Hakka Noodles', 'Chicken Hakka Noodles', 'Cold Coffee', 'Chilli Paneer Dry', 'Chocolate Lava Cake'];
+    const featured = names.map(name => all.find(item => item.name === name)).filter(Boolean);
+    return featured.length ? featured.slice(0, 6) : all.slice(0, 6);
+  }
+
+  findItemById(id) {
+    for (const items of this.menuByCategory.values()) {
+      const item = items.find(candidate => candidate.id === id);
+      if (item) return item;
+    }
+    return this.items.find(item => item.id === id);
+  }
+
+  getCategoryForItem(item) {
+    return this.categories.find(category => category.id === item.categoryId);
+  }
+
+  getItemImage(item) {
+    const category = this.getCategoryForItem(item);
+    const key = (category?.name || '').toLowerCase();
+    return CATEGORY_IMAGE_MAP[key] || '/assets/dish-starters.png';
+  }
+
+  getItemDescription(item) {
+    const category = this.getCategoryForItem(item);
+    const key = (category?.name || '').toLowerCase();
+    return CATEGORY_COPY[key] || 'Freshly prepared by The Taste kitchen.';
   }
 
   validateAndPlaceOrder() {
