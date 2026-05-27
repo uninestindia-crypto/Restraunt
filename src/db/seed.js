@@ -5,7 +5,8 @@ import { hashPin } from '../utils/crypto.js';
  * Seeds the database with initial data if empty.
  * Checks for existing categories before seeding.
  */
-export async function seedDatabase() {
+export async function seedDatabase(options = {}) {
+  const { publicOnly = false } = options;
   // Migrate existing staff/admin credentials. New installs use the owner setup wizard.
   try {
     const staffCount = await db.staff.count();
@@ -39,26 +40,8 @@ export async function seedDatabase() {
     console.error('[Seed] Failed to migrate staff credentials or settings:', err);
   }
 
-  // Ensure default tables exist
-  try {
-    const tableStore = db.table('tables');
-    const tableCount = await tableStore.count();
-    if (tableCount === 0) {
-      const defaultTables = [
-        { number: 1, status: 'available', floorSection: 'Main Hall' },
-        { number: 2, status: 'available', floorSection: 'Main Hall' },
-        { number: 3, status: 'available', floorSection: 'Main Hall' },
-        { number: 4, status: 'available', floorSection: 'Main Hall' },
-        { number: 5, status: 'available', floorSection: 'Window Side' },
-        { number: 6, status: 'available', floorSection: 'Window Side' },
-        { number: 7, status: 'available', floorSection: 'Balcony' },
-        { number: 8, status: 'available', floorSection: 'Balcony' }
-      ];
-      await tableStore.bulkAdd(defaultTables);
-      console.log('[Seed] Default tables seeded.');
-    }
-  } catch (err) {
-    console.error('[Seed] Failed to seed default tables:', err);
+  if (!publicOnly) {
+    await ensureDefaultTables();
   }
 
   const existingCategories = await db.menuCategories.count();
