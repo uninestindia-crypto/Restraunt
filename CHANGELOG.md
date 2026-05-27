@@ -18,10 +18,15 @@
 - Dexie `tables` access now uses `db.table('tables')` to avoid the reserved `db.tables` metadata property.
 - Public route UI no longer behaves like a kiosk-only menu grid; it now presents The Taste as an online ordering website for home delivery, pickup, and dine-in QR.
 - Mobile viewport settings now allow browser zoom instead of disabling scaling.
+- Public route now uses a lightweight public shell; staff auth, sidebar, printer, staff sync, QR code generation, inventory deduction, and PWA registration are deferred until needed.
+- Storefront assets were compressed and unused oversized PNGs were removed from production assets.
+- Render-blocking text font imports were removed in favor of system fonts, with Material Symbols loaded asynchronously.
+- Public quick-add buttons now add directly to cart while item cards still open the detail drawer.
 
 ### Verified
 - Passed `npm.cmd run launch:verify` with 6 / 6 unit tests, successful production build, and 0 production audit vulnerabilities.
 - Passed `npm.cmd run test:e2e` with 25 / 25 Playwright checks across desktop, iPhone SE, iPhone 15, Pixel 5, and iPad emulation, including public storefront horizontal-overflow checks.
+- Passed Lighthouse production-preview check: Performance 97, Accessibility 100, Best Practices 100, SEO 100. Lighthouse still emits a Windows temp-profile cleanup `EPERM` after writing the JSON report.
 
 ### Remaining Launch Gates
 - Production Supabase migration, Edge Function deployment, staff membership setup, real-device QA, monitoring, backup restore drill, and signed Android release remain required before public launch.
