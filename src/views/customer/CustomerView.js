@@ -6,15 +6,15 @@ import { escapeHtml, formatCurrency, parseOrderItems, playSound, showToast, vibr
 const PHONE_RE = /^[6-9]\d{9}$/;
 
 const CATEGORY_IMAGE_MAP = {
-  momos: '/assets/dish-momos.png',
-  starters: '/assets/dish-starters.png',
-  noodles: '/assets/dish-noodles.png',
-  rice: '/assets/dish-rice.png',
-  'main course': '/assets/dish-main.png',
-  burgers: '/assets/dish-burgers.png',
-  sides: '/assets/dish-sides.png',
-  beverages: '/assets/dish-beverages.png',
-  desserts: '/assets/dish-desserts.png'
+  momos: '/assets/dish-momos.jpg',
+  starters: '/assets/dish-starters.jpg',
+  noodles: '/assets/dish-noodles.jpg',
+  rice: '/assets/dish-rice.jpg',
+  'main course': '/assets/dish-main.jpg',
+  burgers: '/assets/dish-burgers.jpg',
+  sides: '/assets/dish-sides.jpg',
+  beverages: '/assets/dish-beverages.jpg',
+  desserts: '/assets/dish-desserts.jpg'
 };
 
 const CATEGORY_COPY = {
@@ -783,7 +783,7 @@ export class CustomerView {
   getItemImage(item) {
     const category = this.getCategoryForItem(item);
     const key = (category?.name || '').toLowerCase();
-    return CATEGORY_IMAGE_MAP[key] || '/assets/dish-starters.png';
+    return CATEGORY_IMAGE_MAP[key] || '/assets/dish-starters.jpg';
   }
 
   getItemDescription(item) {
