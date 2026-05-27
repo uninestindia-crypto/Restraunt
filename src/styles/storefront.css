@@ -235,10 +235,10 @@
   min-height: 100px;
   padding: 16px;
   border: 1px solid var(--store-line);
-  border-radius: 8px;
+  border-radius: 12px;
   background: var(--store-panel);
   color: var(--store-ink);
-  box-shadow: 0 18px 45px rgba(39, 28, 21, 0.10);
+  box-shadow: 0 18px 45px rgba(39, 28, 21, 0.08);
   display: grid;
   grid-template-columns: auto 1fr;
   grid-template-areas:
@@ -246,14 +246,14 @@
     "icon detail";
   column-gap: 12px;
   text-align: left;
-  transition: transform var(--transition-fast), border-color var(--transition-fast), box-shadow var(--transition-fast);
+  transition: var(--transition-spring-all);
 }
 
 .store-service-option:hover,
 .store-service-option.is-active {
-  transform: translateY(-2px);
-  border-color: rgba(233, 79, 43, 0.42);
-  box-shadow: 0 18px 45px rgba(233, 79, 43, 0.12);
+  transform: translateY(-4px) scale(1.025);
+  border-color: rgba(233, 79, 43, 0.45);
+  box-shadow: 0 18px 45px rgba(233, 79, 43, 0.16);
 }
 
 .store-service-option .material-symbols-rounded {
@@ -1473,15 +1473,15 @@
 }
 
 .aether-telemetry-svg circle.aether-track {
-  stroke: var(--border-subtle);
+  stroke: rgba(255, 255, 255, 0.05);
 }
 
 .aether-telemetry-svg circle.aether-fill {
-  stroke: var(--color-primary);
+  stroke: #10B981; /* High-fidelity emerald */
   stroke-dasharray: 251.2;
   stroke-dashoffset: 251.2;
-  transition: stroke-dashoffset 0.8s var(--ease-out-expo);
-  filter: drop-shadow(0 0 6px var(--color-primary-glow));
+  transition: stroke-dashoffset 0.85s cubic-bezier(0.16, 1, 0.3, 1);
+  filter: drop-shadow(0 0 8px rgba(16, 185, 129, 0.45));
 }
 
 .aether-telemetry-ring-label {
@@ -1495,9 +1495,10 @@
 }
 
 .aether-telemetry-ring-label span {
-  font-size: 22px;
-  color: var(--color-primary);
+  font-size: 24px;
+  color: #10B981;
   margin-bottom: 2px;
+  filter: drop-shadow(0 0 6px rgba(16, 185, 129, 0.3));
 }
 
 .aether-telemetry-ring-label strong {

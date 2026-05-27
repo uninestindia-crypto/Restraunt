@@ -929,5 +929,56 @@
 /* ── View Transitions ── */
 
 .view-enter {
-  animation: fadeIn 250ms ease;
+  animation: slideUp 450ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* ── Interactive Table Cards Floor Layout ── */
+
+.table-card {
+  transition: var(--transition-spring-all) !important;
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+  position: relative;
+}
+
+.table-card:hover {
+  transform: translateY(-5px) scale(1.03);
+  box-shadow: var(--shadow-md);
+}
+
+.table-card:active {
+  transform: scale(0.96);
+}
+
+/* Status-specific glowing ambient shadows */
+.table-card[style*="#10B981"] {
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.08), var(--shadow-sm);
+}
+.table-card[style*="#10B981"]:hover {
+  box-shadow: 0 0 20px rgba(16, 185, 129, 0.2), var(--shadow-md);
+  border-color: rgba(16, 185, 129, 0.5) !important;
+}
+
+.table-card[style*="#EF4444"] {
+  box-shadow: 0 0 10px rgba(239, 68, 68, 0.08), var(--shadow-sm);
+}
+.table-card[style*="#EF4444"]:hover {
+  box-shadow: 0 0 20px rgba(239, 68, 68, 0.2), var(--shadow-md);
+  border-color: rgba(239, 68, 68, 0.5) !important;
+}
+
+.table-card[style*="#F59E0B"] {
+  box-shadow: 0 0 10px rgba(245, 158, 11, 0.08), var(--shadow-sm);
+}
+.table-card[style*="#F59E0B"]:hover {
+  box-shadow: 0 0 20px rgba(245, 158, 11, 0.2), var(--shadow-md);
+  border-color: rgba(245, 158, 11, 0.5) !important;
+}
+
+.table-card[style*="#3B82F6"] {
+  box-shadow: 0 0 10px rgba(59, 130, 246, 0.08), var(--shadow-sm);
+}
+.table-card[style*="#3B82F6"]:hover {
+  box-shadow: 0 0 20px rgba(59, 130, 246, 0.2), var(--shadow-md);
+  border-color: rgba(59, 130, 246, 0.5) !important;
 }
