@@ -4,11 +4,11 @@
 .store-checkout-shell,
 .store-success-shell {
   --store-ink: #1C1B1F;
-  --store-muted: #6B7280;
+  --store-muted: #4B5563;
   --store-soft: #FAF9F6; /* Luxury Warm Warm Porcelain */
   --store-panel: #FFFFFF;
   --store-line: rgba(0, 0, 0, 0.045);
-  --store-accent: #FF5E36; /* Luxurious Vermillion */
+  --store-accent: #A83B21; /* Accessible vermillion */
   --store-green: #0F6B4E;
   --store-gold: #D4AF37;
   min-height: 100%;
@@ -18,7 +18,7 @@
   background: var(--store-soft);
   color: var(--store-ink);
   font-family: var(--font-sans);
-  letter-spacing: -0.01em;
+  letter-spacing: 0;
   scroll-behavior: smooth;
 }
 
@@ -352,6 +352,7 @@
 
 .store-featured-item img {
   width: 100%;
+  height: auto;
   aspect-ratio: 1.45;
   object-fit: cover;
 }
@@ -426,6 +427,7 @@
 
 .store-menu-item-image {
   width: 100%;
+  height: auto;
   aspect-ratio: 1.58;
   object-fit: cover;
   background: #24130d;

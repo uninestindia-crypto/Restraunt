@@ -294,7 +294,7 @@ export class CustomerView {
 
   renderFeaturedItem(item) {
     return `
-      <button class="store-featured-item" data-id="${item.id}" type="button" aria-label="Add ${escapeHtml(item.name)}">
+      <button class="store-featured-item" data-id="${item.id}" type="button">
         <img src="${this.getItemImage(item)}" alt="" width="640" height="420" loading="lazy" decoding="async">
         <span>${escapeHtml(item.name)}</span>
         <strong>${formatCurrency(item.price)}</strong>
@@ -377,7 +377,7 @@ export class CustomerView {
         const id = parseInt(btn.dataset.id, 10);
         const item = this.findItemById(id);
         if (item) {
-          this.openItemDetailsDrawer(item);
+          this.addToCart(item);
         }
       });
     });

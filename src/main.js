@@ -467,6 +467,71 @@ class App {
       const installBtn = document.getElementById('btn-install-app');
       if (installBtn) installBtn.style.display = 'none';
     });
+
+    // PWA Service Worker Update Prompt Registry
+    try {
+      import('virtual:pwa-register')
+        .then(({ registerSW }) => {
+          const updateSW = registerSW({
+            onNeedRefresh: () => {
+              console.log('[PWA] A new service worker update is available. Prompting reload.');
+              this.showUpdateBanner(() => updateSW(true));
+            },
+            onOfflineReady: () => {
+              console.log('[PWA] Platform is offline-ready and assets are fully cached.');
+            }
+          });
+        })
+        .catch(err => {
+          console.debug('[PWA] Service Worker registration skipped (expected during local dev/testing):', err.message);
+        });
+    } catch (e) {
+      console.warn('[PWA] Failed to set up Service Worker update prompt:', e);
+    }
+  }
+
+  showUpdateBanner(onConfirm) {
+    if (document.getElementById('pwa-update-prompt')) return;
+
+    const banner = document.createElement('div');
+    banner.id = 'pwa-update-prompt';
+    banner.className = 'pwa-update-banner';
+    banner.innerHTML = `
+      <div class="pwa-update-content">
+        <span class="material-symbols-rounded pwa-update-icon">system_update</span>
+        <div class="pwa-update-text">
+          <strong>Update Available!</strong>
+          <span>A new version of the platform is ready.</span>
+        </div>
+      </div>
+      <div class="pwa-update-actions">
+        <button class="btn btn-sm btn-primary pwa-update-btn">Reload</button>
+        <button class="btn-icon pwa-close-btn" title="Dismiss">
+          <span class="material-symbols-rounded" style="font-size: 18px;">close</span>
+        </button>
+      </div>
+    `;
+    document.body.appendChild(banner);
+
+    // Audio & haptic feedback for user alert
+    import('./utils/helpers.js').then(({ playSound, vibrateDevice }) => {
+      playSound(600, 150);
+      vibrateDevice([60, 40, 60]);
+    });
+
+    const reloadBtn = banner.querySelector('.pwa-update-btn');
+    reloadBtn.addEventListener('click', () => {
+      banner.classList.add('loading');
+      reloadBtn.disabled = true;
+      reloadBtn.textContent = 'Updating...';
+      onConfirm();
+    });
+
+    const closeBtn = banner.querySelector('.pwa-close-btn');
+    closeBtn.addEventListener('click', () => {
+      banner.classList.add('slide-out');
+      setTimeout(() => banner.remove(), 400);
+    });
   }
 
   async setupPrinter() {
