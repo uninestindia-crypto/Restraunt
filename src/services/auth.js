@@ -422,7 +422,7 @@ class AuthService {
    * @returns {boolean} True if authenticated
    */
   requireAuth() {
-    return this.isAuthenticated;
+    return this.isAuthenticated && this.currentStaff && this.currentStaff.role !== 'customer';
   }
 
   getLockoutRemaining() {

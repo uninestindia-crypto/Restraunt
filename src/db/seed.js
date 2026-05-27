@@ -374,6 +374,33 @@ async function runMigrations() {
       console.error('[Seed] Weak PIN cleanup failed:', weakErr);
     }
 
+    // ── Owner Recovery Migration ────────────────────────────────
+    // If the database has NO active owners, find any deactivated owner
+    // and reactivate them with the default PIN '1234' for local recovery.
+    try {
+      const activeOwnerCount = await db.staff
+        .where('role')
+        .equals('owner')
+        .and(s => s.isActive === 1 || s.isActive === true)
+        .count();
+
+      if (activeOwnerCount === 0) {
+        const deactivatedOwner = await db.staff.where('role').equals('owner').first();
+        if (deactivatedOwner) {
+          console.log(`[Seed] Reactivating owner "${deactivatedOwner.name}" with default PIN '1234' for local recovery.`);
+          const recoveryHash = await hashPin('1234');
+          await db.staff.update(deactivatedOwner.id, {
+            isActive: 1,
+            pinHash: recoveryHash,
+            isSynced: 0
+          });
+          await db.settings.put({ key: 'adminPinHash', value: recoveryHash });
+        }
+      }
+    } catch (recoveryErr) {
+      console.error('[Seed] Owner recovery migration failed:', recoveryErr);
+    }
+
     // Clean up the legacy adminPin='1234' setting if it's still hanging around
     try {
       const legacyDefault = await db.settings.get('adminPin');

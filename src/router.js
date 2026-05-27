@@ -82,7 +82,6 @@ export class Router {
     if (!isPublic && allowedRoles) {
       const currentStaff = authService.getCurrentStaff();
       const staffRole = currentStaff?.role?.toLowerCase();
-      
       if (!staffRole || !allowedRoles.includes(staffRole)) {
         console.warn(`[Router] Access to "${path}" denied for role "${staffRole}". Required: [${allowedRoles.join(', ')}]`);
         const { showToast } = await import('./utils/helpers.js');
@@ -93,8 +92,14 @@ export class Router {
           this.navigate('#/kitchen');
         } else if (staffRole === 'waiter') {
           this.navigate('#/tables');
-        } else {
+        } else if (staffRole === 'delivery') {
+          this.navigate('#/orders');
+        } else if (staffRole === 'customer') {
+          this.navigate('#/self-order');
+        } else if (['owner', 'manager', 'cashier'].includes(staffRole)) {
           this.navigate('#/pos');
+        } else {
+          this.navigate('#/self-order');
         }
         return;
       }

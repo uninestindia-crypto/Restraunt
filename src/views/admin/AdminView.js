@@ -32,7 +32,11 @@ export class AdminView {
     this.container = container;
     this.pinInput = '';
 
-    if (this.isAuthenticated) {
+    const currentStaff = authService.getCurrentStaff();
+    const isAuthorizedStaff = currentStaff && ['owner', 'manager'].includes(currentStaff.role?.toLowerCase());
+
+    if (this.isAuthenticated || isAuthorizedStaff) {
+      this.isAuthenticated = true;
       await this.renderAdminConsole();
     } else {
       this.renderPinScreen();
@@ -277,9 +281,19 @@ export class AdminView {
     // Logout/Lock
     document.getElementById('btn-admin-logout').addEventListener('click', () => {
       playSound(600, 100);
+      authService.logout();
+      if (this.app.inactivityTimeout) {
+        clearTimeout(this.app.inactivityTimeout);
+        this.app.inactivityTimeout = null;
+      }
       this.isAuthenticated = false;
       this.activeTab = 'dashboard';
-      this.renderPinScreen();
+      if (router.currentView && typeof router.currentView.unmount === 'function') {
+        router.currentView.unmount();
+      }
+      this.app.initialized = false;
+      this.app.showLogin();
+      showToast('Terminal locked', 'info');
     });
   }
 

@@ -138,9 +138,19 @@ class App {
       this.injectSandboxWidget();
 
       // Setup router auth handler
-      router.onAuthRequired = () => {
+      router.onAuthRequired = async () => {
         this.initialized = false;
-        this.showLogin();
+        const activeOwner = await db.staff
+          .where('role')
+          .equals('owner')
+          .and(staff => staff.isActive === 1 || staff.isActive === true)
+          .first();
+
+        if (!activeOwner) {
+          this.showFirstRunSetup();
+        } else {
+          this.showLogin();
+        }
       };
 
       // Listen for session expiry
