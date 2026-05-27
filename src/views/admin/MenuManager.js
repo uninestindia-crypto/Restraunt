@@ -279,6 +279,21 @@ export class MenuManager {
 
   showItemModal() {
     const isNew = !this.editingItem.id;
+    const cat = this.categories.find(c => c.id === this.editingItem.categoryId);
+    const key = (cat?.name || '').toLowerCase();
+    const defaultImageMap = {
+      momos: '/assets/dish-momos.jpg',
+      starters: '/assets/dish-starters.jpg',
+      noodles: '/assets/dish-noodles.jpg',
+      rice: '/assets/dish-rice.jpg',
+      'main course': '/assets/dish-main.jpg',
+      burgers: '/assets/dish-burgers.jpg',
+      sides: '/assets/dish-sides.jpg',
+      beverages: '/assets/dish-beverages.jpg',
+      desserts: '/assets/dish-desserts.jpg'
+    };
+    const defaultImg = defaultImageMap[key] || '/assets/dish-starters.jpg';
+
     const modalHtml = `
       <div class="modal-overlay" id="crud-modal-overlay">
         <div class="modal" style="max-width: 460px;">
@@ -303,6 +318,17 @@ export class MenuManager {
             <div class="input-group">
               <label for="item-price">Price (₹)</label>
               <input type="number" id="item-price" class="input" value="${this.editingItem.price}">
+            </div>
+
+            <div class="input-group">
+              <label for="item-image-file">Dish Image (Max 2MB)</label>
+              <div style="display: flex; gap: 12px; align-items: center; position: relative;">
+                <img id="item-image-preview" src="${this.editingItem.imageUrl || defaultImg}" style="width: 54px; height: 54px; border-radius: var(--radius-sm); object-fit: cover; border: 1px solid rgba(255,255,255,0.15);" alt="Preview">
+                <div style="flex: 1; position: relative;">
+                  <input type="file" id="item-image-file" accept="image/*" class="input" style="padding: 6px; font-size: 0.8rem; height: auto;">
+                  <div id="image-upload-spinner" class="loading-spinner" style="position: absolute; right: 10px; top: 10px; display: none; width: 18px; height: 18px; border-width: 2px;"></div>
+                </div>
+              </div>
             </div>
 
             <div class="form-row">
@@ -352,6 +378,60 @@ export class MenuManager {
     document.getElementById('crud-modal-cancel').addEventListener('click', close);
     document.getElementById('crud-modal-overlay').addEventListener('click', (e) => {
       if (e.target === document.getElementById('crud-modal-overlay')) close();
+    });
+
+    // Bind image file selection and upload
+    document.getElementById('item-image-file')?.addEventListener('change', async (e) => {
+      const fileInput = e.target;
+      const file = fileInput.files[0];
+      if (!file) return;
+
+      if (file.size > 2 * 1024 * 1024) {
+        showToast('Image size must be less than 2MB', 'warning');
+        fileInput.value = '';
+        return;
+      }
+
+      const spinner = document.getElementById('image-upload-spinner');
+      if (spinner) spinner.style.display = 'block';
+
+      try {
+        const { getSupabaseClient } = await import('../../services/supabaseClient.js');
+        const supabase = await getSupabaseClient();
+        if (!supabase) {
+          throw new Error('Supabase client is not available or configured.');
+        }
+
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}.${fileExt}`;
+        const filePath = `items/${fileName}`;
+
+        const { data, error } = await supabase.storage
+          .from('menu-images')
+          .upload(filePath, file, {
+            cacheControl: '3600',
+            upsert: true
+          });
+
+        if (error) throw error;
+
+        const { data: urlData } = supabase.storage
+          .from('menu-images')
+          .getPublicUrl(filePath);
+
+        const publicUrl = urlData.publicUrl;
+        this.editingItem.imageUrl = publicUrl;
+
+        const previewImg = document.getElementById('item-image-preview');
+        if (previewImg) previewImg.src = publicUrl;
+
+        showToast('Image uploaded successfully!', 'success');
+      } catch (err) {
+        console.error('Image upload failed:', err);
+        showToast(`Image upload failed: ${err.message || err}`, 'error');
+      } finally {
+        if (spinner) spinner.style.display = 'none';
+      }
     });
 
     document.getElementById('crud-modal-save').addEventListener('click', async () => {

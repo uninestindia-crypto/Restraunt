@@ -26,7 +26,7 @@ import { router } from './router.js';
 import { showToast } from './utils/helpers.js';
 
 // NextGenOS
-import { printConsoleSignature, injectBuildGlobal } from './utils/watermark.js';
+import { printConsoleSignature, injectBuildGlobal, performVersionGate } from './utils/watermark.js';
 class App {
   constructor() {
     this.deferredInstallPrompt = null;
@@ -40,6 +40,12 @@ class App {
 
   async init() {
     try {
+      // ── Version Gate ──────────────────────────────────
+      // Clear stale auth tokens whenever the build version changes.
+      // This prevents ghost PIN sessions from old database states
+      // surviving across app updates (laptop vs phone inconsistency).
+      performVersionGate();
+
       const initialHash = window.location.hash || '#/self-order';
       const initialPath = initialHash.split('?')[0];
       const isPublicEntry = initialPath === '#/self-order';
@@ -548,6 +554,11 @@ class App {
       banner.classList.add('loading');
       reloadBtn.disabled = true;
       reloadBtn.textContent = 'Updating...';
+      // Clear stale auth state before the new service worker activates,
+      // so the next boot starts clean with the version gate.
+      localStorage.removeItem('auth_staff_pin');
+      localStorage.removeItem('auth_staff_email');
+      localStorage.removeItem('app_build_version');
       onConfirm();
     });
 

@@ -1,7 +1,15 @@
 import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
+import { readFileSync } from 'fs';
+
+const pkg = JSON.parse(readFileSync('./package.json', 'utf-8'));
+const buildHash = `${pkg.version}-${Date.now().toString(36)}`;
 
 export default defineConfig({
+  define: {
+    // Injected at build time so the version gate can detect new deploys
+    __APP_BUILD_HASH__: JSON.stringify(buildHash),
+  },
   plugins: [
     VitePWA({
       registerType: 'prompt',

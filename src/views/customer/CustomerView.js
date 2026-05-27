@@ -155,6 +155,10 @@ export class CustomerView {
       clearInterval(this.pollInterval);
       this.pollInterval = null;
     }
+    if (this.handleSyncChanged) {
+      window.removeEventListener('sync-data-changed', this.handleSyncChanged);
+      this.handleSyncChanged = null;
+    }
 
     if (this.state === 'cart') this.renderCart();
     else if (this.state === 'checkout') this.renderCheckout();
@@ -627,6 +631,11 @@ export class CustomerView {
   }
 
   renderSuccess() {
+    // Request push notification permission
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission().catch(err => console.warn('Notification permission request failed:', err));
+    }
+
     const order = this.placedOrder;
     const token = order.displayToken || order.orderNumber.split('-').pop();
     const isUpi = order.paymentMethod === 'upi';
@@ -703,8 +712,59 @@ export class CustomerView {
     });
   }
 
+  triggerOrderNotification(latest, statusChanged, deliveryChanged) {
+    if (!('Notification' in window) || Notification.permission !== 'granted') {
+      return;
+    }
+
+    let title = 'Order Update';
+    let body = '';
+
+    if (statusChanged) {
+      const status = (latest.status || '').toLowerCase();
+      if (status === 'confirmed') {
+        body = `Your order ${latest.orderNumber} has been confirmed.`;
+      } else if (status === 'preparing' || status === 'cooking') {
+        body = `Chef is now preparing your order ${latest.orderNumber}!`;
+      } else if (status === 'ready' || status === 'plated') {
+        body = `Your order ${latest.orderNumber} is ready!`;
+      } else if (status === 'completed' || status === 'served') {
+        body = `Your order ${latest.orderNumber} has been served. Enjoy your meal!`;
+      }
+    }
+
+    if (deliveryChanged && latest.type === 'delivery') {
+      const delStatus = (latest.deliveryStatus || '').toLowerCase();
+      if (delStatus === 'dispatched' || delStatus === 'out_for_delivery') {
+        body = `Your order ${latest.orderNumber} is out for delivery!`;
+      } else if (delStatus === 'delivered') {
+        body = `Your order ${latest.orderNumber} has been delivered. Thank you!`;
+      }
+    }
+
+    if (body) {
+      try {
+        const notification = new Notification(title, {
+          body,
+          icon: '/assets/aether-icon.png',
+          silent: false
+        });
+        playSound(880, 150);
+        vibrateDevice([100, 50, 100]);
+        notification.onclick = () => {
+          window.focus();
+        };
+      } catch (err) {
+        console.warn('Failed to display browser notification:', err);
+      }
+    }
+  }
+
   startOrderPoll() {
     if (!this.placedOrder) return;
+
+    let lastStatus = this.placedOrder.status;
+    let lastDeliveryStatus = this.placedOrder.deliveryStatus;
 
     const updateTelemetry = (latest) => {
       const fillEl = this.container?.querySelector('#telemetry-ring-fill');
@@ -761,15 +821,46 @@ export class CustomerView {
     };
 
     db.orders.get(this.placedOrder.id).then(latest => {
-      if (latest) updateTelemetry(latest);
+      if (latest) {
+        lastStatus = latest.status;
+        lastDeliveryStatus = latest.deliveryStatus;
+        updateTelemetry(latest);
+      }
     });
+
+    const checkAndUpdate = (latest) => {
+      const statusChanged = latest.status !== lastStatus;
+      const deliveryChanged = latest.deliveryStatus !== lastDeliveryStatus;
+
+      if (statusChanged || deliveryChanged) {
+        this.triggerOrderNotification(latest, statusChanged, deliveryChanged);
+        lastStatus = latest.status;
+        lastDeliveryStatus = latest.deliveryStatus;
+      }
+
+      this.placedOrder = latest;
+      updateTelemetry(latest);
+    };
 
     this.pollInterval = setInterval(async () => {
       const latest = await db.orders.get(this.placedOrder.id);
       if (!latest) return;
-      this.placedOrder = latest;
-      updateTelemetry(latest);
+      checkAndUpdate(latest);
     }, 3000);
+
+    // Listen to sync events for real-time updates as well
+    this.handleSyncChanged = async (event) => {
+      const { storeName, newObj } = event.detail;
+      if (storeName === 'orders' && this.placedOrder) {
+        if (newObj && (newObj.clientOrderId === this.placedOrder.clientOrderId || newObj.id === this.placedOrder.id)) {
+          const latest = await db.orders.get(this.placedOrder.id);
+          if (latest) {
+            checkAndUpdate(latest);
+          }
+        }
+      }
+    };
+    window.addEventListener('sync-data-changed', this.handleSyncChanged);
   }
 
   renderTopBar(title, backId) {
@@ -1232,6 +1323,11 @@ export class CustomerView {
   async openLoyaltyDrawer() {
     playSound(600, 70);
     vibrateDevice([15]);
+
+    // Request push notification permission
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission().catch(err => console.warn('Notification permission request failed:', err));
+    }
 
     const overlay = document.createElement('div');
     overlay.className = 'aether-drawer-overlay';
@@ -1713,10 +1809,13 @@ export class CustomerView {
       })();
     }
   }
-  }
 
   unmount() {
     if (this.pollInterval) clearInterval(this.pollInterval);
+    if (this.handleSyncChanged) {
+      window.removeEventListener('sync-data-changed', this.handleSyncChanged);
+      this.handleSyncChanged = null;
+    }
     this.container = null;
   }
 }

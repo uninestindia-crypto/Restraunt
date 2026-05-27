@@ -357,6 +357,31 @@ async function runMigrations() {
       await db.settings.delete('adminPin');
     }
 
+    // ── Weak PIN Cleanup ───────────────────────────────────────
+    // Deactivate any staff still using the insecure default PIN '1234'.
+    // This ensures old databases (e.g. on a laptop) can't keep working
+    // with a PIN that FirstRunSetup explicitly blocks on fresh installs.
+    try {
+      const weakHash = await hashPin('1234');
+      const weakStaff = await db.staff.where('pinHash').equals(weakHash).toArray();
+      for (const s of weakStaff) {
+        if (s.isActive === true || s.isActive === 1) {
+          console.warn(`[Seed] Deactivating staff "${s.name}" (id=${s.id}) — insecure default PIN '1234'.`);
+          await db.staff.update(s.id, { isActive: 0, pinHash: '', isSynced: 0 });
+        }
+      }
+    } catch (weakErr) {
+      console.error('[Seed] Weak PIN cleanup failed:', weakErr);
+    }
+
+    // Clean up the legacy adminPin='1234' setting if it's still hanging around
+    try {
+      const legacyDefault = await db.settings.get('adminPin');
+      if (legacyDefault?.value === '1234') {
+        await db.settings.delete('adminPin');
+      }
+    } catch (e) { /* non-critical */ }
+
     // Dynamic UPI ID Migration
     const currentUpiIdSetting = await db.settings.get('upiId');
     if (!currentUpiIdSetting || currentUpiIdSetting.value === 'thetaste@upi' || currentUpiIdSetting.value === '') {
