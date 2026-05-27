@@ -60,60 +60,71 @@ export class LoginScreen {
         .login-screen {
           position: fixed; inset: 0; z-index: 9998;
           display: flex; align-items: center; justify-content: center;
-          background: linear-gradient(135deg, #0F0F1A 0%, #1A1A2E 50%, #0F0F1A 100%);
+          background: radial-gradient(circle at center, #12121C 0%, #08080C 100%);
+          overflow: hidden;
         }
         .login-card {
-          width: 90%; max-width: 340px; text-align: center;
-          padding: 40px 28px 28px;
-          background: rgba(17, 17, 30, 0.8);
-          border: 1px solid rgba(255,255,255,0.06);
-          border-radius: 24px;
-          backdrop-filter: blur(40px);
-          box-shadow: 0 24px 48px rgba(0,0,0,0.5);
-          animation: loginSlideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+          width: 90%; max-width: 350px; text-align: center;
+          padding: 48px 32px 32px;
+          background: var(--glass-bg);
+          border: 1px solid var(--border-color);
+          border-radius: var(--radius-xl);
+          backdrop-filter: var(--glass-backdrop-filter);
+          -webkit-backdrop-filter: var(--glass-backdrop-filter);
+          box-shadow: var(--shadow-xl), 0 0 100px rgba(139, 92, 246, 0.03);
+          animation: loginSlideUp var(--transition-slow) var(--ease-out-expo);
         }
         @keyframes loginSlideUp {
-          from { opacity: 0; transform: translateY(30px) scale(0.95); }
+          from { opacity: 0; transform: translateY(30px) scale(0.96); }
           to { opacity: 1; transform: translateY(0) scale(1); }
         }
         .login-logo {
-          font-size: 2.5rem; margin-bottom: 8px;
-          filter: drop-shadow(0 4px 12px rgba(255,107,53,0.3));
+          font-size: 2.8rem; margin-bottom: 12px;
+          filter: drop-shadow(0 6px 16px var(--color-primary-glow));
+          transition: transform var(--transition-fast) var(--ease-spring);
+        }
+        .login-logo:hover {
+          transform: scale(1.1);
         }
         .login-title {
-          font-family: 'Plus Jakarta Sans', sans-serif;
-          font-size: 1.5rem; font-weight: 800;
-          background: linear-gradient(135deg, #FF6B35, #FFB347);
+          font-family: var(--font-display);
+          font-size: 1.75rem; font-weight: 800;
+          background: var(--gradient-primary);
           -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-          background-clip: text; margin: 0 0 4px; letter-spacing: -0.03em;
+          background-clip: text; margin: 0 0 6px; letter-spacing: -0.04em;
         }
         .login-subtitle {
-          font-size: 0.7rem; color: rgba(148,163,184,0.5);
+          font-size: 0.72rem; color: var(--text-secondary);
           letter-spacing: 0.08em; text-transform: uppercase;
-          font-weight: 600; margin: 0 0 28px;
+          font-weight: 700; margin: 0 0 32px;
+          opacity: 0.8;
         }
-        .login-pin-section { margin-bottom: 24px; }
+        .login-pin-section { margin-bottom: 28px; }
         .login-label {
-          font-size: 0.7rem; color: rgba(148,163,184,0.6);
-          font-weight: 600; letter-spacing: 0.06em;
-          text-transform: uppercase; display: block; margin-bottom: 14px;
+          font-size: 0.68rem; color: var(--text-muted);
+          font-weight: 700; letter-spacing: 0.08em;
+          text-transform: uppercase; display: block; margin-bottom: 16px;
         }
         .login-pin-dots {
-          display: flex; gap: 14px; justify-content: center; margin-bottom: 10px;
+          display: flex; gap: 16px; justify-content: center; margin-bottom: 12px;
         }
         .pin-dot {
-          width: 14px; height: 14px; border-radius: 50%;
-          border: 2px solid rgba(255,255,255,0.12);
-          transition: all 0.2s ease;
+          width: 12px; height: 12px; border-radius: 50%;
+          border: 2px solid var(--border-active);
+          background: transparent;
+          transition: all var(--transition-fast) var(--ease-out-expo);
         }
         .pin-dot.filled {
-          background: #FF6B35;
-          border-color: #FF6B35;
-          box-shadow: 0 0 10px rgba(255,107,53,0.4);
+          background: var(--color-primary);
+          border-color: var(--color-primary);
+          box-shadow: var(--shadow-primary);
+          transform: scale(1.15);
         }
         .pin-dot.error {
-          border-color: #EF4444;
-          animation: shake 0.4s ease;
+          border-color: var(--color-danger);
+          background: var(--color-danger);
+          box-shadow: 0 0 12px rgba(239, 68, 68, 0.4);
+          animation: shake 0.4s var(--ease-spring);
         }
         @keyframes shake {
           0%,100% { transform: translateX(0); }
@@ -121,35 +132,39 @@ export class LoginScreen {
           75% { transform: translateX(6px); }
         }
         .login-error {
-          font-size: 0.7rem; color: #EF4444; font-weight: 600;
+          font-size: 0.7rem; color: var(--color-danger); font-weight: 600;
           min-height: 18px; margin-top: 6px;
+          letter-spacing: -0.01em;
         }
         .login-numpad {
           display: grid; grid-template-columns: repeat(3, 1fr);
-          gap: 10px; max-width: 240px; margin: 0 auto 20px;
+          gap: 12px; max-width: 250px; margin: 0 auto 24px;
         }
         .numpad-btn {
-          height: 52px; border-radius: 14px; border: 1px solid rgba(255,255,255,0.06);
-          background: rgba(255,255,255,0.02); color: white;
-          font-size: 1.2rem; font-weight: 700; cursor: pointer;
-          font-family: 'Plus Jakarta Sans', sans-serif;
-          transition: all 0.15s ease; display: flex;
-          align-items: center; justify-content: center;
+          height: 56px; border-radius: var(--radius-md); border: 1px solid var(--border-color);
+          background: var(--bg-card); color: var(--text-primary);
+          font-size: 1.3rem; font-weight: 700; cursor: pointer;
+          font-family: var(--font-sans);
+          transition: all var(--transition-fast) var(--ease-out-expo), transform var(--transition-fast) var(--ease-spring);
+          display: flex; align-items: center; justify-content: center;
+          box-shadow: var(--shadow-sm);
         }
         .numpad-btn:hover:not(:disabled) {
-          background: rgba(255,255,255,0.06);
-          border-color: rgba(255,255,255,0.12);
-          transform: scale(1.05);
+          background: var(--bg-card-hover);
+          border-color: var(--border-active);
+          transform: translateY(-2px);
+          box-shadow: var(--shadow-md);
         }
         .numpad-btn:active:not(:disabled) {
-          transform: scale(0.95);
-          background: rgba(255,107,53,0.1);
+          transform: scale(0.93) translateY(0);
+          background: rgba(var(--color-primary-rgb), 0.08);
+          border-color: var(--border-active);
         }
         .numpad-btn.empty { visibility: hidden; }
-        .numpad-btn.backspace { color: rgba(148,163,184,0.6); }
+        .numpad-btn.backspace { color: var(--text-secondary); }
         .login-footer {
           display: flex; align-items: center; justify-content: center;
-          gap: 4px; padding-top: 8px; opacity: 0.6;
+          gap: 6px; padding-top: 12px; border-top: 1px solid var(--border-color);
         }
       </style>
     `;

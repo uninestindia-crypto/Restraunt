@@ -3,14 +3,14 @@
 .storefront-shell,
 .store-checkout-shell,
 .store-success-shell {
-  --store-ink: #171412;
-  --store-muted: #6F655E;
-  --store-soft: #FFF7EF;
+  --store-ink: #1C1B1F;
+  --store-muted: #6B7280;
+  --store-soft: #FAF9F6; /* Luxury Warm Warm Porcelain */
   --store-panel: #FFFFFF;
-  --store-line: rgba(37, 31, 27, 0.12);
-  --store-accent: #E94F2B;
-  --store-green: #157F5B;
-  --store-gold: #B6761D;
+  --store-line: rgba(0, 0, 0, 0.045);
+  --store-accent: #FF5E36; /* Luxurious Vermillion */
+  --store-green: #10B981;
+  --store-gold: #D4AF37;
   min-height: 100%;
   height: 100%;
   overflow-y: auto;
@@ -18,7 +18,7 @@
   background: var(--store-soft);
   color: var(--store-ink);
   font-family: var(--font-sans);
-  letter-spacing: 0;
+  letter-spacing: -0.01em;
   scroll-behavior: smooth;
 }
 
@@ -83,7 +83,7 @@
   justify-content: center;
   border-radius: 8px;
   background: #fff;
-  color: var(--store-accent);
+  color: #C4381C;
   font-size: 0.78rem;
   font-weight: 900;
 }

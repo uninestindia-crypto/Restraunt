@@ -1,6 +1,5 @@
 import { getCategories, getItemsByCategory, createOrder, getNextOrderNumber, getSetting, db, generateLocalUuid } from '../../db/database.js';
 import { deductInventoryForOrder } from '../../services/inventoryHook.js';
-import { submitPublicOrder } from '../../services/publicOrders.js';
 import { generateUPIQR } from '../../services/upi.js';
 import { escapeHtml, formatCurrency, parseOrderItems, playSound, showToast, vibrateDevice } from '../../utils/helpers.js';
 
@@ -163,7 +162,7 @@ export class CustomerView {
         <section class="store-hero" aria-label="The Taste storefront">
           <div class="store-hero-bg" aria-hidden="true"></div>
           <header class="store-nav">
-            <a class="store-brand" href="#/self-order" aria-label="The Taste home">
+            <a class="store-brand" href="#/self-order">
               <span class="store-brand-mark">TT</span>
               <div>THE TASTE</div>
             </a>
@@ -264,14 +263,15 @@ export class CustomerView {
     const qty = cartItem?.quantity || 0;
     return `
       <article class="store-menu-item ${qty ? 'is-selected' : ''}">
-        <img class="store-menu-item-image" src="${this.getItemImage(item)}" alt="${escapeHtml(item.name)}">
+        <img class="store-menu-item-image" src="${this.getItemImage(item)}" alt="${escapeHtml(item.name)}" width="640" height="420" loading="lazy" decoding="async">
         <div class="store-menu-item-body">
           <div class="store-menu-item-title">
             <div>
               <h3>${escapeHtml(item.name)}</h3>
               <p>${escapeHtml(this.getItemDescription(item))}</p>
             </div>
-            <span class="${item.isVeg ? 'store-food-mark veg' : 'store-food-mark nonveg'}" aria-label="${item.isVeg ? 'Vegetarian' : 'Non vegetarian'}"></span>
+            <span class="${item.isVeg ? 'store-food-mark veg' : 'store-food-mark nonveg'}" aria-hidden="true"></span>
+            <span class="sr-only">${item.isVeg ? 'Vegetarian' : 'Non vegetarian'}</span>
           </div>
           <div class="store-menu-item-footer">
             <strong>${formatCurrency(item.price)}</strong>
@@ -296,7 +296,7 @@ export class CustomerView {
   renderFeaturedItem(item) {
     return `
       <button class="store-featured-item btn-add" data-id="${item.id}" type="button" aria-label="Add ${escapeHtml(item.name)}">
-        <img src="${this.getItemImage(item)}" alt="">
+        <img src="${this.getItemImage(item)}" alt="" width="640" height="420" loading="lazy" decoding="async">
         <span>${escapeHtml(item.name)}</span>
         <strong>${formatCurrency(item.price)}</strong>
       </button>
@@ -785,6 +785,7 @@ export class CustomerView {
         isSynced: 0
       };
 
+      const { submitPublicOrder } = await import('../../services/publicOrders.js');
       const remoteSubmit = await submitPublicOrder(orderData);
       const finalOrderData = remoteSubmit.accepted ? remoteSubmit.order : {
         ...orderData,

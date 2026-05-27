@@ -25,7 +25,6 @@ import { router } from './router.js';
 
 // Services
 import { printerService } from './services/printer.js';
-import { syncService } from './services/sync.js';
 import { showToast } from './utils/helpers.js';
 
 // NextGenOS
@@ -43,15 +42,14 @@ class App {
     this.initialized = false;
     this.sidebar = null;
     this.loginScreen = null;
+    this.syncStarted = false;
+    this.syncServicePromise = null;
   }
 
   async init() {
     try {
       // Initialize database and seed data
       await seedDatabase();
-
-      // Initialize cloud sync service asynchronously to prevent blocking UI boot
-      syncService.init().catch(err => console.error('[App] Sync init error:', err));
 
       // Hide loading screen
       this.hideLoadingScreen();
@@ -127,7 +125,6 @@ class App {
     this.renderShell();
     this.setupRouter();
     this.setupPWA();
-    this.setupSync();
     this.setupConnectivity();
     this.setupMobileSidebar();
     router.start();
@@ -178,6 +175,9 @@ class App {
     // Setup mobile sidebar toggle
     this.setupMobileSidebar();
 
+    // Staff cloud sync starts only after staff authentication.
+    this.startSyncService();
+
     // Update header with staff info
     this.updateStaffDisplay(staff);
 
@@ -186,6 +186,21 @@ class App {
 
     this.initialized = true;
     console.log(`🍜 The Taste Restaurant OS — Logged in as ${staff.name} (${staff.role})`);
+  }
+
+  startSyncService() {
+    if (this.syncStarted) return;
+    this.syncStarted = true;
+    this.getSyncService()
+      .then(syncService => syncService.init())
+      .catch(err => console.error('[App] Sync init error:', err));
+  }
+
+  async getSyncService() {
+    if (!this.syncServicePromise) {
+      this.syncServicePromise = import('./services/sync.js').then(module => module.syncService);
+    }
+    return this.syncServicePromise;
   }
 
   updateStaffDisplay(staff) {
@@ -213,10 +228,10 @@ class App {
               <span class="material-symbols-rounded">menu</span>
             </button>
             <a href="#/pos" class="logo" id="app-logo">
-              <span class="logo-icon">🍜</span>
-              <span>The Taste</span>
+              <span class="logo-icon" style="color: var(--color-primary); filter: drop-shadow(0 2px 8px var(--color-primary-glow));">🍜</span>
+              <span style="font-weight: 800; font-family: var(--font-display); letter-spacing: -0.04em;">The Taste</span>
             </a>
-            <span class="nextgenos-header-badge">NextGenOS</span>
+            <span class="nextgenos-header-badge" style="background: var(--nextgenos-purple-bg); color: var(--nextgenos-purple); border: 1px solid var(--nextgenos-purple-border); box-shadow: var(--shadow-glow-purple); font-weight: 700; padding: 2px 8px; border-radius: var(--radius-full); font-size: 0.65rem; letter-spacing: 0.08em; text-transform: uppercase;">NextGenOS</span>
             <div class="header-actions">
               <div class="header-printer-status" id="header-staff-display" title="Logged in staff" style="gap:4px;">
                 <span class="material-symbols-rounded" style="font-size: 16px;">person</span>
@@ -446,41 +461,45 @@ class App {
     const text = document.getElementById('sync-status-text');
     const btn = document.getElementById('sync-status-btn');
 
-    syncService.onStatusChange((status, isConnected, isOnline) => {
-      if (!dot || !text) return;
+    this.getSyncService()
+      .then(syncService => {
+        syncService.onStatusChange((status, isConnected, isOnline) => {
+          if (!dot || !text) return;
 
-      if (status === 'connected') {
-        dot.className = 'status-dot online';
-        dot.style.background = '';
-        dot.style.boxShadow = '';
-        text.textContent = 'Cloud Active';
-        if (btn) btn.title = 'Cloud Sync: Connected & Active';
-      } else if (status === 'connecting') {
-        dot.className = 'status-dot';
-        dot.style.background = '#F59E0B';
-        dot.style.boxShadow = '0 0 6px rgba(245, 158, 11, 0.6)';
-        text.textContent = 'Syncing...';
-        if (btn) btn.title = 'Cloud Sync: Connecting...';
-      } else if (status === 'unconfigured') {
-        dot.className = 'status-dot';
-        dot.style.background = '#F59E0B';
-        dot.style.boxShadow = '0 0 6px rgba(245, 158, 11, 0.6)';
-        text.textContent = 'Cloud Off';
-        if (btn) btn.title = 'Cloud Sync: Unconfigured. Click to setup.';
-      } else if (status === 'offline') {
-        dot.className = 'status-dot offline';
-        dot.style.background = '';
-        dot.style.boxShadow = '';
-        text.textContent = 'Offline';
-        if (btn) btn.title = 'Cloud Sync: Network is offline';
-      } else { // 'error'
-        dot.className = 'status-dot offline';
-        dot.style.background = '';
-        dot.style.boxShadow = '';
-        text.textContent = 'Sync Error';
-        if (btn) btn.title = 'Cloud Sync: Connection or Sync Error';
-      }
-    });
+          if (status === 'connected') {
+            dot.className = 'status-dot online';
+            dot.style.background = '';
+            dot.style.boxShadow = '';
+            text.textContent = 'Cloud Active';
+            if (btn) btn.title = 'Cloud Sync: Connected & Active';
+          } else if (status === 'connecting') {
+            dot.className = 'status-dot';
+            dot.style.background = '#F59E0B';
+            dot.style.boxShadow = '0 0 6px rgba(245, 158, 11, 0.6)';
+            text.textContent = 'Syncing...';
+            if (btn) btn.title = 'Cloud Sync: Connecting...';
+          } else if (status === 'unconfigured') {
+            dot.className = 'status-dot';
+            dot.style.background = '#F59E0B';
+            dot.style.boxShadow = '0 0 6px rgba(245, 158, 11, 0.6)';
+            text.textContent = 'Cloud Off';
+            if (btn) btn.title = 'Cloud Sync: Unconfigured. Click to setup.';
+          } else if (status === 'offline') {
+            dot.className = 'status-dot offline';
+            dot.style.background = '';
+            dot.style.boxShadow = '';
+            text.textContent = 'Offline';
+            if (btn) btn.title = 'Cloud Sync: Network is offline';
+          } else {
+            dot.className = 'status-dot offline';
+            dot.style.background = '';
+            dot.style.boxShadow = '';
+            text.textContent = 'Sync Error';
+            if (btn) btn.title = 'Cloud Sync: Connection or Sync Error';
+          }
+        });
+      })
+      .catch(err => console.error('[App] Sync status setup error:', err));
 
     if (btn) {
       btn.addEventListener('click', () => {
