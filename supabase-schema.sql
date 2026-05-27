@@ -24,6 +24,7 @@ CREATE TABLE IF NOT EXISTS menu_items (
   is_available BOOLEAN DEFAULT TRUE,
   is_veg BOOLEAN DEFAULT TRUE,
   sort_order INT DEFAULT 0,
+  image_url VARCHAR(500) DEFAULT '',
   updated_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
@@ -158,6 +159,7 @@ CREATE TABLE IF NOT EXISTS audit_events (
 CREATE TABLE IF NOT EXISTS customers (
   id BIGINT PRIMARY KEY,
   store_id TEXT NOT NULL DEFAULT 'the-taste',
+  auth_user_id UUID,
   name VARCHAR(100) NOT NULL,
   phone VARCHAR(20) NOT NULL,
   birthday VARCHAR(30),
@@ -184,6 +186,8 @@ ALTER TABLE orders ADD COLUMN IF NOT EXISTS display_token VARCHAR(20);
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS requires_server_validation BOOLEAN DEFAULT FALSE;
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS validation_status VARCHAR(30) DEFAULT 'trusted_staff';
 ALTER TABLE staff ADD COLUMN IF NOT EXISTS auth_user_id UUID;
+ALTER TABLE menu_items ADD COLUMN IF NOT EXISTS image_url VARCHAR(500) DEFAULT '';
+ALTER TABLE customers ADD COLUMN IF NOT EXISTS auth_user_id UUID;
 
 UPDATE orders SET client_order_id = gen_random_uuid() WHERE client_order_id IS NULL;
 UPDATE orders SET idempotency_key = client_order_id::text WHERE idempotency_key IS NULL;
@@ -298,6 +302,36 @@ CREATE POLICY "staff access customers" ON customers
   FOR ALL TO authenticated
   USING (EXISTS (SELECT 1 FROM staff_memberships sm WHERE sm.store_id = customers.store_id AND sm.auth_user_id = (SELECT auth.uid()) AND sm.is_active = TRUE))
   WITH CHECK (EXISTS (SELECT 1 FROM staff_memberships sm WHERE sm.store_id = customers.store_id AND sm.auth_user_id = (SELECT auth.uid()) AND sm.is_active = TRUE));
+
+-- Customer Self Profile Policy
+DROP POLICY IF EXISTS "customer self read write" ON customers;
+CREATE POLICY "customer self read write" ON customers
+  FOR ALL TO authenticated
+  USING (auth_user_id = (SELECT auth.uid()))
+  WITH CHECK (auth_user_id = (SELECT auth.uid()));
+
+-- Customer Own Orders Read Policy
+DROP POLICY IF EXISTS "customer read own orders" ON orders;
+CREATE POLICY "customer read own orders" ON orders
+  FOR SELECT TO authenticated
+  USING (customer_phone = (SELECT phone FROM customers WHERE auth_user_id = (SELECT auth.uid()) LIMIT 1));
+
+-- Create storage bucket for menu images
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('menu-images', 'menu-images', true)
+ON CONFLICT (id) DO NOTHING;
+
+-- RLS policies for storage bucket
+DROP POLICY IF EXISTS "Allow public read access to menu images" ON storage.objects;
+CREATE POLICY "Allow public read access to menu images" ON storage.objects
+  FOR SELECT TO anon, authenticated
+  USING (bucket_id = 'menu-images');
+
+DROP POLICY IF EXISTS "Allow staff to manage menu images" ON storage.objects;
+CREATE POLICY "Allow staff to manage menu images" ON storage.objects
+  FOR ALL TO authenticated
+  USING (bucket_id = 'menu-images')
+  WITH CHECK (bucket_id = 'menu-images');
 
 DO $$
 DECLARE

@@ -97,18 +97,15 @@ class App {
       }
 
       // Check for persistent session
-      const savedPin = localStorage.getItem('auth_staff_pin');
       let autoLoggedIn = false;
-      if (savedPin) {
-        try {
-          const staff = await authService.login(savedPin);
-          if (staff) {
-            await this.onLoginSuccess(staff);
-            autoLoggedIn = true;
-          }
-        } catch (e) {
-          console.error('[App] Auto-login failed:', e);
+      try {
+        const staff = await authService.restoreSession();
+        if (staff && staff.role !== 'customer') {
+          await this.onLoginSuccess(staff);
+          autoLoggedIn = true;
         }
+      } catch (e) {
+        console.error('[App] Auto-login failed:', e);
       }
 
       if (!autoLoggedIn) {
@@ -121,11 +118,20 @@ class App {
     }
   }
 
-  startPublicRoute() {
+  async startPublicRoute() {
     this.renderPublicShell();
     this.setupRouter();
     this.setupPWA();
     this.setupConnectivity();
+
+    // Attempt to restore cloud session for customer if any
+    try {
+      const authService = await this.getAuthService();
+      await authService.restoreSession();
+    } catch (e) {
+      console.warn('[App] Customer session restore failed:', e);
+    }
+
     router.start();
     this.initialized = true;
   }

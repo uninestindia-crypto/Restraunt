@@ -48,6 +48,7 @@ export class CustomerView {
     this.deliveryAddress = '';
     this.deliveryLandmark = '';
     this.pollInterval = null;
+    this.loggedInCustomer = null;
     this.storeSettings = {
       name: 'The Taste',
       tagline: 'Fast Food & Chinese',
@@ -61,8 +62,6 @@ export class CustomerView {
     this.cart = [];
     this.state = 'menu';
     this.selectedPaymentMethod = 'upi';
-    this.customerName = '';
-    this.customerPhone = '';
     this.deliveryAddress = '';
     this.deliveryLandmark = '';
     this.orderType = 'delivery';
@@ -84,6 +83,32 @@ export class CustomerView {
       phone: phone || '',
       address: address || ''
     };
+
+    // Load active customer login info
+    try {
+      const { authService } = await import('../../services/auth.js');
+      const current = authService.getCurrentStaff();
+      if (current && current.role === 'customer') {
+        this.loggedInCustomer = current;
+        const profile = await db.customers.where('authUserId').equals(current.cloudUserId).first();
+        if (profile) {
+          this.customerName = profile.name;
+          this.customerPhone = profile.phone || '';
+        } else {
+          this.customerName = current.name;
+          this.customerPhone = '';
+        }
+      } else {
+        this.loggedInCustomer = null;
+        this.customerName = '';
+        this.customerPhone = '';
+      }
+    } catch (e) {
+      console.warn('[CustomerView] Failed to retrieve customer auth state:', e);
+      this.loggedInCustomer = null;
+      this.customerName = '';
+      this.customerPhone = '';
+    }
 
     this.categories = await getCategories();
     const tablesStore = db.table('tables');
@@ -155,6 +180,27 @@ export class CustomerView {
     const address = this.storeSettings.address || 'Fresh Indo-Chinese comfort food, packed hot for your table or home.';
     const phoneLink = this.storeSettings.phone ? `tel:${this.storeSettings.phone.replace(/\D/g, '')}` : '#menu';
 
+    const authLinksHtml = this.loggedInCustomer 
+      ? `
+        <a href="#loyalty" id="nav-loyalty-btn" style="color:#D4AF37;font-weight:700;display:inline-flex;align-items:center;gap:4px;">
+          <span class="material-symbols-rounded" style="font-size:16px;">account_circle</span>
+          Hi, ${escapeHtml(this.loggedInCustomer.name.split(' ')[0])}
+        </a>
+        <button id="btn-customer-logout" class="store-logout-btn" type="button" title="Sign Out" style="background:none;border:none;color:var(--text-muted);cursor:pointer;padding:4px;display:inline-flex;align-items:center;vertical-align:middle;margin-left:-4px;">
+          <span class="material-symbols-rounded" style="font-size:18px;">logout</span>
+        </button>
+      ` 
+      : `
+        <a href="#loyalty" id="nav-loyalty-btn" style="color:#D4AF37;font-weight:700;display:inline-flex;align-items:center;gap:4px;">
+          <span class="material-symbols-rounded" style="font-size:16px;">star</span>
+          Rewards
+        </a>
+        <button id="btn-customer-login" class="store-login-btn" type="button" style="background:rgba(212,175,55,0.15);border:1px solid #D4AF37;color:#D4AF37;cursor:pointer;padding:4px 10px;border-radius:var(--radius-sm);font-weight:700;font-size:0.7rem;display:inline-flex;align-items:center;gap:4px;margin-left:4px;">
+          <span class="material-symbols-rounded" style="font-size:14px;">login</span>
+          Sign In
+        </button>
+      `;
+
     this.container.innerHTML = `
       <div class="storefront-shell">
         <section class="store-hero" aria-label="The Taste storefront">
@@ -164,9 +210,9 @@ export class CustomerView {
               <img src="/assets/aether-icon.png" class="store-brand-mark" alt="The Taste Logo" style="object-fit:contain;padding:2px;background:#fff;" />
               <div>THE TASTE</div>
             </a>
-            <nav class="store-nav-links" aria-label="Public navigation">
+            <nav class="store-nav-links" aria-label="Public navigation" style="display:flex;align-items:center;gap:12px;">
               <a href="#menu">Menu</a>
-              <a href="#loyalty" id="nav-loyalty-btn" style="color:#D4AF37;font-weight:700;"><span class="material-symbols-rounded" style="font-size:16px;vertical-align:middle;margin-right:2px;">star</span>Rewards</a>
+              ${authLinksHtml}
               <a href="#/pos" class="store-staff-link">Staff</a>
             </nav>
           </header>
@@ -397,6 +443,34 @@ export class CustomerView {
       e.preventDefault();
       e.stopPropagation();
       this.openLoyaltyDrawer();
+    });
+
+    this.container.querySelector('#btn-customer-login')?.addEventListener('click', async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      playSound(700, 80);
+      const appEl = document.getElementById('app');
+      const { LoginScreen } = await import('../../components/LoginScreen.js');
+      const login = new LoginScreen(async (staff) => {
+        await this.loadData();
+        this.render();
+      });
+      login.render(appEl);
+    });
+
+    this.container.querySelector('#btn-customer-logout')?.addEventListener('click', async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (confirm('Are you sure you want to sign out?')) {
+        playSound(600, 80);
+        const { authService } = await import('../../services/auth.js');
+        authService.logout();
+        this.loggedInCustomer = null;
+        this.customerName = '';
+        this.customerPhone = '';
+        await this.loadData();
+        this.render();
+      }
     });
   }
 
@@ -780,6 +854,7 @@ export class CustomerView {
   }
 
   getItemImage(item) {
+    if (item.imageUrl) return item.imageUrl;
     const category = this.getCategoryForItem(item);
     const key = (category?.name || '').toLowerCase();
     return CATEGORY_IMAGE_MAP[key] || '/assets/dish-starters.jpg';
@@ -1185,6 +1260,12 @@ export class CustomerView {
               <button class="btn btn-primary btn-block" id="crm-lookup-btn" type="button" style="height:46px;margin-top:12px;font-weight:700;">
                 Access Account
               </button>
+              <div style="text-align:center;margin-top:16px;">
+                <span style="font-size:0.75rem;color:var(--text-secondary);opacity:0.8;">Or secure your account with a password:</span>
+                <button class="btn btn-secondary btn-block btn-sm" id="crm-signin-link" type="button" style="margin-top:8px;font-weight:700;height:38px;">
+                  Sign In / Sign Up
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -1250,6 +1331,20 @@ export class CustomerView {
         if (e.key === 'Enter') handleLookup();
       });
     }
+
+    overlay.querySelector('#crm-signin-link')?.addEventListener('click', () => {
+      closeDrawer();
+      playSound(700, 80);
+      const appEl = document.getElementById('app');
+      import('../../components/LoginScreen.js').then(({ LoginScreen }) => {
+        const login = new LoginScreen(async (staff) => {
+          await this.loadData();
+          this.render();
+          this.openLoyaltyDrawer();
+        });
+        login.render(appEl);
+      });
+    });
 
     const renderProfileView = (cust, orders) => {
       const tierGradients = {
@@ -1370,7 +1465,7 @@ export class CustomerView {
       });
     };
 
-    const renderRegisterView = (phone) => {
+    const renderRegisterView = (phone, isCloud = false) => {
       innerContainer.innerHTML = `
         <div class="crm-register-view" style="text-align:center;padding:16px 8px;">
           <span class="material-symbols-rounded" style="font-size:48px;color:var(--color-primary);margin-bottom:8px;">app_registration</span>
@@ -1379,8 +1474,15 @@ export class CustomerView {
 
           <div class="input-group store-input-group" style="text-align:left;">
             <label class="store-field-label" for="crm-reg-name">Your Full Name</label>
-            <input type="text" id="crm-reg-name" class="input store-input" placeholder="E.g. Alexander Mercer" />
+            <input type="text" id="crm-reg-name" class="input store-input" value="${isCloud && this.loggedInCustomer ? escapeHtml(this.loggedInCustomer.name) : ''}" placeholder="E.g. Alexander Mercer" />
           </div>
+
+          ${isCloud ? `
+            <div class="input-group store-input-group" style="text-align:left;margin-top:12px;">
+              <label class="store-field-label" for="crm-reg-phone">Mobile Number</label>
+              <input type="tel" id="crm-reg-phone" class="input store-input" placeholder="10-digit mobile number" maxlength="10" />
+            </div>
+          ` : ''}
 
           <button class="btn btn-primary btn-block" id="crm-reg-submit" type="button" style="height:46px;margin-top:16px;font-weight:700;">
             Activate Account
@@ -1390,8 +1492,13 @@ export class CustomerView {
 
       overlay.querySelector('#crm-reg-submit').addEventListener('click', async () => {
         const name = overlay.querySelector('#crm-reg-name').value.trim();
+        const phoneToUse = isCloud ? overlay.querySelector('#crm-reg-phone').value.trim() : phone;
         if (!name) {
           showToast('Please enter your name', 'warning');
+          return;
+        }
+        if (isCloud && !/^[6-9]\d{9}$/.test(phoneToUse)) {
+          showToast('Please enter a valid 10-digit mobile number', 'warning');
           return;
         }
 
@@ -1399,9 +1506,12 @@ export class CustomerView {
         vibrateDevice([30]);
 
         try {
+          const authUserId = isCloud && this.loggedInCustomer ? this.loggedInCustomer.cloudUserId : null;
           const newProfile = {
-            phone,
+            id: Date.now(),
+            phone: phoneToUse,
             name,
+            authUserId,
             totalSpent: 0,
             visitCount: 0,
             loyaltyPoints: 0,
@@ -1411,8 +1521,24 @@ export class CustomerView {
             isSynced: 0,
             _platform: 'nextgenos'
           };
+          
+          if (isCloud) {
+            const existing = await db.customers.where('phone').equals(phoneToUse).first();
+            if (existing) {
+              existing.authUserId = authUserId;
+              existing.name = name;
+              existing.isSynced = 0;
+              await db.customers.put(existing);
+              showToast('Account activated & synced with existing profile!', 'success');
+              renderProfileView(existing, []);
+              return;
+            }
+          }
+
           await db.customers.add(newProfile);
           showToast('Welcome to TasteRewards!', 'success');
+          this.customerPhone = phoneToUse;
+          this.customerName = name;
           renderProfileView(newProfile, []);
         } catch (err) {
           console.error('Registration failed:', err);
@@ -1420,6 +1546,173 @@ export class CustomerView {
         }
       });
     };
+
+    const renderLinkPhoneView = (customer) => {
+      innerContainer.innerHTML = `
+        <div class="crm-register-view" style="text-align:center;padding:16px 8px;">
+          <span class="material-symbols-rounded" style="font-size:48px;color:var(--color-primary);margin-bottom:8px;">phone_android</span>
+          <h3>Link Phone Number</h3>
+          <p style="color:var(--text-secondary);font-size:0.75rem;margin-bottom:18px;">To track your orders and accumulate TasteRewards points, please link your 10-digit mobile number.</p>
+
+          <div class="input-group store-input-group" style="text-align:left;">
+            <label class="store-field-label" for="crm-link-phone">Mobile Number</label>
+            <input type="tel" id="crm-link-phone" class="input store-input" placeholder="10-digit mobile number" maxlength="10" />
+          </div>
+
+          <button class="btn btn-primary btn-block" id="crm-link-submit" type="button" style="height:46px;margin-top:16px;font-weight:700;">
+            Link Number
+          </button>
+        </div>
+      `;
+
+      overlay.querySelector('#crm-link-submit').addEventListener('click', async () => {
+        const phone = overlay.querySelector('#crm-link-phone').value.trim();
+        if (!/^[6-9]\d{9}$/.test(phone)) {
+          showToast('Please enter a valid 10-digit mobile number', 'warning');
+          return;
+        }
+
+        playSound(900, 80);
+        vibrateDevice([30]);
+
+        try {
+          const existingPhone = await db.customers.where('phone').equals(phone).first();
+          if (existingPhone && existingPhone.authUserId && existingPhone.authUserId !== customer.authUserId) {
+            showToast('This phone number is already linked to another account.', 'error');
+            return;
+          }
+
+          if (existingPhone) {
+            const mergedPoints = (existingPhone.loyaltyPoints || 0) + (customer.loyaltyPoints || 0);
+            const mergedSpent = (existingPhone.totalSpent || 0) + (customer.totalSpent || 0);
+            const mergedVisits = (existingPhone.visitCount || 0) + (customer.visitCount || 0);
+
+            await db.customers.delete(customer.id);
+            customer.id = existingPhone.id;
+            customer.phone = phone;
+            customer.loyaltyPoints = mergedPoints;
+            customer.totalSpent = mergedSpent;
+            customer.visitCount = mergedVisits;
+            customer.tier = mergedSpent >= 5000 ? 'platinum' : mergedSpent >= 2000 ? 'gold' : mergedSpent >= 500 ? 'silver' : 'bronze';
+
+            await db.customers.put({
+              ...existingPhone,
+              authUserId: customer.authUserId,
+              name: customer.name || existingPhone.name,
+              loyaltyPoints: mergedPoints,
+              totalSpent: mergedSpent,
+              visitCount: mergedVisits,
+              tier: customer.tier,
+              isSynced: 0
+            });
+          } else {
+            customer.phone = phone;
+            await db.customers.update(customer.id, { phone, isSynced: 0 });
+          }
+
+          this.customerPhone = phone;
+          showToast('Phone number linked successfully!', 'success');
+
+          innerContainer.innerHTML = `<div style="text-align:center;padding:32px;"><div class="spinner store-spinner" style="margin:0 auto 12px;"></div>Loading rewards profile...</div>`;
+          let orders = [];
+          if (navigator.onLine) {
+            const { getSupabaseClient } = await import('../../services/supabaseClient.js');
+            const supabase = await getSupabaseClient();
+            if (supabase) {
+              const { data: ordersData } = await supabase
+                .from('orders')
+                .select('*')
+                .eq('customer_phone', phone)
+                .order('created_at', { ascending: false });
+              if (ordersData) {
+                const { mapOrderToLocal } = await import('../../services/sync.js');
+                orders = ordersData.map(mapOrderToLocal);
+              }
+            }
+          }
+          if (!orders.length) {
+            orders = await db.orders.where('customerPhone').equals(phone).reverse().toArray();
+          }
+          renderProfileView(customer, orders);
+        } catch (err) {
+          console.error('Phone link failed:', err);
+          showToast('Failed to link phone number', 'error');
+        }
+      });
+    };
+
+    // Auto-fetch if customer logged in
+    if (this.loggedInCustomer) {
+      innerContainer.innerHTML = `<div style="text-align:center;padding:32px;"><div class="spinner store-spinner" style="margin:0 auto 12px;"></div>Loading rewards profile...</div>`;
+      (async () => {
+        try {
+          let customer = await db.customers.where('authUserId').equals(this.loggedInCustomer.cloudUserId).first();
+          let orders = [];
+
+          if (navigator.onLine) {
+            const { getSupabaseClient } = await import('../../services/supabaseClient.js');
+            const supabase = await getSupabaseClient();
+            if (supabase) {
+              const { data: custData, error: custErr } = await supabase
+                .from('customers')
+                .select('*')
+                .eq('auth_user_id', this.loggedInCustomer.cloudUserId)
+                .maybeSingle();
+
+              if (!custErr && custData) {
+                const { mapCustomerToLocal } = await import('../../services/sync.js');
+                const localCust = mapCustomerToLocal(custData);
+                const existingLocal = await db.customers.where('phone').equals(localCust.phone).first();
+                if (existingLocal) {
+                  localCust.id = existingLocal.id;
+                }
+                await db.customers.put(localCust);
+                customer = localCust;
+              }
+
+              const phoneToUse = customer?.phone || this.customerPhone;
+              if (phoneToUse) {
+                const { data: ordersData, error: ordersErr } = await supabase
+                  .from('orders')
+                  .select('*')
+                  .eq('customer_phone', phoneToUse)
+                  .order('created_at', { ascending: false });
+
+                if (!ordersErr && ordersData) {
+                  const { mapOrderToLocal } = await import('../../services/sync.js');
+                  orders = ordersData.map(mapOrderToLocal);
+                  await db.transaction('rw', db.orders, async () => {
+                    for (const order of orders) {
+                      const existing = await db.orders.where('clientOrderId').equals(order.clientOrderId).first();
+                      if (existing) order.id = existing.id;
+                      await db.orders.put(order);
+                    }
+                  });
+                }
+              }
+            }
+          }
+
+          if (!orders.length && customer?.phone) {
+            orders = await db.orders.where('customerPhone').equals(customer.phone).reverse().toArray();
+          }
+
+          if (customer) {
+            if (!customer.phone) {
+              renderLinkPhoneView(customer);
+            } else {
+              renderProfileView(customer, orders);
+            }
+          } else {
+            renderRegisterView('', true);
+          }
+        } catch (err) {
+          console.error('CRM lookup error:', err);
+          innerContainer.innerHTML = `<p style="text-align:center;color:var(--color-danger);padding:16px;">Failed to load profile details.</p>`;
+        }
+      })();
+    }
+  }
   }
 
   unmount() {

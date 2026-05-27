@@ -65,7 +65,8 @@ function mapItemToRemote(item) {
     price: parseFloat(item.price) || 0,
     is_available: item.isAvailable === 1,
     is_veg: item.isVeg === 1,
-    sort_order: parseInt(item.sortOrder) || 0
+    sort_order: parseInt(item.sortOrder) || 0,
+    image_url: item.imageUrl || ''
   };
 }
 
@@ -78,11 +79,12 @@ function mapItemToLocal(row) {
     isAvailable: row.is_available ? 1 : 0,
     isVeg: row.is_veg ? 1 : 0,
     sortOrder: parseInt(row.sort_order) || 0,
+    imageUrl: row.image_url || '',
     isSynced: 1
   };
 }
 
-function mapOrderToRemote(order) {
+export function mapOrderToRemote(order) {
   const remote = {
     store_id: getStoreId(),
     client_order_id: order.clientOrderId,
@@ -131,7 +133,7 @@ function mapOrderToRemote(order) {
   return remote;
 }
 
-function mapOrderToLocal(row) {
+export function mapOrderToLocal(row) {
   return {
     id: row.id,
     serverOrderId: row.id,
@@ -313,10 +315,11 @@ function mapActivityToLocal(row) {
   };
 }
 
-function mapCustomerToRemote(cust) {
+export function mapCustomerToRemote(cust) {
   return {
     id: cust.id,
     store_id: getStoreId(),
+    auth_user_id: cust.authUserId || null,
     name: cust.name,
     phone: cust.phone,
     birthday: cust.birthday || null,
@@ -329,11 +332,12 @@ function mapCustomerToRemote(cust) {
   };
 }
 
-function mapCustomerToLocal(row) {
+export function mapCustomerToLocal(row) {
   return {
     id: row.id,
     name: row.name,
     phone: row.phone,
+    authUserId: row.auth_user_id || null,
     birthday: row.birthday || '',
     totalSpent: parseFloat(row.total_spent) || 0.00,
     visitCount: parseInt(row.visit_count) || 0,

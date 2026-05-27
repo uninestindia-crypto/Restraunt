@@ -25,6 +25,77 @@ class AuthService {
   }
 
   /**
+   * Attempt to restore a persistent session (both staff PIN, and Supabase Auth cloud user).
+   * @returns {Promise<Object|null>} The restored staff/customer object, or null
+   */
+  async restoreSession() {
+    // 1. Check for active Supabase Auth cloud session first
+    try {
+      const { getCloudSession } = await import('./supabaseClient.js');
+      const session = await getCloudSession();
+      if (session?.user) {
+        const user = session.user;
+        const userEmail = user.email || '';
+        const lowercaseEmail = userEmail.toLowerCase();
+        const isStaffEmail = lowercaseEmail.includes('admin') || 
+                             lowercaseEmail.includes('staff') || 
+                             lowercaseEmail.includes('owner') || 
+                             lowercaseEmail.includes('manager') || 
+                             lowercaseEmail.includes('cashier') || 
+                             lowercaseEmail.includes('kitchen') || 
+                             lowercaseEmail.includes('waiter');
+
+        let staff = null;
+        if (isStaffEmail) {
+          staff = await db.staff
+            .where('cloudUserId')
+            .equals(user.id)
+            .first();
+        } else {
+          // Customer
+          let customer = await db.customers
+            .where('authUserId')
+            .equals(user.id)
+            .first();
+          
+          if (customer) {
+            staff = {
+              id: customer.id,
+              name: customer.name,
+              role: 'customer',
+              cloudUserId: user.id,
+              isActive: true,
+              createdAt: customer.createdAt
+            };
+          }
+        }
+
+        if (staff) {
+          this.currentStaff = staff;
+          this.isAuthenticated = true;
+          this._startSessionTimer();
+          return staff;
+        }
+      }
+    } catch (e) {
+      console.error('[AuthService] Error restoring cloud session:', e);
+    }
+
+    // 2. Fallback to PIN auto-login
+    const savedPin = localStorage.getItem('auth_staff_pin');
+    if (savedPin) {
+      try {
+        const staff = await this.login(savedPin);
+        return staff;
+      } catch (e) {
+        console.error('[AuthService] Error restoring PIN session:', e);
+      }
+    }
+
+    return null;
+  }
+
+  /**
    * Look up a staff member by their PIN code.
    * Supports both raw PINs (hashes it first) and pre-hashed PINs (for auto-login).
    * @param {string} pin - The staff PIN (plain text or SHA-256 hash)
@@ -138,14 +209,22 @@ class AuthService {
         if (!isStaffEmail) {
           // Treat as Customer!
           let customer = await db.customers
-            .filter(c => c.name.toLowerCase() === userEmail.split('@')[0].toLowerCase())
+            .where('authUserId')
+            .equals(user.id)
             .first();
+
+          if (!customer) {
+            customer = await db.customers
+              .filter(c => c.name.toLowerCase() === userEmail.split('@')[0].toLowerCase())
+              .first();
+          }
 
           if (!customer) {
             customer = {
               id: Date.now(),
               name: userEmail.split('@')[0],
               phone: '',
+              authUserId: user.id,
               totalSpent: 0,
               visitCount: 0,
               loyaltyPoints: 0,
@@ -153,6 +232,8 @@ class AuthService {
               createdAt: new Date().toISOString()
             };
             await db.customers.put(customer);
+          } else if (!customer.authUserId) {
+            await db.customers.update(customer.id, { authUserId: user.id, isSynced: 0 });
           }
 
           staff = {

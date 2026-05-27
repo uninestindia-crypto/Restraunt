@@ -154,6 +154,27 @@ db.version(5).stores({
   }
 });
 
+// Schema v6: customer auth and menu item image URL support
+db.version(6).stores({
+  menuCategories: '++id, name, sortOrder, isActive, updatedAt',
+  menuItems: '++id, categoryId, [categoryId+isAvailable], name, price, isAvailable, isVeg, sortOrder, imageUrl, updatedAt',
+  orders: '++id, clientOrderId, idempotencyKey, orderNumber, displayToken, type, status, paymentMethod, paymentStatus, createdAt, completedAt, customerId, staffId, tableId, channel, source, deliveryStatus, deliveryStaffId, updatedAt, syncStatus, validationStatus',
+  settings: 'key',
+  customers: '++id, phone, name, authUserId, totalSpent, visitCount, loyaltyPoints, tier, lastVisit, createdAt',
+  staff: '++id, name, role, pinHash, cloudUserId, isActive, createdAt',
+  shifts: '++id, staffId, date, clockIn, clockOut',
+  inventory: '++id, name, unit, quantity, minThreshold, categoryTag',
+  suppliers: '++id, name, phone, category',
+  recipes: '++id, menuItemId',
+  tables: '++id, number, status, floorSection',
+  reservations: '++id, tableId, customerId, date, time, status',
+  activityLog: '++id, staffId, action, timestamp',
+  aiConversations: '++id, createdAt, title',
+}).upgrade(async (tx) => {
+  // Safe migration
+});
+
+
 function normalizeOrderItems(items) {
   if (Array.isArray(items)) return items;
   if (typeof items !== 'string' || !items.trim()) return [];
