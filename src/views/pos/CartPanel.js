@@ -37,12 +37,16 @@ export class CartPanel {
   render() {
     this.container.innerHTML = `
       <!-- Cart Header -->
-      <div class="cart-header">
+      <div class="cart-header" style="display: flex; justify-content: space-between; align-items: center;">
         <h2>
           <span class="material-symbols-rounded" style="font-size: 22px;">shopping_cart</span>
           Current Order
           <span class="cart-count" id="cart-count" style="${this.cart.length === 0 ? 'display:none' : ''}">${this.getTotalItemCount()}</span>
         </h2>
+        <button class="btn btn-secondary btn-sm cart-mobile-back" id="cart-mobile-back" style="display: none; padding: 6px 12px; font-size: var(--text-xs); align-items: center; gap: 4px;">
+          <span class="material-symbols-rounded" style="font-size: 16px;">arrow_back</span>
+          Menu
+        </button>
       </div>
 
       <!-- Order Type Selector -->
@@ -192,6 +196,17 @@ export class CartPanel {
   // --- Event Binding ---
 
   bindEvents() {
+    // Mobile back button
+    const backBtn = document.getElementById('cart-mobile-back');
+    if (backBtn) {
+      backBtn.addEventListener('click', () => {
+        const layout = document.querySelector('.pos-layout');
+        if (layout) {
+          layout.classList.remove('show-cart');
+        }
+      });
+    }
+
     // Order type selector
     const typeSelector = document.getElementById('order-type-selector');
     if (typeSelector) {

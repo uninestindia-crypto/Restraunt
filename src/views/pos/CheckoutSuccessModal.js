@@ -21,13 +21,8 @@ export class CheckoutSuccessModal {
     this.overlay.className = 'modal-overlay';
     this.overlay.id = 'checkout-success-overlay';
     this.overlay.style.cssText = `
-      position: fixed;
-      inset: 0;
       background: rgba(4, 4, 8, 0.7);
       backdrop-filter: blur(16px);
-      display: flex;
-      align-items: center;
-      justify-content: center;
       z-index: 9999;
       animation: modalFadeIn 250ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
     `;

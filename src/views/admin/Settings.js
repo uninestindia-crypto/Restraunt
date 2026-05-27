@@ -217,7 +217,7 @@ export class SettingsView {
             </div>
 
             <!-- Printer Actions -->
-            <div style="display: flex; gap: 12px; margin-top: 4px;">
+            <div style="display: flex; gap: 12px; margin-top: 4px; flex-wrap: wrap;">
               <button class="btn ${isPrinterConnected ? 'btn-danger' : 'btn-primary'}" id="btn-toggle-printer" ${!isPrinterSupported ? 'disabled' : ''} style="
                 flex: 1;
                 font-family: 'Plus Jakarta Sans', sans-serif;
@@ -546,7 +546,7 @@ export class SettingsView {
           </p>
 
           <!-- Preview Selector Tabs -->
-          <div style="display: flex; justify-content: center; gap: 10px; margin-bottom: 20px; border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 14px;">
+          <div style="display: flex; justify-content: center; gap: 10px; margin-bottom: 20px; border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 14px; flex-wrap: wrap;">
             <button type="button" class="btn btn-preview-tab ${this.activePreviewTab === 'thermal' ? 'active' : ''}" id="preview-tab-thermal" style="
               font-family: 'Plus Jakarta Sans', sans-serif;
               font-weight: 700;
@@ -648,7 +648,7 @@ export class SettingsView {
               </div>
             </div>
 
-            <div style="display: flex; gap: 12px; margin-top: 4px;">
+            <div style="display: flex; gap: 12px; margin-top: 4px; flex-wrap: wrap;">
               <button class="btn btn-secondary" id="btn-test-sync" style="
                 flex: 1;
                 font-family: 'Plus Jakarta Sans', sans-serif;

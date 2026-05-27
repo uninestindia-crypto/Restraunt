@@ -982,3 +982,157 @@
   box-shadow: 0 0 20px rgba(59, 130, 246, 0.2), var(--shadow-md);
   border-color: rgba(59, 130, 246, 0.5) !important;
 }
+
+/* ═══════════════════════════════════════════
+   SMARTPHONE FIRST & RESPONSIVE IMPROVEMENTS
+   ═══════════════════════════════════════════ */
+
+/* Mobile Cart Toggle Bar & Slide-in POS layout */
+@media (max-width: 768px) {
+  .pos-layout {
+    position: relative;
+    overflow: hidden;
+  }
+  .pos-menu {
+    flex: 1;
+    width: 100% !important;
+    height: 100% !important;
+  }
+  .pos-cart {
+    position: fixed;
+    top: 60px;
+    right: 0;
+    bottom: 0;
+    width: 100% !important;
+    min-width: 100% !important;
+    height: calc(100vh - 120px) !important;
+    max-height: calc(100vh - 120px) !important;
+    z-index: 1000;
+    transform: translateX(100%);
+    transition: transform var(--transition-normal);
+    background: var(--bg-surface) !important;
+    border-left: none !important;
+    box-shadow: -10px 0 30px rgba(0, 0, 0, 0.5) !important;
+  }
+  
+  /* Slide-in cart transition when active */
+  .pos-layout.show-cart .pos-cart {
+    transform: translateX(0);
+  }
+  
+  .mobile-cart-toggle-bar {
+    position: fixed;
+    bottom: calc(60px + 16px + env(safe-area-inset-bottom, 0px));
+    left: 16px;
+    right: 16px;
+    background: rgba(11, 11, 15, 0.95);
+    backdrop-filter: var(--glass-backdrop-filter);
+    -webkit-backdrop-filter: var(--glass-backdrop-filter);
+    border: 1px solid var(--color-primary);
+    border-radius: var(--radius-lg);
+    padding: 12px 18px;
+    z-index: 99;
+    box-shadow: var(--shadow-lg), var(--shadow-primary);
+    display: none;
+    align-items: center;
+    justify-content: space-between;
+    animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+  .mobile-cart-toggle-bar.show {
+    display: flex !important;
+  }
+  .cart-mobile-back {
+    display: flex !important;
+  }
+}
+
+/* Responsive Table Utility for mobile cards */
+@media (max-width: 768px) {
+  .responsive-table, 
+  .responsive-table thead, 
+  .responsive-table tbody, 
+  .responsive-table th, 
+  .responsive-table td, 
+  .responsive-table tr { 
+    display: block !important; 
+  }
+  
+  .responsive-table thead tr { 
+    position: absolute !important;
+    top: -9999px !important;
+    left: -9999px !important;
+  }
+  
+  .responsive-table tr {
+    margin-bottom: 16px !important;
+    border: 1px solid var(--border-glass) !important;
+    border-radius: var(--radius-lg) !important;
+    background: rgba(255, 255, 255, 0.01) !important;
+    padding: 12px !important;
+    box-shadow: var(--shadow-sm) !important;
+  }
+  
+  .responsive-table td { 
+    border: none !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04) !important; 
+    position: relative !important;
+    padding: 8px 12px 8px 45% !important; 
+    text-align: right !important;
+    min-height: 38px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-end !important;
+  }
+  
+  .responsive-table td:last-child {
+    border-bottom: 0 !important;
+  }
+  
+  .responsive-table td::before { 
+    content: attr(data-label);
+    position: absolute !important;
+    top: 50% !important;
+    left: 12px !important;
+    transform: translateY(-50%) !important;
+    width: 40% !important; 
+    white-space: nowrap !important;
+    text-align: left !important;
+    font-weight: var(--font-bold) !important;
+    color: var(--text-secondary) !important;
+    font-size: var(--text-xs) !important;
+  }
+}
+
+/* Help Center Responsiveness */
+@media (max-width: 768px) {
+  .help-layout-container {
+    flex-direction: column !important;
+    overflow-y: auto !important;
+  }
+  .help-sidebar {
+    width: 100% !important;
+    border-right: none !important;
+    border-bottom: 1px solid var(--border-glass) !important;
+    flex-direction: row !important;
+    overflow-x: auto !important;
+    padding: 12px 16px !important;
+    gap: 8px !important;
+    white-space: nowrap !important;
+    -ms-overflow-style: none !important;
+    scrollbar-width: none !important;
+  }
+  .help-sidebar::-webkit-scrollbar {
+    display: none !important;
+  }
+  .help-sidebar > div:first-child {
+    display: none !important;
+  }
+  .help-sidebar > div:last-child {
+    display: none !important;
+  }
+  .help-content-viewport {
+    padding: 20px 16px !important;
+    overflow-y: visible !important;
+  }
+}
+

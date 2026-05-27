@@ -74,16 +74,16 @@ export class MenuManager {
 
       return `
         <tr>
-          <td style="font-weight: 600; color: var(--text-primary);">${escapeHtml(item.name)}</td>
-          <td>${escapeHtml(catName)}</td>
-          <td style="font-weight: 700; color: var(--color-primary);">${formatCurrency(item.price)}</td>
-          <td>
+          <td data-label="Name" style="font-weight: 600; color: var(--text-primary);">${escapeHtml(item.name)}</td>
+          <td data-label="Category">${escapeHtml(catName)}</td>
+          <td data-label="Price" style="font-weight: 700; color: var(--color-primary);">${formatCurrency(item.price)}</td>
+          <td data-label="Type">
             <span class="badge ${vegClass}">${vegDot}</span>
           </td>
-          <td>
+          <td data-label="Status">
             <span class="badge ${availableClass}">${availableLabel}</span>
           </td>
-          <td style="text-align: right;">
+          <td data-label="Actions" style="text-align: right;">
             <div style="display: flex; gap: 8px; justify-content: flex-end; align-items: center;">
               <button class="btn btn-secondary btn-sm edit-item-btn" data-id="${item.id}">
                 Edit
@@ -107,7 +107,7 @@ export class MenuManager {
         </div>
 
         <div class="table-container scrollbar-none">
-          <table class="premium-table">
+          <table class="premium-table responsive-table">
             <thead>
               <tr>
                 <th>Name</th>
@@ -140,12 +140,12 @@ export class MenuManager {
 
       return `
         <tr>
-          <td style="font-weight: 600; color: var(--text-primary);">${escapeHtml(cat.name)}</td>
-          <td>${cat.sortOrder}</td>
-          <td>
+          <td data-label="Name" style="font-weight: 600; color: var(--text-primary);">${escapeHtml(cat.name)}</td>
+          <td data-label="Sort Order">${cat.sortOrder}</td>
+          <td data-label="Status">
             <span class="badge ${activeClass}">${activeLabel}</span>
           </td>
-          <td style="text-align: right;">
+          <td data-label="Actions" style="text-align: right;">
             <div style="display: flex; gap: 8px; justify-content: flex-end; align-items: center;">
               <button class="btn btn-secondary btn-sm edit-cat-btn" data-id="${cat.id}">
                 Edit
@@ -169,7 +169,7 @@ export class MenuManager {
         </div>
 
         <div class="table-container scrollbar-none">
-          <table class="premium-table">
+          <table class="premium-table responsive-table">
             <thead>
               <tr>
                 <th>Name</th>

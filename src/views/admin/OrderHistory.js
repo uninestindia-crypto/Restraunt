@@ -47,14 +47,14 @@ export class OrderHistory {
   render() {
     const rows = this.filteredOrders.map(order => `
       <tr class="order-row clickable-row" data-id="${order.id}">
-        <td class="txt-primary txt-extrabold">#${escapeHtml(order.orderNumber.split('-').pop())}</td>
-        <td>${escapeHtml(formatDateTime(order.createdAt))}</td>
-        <td class="txt-primary txt-bold">${this.typeBadge(order)}</td>
-        <td class="txt-brand txt-extrabold">${formatCurrency(order.total)}</td>
-        <td>${this.paymentBadge(order)}</td>
-        <td>${this.statusBadge(order.status)}</td>
-        <td>${this.deliveryBadge(order)}</td>
-        <td class="txt-right">
+        <td class="txt-primary txt-extrabold" data-label="Token">#${escapeHtml(order.orderNumber.split('-').pop())}</td>
+        <td data-label="Date">${escapeHtml(formatDateTime(order.createdAt))}</td>
+        <td class="txt-primary txt-bold" data-label="Type">${this.typeBadge(order)}</td>
+        <td class="txt-brand txt-extrabold" data-label="Amount">${formatCurrency(order.total)}</td>
+        <td data-label="Payment">${this.paymentBadge(order)}</td>
+        <td data-label="Kitchen">${this.statusBadge(order.status)}</td>
+        <td data-label="Delivery">${this.deliveryBadge(order)}</td>
+        <td class="txt-right" data-label="Receipt">
           <button class="btn btn-secondary btn-sm print-btn" data-id="${order.id}">
             <span class="material-symbols-rounded">print</span>
           </button>
@@ -76,7 +76,7 @@ export class OrderHistory {
         </div>
 
         <div class="table-container scrollbar-none">
-          <table class="premium-table" style="min-width:920px;">
+          <table class="premium-table responsive-table">
             <thead>
               <tr>
                 <th>Token</th>

@@ -210,17 +210,10 @@ export class KitchenView {
       // Create overlay element
       const overlay = document.createElement('div');
       overlay.id = 'prep-time-modal-overlay';
+      overlay.className = 'modal-overlay';
       overlay.style.cssText = `
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100vw;
-        height: 100vh;
         background: rgba(9, 9, 14, 0.85);
         backdrop-filter: blur(8px);
-        display: flex;
-        align-items: center;
-        justify-content: center;
         z-index: 10000;
         animation: fadeIn 0.25s ease-out;
       `;

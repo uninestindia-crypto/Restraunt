@@ -38,6 +38,8 @@ export class PosView {
     this.render();
     await this.initComponents();
     await this.loadTables();
+    this.bindMobileEvents();
+    this.updateMobileCartBar();
   }
 
   async loadTables() {
@@ -60,6 +62,22 @@ export class PosView {
         </div>
         <div class="pos-cart" id="pos-cart-area">
           <!-- CartPanel renders here -->
+        </div>
+        
+        <!-- Mobile Cart Toggle Bar -->
+        <div class="mobile-cart-toggle-bar" id="mobile-cart-toggle">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span class="material-symbols-rounded" style="color: var(--color-primary); font-size: 22px;">shopping_cart</span>
+            <div>
+              <span id="mobile-cart-count" style="font-weight: 700; color: var(--text-primary);">0 items</span>
+              <span style="color: var(--text-muted); margin: 0 4px;">·</span>
+              <span id="mobile-cart-total" style="font-weight: 800; color: var(--color-primary);">₹0.00</span>
+            </div>
+          </div>
+          <button class="btn btn-primary btn-sm" id="btn-mobile-view-cart" style="padding: 8px 16px; font-weight: 700; font-size: 12px; display: flex; align-items: center; gap: 4px;">
+            View Cart
+            <span class="material-symbols-rounded" style="font-size: 16px;">arrow_forward</span>
+          </button>
         </div>
       </div>
     `;
@@ -85,6 +103,46 @@ export class PosView {
       onOrderTypeChange: (type) => this.setOrderType(type),
     });
     this.cartPanel.render();
+  }
+
+  // --- Mobile Trigger Events & UI Helpers ---
+
+  bindMobileEvents() {
+    const viewCartBtn = document.getElementById('btn-mobile-view-cart');
+    if (viewCartBtn) {
+      viewCartBtn.addEventListener('click', () => {
+        const layout = this.container.querySelector('.pos-layout');
+        if (layout) {
+          layout.classList.add('show-cart');
+        }
+      });
+    }
+  }
+
+  updateMobileCartBar() {
+    const bar = document.getElementById('mobile-cart-toggle');
+    if (!bar) return;
+
+    const count = this.cart.reduce((sum, item) => sum + item.quantity, 0);
+    const subtotal = this.cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    
+    // Fallback to cached taxPercent
+    const gstPercent = parseFloat(localStorage.getItem('gstPercent') || '5');
+    const total = subtotal * (1 + gstPercent / 100);
+
+    if (count > 0) {
+      bar.classList.add('show');
+      const countEl = document.getElementById('mobile-cart-count');
+      const totalEl = document.getElementById('mobile-cart-total');
+      if (countEl) countEl.textContent = `${count} item${count > 1 ? 's' : ''}`;
+      if (totalEl) totalEl.textContent = formatCurrencyShort(total);
+    } else {
+      bar.classList.remove('show');
+      const layout = this.container.querySelector('.pos-layout');
+      if (layout) {
+        layout.classList.remove('show-cart');
+      }
+    }
   }
 
   // --- Cart Operations ---
@@ -115,6 +173,7 @@ export class PosView {
 
     // Update cart display
     this.cartPanel.updateCart(this.cart);
+    this.updateMobileCartBar();
   }
 
   updateQuantity(index, delta) {
@@ -127,17 +186,20 @@ export class PosView {
     }
 
     this.cartPanel.updateCart(this.cart);
+    this.updateMobileCartBar();
   }
 
   removeFromCart(index) {
     if (index < 0 || index >= this.cart.length) return;
     this.cart.splice(index, 1);
     this.cartPanel.updateCart(this.cart);
+    this.updateMobileCartBar();
   }
 
   clearCart() {
     this.cart = [];
     this.cartPanel.updateCart(this.cart);
+    this.updateMobileCartBar();
     showToast('Cart cleared', 'info');
   }
 
@@ -290,6 +352,7 @@ export class PosView {
       this.cart = [];
       this.selectedTableId = null;
       this.cartPanel.updateCart(this.cart);
+      this.updateMobileCartBar();
 
       // Reload tables
       await this.loadTables();

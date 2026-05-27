@@ -166,7 +166,7 @@ export class AdminView {
       <div class="main-area">
         <!-- Admin Views Header Tabs -->
         <div class="header-bar" style="padding: 10px 24px;">
-          <div class="tab-container" style="padding: 0; border-bottom: none; overflow-x: auto; flex: 1; margin-right: 12px;" class="scrollbar-none">
+          <div class="tab-container scrollbar-none" style="padding: 0; border-bottom: none; overflow-x: auto; flex: 1; margin-right: 12px;">
             <button class="tab admin-tab ${this.activeTab === 'dashboard' ? 'active' : ''}" data-tab="dashboard">
               <span class="material-symbols-rounded" style="font-size: 18px; vertical-align: middle; margin-right: 4px;">dashboard</span>
               Dashboard

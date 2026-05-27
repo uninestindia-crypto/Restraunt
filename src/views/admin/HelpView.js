@@ -18,20 +18,10 @@ export class HelpView {
 
   render() {
     this.container.innerHTML = `
-      <div class="help-layout-container" style="display: flex; flex: 1; height: 100%; overflow: hidden; background: radial-gradient(circle at top right, rgba(255, 94, 54, 0.05) 0%, transparent 60%);">
+      <div class="help-layout-container">
         
         <!-- Local Navigation Sidebar -->
-        <div class="help-sidebar" style="
-          width: 260px;
-          border-right: 1px solid var(--border-glass);
-          background: rgba(18, 18, 29, 0.4);
-          backdrop-filter: blur(20px);
-          display: flex;
-          flex-direction: column;
-          padding: 24px 16px;
-          gap: 8px;
-          flex-shrink: 0;
-        ">
+        <div class="help-sidebar">
           <div style="margin-bottom: 16px; padding-left: 8px;">
             <div style="font-family: var(--font-display); font-size: var(--text-sm); font-weight: 800; color: var(--text-primary); letter-spacing: -0.01em; display: flex; align-items: center; gap: 8px;">
               <span class="material-symbols-rounded txt-brand" style="font-size: 22px;">help_center</span>
@@ -72,11 +62,7 @@ export class HelpView {
         </div>
 
         <!-- Documentation Viewport -->
-        <div class="help-content-viewport" style="
-          flex: 1;
-          overflow-y: auto;
-          padding: 36px 40px;
-        ">
+        <div class="help-content-viewport">
           <div style="max-width: 800px; margin: 0 auto; width: 100%; display: flex; flex-direction: column; gap: 32px;" id="help-content-container">
             ${this.renderSectionContent()}
           </div>
@@ -85,6 +71,62 @@ export class HelpView {
       </div>
 
       <style>
+        .help-layout-container {
+          display: flex;
+          flex: 1;
+          height: 100%;
+          overflow: hidden;
+          background: radial-gradient(circle at top right, rgba(255, 94, 54, 0.05) 0%, transparent 60%);
+        }
+        .help-sidebar {
+          width: 260px;
+          border-right: 1px solid var(--border-glass);
+          background: rgba(18, 18, 29, 0.4);
+          backdrop-filter: blur(20px);
+          display: flex;
+          flex-direction: column;
+          padding: 24px 16px;
+          gap: 8px;
+          flex-shrink: 0;
+        }
+        .help-content-viewport {
+          flex: 1;
+          overflow-y: auto;
+          padding: 36px 40px;
+        }
+
+        @media (max-width: 768px) {
+          .help-layout-container {
+            flex-direction: column !important;
+            overflow-y: auto !important;
+          }
+          .help-sidebar {
+            width: 100% !important;
+            border-right: none !important;
+            border-bottom: 1px solid var(--border-glass) !important;
+            flex-direction: row !important;
+            overflow-x: auto !important;
+            padding: 12px 16px !important;
+            gap: 8px !important;
+            white-space: nowrap !important;
+            -ms-overflow-style: none !important;
+            scrollbar-width: none !important;
+          }
+          .help-sidebar::-webkit-scrollbar {
+            display: none !important;
+          }
+          .help-sidebar > div:first-child {
+            display: none !important;
+          }
+          .help-sidebar > div:last-child {
+            display: none !important;
+          }
+          .help-content-viewport {
+            padding: 20px 16px !important;
+            overflow-y: visible !important;
+          }
+        }
+
         .help-nav-btn {
           display: flex;
           align-items: center;
