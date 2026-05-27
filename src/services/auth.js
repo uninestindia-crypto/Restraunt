@@ -446,19 +446,33 @@ class AuthService {
 
   /**
    * Start (or restart) the session expiry timer.
-   * Automatically logs out the staff member after SESSION_DURATION_MS.
+   * Automatically logs out the staff member after session duration setting or fallback SESSION_DURATION_MS.
    * @private
    */
-  _startSessionTimer() {
+  async _startSessionTimer() {
     if (this.sessionTimeout) {
       clearTimeout(this.sessionTimeout);
+    }
+
+    let durationMs = SESSION_DURATION_MS;
+    try {
+      const { getSetting } = await import('../db/database.js');
+      const settingVal = await getSetting('sessionDuration');
+      if (settingVal) {
+        const hours = parseInt(settingVal, 10);
+        if (!isNaN(hours) && hours > 0) {
+          durationMs = hours * 60 * 60 * 1000;
+        }
+      }
+    } catch (e) {
+      console.error('[AuthService] Error loading sessionDuration setting, using default:', e);
     }
 
     this.sessionTimeout = setTimeout(() => {
       console.warn('[AuthService] Session expired. Logging out automatically.');
       this.logout();
       window.dispatchEvent(new CustomEvent('auth-session-expired'));
-    }, SESSION_DURATION_MS);
+    }, durationMs);
   }
 }
 
