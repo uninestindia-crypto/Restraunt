@@ -1,4 +1,5 @@
 import { db } from './database.js';
+import { hashPin } from '../utils/crypto.js';
 
 /**
  * Seeds the database with initial data if empty.
@@ -9,16 +10,28 @@ export async function seedDatabase() {
   try {
     const staffCount = await db.staff.count();
     if (staffCount === 0) {
+      const ownerPinHash = await hashPin('1234');
       await db.staff.add({
         name: 'Owner',
         role: 'owner',
-        pin: '1234',
+        pinHash: ownerPinHash,
         isActive: 1,
         createdAt: new Date().toISOString(),
         isSynced: 0,
         _platform: 'nextgenos'
       });
       console.log('[Seed] Default owner staff seeded.');
+    } else {
+      const staffMembers = await db.staff.toArray();
+      for (const staff of staffMembers) {
+        if (staff.pin && !staff.pinHash) {
+          await db.staff.update(staff.id, {
+            pinHash: await hashPin(staff.pin),
+            pin: undefined,
+            isSynced: 0
+          });
+        }
+      }
     }
   } catch (err) {
     console.error('[Seed] Failed to seed default staff:', err);

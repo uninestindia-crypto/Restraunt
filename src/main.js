@@ -74,6 +74,13 @@ class App {
         showToast('Session expired. Please log in again.', 'warning');
       });
 
+      // Customer self-order must be reachable from public links without staff PIN.
+      const initialPath = (window.location.hash || '#/pos').split('?')[0];
+      if (initialPath === '#/self-order') {
+        this.startPublicRoute();
+        return;
+      }
+
       // Check for persistent session
       const savedPin = localStorage.getItem('auth_staff_pin');
       let autoLoggedIn = false;
@@ -97,6 +104,17 @@ class App {
       console.error('Failed to initialize app:', error);
       this.showFatalError(error);
     }
+  }
+
+  startPublicRoute() {
+    this.renderShell();
+    this.setupRouter();
+    this.setupPWA();
+    this.setupSync();
+    this.setupConnectivity();
+    this.setupMobileSidebar();
+    router.start();
+    this.initialized = true;
   }
 
   showLogin() {

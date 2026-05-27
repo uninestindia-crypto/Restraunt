@@ -29,7 +29,8 @@ Overall completion baseline: 38%
 | --- | ---: | --- | --- |
 | Core POS order flow | 65% | Menu, cart, UPI QR, cash flow, receipt path, kitchen queue exist | Needs end-to-end QA, refunds/cancellations, payment reconciliation, order id cleanup |
 | Kitchen display | 60% | Confirmed/preparing/ready/completed workflow exists | Needs real-time validation, load testing, edge-case handling |
-| Self-order kiosk | 35% | View exists, but public route and category data path are fragile | Must work without staff login and load menu reliably |
+| Self-order kiosk | 45% | View exists and public route boot has been started, but category data path still needs validation | Must work without staff login and load menu reliably |
+| Online home ordering | 20% | Required customer-facing channel for people ordering from home is now tracked, but not production-ready | Needs public URL, pickup/delivery choice, address/contact capture, payment status clarity, and cloud-backed order intake |
 | Auth and RBAC | 30% | Staff PIN login and route roles exist | Must remove hardcoded defaults, fix first-run owner seed, add lockout/session hardening |
 | Admin/settings | 55% | Restaurant profile, printer, sync, backup, reports settings exist | Needs stronger validation, safer secrets handling, production onboarding flow |
 | Cloud sync | 30% | Supabase client, realtime hooks, and push/pull logic exist | Must add RLS, tenant isolation, conflict policy, schema parity, retry guarantees |
@@ -54,7 +55,7 @@ These items must be complete before any public or paid launch.
 | --- | --- | --- | --- |
 | P0-01 | Not started | Fix first-run authentication | Fresh install creates an owner with hashed PIN, no plain default PIN, forced first-run PIN change |
 | P0-02 | Not started | Remove hardcoded production credentials/defaults | No default `1234` admin/staff access in production builds; setup wizard required |
-| P0-03 | Not started | Make self-order route truly public | `/#/self-order` loads without staff login and can place orders into the kitchen flow |
+| P0-03 | Partial | Make self-order route truly public | `/#/self-order` loads without staff login and can place orders into the kitchen flow |
 | P0-04 | Not started | Fix menu/category data access | Category menu queries work with IndexedDB indexes or use a tested non-indexed path |
 | P0-05 | Not started | Add Supabase RLS and tenant isolation | Every remote table has row-level security; anon key cannot read/write other restaurants |
 | P0-06 | Not started | Align local and remote schemas | Orders, staff, tables, inventory, customers sync all required fields both ways |
@@ -66,8 +67,9 @@ These items must be complete before any public or paid launch.
 | P0-12 | Not started | Payment verification strategy | UPI/cash statuses are auditable; unpaid/pending/paid cannot be confused in reports |
 | P0-13 | Not started | Production data policy | Demo seed data cannot pollute real stores; import/export handles PII safely |
 | P0-14 | Not started | Operational backups and restore drill | Daily backup and tested restore process exists before live use |
+| P0-15 | Not started | Online home ordering channel | Customers can order from home through a public URL with pickup/delivery details, payment state, and order sync into restaurant operations |
 
-P0 progress: 0 / 14 complete, 0%
+P0 progress: 0 / 15 complete, 0%
 
 ## P1 Production Hardening
 
@@ -116,6 +118,7 @@ Phase 1: Stabilize the core
 
 - Fix first-run auth, admin setup, hashed PIN seed, PIN lockout, and public kiosk routing.
 - Fix IndexedDB indexes/data access and order object consistency.
+- Add online home ordering as a first-class public customer channel, separate from staff POS.
 - Separate demo seed data from production onboarding.
 - Add smoke tests for POS, self-order, kitchen, admin, and settings.
 
@@ -173,4 +176,3 @@ Exit criteria: No P0 defects open, no high-risk P1 defects open, and beta metric
 | Production runbook and support path | No-go |
 
 Public launch status: No-go.
-
