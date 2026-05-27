@@ -160,6 +160,10 @@ export class StaffView {
         showToast('Staff member added!', 'success');
       }
 
+      if (role === 'owner' && pin) {
+        await db.settings.put({ key: 'adminPinHash', value: hashedPin });
+      }
+
       this.editingStaffId = null;
       document.getElementById('staff-modal-title').textContent = 'Add Staff';
       modal.style.display = 'none';
