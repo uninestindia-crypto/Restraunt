@@ -73,3 +73,18 @@ export async function setStaffActiveViaAdminFunction(staffOrId, active) {
   }
   return invokeStaffAdmin('set-active', { staffId, isActive: Boolean(active) });
 }
+
+/**
+ * Look up a Supabase Auth user by email to verify they have real credentials.
+ * Used by StaffView to enforce that operational backend access is only granted
+ * to users with actual Supabase Auth accounts (not fake/local-only staff).
+ *
+ * @param {string} email - Email address to look up
+ * @returns {{ success: boolean, data?: { found: boolean, authUserId?: string, email?: string, confirmed?: boolean, existingMembership?: object }, message?: string }}
+ */
+export async function lookupAuthUser(email) {
+  if (!email || !email.includes('@')) {
+    return { success: false, message: 'A valid email address is required.' };
+  }
+  return invokeStaffAdmin('lookup-auth-user', { email: email.toLowerCase().trim() });
+}
