@@ -281,6 +281,62 @@ Deno.serve(async (req) => {
       return jsonResponse({ ok: true, staffId, role });
     }
 
+    if (action === "lookup-auth-user") {
+      // Look up a Supabase Auth user by email to verify they have real credentials.
+      // Only returns minimal info — never exposes passwords, tokens, etc.
+      const email = cleanText(payload.staff?.name || (payload as any).email, 320).toLowerCase();
+      if (!email || !email.includes("@")) {
+        return bad("A valid email address is required.");
+      }
+
+      // Use the admin API to list users filtered by email
+      const { data: userList, error: listError } = await serviceClient.auth.admin.listUsers({
+        filter: email,
+        page: 1,
+        perPage: 5,
+      });
+
+      if (listError) {
+        return bad(`Auth lookup failed: ${listError.message}`, 500);
+      }
+
+      // Find an exact email match (listUsers filter is substring-based)
+      const matchedUser = userList?.users?.find(
+        (u: any) => u.email?.toLowerCase() === email
+      );
+
+      if (!matchedUser) {
+        return jsonResponse({
+          ok: true,
+          found: false,
+          message: "No Supabase Auth account found with this email.",
+        });
+      }
+
+      // Check if they already have a staff_membership for this store
+      const { data: existingMembership } = await serviceClient
+        .from("staff_memberships")
+        .select("staff_id, role, is_active")
+        .eq("store_id", storeId)
+        .eq("auth_user_id", matchedUser.id)
+        .maybeSingle();
+
+      return jsonResponse({
+        ok: true,
+        found: true,
+        authUserId: matchedUser.id,
+        email: matchedUser.email,
+        confirmed: !!matchedUser.email_confirmed_at,
+        existingMembership: existingMembership
+          ? {
+              staffId: existingMembership.staff_id,
+              role: existingMembership.role,
+              isActive: existingMembership.is_active,
+            }
+          : null,
+      });
+    }
+
     return bad("Unsupported staff admin action.");
   } catch (error) {
     return bad(error instanceof Error ? error.message : String(error), 500);
