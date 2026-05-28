@@ -1,6 +1,7 @@
 import { db } from '../db/database.js';
 import { getSupabaseClient, resetSupabaseClient, testSupabaseMenuRead } from './supabaseClient.js';
 import { submitPublicOrder } from './publicOrders.js';
+import { setStaffActiveViaAdminFunction, syncStaffViaAdminFunction } from './staffAdmin.js';
 import { showToast } from '../utils/helpers.js';
 
 const DEFAULT_STORE_ID = 'the-taste';
@@ -709,12 +710,13 @@ class SyncService {
 
       if (unsyncedStaff.length > 0) {
         console.log(`[Sync cache] Found ${unsyncedStaff.length} unsynced staff members in local cache.`);
-        const remoteStaff = unsyncedStaff.map(mapStaffToRemote);
-        
+
         try {
           await retryWithBackoff(async () => {
-            const { error } = await supabase.from('staff').upsert(remoteStaff);
-            if (error) throw error;
+            for (const staff of unsyncedStaff) {
+              const result = await syncStaffViaAdminFunction(staff);
+              if (!result.success) throw new Error(result.message || 'Staff admin function failed.');
+            }
           }, { maxRetries: 3 });
 
           try {
@@ -1202,11 +1204,9 @@ class SyncService {
       return;
     }
     try {
-      const remote = mapStaffToRemote(staff);
-      
       await retryWithBackoff(async () => {
-        const { error } = await supabase.from('staff').upsert(remote);
-        if (error) throw error;
+        const result = await syncStaffViaAdminFunction(staff);
+        if (!result.success) throw new Error(result.message || 'Staff admin function failed.');
       }, {
         maxRetries: 3,
         initialDelayMs: 1000,
@@ -1507,12 +1507,12 @@ class SyncService {
         if (this.isSyncingFromServer || !this.isConnected || !supabase) return;
         try {
           await retryWithBackoff(async () => {
-            const { error } = await supabase.from('staff').delete().eq('id', primKey);
-            if (error) throw error;
+            const result = await setStaffActiveViaAdminFunction(obj || primKey, false);
+            if (!result.success) throw new Error(result.message || 'Staff admin function failed.');
           }, { maxRetries: 3 });
-          console.log(`[Sync cache] Deleted staff member ${primKey} from cloud.`);
+          console.log(`[Sync cache] Deactivated staff member ${primKey} in cloud.`);
         } catch (e) {
-          console.error(`[Sync net] Failed to delete staff member ${primKey} from cloud after retries:`, e);
+          console.error(`[Sync net] Failed to deactivate staff member ${primKey} in cloud after retries:`, e);
         }
       }, 50);
     });

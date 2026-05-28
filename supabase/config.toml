@@ -2,3 +2,8 @@ project_id = "the-taste-restaurant-os"
 
 [functions.public-order]
 verify_jwt = false
+
+[functions.staff-admin]
+# The function validates the caller JWT and owner membership itself so CORS
+# preflight can complete before protected POST requests are checked.
+verify_jwt = false

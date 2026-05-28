@@ -1432,15 +1432,16 @@ export class SettingsView {
       signInBtn.addEventListener('click', async () => {
         const email = document.getElementById('supabaseEmail')?.value.trim() || '';
         const password = document.getElementById('supabasePassword')?.value.trim() || '';
-        const { authService } = await import('../../services/auth.js');
-        await authService.loginWithCloudCredentials(email, password);
-        document.getElementById('supabasePassword').value = '';
-        showToast('Cloud staff session active on this device', 'success');
         try {
+          const { authService } = await import('../../services/auth.js');
+          await authService.loginWithCloudCredentials(email, password);
+          document.getElementById('supabasePassword').value = '';
+          showToast('Cloud staff session active on this device', 'success');
           const { syncService } = await import('../../services/sync.js');
           await syncService.connect();
-        } catch (syncErr) {
-          console.error('Failed to reconnect after cloud sign in:', syncErr);
+        } catch (err) {
+          console.error('Cloud staff sign in failed:', err);
+          showToast(err.message || 'Cloud staff sign in failed', 'error');
         }
       });
     }

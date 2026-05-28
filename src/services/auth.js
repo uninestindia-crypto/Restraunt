@@ -2,6 +2,7 @@ import { db } from '../db/database.js';
 import { hashPin } from '../utils/crypto.js';
 import {
   CloudStaffAccessError,
+  appMetadataToStaffAccess,
   isActiveFlag,
   isActiveStaffWithPin,
   normalizeStaffRole,
@@ -167,6 +168,13 @@ class AuthService {
           account = await this._resolveCloudStaff(session.user);
         } catch (error) {
           if (!(error instanceof CloudStaffAccessError)) throw error;
+          const staffHint = appMetadataToStaffAccess(session.user, this._getStoreId()) ||
+            normalizeStaffRole(session.user?.user_metadata?.role);
+          if (staffHint) {
+            console.warn('[AuthService] Stored cloud staff session lacks active membership. Clearing session.');
+            await signOutCloudStaff();
+            return null;
+          }
           account = await this._resolveCustomer(session.user);
         }
 
@@ -315,6 +323,11 @@ class AuthService {
       return staff;
     } catch (error) {
       console.error('[AuthService] Cloud login failed:', error);
+      if (error instanceof CloudStaffAccessError) {
+        await signOutCloudStaff().catch(signOutError => {
+          console.warn('[AuthService] Could not clear rejected cloud staff session:', signOutError);
+        });
+      }
       throw error;
     }
   }
