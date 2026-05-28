@@ -1,5 +1,13 @@
+// @ts-ignore: Deno import
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
+
+declare const Deno: {
+  serve: (handler: (req: Request) => Response | Promise<Response>) => void;
+  env: {
+    get: (key: string) => string | undefined;
+  };
+};
 
 const STORE_ID = Deno.env.get("STORE_ID") || "the-taste";
 const GST_PERCENT = Number(Deno.env.get("GST_PERCENT") || "5");
@@ -76,7 +84,7 @@ function bad(message: string, status = 400) {
   return jsonResponse({ error: message }, status);
 }
 
-Deno.serve(async (req) => {
+Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }

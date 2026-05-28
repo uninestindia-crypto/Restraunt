@@ -1,5 +1,13 @@
+// @ts-ignore: Deno import
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
+
+declare const Deno: {
+  serve: (handler: (req: Request) => Response | Promise<Response>) => void;
+  env: {
+    get: (key: string) => string | undefined;
+  };
+};
 
 const DEFAULT_STORE_ID = "the-taste";
 const STAFF_ROLES = ["owner", "manager", "cashier", "kitchen", "waiter", "delivery"];
@@ -78,7 +86,7 @@ async function requireOwner({
   serviceClient: ReturnType<typeof createClient>;
   token: string;
   storeId: string;
-}) {
+}): Promise<{ user: any; membership: any } | { error: string; status: number }> {
   if (!token) return { error: "Missing authorization token.", status: 401 };
 
   const { data: userData, error: userError } = await serviceClient.auth.getUser(token);
@@ -112,7 +120,7 @@ async function audit(serviceClient: ReturnType<typeof createClient>, storeId: st
   if (error) console.warn(`staff-admin audit failed: ${error.message}`);
 }
 
-Deno.serve(async (req) => {
+Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
@@ -184,7 +192,7 @@ Deno.serve(async (req) => {
 
   // All other actions require Owner authentication
   const owner = await requireOwner({ serviceClient, token: bearerToken(req), storeId });
-  if ("error" in owner) return bad(owner.error, owner.status);
+  if ("error" in owner) return bad(owner.error || "Unknown error", owner.status);
 
   try {
     if (action === "upsert-staff") {
