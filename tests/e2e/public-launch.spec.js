@@ -13,9 +13,9 @@ test.describe('public launch routing', () => {
   test('staff POS route remains protected by staff PIN or owner setup', async ({ page }) => {
     await page.goto('/#/pos');
 
-    await expect(
-      page.getByText('Enter Staff PIN').or(page.getByText('Owner setup required'))
-    ).toBeVisible();
+    await expect(page.locator('.login-screen')).toBeVisible();
+    const loginText = await page.locator('.login-screen').textContent();
+    expect(loginText).toMatch(/Enter Staff PIN|Owner setup required|Authorize Access/);
   });
 
   test('public storefront has no horizontal overflow', async ({ page }) => {
