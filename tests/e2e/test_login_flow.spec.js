@@ -13,11 +13,11 @@ test('manually log in with PIN and check POS view', async ({ page }) => {
   });
 
   try {
-    // Navigate to root to initialize database origin
-    await page.goto('/');
-    await page.waitForTimeout(2000);
+    // Go directly to POS route on startup
+    await page.goto('/#/pos');
+    await page.waitForTimeout(3000); // Wait for initial database setup
 
-    // Set up mock owner staff in database
+    // Set up mock owner staff in database and authorize device
     await page.evaluate(async () => {
       const { db } = await import('/src/db/database.js');
       const { hashPin } = await import('/src/utils/crypto.js');
@@ -37,10 +37,13 @@ test('manually log in with PIN and check POS view', async ({ page }) => {
       };
 
       // Add mock staff
-      await db.staff.put(mockStaff);
+      const id = await db.staff.put(mockStaff);
+
+      // Authorize this device for PIN login
+      localStorage.setItem(`pin_authorized_${id}`, 'true');
     });
 
-    // Go directly to POS route and reload to force clean boot on POS path
+    // Reload page to boot cleanly using the now-seeded owner
     await page.goto('/#/pos');
     await page.reload();
     await page.waitForTimeout(4000);
@@ -63,6 +66,11 @@ test('manually log in with PIN and check POS view', async ({ page }) => {
 
     // Wait for login transition and view mounting
     await page.waitForTimeout(6000);
+
+    // Log current state after login
+    logs.push(`[DEBUG] Current URL after login: ${page.url()}`);
+    const postLoginHtml = await page.innerHTML('#app');
+    logs.push(`[DEBUG] Body HTML contains POS sidebar: ${postLoginHtml.includes('app-sidebar') || postLoginHtml.includes('sidebar')}`);
 
     // Capture screenshot after login
     await page.screenshot({

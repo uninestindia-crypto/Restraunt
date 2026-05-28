@@ -267,9 +267,9 @@ export class ExpressView {
       </div>
 
       <!-- UPI QR Code Modal Overlay -->
-      <div id="express-upi-modal" class="modal-overlay" style="display:none; z-index:99999; background:rgba(4,4,8,0.85); backdrop-filter:blur(12px);">
-        <div class="modal upi-modal-card" style="max-width:380px; padding:24px; text-align:center; background:#0B0B0F; border:1px solid var(--border-active); border-radius:var(--radius-lg); box-shadow:var(--shadow-lg);">
-          <h3 style="font-family:var(--font-display); font-weight:800; color:var(--text-primary); margin-bottom:12px;">Scan UPI QR</h3>
+      <div id="express-upi-modal" class="modal-overlay" style="display:none;">
+        <div class="modal upi-modal-card">
+          <h3 style="font-family:var(--font-display); font-weight:700; color:var(--text-primary); margin-bottom:12px;">Scan UPI QR</h3>
           <p style="font-size:var(--text-sm); color:var(--text-secondary); margin-bottom:16px;">Scan to collect <strong id="upi-modal-amount" style="color:var(--color-primary);">₹0.00</strong></p>
           <div style="display:flex; justify-content:center; background:#ffffff; padding:16px; border-radius:12px; margin-bottom:20px; width:220px; margin-left:auto; margin-right:auto;">
             <canvas id="express-upi-canvas" style="width:200px; height:200px;"></canvas>
@@ -286,18 +286,23 @@ export class ExpressView {
       </div>
 
       <style>
-        /* CSS styling for the combined Express Panel */
+        /* CSS styling for the redesigned Express Panel with Apple Aesthetic */
+        
         .express-layout {
           display: flex;
           flex-direction: column;
           height: calc(100vh - 64px); /* Subtract header height */
           background: var(--bg-primary);
           overflow: hidden;
+          padding: 16px;
+          gap: 16px;
+          box-sizing: border-box;
+          transition: background var(--transition-normal);
         }
 
         .express-mobile-tabs {
           display: none;
-          background: rgba(9, 9, 14, 0.9);
+          background: var(--bg-surface);
           border-bottom: 1px solid var(--border-glass);
           padding: 8px 16px;
           gap: 12px;
@@ -310,7 +315,7 @@ export class ExpressView {
           justify-content: center;
           gap: 8px;
           padding: 10px;
-          background: rgba(255, 255, 255, 0.02);
+          background: var(--bg-secondary);
           border: 1px solid var(--border-glass);
           border-radius: var(--radius-md);
           color: var(--text-secondary);
@@ -322,15 +327,16 @@ export class ExpressView {
         }
 
         .mobile-tab-btn.active {
-          background: rgba(255, 94, 54, 0.08);
+          background: rgba(var(--color-primary-rgb), 0.08);
           border-color: var(--color-primary);
           color: var(--text-primary);
-          box-shadow: 0 0 12px rgba(255, 94, 54, 0.15);
+          box-shadow: 0 0 12px rgba(var(--color-primary-rgb), 0.15);
         }
 
         .express-main-grid {
           display: grid;
           grid-template-columns: 58% 42%;
+          gap: 16px;
           flex: 1;
           overflow: hidden;
         }
@@ -340,22 +346,28 @@ export class ExpressView {
           flex-direction: column;
           overflow: hidden;
           background: var(--bg-surface);
-          border-right: 1px solid var(--border-glass);
+          border: 1px solid var(--border-glass);
+          border-radius: var(--radius-lg);
+          box-shadow: var(--shadow-sm);
+          transition: all var(--transition-normal);
+        }
+
+        .pos-panel {
+          background: var(--bg-surface);
         }
 
         .kds-panel {
-          border-right: none;
-          background: #060609;
+          background: var(--bg-surface);
         }
 
         .panel-header {
           display: flex;
           justify-content: space-between;
           align-items: center;
-          padding: 12px 20px;
-          background: rgba(9, 9, 14, 0.5);
+          padding: 16px 20px;
+          background: transparent;
           border-bottom: 1px solid var(--border-glass);
-          min-height: 58px;
+          min-height: 64px;
         }
 
         .title-with-icon {
@@ -367,7 +379,7 @@ export class ExpressView {
         .title-with-icon h3 {
           font-family: var(--font-display);
           font-size: var(--text-base);
-          font-weight: 800;
+          font-weight: 700;
           color: var(--text-primary);
           margin: 0;
         }
@@ -382,13 +394,13 @@ export class ExpressView {
           filter: drop-shadow(0 0 4px var(--nextgenos-purple-glow));
         }
 
-        /* Category chips */
+        /* Category chips - Apple Segmented/Tab Style */
         .express-categories-scroller {
           display: flex;
           gap: 8px;
-          padding: 10px 20px;
+          padding: 12px 20px;
           overflow-x: auto;
-          background: rgba(255, 255, 255, 0.005);
+          background: transparent;
           border-bottom: 1px solid var(--border-glass);
           white-space: nowrap;
         }
@@ -397,22 +409,32 @@ export class ExpressView {
           display: inline-flex;
           align-items: center;
           padding: 8px 16px;
-          background: rgba(255, 255, 255, 0.01);
+          background: var(--bg-secondary);
           border: 1px solid var(--border-glass);
-          border-radius: var(--radius-md);
+          border-radius: var(--radius-full);
           color: var(--text-secondary);
           font-family: var(--font-display);
           font-size: var(--text-xs);
-          font-weight: 700;
+          font-weight: 600;
           cursor: pointer;
           transition: all var(--transition-fast);
         }
 
+        .category-chip:hover {
+          background: var(--bg-card-hover);
+          color: var(--text-primary);
+          transform: translateY(-1px);
+        }
+
+        .category-chip:active {
+          transform: scale(0.96);
+        }
+
         .category-chip.active {
-          background: var(--text-primary);
-          color: var(--bg-primary);
-          border-color: var(--text-primary);
-          box-shadow: 0 4px 12px rgba(255, 255, 255, 0.1);
+          background: var(--color-primary);
+          color: #ffffff;
+          border-color: var(--color-primary);
+          box-shadow: 0 4px 12px rgba(var(--color-primary-rgb), 0.25);
         }
 
         /* Products Grid */
@@ -423,31 +445,33 @@ export class ExpressView {
           gap: 12px;
           padding: 16px 20px;
           overflow-y: auto;
-          background: rgba(0, 0, 0, 0.1);
+          background: transparent;
         }
 
         .express-product-card {
           position: relative;
-          background: rgba(255, 255, 255, 0.02);
+          background: var(--bg-card);
           border: 1px solid var(--border-glass);
           border-radius: var(--radius-md);
-          padding: 10px;
+          padding: 12px;
           display: flex;
           flex-direction: column;
           gap: 8px;
           cursor: pointer;
           user-select: none;
-          transition: all var(--transition-fast);
+          transition: all var(--transition-normal);
+          box-shadow: var(--shadow-sm);
         }
 
         .express-product-card:hover {
-          background: rgba(255, 255, 255, 0.04);
+          background: var(--bg-card-hover);
           border-color: var(--border-active);
-          transform: translateY(-2px);
+          transform: translateY(-3px);
+          box-shadow: var(--shadow-md);
         }
 
         .express-product-card:active {
-          transform: scale(0.97);
+          transform: scale(0.96);
         }
 
         .prod-image {
@@ -457,7 +481,7 @@ export class ExpressView {
           align-items: center;
           justify-content: center;
           font-size: 28px;
-          background: rgba(255, 255, 255, 0.015);
+          background: var(--bg-secondary);
           border-radius: var(--radius-sm);
           overflow: hidden;
           border-bottom: 1px solid var(--border-color);
@@ -471,12 +495,12 @@ export class ExpressView {
         }
 
         .express-product-card:hover .prod-image img {
-          transform: scale(1.08);
+          transform: scale(1.06);
         }
 
         .prod-name {
           font-size: var(--text-xs);
-          font-weight: 700;
+          font-weight: 600;
           color: var(--text-primary);
           line-height: 1.3;
           height: 32px;
@@ -491,22 +515,24 @@ export class ExpressView {
           justify-content: space-between;
           align-items: center;
           margin-top: auto;
+          padding-top: 4px;
         }
 
         .prod-price {
-          font-weight: 800;
+          font-weight: 700;
           color: var(--color-primary);
           font-size: var(--text-xs);
         }
 
         /* Cart Section */
         .express-cart-section {
-          background: rgba(9, 9, 14, 0.7);
-          border-top: 1px solid var(--border-active);
+          background: var(--bg-surface);
+          border-top: 1px solid var(--border-glass);
           display: flex;
           flex-direction: column;
-          padding: 12px 20px;
-          max-height: 290px;
+          padding: 16px 20px;
+          max-height: 320px;
+          gap: 10px;
         }
 
         .close-cart-btn {
@@ -517,7 +543,7 @@ export class ExpressView {
           display: flex;
           justify-content: space-between;
           align-items: center;
-          margin-bottom: 8px;
+          margin-bottom: 4px;
         }
 
         .cart-title {
@@ -531,12 +557,19 @@ export class ExpressView {
           background: transparent;
           border: none;
           color: var(--color-danger);
-          font-size: 10px;
+          font-size: 11px;
           font-weight: 700;
           display: flex;
           align-items: center;
           gap: 4px;
           cursor: pointer;
+          padding: 4px 8px;
+          border-radius: var(--radius-full);
+          transition: background var(--transition-fast);
+        }
+
+        .clear-btn:hover {
+          background: rgba(var(--color-danger-rgb), 0.08);
         }
 
         .express-cart-list {
@@ -545,24 +578,30 @@ export class ExpressView {
           display: flex;
           flex-direction: column;
           gap: 6px;
-          max-height: 110px;
-          margin-bottom: 8px;
+          max-height: 120px;
+          margin-bottom: 4px;
         }
 
         .express-cart-row {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          padding: 6px 10px;
-          background: rgba(255, 255, 255, 0.01);
+          padding: 8px 12px;
+          background: var(--bg-secondary);
           border: 1px solid var(--border-glass);
           border-radius: var(--radius-sm);
+          transition: all var(--transition-fast);
+        }
+
+        .express-cart-row:hover {
+          background: var(--bg-card-hover);
+          border-color: var(--border-active);
         }
 
         .row-details {
           display: flex;
           align-items: center;
-          gap: 6px;
+          gap: 8px;
           flex: 1;
           min-width: 0;
         }
@@ -579,15 +618,16 @@ export class ExpressView {
         .row-actions {
           display: flex;
           align-items: center;
-          gap: 8px;
+          gap: 12px;
         }
 
+        /* Apple Stepper */
         .circle-stepper {
           display: flex;
           align-items: center;
           gap: 8px;
-          background: rgba(0, 0, 0, 0.3);
-          padding: 2px;
+          background: var(--bg-primary);
+          padding: 3px;
           border-radius: var(--radius-full);
           border: 1px solid var(--border-glass);
         }
@@ -596,24 +636,35 @@ export class ExpressView {
           width: 22px;
           height: 22px;
           border-radius: 50%;
-          background: rgba(255, 255, 255, 0.05);
-          border: none;
+          background: var(--bg-surface);
+          border: 1px solid var(--border-glass);
           color: var(--text-primary);
           display: flex;
           align-items: center;
           justify-content: center;
           cursor: pointer;
+          font-weight: 700;
+          font-size: var(--text-sm);
+          transition: all var(--transition-fast);
+          box-shadow: var(--shadow-sm);
         }
 
         .step-circle:hover {
           background: var(--color-primary);
+          border-color: var(--color-primary);
+          color: #ffffff;
+        }
+
+        .step-circle:active {
+          transform: scale(0.9);
         }
 
         .step-val {
           font-size: 11px;
-          font-weight: 800;
+          font-weight: 700;
           min-width: 14px;
           text-align: center;
+          color: var(--text-primary);
         }
 
         .row-total {
@@ -628,62 +679,90 @@ export class ExpressView {
           text-align: center;
           color: var(--text-muted);
           font-size: var(--text-xs);
-          padding: 20px;
+          padding: 24px;
         }
 
-        /* Cart Meta dropdown & inputs */
+        /* Cart Meta Row & iOS style Segmented Control */
         .express-cart-meta {
           padding-bottom: 8px;
           border-bottom: 1px solid var(--border-glass);
-          margin-bottom: 10px;
+          margin-bottom: 8px;
         }
 
         .meta-row {
           display: flex;
           gap: 8px;
           align-items: center;
+          flex-wrap: wrap;
         }
 
         .express-type-selector {
           display: flex;
-          background: rgba(0, 0, 0, 0.3);
+          background: var(--bg-secondary);
           border: 1px solid var(--border-glass);
-          border-radius: var(--radius-sm);
-          padding: 2px;
+          border-radius: var(--radius-full);
+          padding: 3px;
+          flex: 1.5;
+          min-width: 240px;
         }
 
         .type-btn {
+          flex: 1;
           display: flex;
           align-items: center;
-          gap: 4px;
-          padding: 6px 10px;
+          justify-content: center;
+          gap: 6px;
+          padding: 6px 12px;
           background: transparent;
           border: none;
-          color: var(--text-muted);
+          color: var(--text-secondary);
           font-size: 10px;
-          font-weight: 700;
+          font-weight: 600;
           cursor: pointer;
-          border-radius: 4px;
+          border-radius: var(--radius-full);
+          transition: all var(--transition-normal);
+        }
+
+        .type-btn:hover {
+          color: var(--text-primary);
+          background: rgba(255, 255, 255, 0.03);
+        }
+
+        :root[data-theme="light"] .type-btn:hover {
+          background: rgba(0, 0, 0, 0.03);
         }
 
         .type-btn.active {
           background: var(--color-primary);
           color: #ffffff;
+          box-shadow: var(--shadow-sm);
         }
 
         .meta-dropdown, .meta-input {
           flex: 1;
-          height: 30px;
-          background: rgba(0, 0, 0, 0.2);
+          min-width: 140px;
+          height: 32px;
+          background: var(--bg-secondary);
           border: 1px solid var(--border-glass);
-          border-radius: var(--radius-sm);
+          border-radius: var(--radius-md);
           color: var(--text-primary);
           font-size: 11px;
-          padding: 0 8px;
+          padding: 0 10px;
+          transition: all var(--transition-fast);
         }
 
-        .meta-input:focus {
+        .meta-dropdown {
+          cursor: pointer;
+        }
+
+        .meta-input::placeholder {
+          color: var(--text-muted);
+        }
+
+        .meta-dropdown:focus, .meta-input:focus {
+          background: var(--bg-input);
           border-color: var(--color-primary);
+          box-shadow: 0 0 0 3px rgba(var(--color-primary-rgb), 0.15);
           outline: none;
         }
 
@@ -698,11 +777,12 @@ export class ExpressView {
         .express-total-info {
           display: flex;
           flex-direction: column;
+          gap: 2px;
         }
 
         .total-lbl {
           font-size: 9px;
-          color: var(--text-muted);
+          color: var(--text-secondary);
           text-transform: uppercase;
           font-weight: 700;
           letter-spacing: 0.05em;
@@ -711,7 +791,7 @@ export class ExpressView {
         .total-val {
           font-family: var(--font-display);
           font-size: 20px;
-          font-weight: 900;
+          font-weight: 800;
           color: var(--color-primary);
         }
 
@@ -724,107 +804,146 @@ export class ExpressView {
 
         .quick-pay-btn {
           height: 44px;
-          padding: 0 16px;
+          padding: 0 18px;
           border-radius: var(--radius-md);
           border: none;
           font-family: var(--font-display);
-          font-weight: 800;
+          font-weight: 700;
           font-size: var(--text-xs);
           display: flex;
           align-items: center;
+          justify-content: center;
           gap: 6px;
           color: #ffffff;
           cursor: pointer;
           transition: all var(--transition-fast);
+          box-shadow: var(--shadow-sm);
+        }
+
+        .quick-pay-btn:hover:not(:disabled) {
+          transform: translateY(-2px);
+          box-shadow: var(--shadow-md);
+        }
+
+        .quick-pay-btn:active:not(:disabled) {
+          transform: scale(0.97);
+        }
+
+        .quick-pay-btn:disabled {
+          opacity: 0.35;
+          cursor: not-allowed;
         }
 
         .btn-cash {
           background: linear-gradient(135deg, #10B981 0%, #059669 100%);
-          box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25);
+          box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
         }
 
-        .btn-cash:hover {
-          box-shadow: 0 4px 18px rgba(16, 185, 129, 0.45);
+        .btn-cash:hover:not(:disabled) {
+          box-shadow: 0 6px 16px rgba(16, 185, 129, 0.35);
         }
 
         .btn-upi {
           background: linear-gradient(135deg, #8B5CF6 0%, #6D28D9 100%);
-          box-shadow: 0 4px 12px rgba(139, 92, 246, 0.25);
+          box-shadow: 0 4px 12px rgba(139, 92, 246, 0.2);
         }
 
-        .btn-upi:hover {
-          box-shadow: 0 4px 18px rgba(139, 92, 246, 0.45);
+        .btn-upi:hover:not(:disabled) {
+          box-shadow: 0 6px 16px rgba(139, 92, 246, 0.35);
         }
 
-        /* Search input style */
+        /* Search input style - Apple Spotlight */
         .compact-search {
           position: relative;
-          width: 160px;
+          width: 170px;
+          transition: width var(--transition-normal);
+        }
+
+        .compact-search:focus-within {
+          width: 220px;
         }
 
         .compact-search input {
           width: 100%;
           height: 32px;
-          background: rgba(255, 255, 255, 0.02);
+          background: var(--bg-secondary);
           border: 1px solid var(--border-glass);
-          border-radius: var(--radius-sm);
+          border-radius: var(--radius-full);
           color: var(--text-primary);
           font-size: 11px;
-          padding: 0 8px 0 28px;
+          padding: 0 10px 0 32px;
+          font-weight: 500;
+          transition: all var(--transition-fast);
         }
 
         .compact-search input:focus {
+          background: var(--bg-input);
           border-color: var(--color-primary);
+          box-shadow: 0 0 0 3px rgba(var(--color-primary-rgb), 0.15);
           outline: none;
         }
 
         .search-glass {
           position: absolute;
-          left: 8px;
+          left: 10px;
           top: 50%;
           transform: translateY(-50%);
-          font-size: 14px;
+          font-size: 16px;
           color: var(--text-muted);
+          pointer-events: none;
+          transition: color var(--transition-fast);
         }
 
-        /* KDS Filter Tabs */
+        .compact-search:focus-within .search-glass {
+          color: var(--color-primary);
+        }
+
+        /* KDS Filter Tabs - iOS Segmented Control style */
         .kds-filter-tabs {
           display: flex;
-          background: rgba(0, 0, 0, 0.3);
+          background: var(--bg-secondary);
           border: 1px solid var(--border-glass);
-          border-radius: var(--radius-sm);
-          padding: 2px;
+          border-radius: var(--radius-full);
+          padding: 3px;
         }
 
         .kds-filter-btn {
           background: transparent;
           border: none;
-          color: var(--text-muted);
-          font-size: 10px;
-          font-weight: 700;
-          padding: 6px 10px;
+          color: var(--text-secondary);
+          font-size: var(--text-xs);
+          font-weight: 600;
+          padding: 6px 12px;
           cursor: pointer;
-          border-radius: 4px;
+          border-radius: var(--radius-full);
+          transition: all var(--transition-fast);
         }
 
-        .kds-filter-btn.active {
-          background: rgba(255, 255, 255, 0.08);
+        .kds-filter-btn:hover {
           color: var(--text-primary);
         }
 
-        /* KDS Feed */
+        .kds-filter-btn.active {
+          background: var(--bg-surface);
+          color: var(--text-primary);
+          box-shadow: var(--shadow-sm);
+        }
+
+        /* KDS Feed Grid Layout */
         .express-kds-feed {
           flex: 1;
           overflow-y: auto;
           padding: 16px 20px;
-          display: flex;
-          flex-direction: column;
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
           gap: 12px;
+          align-content: start;
+          background: transparent;
         }
 
         /* KDS Order Cards */
         .express-order-card {
-          background: rgba(255, 255, 255, 0.015);
+          background: var(--bg-card);
           border: 1px solid var(--border-glass);
           border-radius: var(--radius-md);
           padding: 16px;
@@ -832,57 +951,68 @@ export class ExpressView {
           flex-direction: column;
           gap: 10px;
           transition: all var(--transition-normal);
+          box-shadow: var(--shadow-sm);
+        }
+
+        .express-order-card:hover {
+          transform: translateY(-2px);
+          box-shadow: var(--shadow-md);
+          border-color: var(--border-active);
         }
 
         .express-order-card.status-confirmed {
-          border-left: 4px solid var(--color-danger);
+          border-left: 5px solid var(--color-danger);
         }
 
         .express-order-card.status-preparing {
-          border-left: 4px solid var(--color-warning);
-          background: rgba(245, 158, 11, 0.01);
+          border-left: 5px solid var(--color-warning);
+          background: rgba(var(--color-warning-rgb), 0.02);
         }
 
         .express-order-card.status-ready {
-          border-left: 4px solid var(--color-success);
-          background: rgba(16, 185, 129, 0.01);
+          border-left: 5px solid var(--color-success);
+          background: rgba(var(--color-success-rgb), 0.02);
         }
 
         .card-top {
           display: flex;
           justify-content: space-between;
           align-items: center;
-          border-bottom: 1px dashed var(--border-glass);
+          border-bottom: 1px solid var(--border-glass);
           padding-bottom: 8px;
         }
 
         .card-num {
           font-family: var(--font-display);
           font-size: var(--text-base);
-          font-weight: 800;
+          font-weight: 700;
           color: var(--text-primary);
         }
 
         .card-type {
           font-size: 10px;
           font-weight: 700;
-          color: var(--text-secondary);
+          color: var(--color-primary);
+          background: rgba(var(--color-primary-rgb), 0.1);
+          padding: 2px 8px;
+          border-radius: var(--radius-full);
           text-transform: uppercase;
         }
 
         .card-timer {
           font-size: 10px;
-          padding: 2px 6px;
-          background: rgba(255, 255, 255, 0.03);
+          padding: 3px 8px;
+          background: var(--bg-secondary);
           border: 1px solid var(--border-glass);
           border-radius: var(--radius-full);
           font-weight: 600;
+          color: var(--text-secondary);
         }
 
         .card-timer.overdue {
-          background: rgba(239, 68, 68, 0.15);
-          border-color: rgba(239, 68, 68, 0.3);
-          color: #ff6b6b;
+          background: rgba(239, 68, 68, 0.1);
+          border-color: rgba(239, 68, 68, 0.2);
+          color: var(--color-danger);
           animation: pulseRed 2s infinite ease-in-out;
         }
 
@@ -895,29 +1025,57 @@ export class ExpressView {
         .card-item-row {
           display: flex;
           justify-content: space-between;
+          align-items: center;
           font-size: var(--text-sm);
           color: var(--text-primary);
           font-weight: 500;
+          padding: 2px 0;
         }
 
         .item-qty {
           color: var(--color-primary);
-          font-weight: 800;
+          font-weight: 700;
           margin-right: 6px;
         }
 
+        /* Custom iOS circular checkbox for kitchen checklists */
         .item-chk {
-          margin-left: 10px;
+          width: 18px;
+          height: 18px;
+          appearance: none;
+          -webkit-appearance: none;
+          border: 2px solid var(--border-active);
+          border-radius: 50%;
           cursor: pointer;
+          position: relative;
+          transition: all var(--transition-fast);
+          outline: none;
+          background: transparent;
+        }
+
+        .item-chk:checked {
+          background: var(--color-success);
+          border-color: var(--color-success);
+        }
+
+        .item-chk:checked::after {
+          content: '✓';
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          color: #ffffff;
+          font-size: 10px;
+          font-weight: 800;
         }
 
         .kds-action-btn {
           width: 100%;
           height: 38px;
-          border-radius: var(--radius-sm);
+          border-radius: var(--radius-md);
           border: none;
           font-family: var(--font-display);
-          font-weight: 800;
+          font-weight: 700;
           font-size: var(--text-xs);
           color: #ffffff;
           display: flex;
@@ -944,6 +1102,7 @@ export class ExpressView {
         }
 
         .kds-empty-feed {
+          grid-column: 1 / -1;
           display: flex;
           flex-direction: column;
           align-items: center;
@@ -961,7 +1120,7 @@ export class ExpressView {
           left: 0;
           right: 0;
           bottom: 0;
-          background: rgba(255, 94, 54, 0.12);
+          background: rgba(var(--color-primary-rgb), 0.08);
           border: 2px solid var(--color-primary);
           border-radius: var(--radius-md);
           display: flex;
@@ -990,6 +1149,14 @@ export class ExpressView {
 
         /* Responsive Layout Breaks */
         @media (max-width: 1023px) {
+          .express-layout {
+            padding: 0;
+            gap: 0;
+            height: auto;
+            min-height: calc(100vh - 64px);
+            overflow-y: auto;
+          }
+
           .express-mobile-tabs {
             display: flex;
           }
@@ -998,6 +1165,7 @@ export class ExpressView {
             grid-template-columns: 1fr;
             height: auto;
             overflow: visible;
+            gap: 0;
           }
 
           .express-main-grid.show-pos .kds-panel {
@@ -1006,13 +1174,6 @@ export class ExpressView {
 
           .express-main-grid.show-kitchen .pos-panel {
             display: none !important;
-          }
-
-          /* Mobile layout & full page scrolling adjustments */
-          .express-layout {
-            height: auto;
-            min-height: calc(100vh - 64px);
-            overflow-y: auto;
           }
 
           .express-panel.pos-panel {
@@ -1035,14 +1196,9 @@ export class ExpressView {
             left: 0;
             right: 0;
             padding: 12px 16px;
-            background: linear-gradient(to top, rgba(10, 10, 15, 0.95) 80%, rgba(10, 10, 15, 0));
+            background: linear-gradient(to top, var(--bg-primary) 80%, transparent);
             z-index: 99;
             pointer-events: none;
-          }
-
-          /* Light theme background override for mobile wrapper */
-          :root[data-theme="light"] #mobile-cart-bar-wrapper {
-            background: linear-gradient(to top, rgba(255, 255, 255, 0.95) 80%, rgba(255, 255, 255, 0));
           }
 
           .express-mobile-cart-bar {
@@ -1054,7 +1210,7 @@ export class ExpressView {
             color: #ffffff;
             padding: 14px 20px;
             border-radius: var(--radius-lg);
-            box-shadow: 0 8px 24px rgba(255, 94, 54, 0.35);
+            box-shadow: 0 8px 24px rgba(var(--color-primary-rgb), 0.35);
             cursor: pointer;
             animation: slideUp 0.3s ease-out;
           }
@@ -1097,9 +1253,9 @@ export class ExpressView {
             left: 0;
             right: 0;
             z-index: 1000;
-            background: rgba(15, 15, 22, 0.95);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
+            background: var(--glass-bg);
+            backdrop-filter: var(--glass-backdrop-filter);
+            -webkit-backdrop-filter: var(--glass-backdrop-filter);
             border: 1px solid var(--border-active);
             border-bottom: none;
             border-radius: 20px 20px 0 0;
@@ -1111,11 +1267,6 @@ export class ExpressView {
             padding: 20px;
           }
 
-          :root[data-theme="light"] .express-cart-section {
-            background: rgba(255, 255, 255, 0.95);
-            border: 1px solid rgba(0, 0, 0, 0.1);
-          }
-
           .express-cart-section.cart-open {
             transform: translateY(0);
           }
@@ -1124,7 +1275,7 @@ export class ExpressView {
             display: flex;
             align-items: center;
             gap: 6px;
-            background: rgba(255, 255, 255, 0.05);
+            background: var(--bg-secondary);
             border: 1px solid var(--border-glass);
             border-radius: var(--radius-sm);
             color: var(--text-primary);
@@ -1132,11 +1283,6 @@ export class ExpressView {
             font-weight: 700;
             padding: 6px 12px;
             cursor: pointer;
-          }
-
-          :root[data-theme="light"] .close-cart-btn {
-            background: rgba(0, 0, 0, 0.05);
-            border: 1px solid rgba(0, 0, 0, 0.1);
           }
 
           .express-cart-list {
@@ -1234,11 +1380,11 @@ export class ExpressView {
         <span class="total-val">${formatCurrency(total)}</span>
       </div>
       <div class="checkout-buttons-group">
-        <button class="quick-pay-btn btn-cash" id="express-pay-cash" ${this.cart.length === 0 ? 'disabled' : ''} style="opacity:${this.cart.length === 0 ? 0.4 : 1};">
+        <button class="quick-pay-btn btn-cash" id="express-pay-cash" ${this.cart.length === 0 ? 'disabled' : ''}>
           <span class="material-symbols-rounded">payments</span>
           💵 CASH
         </button>
-        <button class="quick-pay-btn btn-upi" id="express-pay-upi" ${this.cart.length === 0 ? 'disabled' : ''} style="opacity:${this.cart.length === 0 ? 0.4 : 1};">
+        <button class="quick-pay-btn btn-upi" id="express-pay-upi" ${this.cart.length === 0 ? 'disabled' : ''}>
           <span class="material-symbols-rounded">qr_code_2</span>
           📱 UPI QR
         </button>

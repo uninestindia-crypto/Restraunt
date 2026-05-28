@@ -349,51 +349,72 @@ class App {
     // Build the app shell
     this.renderShell();
 
-    // Initialize sidebar
-    const { Sidebar } = await import('./components/Sidebar.js');
-    this.sidebar = new Sidebar();
-    this.sidebar.render(document.getElementById('app-sidebar'));
+    try {
+      // Initialize sidebar
+      const { Sidebar } = await import('./components/Sidebar.js');
+      this.sidebar = new Sidebar();
+      this.sidebar.render(document.getElementById('app-sidebar'));
 
-    // Setup router
-    this.setupRouter();
+      // Setup router
+      this.setupRouter();
 
-    // Setup PWA install prompt
-    this.setupPWA();
+      // Setup PWA install prompt
+      this.setupPWA();
 
-    // Setup printer status listener
-    this.setupPrinter();
+      // Setup printer status listener
+      this.setupPrinter();
 
-    // Setup cloud sync indicator listener
-    this.setupSync();
+      // Setup cloud sync indicator listener
+      this.setupSync();
 
-    // Setup online/offline indicators
-    this.setupConnectivity();
+      // Setup online/offline indicators
+      this.setupConnectivity();
 
-    // Setup mobile sidebar toggle
-    this.setupMobileSidebar();
+      // Setup mobile sidebar toggle
+      this.setupMobileSidebar();
 
-    // Staff cloud sync starts only after staff authentication.
-    // Hydrate from cloud in the background to avoid blocking the UI thread
-    this.syncStarted = true;
-    this.getSyncService().then(syncService => {
-      syncService.init().catch(err => {
-        console.error('[App] Sync init error during boot:', err);
+      // Staff cloud sync starts only after staff authentication.
+      // Hydrate from cloud in the background to avoid blocking the UI thread
+      this.syncStarted = true;
+      this.getSyncService().then(syncService => {
+        syncService.init().catch(err => {
+          console.error('[App] Sync init error during boot:', err);
+        });
+      }).catch(err => {
+        console.error('[App] Failed to load sync service:', err);
       });
-    }).catch(err => {
-      console.error('[App] Failed to load sync service:', err);
-    });
 
-    // Update header with staff info
-    this.updateStaffDisplay(staff);
+      // Update header with staff info
+      this.updateStaffDisplay(staff);
 
-    // Start router
-    router.start();
+      // Start router
+      router.start();
 
-    // Start inactivity auto-lock checker
-    this.startInactivityTimer();
+      // Start inactivity auto-lock checker
+      this.startInactivityTimer();
 
-    this.initialized = true;
-    console.log(`🍜 The Taste Restaurant OS — Logged in as ${staff.name} (${staff.role})`);
+      this.initialized = true;
+      console.log(`🍜 The Taste Restaurant OS — Logged in as ${staff.name} (${staff.role})`);
+    } catch (error) {
+      console.error('[App] Failed to load staff interface:', error);
+      showToast('Failed to load staff console: ' + error.message, 'error', 10000);
+      
+      const mainEl = document.getElementById('main-content') || document.getElementById('app');
+      if (mainEl) {
+        mainEl.innerHTML = `
+          <div class="empty-state" style="height: 80vh; text-align: center; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 16px;">
+            <span class="material-symbols-rounded" style="font-size: 48px; color: var(--color-error, #EF4444);">error</span>
+            <h3 style="color: var(--text-primary); font-size: 1.25rem;">Failed to load staff console</h3>
+            <p style="color: var(--text-muted); max-width: 400px; font-size: 0.875rem;">
+              ${error.message || 'An unexpected error occurred while initializing the user interface.'}
+            </p>
+            <button class="btn btn-primary" onclick="localStorage.removeItem('auth_staff_pin'); localStorage.removeItem('auth_staff_email'); location.reload();" style="margin-top: 8px;">
+              Reset Session & Retry
+            </button>
+          </div>
+        `;
+      }
+    }
   }
 
   startInactivityTimer() {

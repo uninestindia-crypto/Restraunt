@@ -67,6 +67,62 @@
     }
     @keyframes spin { to { transform: rotate(360deg); } }
   </style>
+
+  <!-- Global Error Boundary & Diagnostics Console -->
+  <script>
+    (function() {
+      function showGlobalError(title, message, stack) {
+        if (document.getElementById('nextgenos-global-error-boundary')) return;
+
+        const errorDiv = document.createElement('div');
+        errorDiv.id = 'nextgenos-global-error-boundary';
+        errorDiv.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(15,15,26,0.96);color:#FFF;z-index:100000;display:flex;align-items:center;justify-content:center;padding:24px;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;';
+
+        errorDiv.innerHTML = `
+          <div style="background:#1A1A2E;border:1px solid rgba(239,68,68,0.2);box-shadow:0 20px 25px -5px rgba(0,0,0,0.5),0 0 40px rgba(239,68,68,0.1);border-radius:16px;width:100%;max-width:580px;padding:32px;box-sizing:border-box;">
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
+              <span style="background:rgba(239,68,68,0.15);color:#EF4444;padding:8px;border-radius:50%;display:flex;align-items:center;justify-content:center;">
+                <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              </span>
+              <h2 style="font-size:1.25rem;font-weight:700;margin:0;color:#FFF;">System Crash Detected</h2>
+            </div>
+            <p style="color:#EF4444;font-weight:600;font-size:0.95rem;margin-bottom:12px;line-height:1.4;">
+              ${title || 'Unhandled Exception'}: ${message || 'Unknown Error'}
+            </p>
+            ${stack ? `
+              <div style="margin-bottom:24px;">
+                <label style="font-size:0.7rem;text-transform:uppercase;letter-spacing:0.05em;color:#94A3B8;display:block;margin-bottom:6px;">Stack Trace</label>
+                <pre style="background:#0F0F1A;border:1px solid #2D2D44;border-radius:8px;padding:12px;overflow-x:auto;font-family:monospace;font-size:0.75rem;color:#94A3B8;max-height:180px;white-space:pre-wrap;word-break:break-all;margin:0;">${stack}</pre>
+              </div>
+            ` : ''}
+            <div style="display:flex;gap:12px;">
+              <button onclick="location.reload()" style="flex:1;padding:12px;background:#EF4444;color:#FFF;border:none;border-radius:8px;font-weight:600;cursor:pointer;font-size:0.875rem;">Reload Page</button>
+              <button onclick="localStorage.removeItem('auth_staff_pin');localStorage.removeItem('auth_staff_email');location.reload();" style="flex:1;padding:12px;background:#2D2D44;color:#FFF;border:1px solid #3F3F56;border-radius:8px;font-weight:600;cursor:pointer;font-size:0.875rem;">Reset Session & Reload</button>
+            </div>
+            <div style="text-align:center;margin-top:20px;font-size:0.6rem;color:#64748B;text-transform:uppercase;letter-spacing:0.05em;">NextGenOS Diagnostics Console</div>
+          </div>
+        `;
+
+        document.body.appendChild(errorDiv);
+        const loading = document.getElementById('loading-screen');
+        if (loading) loading.style.display = 'none';
+      }
+
+      window.onerror = function(message, source, lineno, colno, error) {
+        showGlobalError('Script Error', message, (error && error.stack) || (source + ':' + lineno + ':' + colno));
+        return false;
+      };
+
+      window.onunhandledrejection = function(event) {
+        const reason = event.reason;
+        const msg = (reason && (reason.message || reason.statusText)) || String(reason);
+        const stack = reason && reason.stack;
+        showGlobalError('Unhandled Promise Rejection', msg, stack);
+      };
+    })();
+  </script>
 </head>
 <body>
   <!-- Loading screen (removed after app init) -->
