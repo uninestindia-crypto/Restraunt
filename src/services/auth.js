@@ -253,14 +253,43 @@ class AuthService {
         return null;
       }
 
-      const staff = await this.getStaffByPin(pin);
+      let staff = await this.getStaffByPin(pin);
+      const hashedPin = pin.length === 64 ? pin : await hashPin(pin);
+
+      if (!staff && navigator.onLine) {
+        console.log('[AuthService] Local PIN lookup failed. Attempting online PIN verification...');
+        try {
+          const { onlineLookupStaffByPin } = await import('./staffAdmin.js');
+          const result = await onlineLookupStaffByPin(hashedPin);
+          if (result.success && result.data?.staff) {
+            const row = result.data.staff;
+            staff = {
+              id: row.id,
+              cloudUserId: row.cloudUserId,
+              name: row.name,
+              role: row.role,
+              pinHash: row.pinHash,
+              allowExpress: row.allowExpress ? 1 : 0,
+              isActive: row.isActive ? 1 : 0,
+              createdAt: row.createdAt,
+              updatedAt: row.updatedAt,
+              isSynced: 1
+            };
+            // Cache in local database
+            await db.staff.put(staff);
+            console.log(`[AuthService] Resolved and cached staff member "${staff.name}" (${staff.role}) online.`);
+          }
+        } catch (onlineErr) {
+          console.warn('[AuthService] Online PIN verification error:', onlineErr.message);
+        }
+      }
+
       if (!staff) {
         this.recordFailedAttempt();
         console.warn('[AuthService] Login failed: no active staff with a valid PIN found.');
         return null;
       }
 
-      const hashedPin = pin.length === 64 ? pin : await hashPin(pin);
       if (hashedPin !== staff.pinHash) {
         this.recordFailedAttempt();
         console.warn('[AuthService] Login failed: PIN hash mismatch.');

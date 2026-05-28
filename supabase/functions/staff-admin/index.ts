@@ -138,11 +138,53 @@ Deno.serve(async (req) => {
   }
 
   const storeId = cleanText(payload.storeId || payload.staff?.storeId || Deno.env.get("STORE_ID") || DEFAULT_STORE_ID, 80);
-  const owner = await requireOwner({ serviceClient, token: bearerToken(req), storeId });
-  if ("error" in owner) return bad(owner.error, owner.status);
-
   const action = cleanText(payload.action, 40);
   const now = new Date().toISOString();
+
+  // Bypassing requireOwner check for login-by-pin action so unauthenticated PIN users can log in
+  if (action === "login-by-pin") {
+    try {
+      const pinHash = cleanText((payload as any).pinHash, 64);
+      if (!pinHash || !validPinHash(pinHash)) {
+        return bad("Invalid PIN hash format.");
+      }
+
+      const { data: staffMember, error: staffErr } = await serviceClient
+        .from("staff")
+        .select("*")
+        .eq("store_id", storeId)
+        .eq("pin_hash", pinHash)
+        .eq("is_active", true)
+        .maybeSingle();
+
+      if (staffErr) throw staffErr;
+      if (!staffMember) {
+        return jsonResponse({ ok: false, message: "Invalid PIN code." });
+      }
+
+      return jsonResponse({
+        ok: true,
+        staff: {
+          id: staffMember.id,
+          storeId: staffMember.store_id,
+          cloudUserId: staffMember.auth_user_id,
+          name: staffMember.name,
+          role: staffMember.role,
+          pinHash: staffMember.pin_hash,
+          allowExpress: staffMember.allow_express,
+          isActive: staffMember.is_active,
+          createdAt: staffMember.created_at,
+          updatedAt: staffMember.updated_at
+        }
+      });
+    } catch (err) {
+      return bad(err instanceof Error ? err.message : String(err), 500);
+    }
+  }
+
+  // All other actions require Owner authentication
+  const owner = await requireOwner({ serviceClient, token: bearerToken(req), storeId });
+  if ("error" in owner) return bad(owner.error, owner.status);
 
   try {
     if (action === "upsert-staff") {
