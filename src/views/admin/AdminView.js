@@ -5,7 +5,7 @@
 
 import { db, getSetting, getTodayStats } from '../../db/database.js';
 import { formatCurrency, showToast, playSound, vibrateDevice } from '../../utils/helpers.js';
-import { authService } from '../../services/auth.js';
+import { authService, CLOUD_REQUIRED_ROLES } from '../../services/auth.js';
 import { canUnlockAdminPin } from '../../services/authGuards.js';
 import { hashPin } from '../../utils/crypto.js';
 import { MenuManager } from './MenuManager.js';
@@ -166,7 +166,7 @@ export class AdminView {
           staffToVerify = await db.staff.where('role').equals('owner').first();
         }
 
-        if (staffToVerify && ['owner', 'manager'].includes(staffToVerify.role?.toLowerCase())) {
+        if (staffToVerify && CLOUD_REQUIRED_ROLES.includes(staffToVerify.role?.toLowerCase())) {
           if (localStorage.getItem(`pin_authorized_${staffToVerify.id}`) !== 'true') {
             playSound(300, 200, 'square');
             vibrateDevice([150]);

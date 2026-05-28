@@ -180,7 +180,7 @@ Deno.serve(async (req: Request) => {
     .in("id", ids);
 
   if (menuError) return bad(`Menu validation failed: ${menuError.message}`, 500);
-  const menuById = new Map((menuRows || []).map((row) => [Number(row.id), row]));
+  const menuById = new Map<number, any>((menuRows || []).map((row: any) => [Number(row.id), row]));
   if (ids.some((id) => !menuById.has(id))) {
     return bad("One or more items are unavailable.");
   }

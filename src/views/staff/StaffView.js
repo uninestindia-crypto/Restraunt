@@ -15,7 +15,7 @@ import { hashPin } from '../../utils/crypto.js';
 import { lookupAuthUser } from '../../services/staffAdmin.js';
 
 // Roles that require a verified Supabase Auth account (operational backend access)
-const CLOUD_REQUIRED_ROLES = ['owner', 'manager'];
+const CLOUD_REQUIRED_ROLES = ['owner', 'manager', 'cashier', 'kitchen', 'waiter', 'delivery'];
 
 const ROLES = {
   owner: { label: 'Owner', color: '#FF6B35' },
@@ -88,7 +88,7 @@ export class StaffView {
                   <span class="material-symbols-rounded" style="font-size:16px;color:var(--nextgenos-purple);">verified_user</span>
                   <span style="font-size:0.72rem;font-weight:700;color:var(--nextgenos-purple);text-transform:uppercase;letter-spacing:0.05em;">Cloud Account Verification Required</span>
                 </div>
-                <p style="font-size:0.7rem;color:var(--text-secondary);margin:0 0 10px;line-height:1.4;">Owner and Manager roles require a verified Supabase Auth account. Enter the staff member's login email to verify.</p>
+                <p style="font-size:0.7rem;color:var(--text-secondary);margin:0 0 10px;line-height:1.4;">All staff roles require a verified Supabase Auth account. Enter the staff member's login email to verify.</p>
                 <div style="display:flex;gap:8px;align-items:stretch;">
                   <input type="email" id="staff-cloud-email" class="input" placeholder="staff@example.com" style="flex:1;font-size:0.8rem;">
                   <button id="staff-verify-btn" class="btn btn-secondary btn-sm" style="white-space:nowrap;padding:6px 14px;font-size:0.72rem;font-weight:700;">
@@ -275,7 +275,7 @@ export class StaffView {
       // ── Enforce cloud verification for operational backend roles ──
       if (CLOUD_REQUIRED_ROLES.includes(role)) {
         if (!this.verifiedCloudUser || !this.verifiedCloudUser.authUserId) {
-          showToast(`${role === 'owner' ? 'Owner' : 'Manager'} role requires a verified Supabase Auth account. Please verify the email first.`, 'error');
+          showToast(`${role.charAt(0).toUpperCase() + role.slice(1)} role requires a verified Supabase Auth account. Please verify the email first.`, 'error');
           return;
         }
       }
