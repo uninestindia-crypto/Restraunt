@@ -1293,6 +1293,60 @@ export class ExpressView {
           .express-cart-meta {
             margin-bottom: 16px;
           }
+
+          /* Smartphone screens layout fixes (resolves horizontal overflow) */
+          @media (max-width: 560px) {
+            .panel-header {
+              flex-direction: column;
+              align-items: stretch;
+              gap: 12px;
+              height: auto;
+              padding: 12px 16px;
+            }
+            .compact-search {
+              width: 100% !important;
+            }
+            .kds-filter-tabs {
+              width: 100%;
+              display: flex;
+              justify-content: space-between;
+              gap: 4px;
+            }
+            .kds-filter-btn {
+              flex: 1;
+              text-align: center;
+              font-size: 10px;
+              padding: 6px 4px;
+            }
+            .meta-row {
+              flex-direction: column;
+              align-items: stretch;
+              gap: 8px;
+            }
+            .express-type-selector {
+              min-width: 100% !important;
+            }
+            .meta-dropdown, .meta-input {
+              width: 100% !important;
+              min-width: 100% !important;
+              height: 36px;
+            }
+            .express-checkout-bar {
+              flex-direction: column;
+              align-items: stretch;
+              gap: 12px;
+            }
+            .checkout-buttons-group {
+              width: 100%;
+              display: flex;
+              gap: 8px;
+            }
+            .quick-pay-btn {
+              flex: 1;
+              padding: 0 10px;
+              font-size: 10px;
+            }
+          }
         }
 
         @keyframes slideUp {

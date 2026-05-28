@@ -91,7 +91,7 @@ export class Sidebar {
 
     container.innerHTML = `
       <div class="sidebar-header">
-        <img src="/assets/aether-icon.png" class="sidebar-logo-img" alt="Logo" style="width:28px;height:28px;border-radius:6px;object-fit:contain;margin-right:2px;border:1px solid var(--border-active);box-shadow:var(--shadow-glow-active);" />
+        <img src="/assets/the-taste-logo.png" class="sidebar-logo-img" alt="Logo" style="width:28px;height:28px;border-radius:6px;object-fit:contain;margin-right:2px;border:1px solid var(--border-active);box-shadow:var(--shadow-glow-active);" />
         <span class="sidebar-brand">The Taste</span>
         <span class="sidebar-version">v2.0</span>
       </div>

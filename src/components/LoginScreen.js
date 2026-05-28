@@ -32,7 +32,7 @@ export class LoginScreen {
           <div class="login-brand-panel">
             <div class="login-brand-content">
               <div class="login-brand-logo-wrapper">
-                <img src="/assets/aether-icon.png" class="brand-panel-logo" alt="The Taste Logo" />
+                <img src="/assets/the-taste-logo.png" class="brand-panel-logo" alt="The Taste Logo" />
               </div>
               <h2 class="brand-panel-title">The Taste</h2>
               <p class="brand-panel-tagline">Restaurant Operating System</p>
@@ -88,7 +88,7 @@ export class LoginScreen {
               
               <div class="login-header-mobile">
                 <div class="login-logo-container" id="login-logo-btn">
-                  <img src="/assets/aether-icon.png" class="login-logo-img" alt="The Taste Logo" />
+                  <img src="/assets/the-taste-logo.png" class="login-logo-img" alt="The Taste Logo" />
                 </div>
                 <h1 class="login-title" id="login-brand-title">The Taste</h1>
                 <p class="login-subtitle">Restaurant Operating System</p>

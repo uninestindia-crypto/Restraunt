@@ -211,7 +211,7 @@ export class CustomerView {
           <div class="store-hero-bg" aria-hidden="true"></div>
           <header class="store-nav">
             <a class="store-brand" href="#/self-order">
-              <img src="/assets/aether-icon.png" class="store-brand-mark" alt="The Taste Logo" style="object-fit:contain;padding:2px;background:#fff;" />
+              <img src="/assets/the-taste-logo.png" class="store-brand-mark" alt="The Taste Logo" style="object-fit:contain;padding:2px;background:#fff;" />
               <div>THE TASTE</div>
             </a>
             <nav class="store-nav-links" aria-label="Public navigation" style="display:flex;align-items:center;gap:12px;">
@@ -783,7 +783,7 @@ export class CustomerView {
       try {
         const notification = new Notification(title, {
           body,
-          icon: '/assets/aether-icon.png',
+          icon: '/assets/the-taste-logo.png',
           silent: false
         });
         playSound(880, 150);
@@ -907,7 +907,7 @@ export class CustomerView {
           <span class="material-symbols-rounded" aria-hidden="true">arrow_back</span>
         </button>
         <a href="#/self-order" class="store-subheader-brand">
-          <img src="/assets/aether-icon.png" class="store-brand-mark" style="width:24px;height:24px;border-radius:4px;object-fit:contain;background:#fff;margin-right:4px;" alt="Logo" />
+          <img src="/assets/the-taste-logo.png" class="store-brand-mark" style="width:24px;height:24px;border-radius:4px;object-fit:contain;background:#fff;margin-right:4px;" alt="Logo" />
           THE TASTE
         </a>
         <h2>${escapeHtml(title)}</h2>

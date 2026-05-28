@@ -519,7 +519,7 @@ class App {
               <span class="material-symbols-rounded">menu</span>
             </button>
             <a href="#/pos" class="logo" id="app-logo">
-              <img src="/assets/aether-icon.png" class="logo-img" alt="Logo" style="width:28px;height:28px;border-radius:6px;object-fit:contain;margin-right:8px;border:1px solid var(--border-active);box-shadow:var(--shadow-glow-active);" />
+              <img src="/assets/the-taste-logo.png" class="logo-img" alt="Logo" style="width:28px;height:28px;border-radius:6px;object-fit:contain;margin-right:8px;border:1px solid var(--border-active);box-shadow:var(--shadow-glow-active);" />
               <span style="font-weight: 800; font-family: var(--font-display); letter-spacing: -0.04em;">The Taste</span>
             </a>
             <button class="btn-icon" id="btn-theme-toggle" title="Toggle Theme" style="margin-left: 4px; color: var(--text-muted);">
