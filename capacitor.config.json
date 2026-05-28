@@ -4,6 +4,11 @@
   "webDir": "dist",
   "server": {
     "url": "https://thetaste.co.in",
-    "cleartext": true
+    "cleartext": true,
+    "allowNavigation": [
+      "thetaste.co.in",
+      "*.supabase.co",
+      "*.supabase.in"
+    ]
   }
 }
