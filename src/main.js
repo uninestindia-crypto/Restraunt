@@ -153,7 +153,15 @@ class App {
           .first();
 
         if (!activeOwner) {
-          this.showFirstRunSetup();
+          // SECURITY: If Supabase is configured, never show FirstRunSetup.
+          // Force cloud login to prevent unauthorized admin creation.
+          const { getStoredSupabaseConfig } = await import('./services/supabaseClient.js');
+          const { url, key } = await getStoredSupabaseConfig();
+          if (url && key) {
+            this.showLogin();
+          } else {
+            this.showFirstRunSetup();
+          }
         } else {
           this.showLogin();
         }
