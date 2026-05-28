@@ -116,9 +116,31 @@ export class ExpressView {
     }
   }
 
+  getCategoryIcon(categoryId) {
+    const cat = this.categories.find(c => c.id === categoryId);
+    return cat ? cat.icon : '🍽️';
+  }
+
   render() {
     const gstPercent = parseFloat(localStorage.getItem('app_gst_percent') || '5');
     const currencySymbol = localStorage.getItem('app_currency_symbol') || '₹';
+
+    const subtotal = this.cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    const total = subtotal * (1 + gstPercent / 100);
+    const totalItems = this.cart.reduce((s, i) => s + i.quantity, 0);
+
+    const mobileCartHtml = this.cart.length > 0 ? `
+      <div class="express-mobile-cart-bar" id="express-mobile-cart-bar">
+        <div class="mobile-cart-info">
+          <span class="mobile-cart-badge">${totalItems}</span>
+          <span>View Order</span>
+        </div>
+        <div class="mobile-cart-action">
+          <span>${formatCurrency(total)}</span>
+          <span class="material-symbols-rounded" style="font-size: 16px;">arrow_forward_ios</span>
+        </div>
+      </div>
+    ` : '';
 
     this.container.innerHTML = `
       <div class="express-layout">
@@ -161,11 +183,16 @@ export class ExpressView {
               ${this.renderProducts()}
             </div>
 
-            <!-- Cart Section -->
-            <div class="express-cart-section">
+            <!-- Cart Section (slides up on mobile) -->
+            <div class="express-cart-section" id="express-cart-section">
               <div class="express-cart-header">
-                <span class="cart-title">Current items:</span>
-                <button class="clear-btn" id="express-clear-cart">
+                <!-- Close drawer button visible ONLY on mobile -->
+                <button class="close-cart-btn" id="express-close-cart" type="button">
+                  <span class="material-symbols-rounded">arrow_back</span>
+                  Menu
+                </button>
+                <span class="cart-title">Order Items (${this.cart.reduce((s, i) => s + i.quantity, 0)}):</span>
+                <button class="clear-btn" id="express-clear-cart" type="button">
                   <span class="material-symbols-rounded" style="font-size:16px;">delete</span>
                   Clear Order
                 </button>
@@ -207,6 +234,11 @@ export class ExpressView {
               <div class="express-checkout-bar" id="express-checkout-bar">
                 ${this.renderCheckoutBar()}
               </div>
+            </div>
+
+            <!-- Mobile Cart Bar Placeholder wrapper -->
+            <div id="mobile-cart-bar-wrapper">
+              ${mobileCartHtml}
             </div>
           </div>
 
@@ -399,7 +431,7 @@ export class ExpressView {
           background: rgba(255, 255, 255, 0.02);
           border: 1px solid var(--border-glass);
           border-radius: var(--radius-md);
-          padding: 12px;
+          padding: 10px;
           display: flex;
           flex-direction: column;
           gap: 8px;
@@ -418,10 +450,28 @@ export class ExpressView {
           transform: scale(0.97);
         }
 
-        .prod-icon {
-          font-size: 20px;
-          text-align: center;
-          margin-bottom: 2px;
+        .prod-image {
+          width: 100%;
+          height: 80px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 28px;
+          background: rgba(255, 255, 255, 0.015);
+          border-radius: var(--radius-sm);
+          overflow: hidden;
+          border-bottom: 1px solid var(--border-color);
+        }
+
+        .prod-image img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          transition: transform var(--transition-normal);
+        }
+
+        .express-product-card:hover .prod-image img {
+          transform: scale(1.08);
         }
 
         .prod-name {
@@ -457,6 +507,10 @@ export class ExpressView {
           flex-direction: column;
           padding: 12px 20px;
           max-height: 290px;
+        }
+
+        .close-cart-btn {
+          display: none;
         }
 
         .express-cart-header {
@@ -942,6 +996,8 @@ export class ExpressView {
 
           .express-main-grid {
             grid-template-columns: 1fr;
+            height: auto;
+            overflow: visible;
           }
 
           .express-main-grid.show-pos .kds-panel {
@@ -951,6 +1007,151 @@ export class ExpressView {
           .express-main-grid.show-kitchen .pos-panel {
             display: none !important;
           }
+
+          /* Mobile layout & full page scrolling adjustments */
+          .express-layout {
+            height: auto;
+            min-height: calc(100vh - 64px);
+            overflow-y: auto;
+          }
+
+          .express-panel.pos-panel {
+            height: auto;
+            overflow: visible;
+            padding-bottom: 90px; /* Room for floating cart bar */
+          }
+
+          .express-products-grid {
+            height: auto;
+            overflow: visible;
+            flex: none;
+          }
+
+          /* Mobile Cart Bar */
+          #mobile-cart-bar-wrapper {
+            display: block;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: 12px 16px;
+            background: linear-gradient(to top, rgba(10, 10, 15, 0.95) 80%, rgba(10, 10, 15, 0));
+            z-index: 99;
+            pointer-events: none;
+          }
+
+          /* Light theme background override for mobile wrapper */
+          :root[data-theme="light"] #mobile-cart-bar-wrapper {
+            background: linear-gradient(to top, rgba(255, 255, 255, 0.95) 80%, rgba(255, 255, 255, 0));
+          }
+
+          .express-mobile-cart-bar {
+            pointer-events: auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: linear-gradient(135deg, var(--color-primary) 0%, #ff8960 100%);
+            color: #ffffff;
+            padding: 14px 20px;
+            border-radius: var(--radius-lg);
+            box-shadow: 0 8px 24px rgba(255, 94, 54, 0.35);
+            cursor: pointer;
+            animation: slideUp 0.3s ease-out;
+          }
+
+          .mobile-cart-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-family: var(--font-display);
+            font-weight: 800;
+            font-size: var(--text-sm);
+          }
+
+          .mobile-cart-badge {
+            background: #ffffff;
+            color: var(--color-primary);
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: var(--text-xs);
+            font-weight: 800;
+          }
+
+          .mobile-cart-action {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-family: var(--font-display);
+            font-weight: 800;
+            font-size: var(--text-sm);
+          }
+
+          /* Sliding drawer for Cart on mobile */
+          .express-cart-section {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            background: rgba(15, 15, 22, 0.95);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--border-active);
+            border-bottom: none;
+            border-radius: 20px 20px 0 0;
+            max-height: 85vh !important;
+            height: auto;
+            transform: translateY(100%);
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.5);
+            padding: 20px;
+          }
+
+          :root[data-theme="light"] .express-cart-section {
+            background: rgba(255, 255, 255, 0.95);
+            border: 1px solid rgba(0, 0, 0, 0.1);
+          }
+
+          .express-cart-section.cart-open {
+            transform: translateY(0);
+          }
+
+          .close-cart-btn {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-glass);
+            border-radius: var(--radius-sm);
+            color: var(--text-primary);
+            font-size: var(--text-xs);
+            font-weight: 700;
+            padding: 6px 12px;
+            cursor: pointer;
+          }
+
+          :root[data-theme="light"] .close-cart-btn {
+            background: rgba(0, 0, 0, 0.05);
+            border: 1px solid rgba(0, 0, 0, 0.1);
+          }
+
+          .express-cart-list {
+            max-height: 40vh;
+            margin-bottom: 16px;
+          }
+
+          .express-cart-meta {
+            margin-bottom: 16px;
+          }
+        }
+
+        @keyframes slideUp {
+          from { transform: translateY(20px); opacity: 0; }
+          to { transform: translateY(0); opacity: 1; }
         }
       </style>
     `;
@@ -978,9 +1179,14 @@ export class ExpressView {
         ? '<span class="badge-veg" style="transform:scale(0.85);"></span>'
         : '<span class="badge-nonveg" style="transform:scale(0.85);"></span>';
 
+      const fallbackEmoji = item.icon || this.getCategoryIcon(item.categoryId) || '🍽️';
+      const imageContent = item.imageUrl
+        ? `<img src="${item.imageUrl}" alt="${escapeHtml(item.name)}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"><span class="fallback-emoji" style="display:none; width:100%; height:100%; align-items:center; justify-content:center;">${fallbackEmoji}</span>`
+        : `<span class="fallback-emoji" style="width:100%; height:100%; display:flex; align-items:center; justify-content:center;">${fallbackEmoji}</span>`;
+
       return `
         <div class="express-product-card" data-item-id="${item.id}">
-          <div class="prod-icon">${item.icon || '🍽️'}</div>
+          <div class="prod-image">${imageContent}</div>
           <div class="prod-name">${escapeHtml(item.name)}</div>
           <div class="prod-bottom">
             <span class="prod-price">${formatCurrencyShort(item.price)}</span>
@@ -1202,6 +1408,49 @@ export class ExpressView {
     const checkoutBar = document.getElementById('express-checkout-bar');
     if (cartList) cartList.innerHTML = this.renderCartItems();
     if (checkoutBar) checkoutBar.innerHTML = this.renderCheckoutBar();
+
+    // Update Mobile Cart Bar
+    const mobileCartWrapper = document.getElementById('mobile-cart-bar-wrapper');
+    if (mobileCartWrapper) {
+      const gstPercent = parseFloat(localStorage.getItem('app_gst_percent') || '5');
+      const subtotal = this.cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+      const total = subtotal * (1 + gstPercent / 100);
+      const totalItems = this.cart.reduce((s, i) => s + i.quantity, 0);
+
+      if (this.cart.length > 0) {
+        mobileCartWrapper.innerHTML = `
+          <div class="express-mobile-cart-bar" id="express-mobile-cart-bar">
+            <div class="mobile-cart-info">
+              <span class="mobile-cart-badge">${totalItems}</span>
+              <span>View Order</span>
+            </div>
+            <div class="mobile-cart-action">
+              <span>${formatCurrency(total)}</span>
+              <span class="material-symbols-rounded" style="font-size: 16px;">arrow_forward_ios</span>
+            </div>
+          </div>
+        `;
+        
+        // Bind click event on mobile cart bar
+        const mobileCartBar = document.getElementById('express-mobile-cart-bar');
+        if (mobileCartBar) {
+          mobileCartBar.onclick = () => {
+            const cartSection = document.getElementById('express-cart-section');
+            if (cartSection) {
+              cartSection.classList.add('cart-open');
+            }
+          };
+        }
+      } else {
+        mobileCartWrapper.innerHTML = '';
+        // If cart is empty, close the drawer
+        const cartSection = document.getElementById('express-cart-section');
+        if (cartSection) {
+          cartSection.classList.remove('cart-open');
+        }
+      }
+    }
+
     this.bindCartEvents();
   }
 
@@ -1480,6 +1729,27 @@ export class ExpressView {
         btnTabPos.classList.remove('active');
         mainGrid.className = 'express-main-grid show-kitchen';
       });
+    }
+
+    // Mobile Cart Drawer Toggles
+    const mobileCartBar = document.getElementById('express-mobile-cart-bar');
+    if (mobileCartBar) {
+      mobileCartBar.onclick = () => {
+        const cartSection = document.getElementById('express-cart-section');
+        if (cartSection) {
+          cartSection.classList.add('cart-open');
+        }
+      };
+    }
+
+    const closeCartBtn = document.getElementById('express-close-cart');
+    if (closeCartBtn) {
+      closeCartBtn.onclick = () => {
+        const cartSection = document.getElementById('express-cart-section');
+        if (cartSection) {
+          cartSection.classList.remove('cart-open');
+        }
+      };
     }
 
     this.bindCartEvents();
