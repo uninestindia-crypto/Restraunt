@@ -200,7 +200,7 @@ class App {
       }
 
       // Verify if we have an active owner in the local database.
-      // If we don't, attempt a last-resort cloud pull before showing FirstRunSetup.
+      // If we don't, attempt a last-resort cloud pull before deciding what to show.
       let activeOwner = await db.staff
         .where('role')
         .equals('owner')
@@ -210,9 +210,7 @@ class App {
       if (!activeOwner) {
         // ── Last-Resort Cloud Staff Pull ──────────────────────────
         // The seed-phase hydration might have failed (timing, offline, etc).
-        // Before showing FirstRunSetup (which creates a NEW owner), try one
-        // more direct cloud pull to fetch the real owner from Supabase.
-        // This prevents the "every device gets its own owner" bug.
+        // Before deciding what to show, try one more direct cloud pull.
         try {
           if (navigator.onLine) {
             console.log('[App] No local owner found. Attempting direct cloud staff pull...');
@@ -263,6 +261,24 @@ class App {
       }
 
       if (!activeOwner) {
+        // ── SECURITY GATE ─────────────────────────────────────────
+        // If Supabase is configured, this is a DEPLOYED app — NEVER show
+        // FirstRunSetup because it lets anyone create an admin account.
+        // Instead, force cloud login (email/password) which is verified
+        // by Supabase Auth. FirstRunSetup is ONLY allowed when Supabase
+        // is not configured (local dev / truly fresh install).
+        const { getStoredSupabaseConfig } = await import('./services/supabaseClient.js');
+        const { url, key } = await getStoredSupabaseConfig();
+        const supabaseIsConfigured = !!(url && key);
+
+        if (supabaseIsConfigured) {
+          console.warn('[App] No local owner found, but Supabase IS configured. Showing cloud login instead of FirstRunSetup to prevent unauthorized admin creation.');
+          this.showLogin();
+          return;
+        }
+
+        // Supabase is NOT configured — this is a genuinely fresh local install.
+        // FirstRunSetup is safe to show here.
         this.showFirstRunSetup();
         return;
       }
