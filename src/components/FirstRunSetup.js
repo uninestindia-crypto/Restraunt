@@ -190,6 +190,11 @@ export class FirstRunSetup {
         await setSetting('ownerSetupComplete', 'true');
       });
 
+      if (newOwnerId) {
+        localStorage.setItem(`pin_authorized_${newOwnerId}`, 'true');
+        localStorage.setItem('auth_staff_pin', pinHash);
+      }
+
       // ── Immediately push owner to Supabase cloud ──────────────────
       // This is critical for multi-device consistency: other devices need
       // to find this owner in the cloud to avoid creating their own.

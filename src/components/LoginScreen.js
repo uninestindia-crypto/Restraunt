@@ -1002,9 +1002,16 @@ export class LoginScreen {
       }
     } catch (err) {
       console.error('Login error:', err);
-      showToast('Login failed', 'error');
+      const errEl = document.getElementById('login-error');
+      if (errEl) {
+        errEl.textContent = err.message || 'Login failed';
+      } else {
+        showToast(err.message || 'Login failed', 'error');
+      }
+      const dots = document.querySelectorAll('#login-pin-dots .pin-dot');
+      dots.forEach(d => d.classList.add('error'));
       this.pinInput = '';
-      this.updateDots();
+      setTimeout(() => this.updateDots(), 1500);
     }
   }
 

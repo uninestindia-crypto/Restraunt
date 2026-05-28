@@ -10,6 +10,7 @@ import { exportAllData, exportOrdersCSV, importData } from '../../utils/dataExpo
 import { logDataExported } from '../../utils/activityLogger.js';
 import { hashPin } from '../../utils/crypto.js';
 import { signOutCloudStaff } from '../../services/supabaseClient.js';
+import { authService, CLOUD_REQUIRED_ROLES } from '../../services/auth.js';
 
 export class SettingsView {
   constructor(app) {
@@ -626,29 +627,35 @@ export class SettingsView {
         </div>
 
         <!-- Security & Admin PIN -->
-        ${this._cardOpen()}
-          ${this._cardHeading('security', 'Security Credentials')}
-          
-          <div class="input-group" style="max-width: 320px;">
-            <label for="adminPin" style="${this._labelStyle()}">Admin Lock PIN (leave blank to keep)</label>
-            <input type="password" id="adminPin" class="input" value="" maxlength="4" placeholder="${this.config.adminPinHash ? 'Set' : 'Required'}" style="
-              background: rgba(0,0,0,0.25);
-              border: 1px solid var(--border-glass);
-              color: var(--text-primary);
-              letter-spacing: 0.5em; 
-              text-align: center; 
-              font-weight: 800; 
-              font-family: 'Plus Jakarta Sans', sans-serif;
-              font-size: 1.25rem;
-              padding: 12px 14px;
-              border-radius: var(--radius-md);
-              width: 100%;
-              box-sizing: border-box;
-              outline: none;
-              transition: border var(--transition-fast);
-            ">
-          </div>
-        </div>
+        ${(() => {
+          const currentStaff = authService.getCurrentStaff();
+          const isOwner = currentStaff?.role === 'owner';
+          return `
+            ${this._cardOpen()}
+              ${this._cardHeading('security', isOwner ? 'Security Credentials (Owner)' : 'Security Credentials (Manager)')}
+              
+              <div class="input-group" style="max-width: 320px;">
+                <label for="adminPin" style="${this._labelStyle()}">${isOwner ? 'Admin Lock PIN' : 'Personal Manager PIN'} (leave blank to keep)</label>
+                <input type="password" id="adminPin" class="input" value="" maxlength="4" placeholder="4 digits" style="
+                  background: rgba(0,0,0,0.25);
+                  border: 1px solid var(--border-glass);
+                  color: var(--text-primary);
+                  letter-spacing: 0.5em; 
+                  text-align: center; 
+                  font-weight: 800; 
+                  font-family: 'Plus Jakarta Sans', sans-serif;
+                  font-size: 1.25rem;
+                  padding: 12px 14px;
+                  border-radius: var(--radius-md);
+                  width: 100%;
+                  box-sizing: border-box;
+                  outline: none;
+                  transition: border var(--transition-fast);
+                ">
+              </div>
+            </div>
+          `;
+        })()}
 
         <!-- Access & Permissions Section -->
         ${this._cardOpen()}
@@ -1594,6 +1601,9 @@ export class SettingsView {
       const upiId = document.getElementById('upiId').value.trim();
       const adminPin = document.getElementById('adminPin').value.trim();
 
+      const currentStaff = authService.getCurrentStaff();
+      const isOwner = currentStaff?.role === 'owner';
+
       if (!name) {
         showToast('Restaurant name is required', 'warning');
         return;
@@ -1603,10 +1613,10 @@ export class SettingsView {
         return;
       }
       if (adminPin && (adminPin.length !== 4 || isNaN(adminPin))) {
-        showToast('Admin lock PIN must be exactly 4 digits when changed', 'warning');
+        showToast(`${isOwner ? 'Admin' : 'Manager'} lock PIN must be exactly 4 digits when changed`, 'warning');
         return;
       }
-      if (!this.config.adminPinHash && !adminPin) {
+      if (isOwner && !this.config.adminPinHash && !adminPin) {
         showToast('Set an admin lock PIN before launch', 'warning');
         return;
       }
@@ -1688,15 +1698,24 @@ export class SettingsView {
 
         if (adminPin) {
           const adminPinHash = await hashPin(adminPin);
-          await setSetting('adminPinHash', adminPinHash);
-          await db.settings.delete('adminPin');
-          this.config.adminPinHash = adminPinHash;
-          this.config.adminPin = '';
+          if (currentStaff && currentStaff.role === 'manager') {
+            await db.staff.update(currentStaff.id, { pinHash: adminPinHash, isSynced: 0 });
+            localStorage.setItem(`pin_authorized_${currentStaff.id}`, 'true');
+            localStorage.setItem('auth_staff_pin', adminPinHash);
+          } else {
+            await setSetting('adminPinHash', adminPinHash);
+            await db.settings.delete('adminPin');
+            this.config.adminPinHash = adminPinHash;
+            this.config.adminPin = '';
 
-          // Also update the PIN of all active owner staff members so it syncs to the cloud
-          const owners = await db.staff.where('role').equals('owner').toArray();
-          for (const o of owners) {
-            await db.staff.update(o.id, { pinHash: adminPinHash, isSynced: 0 });
+            const owners = await db.staff.where('role').equals('owner').toArray();
+            for (const o of owners) {
+              await db.staff.update(o.id, { pinHash: adminPinHash, isSynced: 0 });
+              localStorage.setItem(`pin_authorized_${o.id}`, 'true');
+              if (currentStaff && o.id === currentStaff.id) {
+                localStorage.setItem('auth_staff_pin', adminPinHash);
+              }
+            }
           }
         }
 

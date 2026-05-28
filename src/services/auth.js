@@ -14,6 +14,7 @@ const SESSION_DURATION_MS = 8 * 60 * 60 * 1000;
 const LOCKOUT_MAX_ATTEMPTS = 5;
 const LOCKOUT_DURATION_MS = 5 * 60 * 1000;
 const DEFAULT_STORE_ID = 'the-taste';
+export const CLOUD_REQUIRED_ROLES = ['owner', 'manager'];
 
 class AuthService {
   constructor() {
@@ -182,6 +183,8 @@ class AuthService {
           this.currentStaff = account;
           this.isAuthenticated = true;
           this._startSessionTimer();
+          // Authorize PIN login on this device since cloud credentials are valid
+          localStorage.setItem(`pin_authorized_${account.id}`, 'true');
           return account;
         }
       }
@@ -199,6 +202,15 @@ class AuthService {
           .first();
 
         if (staffRecord) {
+          // Check device authorization for Owner/Manager PIN session restore
+          if (CLOUD_REQUIRED_ROLES.includes(staffRecord.role)) {
+            if (localStorage.getItem(`pin_authorized_${staffRecord.id}`) !== 'true') {
+              console.warn(`[AuthService] Stored PIN session restore blocked for ${staffRecord.role} "${staffRecord.name}": Device not authorized.`);
+              localStorage.removeItem('auth_staff_pin');
+              return null;
+            }
+          }
+
           this.currentStaff = staffRecord;
           this.isAuthenticated = true;
           this._startSessionTimer();
@@ -255,6 +267,14 @@ class AuthService {
         return null;
       }
 
+      // Check device authorization for Owner/Manager PIN login
+      if (CLOUD_REQUIRED_ROLES.includes(staff.role)) {
+        if (localStorage.getItem(`pin_authorized_${staff.id}`) !== 'true') {
+          console.warn(`[AuthService] PIN login blocked for ${staff.role} "${staff.name}": Device not authorized. Cloud login required first.`);
+          throw new Error('Device not authorized for PIN login. Please log in using your email/password first.');
+        }
+      }
+
       this.currentStaff = staff;
       this.isAuthenticated = true;
       localStorage.setItem('auth_staff_pin', hashedPin);
@@ -276,6 +296,9 @@ class AuthService {
       console.log(`[AuthService] Staff "${staff.name}" (${staff.role}) authenticated successfully.`);
       return staff;
     } catch (error) {
+      if (error.message && error.message.includes('Device not authorized')) {
+        throw error;
+      }
       console.error('[AuthService] Dexie database error in login:', error);
       return null;
     }
@@ -304,6 +327,10 @@ class AuthService {
       this.currentStaff = staff;
       this.isAuthenticated = true;
       localStorage.setItem('auth_staff_email', email);
+      
+      // Authorize PIN login for this staff member on this device
+      localStorage.setItem(`pin_authorized_${staff.id}`, 'true');
+
       localStorage.removeItem('auth_failed_attempts');
       localStorage.removeItem('auth_lockout_until');
 

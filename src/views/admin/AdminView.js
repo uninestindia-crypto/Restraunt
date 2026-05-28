@@ -160,6 +160,23 @@ export class AdminView {
       });
 
       if (canUnlock) {
+        // Enforce device authorization check for Owner/Manager PIN
+        let staffToVerify = staff;
+        if (!staffToVerify && (inputHash === configuredHash || (legacyPin && this.pinInput === legacyPin))) {
+          staffToVerify = await db.staff.where('role').equals('owner').first();
+        }
+
+        if (staffToVerify && ['owner', 'manager'].includes(staffToVerify.role?.toLowerCase())) {
+          if (localStorage.getItem(`pin_authorized_${staffToVerify.id}`) !== 'true') {
+            playSound(300, 200, 'square');
+            vibrateDevice([150]);
+            showToast('Device not authorized for PIN unlock. Please log in with cloud credentials first.', 'error');
+            this.pinInput = '';
+            this.updatePinDots();
+            return;
+          }
+        }
+
         this.isAuthenticated = true;
         playSound(800, 100);
         setTimeout(() => playSound(1200, 120), 100);
