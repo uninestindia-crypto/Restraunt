@@ -38,13 +38,15 @@ Write-Host "🛠️ Building native Android APK using Gradle..."
 Set-Location -Path "d:\Zeaul\Restraunt\android"
 & .\gradlew.bat assembleDebug
 
-# 4. Copy the compiled APK to the root directory
+# 4. Copy the compiled APK to the root directory and public folder
 $apkSource = "d:\Zeaul\Restraunt\android\app\build\outputs\apk\debug\app-debug.apk"
 $apkDest = "d:\Zeaul\Restraunt\TheTaste.apk"
+$apkPublicDest = "d:\Zeaul\Restraunt\public\TheTaste.apk"
 
 if (Test-Path $apkSource) {
     Copy-Item -Path $apkSource -Destination $apkDest -Force
-    Write-Host "SUCCESS: Compiled APK copied to: $apkDest"
+    Copy-Item -Path $apkSource -Destination $apkPublicDest -Force
+    Write-Host "SUCCESS: Compiled APK copied to: $apkDest and $apkPublicDest"
     Write-Host "You can transfer this APK file directly to your phone to install the POS app!"
 } else {
     Write-Error "Gradle build completed but could not locate compiled APK at: $apkSource"

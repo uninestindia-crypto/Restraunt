@@ -217,6 +217,7 @@ export class CustomerView {
             <nav class="store-nav-links" aria-label="Public navigation" style="display:flex;align-items:center;gap:12px;">
               <a href="#menu">Menu</a>
               ${authLinksHtml}
+              <a href="/TheTaste.apk" download style="display:inline-flex;align-items:center;gap:4px;color:#FF6B35;font-weight:700;" title="Download Android App APK"><span class="material-symbols-rounded" style="font-size:16px;">android</span>Get App</a>
               <a href="#/pos" class="store-staff-link">Staff</a>
             </nav>
           </header>
