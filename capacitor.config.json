@@ -3,12 +3,6 @@
   "appName": "TheTaste",
   "webDir": "dist",
   "server": {
-    "url": "https://thetaste.co.in",
-    "cleartext": true,
-    "allowNavigation": [
-      "thetaste.co.in",
-      "*.supabase.co",
-      "*.supabase.in"
-    ]
+    "cleartext": true
   }
 }
