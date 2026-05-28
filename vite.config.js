@@ -15,9 +15,9 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg', 'icons/*.png'],
       manifest: {
-        name: 'The Taste - Restaurant POS',
+        name: 'The Taste - Chinese Food Patna',
         short_name: 'The Taste',
-        description: 'Fast Food & Chinese Restaurant — Order, Pay, Print',
+        description: 'Delicious, Fresh & Reasonable Chinese Food & Fast Food on Sandalpur Road, Kumhrar, Patna',
         theme_color: '#FF6B35',
         background_color: '#0F0F1A',
         display: 'standalone',

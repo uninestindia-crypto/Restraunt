@@ -195,9 +195,9 @@ export async function seedDatabase(options = {}) {
     // ── Default Settings ────────────────────────────────────────
     const defaultSettings = [
       { key: 'restaurantName', value: 'The Taste' },
-      { key: 'restaurantTagline', value: 'Fast Food & Chinese' },
-      { key: 'restaurantPhone', value: '' },
-      { key: 'restaurantAddress', value: '' },
+      { key: 'restaurantTagline', value: 'Chinese Food — Fresh & Reasonable' },
+      { key: 'restaurantPhone', value: '+91 8809696025' },
+      { key: 'restaurantAddress', value: 'Sandalpur Road, Kumhrar, Patna, Bihar' },
       { key: 'upiId', value: 'paytmqr6zfcsx@ptys' },
       { key: 'upiName', value: 'The Taste' },
       { key: 'gstPercent', value: '5' },
@@ -432,6 +432,23 @@ async function runMigrations(options = {}) {
     if (!currentUpiIdSetting || currentUpiIdSetting.value === 'thetaste@upi' || currentUpiIdSetting.value === '') {
       await db.settings.put({ key: 'upiId', value: 'paytmqr6zfcsx@ptys' });
       console.log('[Seed] UPI ID successfully migrated to paytmqr6zfcsx@ptys');
+    }
+
+    // Dynamic Store Details Migration
+    const phoneSetting = await db.settings.get('restaurantPhone');
+    if (!phoneSetting || phoneSetting.value === '') {
+      await db.settings.put({ key: 'restaurantPhone', value: '+91 8809696025' });
+      console.log('[Seed] Restaurant phone successfully updated.');
+    }
+    const addressSetting = await db.settings.get('restaurantAddress');
+    if (!addressSetting || addressSetting.value === '' || addressSetting.value.includes('Kolkata')) {
+      await db.settings.put({ key: 'restaurantAddress', value: 'Sandalpur Road, Kumhrar, Patna, Bihar' });
+      console.log('[Seed] Restaurant address successfully updated.');
+    }
+    const taglineSetting = await db.settings.get('restaurantTagline');
+    if (!taglineSetting || taglineSetting.value === 'Fast Food & Chinese') {
+      await db.settings.put({ key: 'restaurantTagline', value: 'Chinese Food — Fresh & Reasonable' });
+      console.log('[Seed] Restaurant tagline successfully updated.');
     }
   } catch (err) {
     console.error('[Seed] Failed to run migrations:', err);
