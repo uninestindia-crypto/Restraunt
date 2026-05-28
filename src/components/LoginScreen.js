@@ -14,7 +14,17 @@ import { showToast, playSound, vibrateDevice } from '../utils/helpers.js';
 
 export class LoginScreen {
   constructor(onLoginSuccess) {
-     container.innerHTML = `
+    this.onLoginSuccess = onLoginSuccess;
+    this.pinInput = '';
+    this.tempStaff = null;
+    this.setupPinInput = '';
+    this.setupPinConfirm = '';
+    this.isConfirmMode = false;
+  }
+
+  render(container) {
+    this.container = container;
+    container.innerHTML = `
       <div class="login-screen">
         <div class="login-split-container">
           
@@ -160,6 +170,60 @@ export class LoginScreen {
                       ${k === '⌫' ? '<span class="material-symbols-rounded" style="font-size:22px;">backspace</span>' : k}
                     </button>
                   `).join('')}
+                </div>
+              </div>
+
+              <!-- Enable Existing PIN Form -->
+              <div class="login-section" id="section-enable-pin" style="display: none;">
+                <div style="text-align: center; display: flex; flex-direction: column; gap: 16px;">
+                  <div style="
+                    width: 56px;
+                    height: 56px;
+                    border-radius: 50%;
+                    background: rgba(16, 185, 129, 0.08);
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
+                    margin: 0 auto;
+                    border: 1px solid rgba(16, 185, 129, 0.2);
+                  ">
+                    <span class="material-symbols-rounded" style="font-size: 28px; color: var(--color-success);">check_circle</span>
+                  </div>
+                  <h2 style="font-family: var(--font-display); font-size: var(--text-md); font-weight: 800; color: var(--text-primary); margin: 0;">Enable PIN Login</h2>
+                  <p style="color: var(--text-secondary); font-size: var(--text-xs); line-height: 1.4; margin: 0;">
+                    A Quick Access PIN is already associated with your staff account. Would you like to enable PIN login on this device?
+                  </p>
+                  <button class="btn btn-primary" id="btn-enable-existing-pin" type="button" style="width: 100%; height: 44px; font-weight: 700; margin-top: 8px;">
+                    Enable PIN on This Device
+                  </button>
+                  <button class="btn btn-secondary" id="btn-setup-different-pin" type="button" style="width: 100%; height: 44px; font-weight: 700;">
+                    Set Up a New PIN
+                  </button>
+                </div>
+              </div>
+
+              <!-- Setup New PIN Form -->
+              <div class="login-section" id="section-setup-new-pin" style="display: none;">
+                <div style="text-align: center; display: flex; flex-direction: column; gap: 12px;">
+                  <h2 id="setup-pin-title" style="font-family: var(--font-display); font-size: var(--text-md); font-weight: 800; color: var(--text-primary); margin: 0;">Set Up Quick Access PIN</h2>
+                  <p id="setup-pin-subtitle" style="color: var(--text-secondary); font-size: var(--text-xs); margin: 0;">
+                    Create a 4-digit PIN for faster login on this device.
+                  </p>
+                  
+                  <div class="login-pin-dots" id="setup-pin-dots" style="margin-top: 12px; margin-bottom: 12px;">
+                    <span class="pin-dot"></span>
+                    <span class="pin-dot"></span>
+                    <span class="pin-dot"></span>
+                    <span class="pin-dot"></span>
+                  </div>
+
+                  <div class="login-numpad" id="setup-numpad">
+                    ${[1,2,3,4,5,6,7,8,9,'',0,'⌫'].map(k => k === '' ? '<button class="numpad-btn empty" disabled></button>' : `
+                      <button class="numpad-btn ${k === '⌫' ? 'backspace' : ''}" data-key="${k}" type="button">
+                        ${k === '⌫' ? '<span class="material-symbols-rounded" style="font-size:22px;">backspace</span>' : k}
+                      </button>
+                    `).join('')}
+                  </div>
                 </div>
               </div>
 
