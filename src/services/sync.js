@@ -386,6 +386,13 @@ async function retryWithBackoff(fn, options = {}) {
         errorMessage.includes('URL is not valid') ||
         errorMessage.includes('Failed to parse URL') ||
         errorMessage.includes('Invalid URL') ||
+        errorMessage.toLowerCase().includes('owner') ||
+        errorMessage.toLowerCase().includes('permission') ||
+        errorMessage.toLowerCase().includes('denied') ||
+        errorMessage.toLowerCase().includes('policy') ||
+        errorMessage.toLowerCase().includes('forbidden') ||
+        errorMessage.toLowerCase().includes('unauthorized') ||
+        errorMessage.toLowerCase().includes('not allowed') ||
         (error?.status >= 400 && error?.status < 500 && error?.status !== 408 && error?.status !== 429);
 
       if (isBadCredentials) {
@@ -428,6 +435,7 @@ class SyncService {
     this.onStatusChangeCallbacks = [];
     this.isSyncingFromServer = false;
     this.channel = null;
+    this.lastFullPullTime = 0;
   }
 
   onStatusChange(callback) {
@@ -439,9 +447,20 @@ class SyncService {
   }
 
   async fullPull(options = {}) {
+    const force = options.force === true;
+    const now = Date.now();
+    if (!force && this.lastFullPullTime && (now - this.lastFullPullTime < 15000)) {
+      console.log('[Sync] Skipping redundant fullPull (completed within last 15s).');
+      return { success: true, skipped: true };
+    }
+
     try {
       const { fullPull } = await import('./cloudDb.js');
-      return await fullPull(options);
+      const result = await fullPull(options);
+      if (result && result.success) {
+        this.lastFullPullTime = Date.now();
+      }
+      return result;
     } catch (err) {
       console.error('[Sync] fullPull failed:', err);
       return { success: false, tables: {} };

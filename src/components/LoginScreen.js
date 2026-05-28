@@ -1027,12 +1027,35 @@ export class LoginScreen {
       if (staff) {
         playSound(900, 100);
         vibrateDevice([40, 20, 40]);
-        const welcomeMsg = staff.role === 'customer' 
-          ? `Welcome to The Taste, ${staff.name}!`
-          : `Welcome, ${staff.name}! (${staff.role})`;
-        showToast(welcomeMsg, 'success');
-        this.destroy();
-        if (this.onLoginSuccess) this.onLoginSuccess(staff);
+
+        if (staff.role === 'customer') {
+          const welcomeMsg = `Welcome to The Taste, ${staff.name}!`;
+          showToast(welcomeMsg, 'success');
+          this.destroy();
+          if (this.onLoginSuccess) this.onLoginSuccess(staff);
+          return;
+        }
+
+        // It is a staff role
+        this.tempStaff = staff;
+
+        const tabsContainer = document.getElementById('login-tabs-container');
+        const secCloud = document.getElementById('section-cloud');
+        const secPin = document.getElementById('section-pin');
+        const secSignup = document.getElementById('section-signup');
+        const secEnablePin = document.getElementById('section-enable-pin');
+
+        if (tabsContainer) tabsContainer.style.display = 'none';
+        if (secCloud) secCloud.style.display = 'none';
+        if (secPin) secPin.style.display = 'none';
+        if (secSignup) secSignup.style.display = 'none';
+        if (errEl) errEl.textContent = '';
+
+        if (staff.pinHash) {
+          if (secEnablePin) secEnablePin.style.display = 'block';
+        } else {
+          this.startPinSetupFlow();
+        }
       } else {
         throw new Error('Could not resolve session.');
       }
@@ -1160,6 +1183,107 @@ export class LoginScreen {
       dots.forEach(d => d.classList.add('error'));
       this.pinInput = '';
       setTimeout(() => this.updateDots(), 1500);
+    }
+  }
+
+  startPinSetupFlow() {
+    const secEnablePin = document.getElementById('section-enable-pin');
+    const secSetupNewPin = document.getElementById('section-setup-new-pin');
+    if (secEnablePin) secEnablePin.style.display = 'none';
+    if (secSetupNewPin) secSetupNewPin.style.display = 'block';
+
+    this.setupPinInput = '';
+    this.setupPinConfirm = '';
+    this.isConfirmMode = false;
+    this.updateSetupDots();
+
+    const titleEl = document.getElementById('setup-pin-title');
+    const subtitleEl = document.getElementById('setup-pin-subtitle');
+    if (titleEl) titleEl.textContent = 'Set Up Quick Access PIN';
+    if (subtitleEl) subtitleEl.textContent = 'Create a 4-digit PIN for faster login on this device.';
+  }
+
+  updateSetupDots() {
+    const dots = document.querySelectorAll('#setup-pin-dots .pin-dot');
+    const length = this.isConfirmMode ? this.setupPinConfirm.length : this.setupPinInput.length;
+    dots.forEach((dot, i) => {
+      dot.classList.toggle('filled', i < length);
+      dot.classList.remove('error');
+    });
+    const errEl = document.getElementById('login-error');
+    if (errEl) errEl.textContent = '';
+  }
+
+  async handleSetupPinSubmit() {
+    const errEl = document.getElementById('login-error');
+    if (errEl) errEl.textContent = '';
+
+    if (!this.isConfirmMode) {
+      // Validate PIN strength
+      const pin = this.setupPinInput;
+      const isWeak = /^(.)\1{3}$/.test(pin) || '0123456789'.includes(pin) || '9876543210'.includes(pin);
+      if (isWeak) {
+        playSound(200, 200);
+        vibrateDevice([100]);
+        if (errEl) errEl.textContent = 'PIN is too weak or simple. Please choose a different combination.';
+        this.setupPinInput = '';
+        this.updateSetupDots();
+        return;
+      }
+
+      // Transition to confirmation mode
+      this.isConfirmMode = true;
+      this.updateSetupDots();
+      const titleEl = document.getElementById('setup-pin-title');
+      const subtitleEl = document.getElementById('setup-pin-subtitle');
+      if (titleEl) titleEl.textContent = 'Confirm Your PIN';
+      if (subtitleEl) subtitleEl.textContent = 'Re-enter your 4-digit PIN to confirm.';
+    } else {
+      if (this.setupPinInput !== this.setupPinConfirm) {
+        playSound(200, 200);
+        vibrateDevice([100]);
+        if (errEl) errEl.textContent = 'PINs do not match. Start over.';
+        this.startPinSetupFlow();
+        return;
+      }
+
+      try {
+        const { hashPin } = await import('../utils/crypto.js');
+        const hashedPin = await hashPin(this.setupPinInput);
+        const staff = this.tempStaff;
+
+        const { db } = await import('../db/database.js');
+        await db.staff.update(staff.id, { pinHash: hashedPin, isSynced: 0 });
+        staff.pinHash = hashedPin;
+
+        localStorage.setItem(`pin_authorized_${staff.id}`, 'true');
+        localStorage.setItem('auth_staff_pin', hashedPin);
+
+        if (navigator.onLine) {
+          try {
+            const { syncStaffViaAdminFunction } = await import('../services/staffAdmin.js');
+            const syncRes = await syncStaffViaAdminFunction(staff);
+            if (syncRes.success) {
+              await db.staff.update(staff.id, { isSynced: 1 });
+              console.log('[LoginScreen] PIN successfully synced online.');
+            } else {
+              console.warn('[LoginScreen] Cloud PIN sync failed:', syncRes.message);
+            }
+          } catch (syncErr) {
+            console.warn('[LoginScreen] Cloud PIN sync failed with error:', syncErr.message);
+          }
+        }
+
+        playSound(900, 100);
+        vibrateDevice([40, 20, 40]);
+        showToast(`PIN registered successfully! Welcome, ${staff.name}!`, 'success');
+        this.destroy();
+        if (this.onLoginSuccess) this.onLoginSuccess(staff);
+      } catch (err) {
+        playSound(200, 200);
+        vibrateDevice([100]);
+        if (errEl) errEl.textContent = 'Failed to register PIN: ' + err.message;
+      }
     }
   }
 

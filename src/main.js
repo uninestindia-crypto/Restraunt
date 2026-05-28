@@ -373,14 +373,15 @@ class App {
     this.setupMobileSidebar();
 
     // Staff cloud sync starts only after staff authentication.
-    // Hydrate from cloud before starting router / POS view
+    // Hydrate from cloud in the background to avoid blocking the UI thread
     this.syncStarted = true;
-    try {
-      const syncService = await this.getSyncService();
-      await syncService.init();
-    } catch (err) {
-      console.error('[App] Sync init error during boot:', err);
-    }
+    this.getSyncService().then(syncService => {
+      syncService.init().catch(err => {
+        console.error('[App] Sync init error during boot:', err);
+      });
+    }).catch(err => {
+      console.error('[App] Failed to load sync service:', err);
+    });
 
     // Update header with staff info
     this.updateStaffDisplay(staff);

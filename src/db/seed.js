@@ -42,13 +42,11 @@ export async function seedDatabase(options = {}) {
           await ensureDefaultTables();
         }
         return;
-      } else if (attempt < MAX_HYDRATION_RETRIES && navigator.onLine) {
-        // Cloud is reachable but empty — might be a timing issue, retry
-        console.log(`[Seed] Cloud returned no data on attempt ${attempt}. Will retry...`);
-        continue;
+      } else {
+        // Cloud is reachable and genuinely empty (no error thrown) — proceed to local seed immediately without retry
+        console.log(`[Seed] Cloud is reachable but empty. Proceeding to local seed.`);
+        break;
       }
-      // Cloud is reachable but genuinely empty — proceed to local seed
-      break;
     } catch (err) {
       console.warn(`[Seed] Cloud hydration attempt ${attempt} failed:`, err.message);
       if (attempt >= MAX_HYDRATION_RETRIES) {
