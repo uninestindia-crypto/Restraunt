@@ -1,0 +1,19 @@
+[debug] [vite] connecting...
+[debug] [vite] connected.
+[debug] [VersionGate] Remote version check skipped or failed: Unexpected token '<', "<!DOCTYPE "... is not valid JSON
+[debug] [vite] connecting...
+[debug] [vite] connected.
+[debug] [VersionGate] Remote version check skipped or failed: Unexpected token '<', "<!DOCTYPE "... is not valid JSON
+[warning] [CloudDB] Cloud categories exist but menu_items is empty. Local fallback seed will keep the storefront usable; run seed-cloud-menu to repair Supabase.
+[log] [Seed] Cloud is reachable but empty. Proceeding to local seed.
+[log] [Seed] UPI ID successfully migrated to paytmqr6zfcsx@ptys
+[log] %c╔══════════════════════════════════════════════╗
+║                                              ║
+║   ◆  N E X T G E N O S                      ║
+║      Restaurant Operating System             ║
+║      Version 2.0.0                           ║
+║                                              ║
+║   Created & Managed by NextGenOS             ║
+║   © 2026 NextGenOS. All Rights Reserved.     ║
+║                                              ║
+╚══════════════════════════════════════════════╝ color: #6C5CE7; font-family: monospace; font-size: 11px; line-height: 1.5;
