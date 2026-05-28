@@ -14,168 +14,442 @@ import { showToast, playSound, vibrateDevice } from '../utils/helpers.js';
 
 export class LoginScreen {
   constructor(onLoginSuccess) {
-    this.onLoginSuccess = onLoginSuccess;
-    this.container = null;
-    this.pinInput = '';
-    this._keyHandler = null;
-  }
-
-  render(container) {
-    this.container = container;
-    this.pinInput = '';
-
-    container.innerHTML = `
+     container.innerHTML = `
       <div class="login-screen">
-        <div class="login-card" style="position: relative;">
-          <!-- Home Navigation Button -->
-          <div style="display: flex; justify-content: flex-start; margin-bottom: -24px; position: relative; z-index: 10;">
-            <button id="login-home-btn" class="btn btn-secondary btn-sm" style="padding: 6px 12px; font-size: 0.68rem; display: flex; align-items: center; gap: 4px; border: 1px solid var(--border-glass); background: rgba(255,255,255,0.02); border-radius: var(--radius-sm); color: var(--text-secondary); cursor: pointer; transition: all var(--transition-fast);">
-              <span class="material-symbols-rounded" style="font-size: 14px;">home</span>
-              Home
-            </button>
-          </div>
-          <div class="login-logo-container" id="login-logo-btn" style="cursor: pointer; margin-top: 16px;">
-            <img src="/assets/aether-icon.png" class="login-logo-img" alt="The Taste Logo" />
-          </div>
-          <h1 class="login-title" id="login-brand-title" style="cursor: pointer; display: inline-block; margin-bottom: 6px;">The Taste</h1>
-          <p class="login-subtitle">Restaurant Operating System</p>
-
-          <div class="login-tabs" id="login-tabs-container">
-            <button class="login-tab-btn active" id="tab-cloud" type="button">Enterprise Cloud</button>
-            <button class="login-tab-btn" id="tab-pin" type="button">Local PIN</button>
-          </div>
-
-          <div id="login-error" class="login-error"></div>
-
-          <!-- Cloud Sign-In Form (Shared: Customer & Staff) -->
-          <div class="login-section" id="section-cloud" style="display: block;">
-            <div class="login-input-group">
-              <label class="login-label" for="login-email">Account Email</label>
-              <input type="email" id="login-email" class="login-input" placeholder="name@nextgenos.com" required autocomplete="username">
-            </div>
-            <div class="login-input-group">
-              <label class="login-label" for="login-password">Security Password</label>
-              <input type="password" id="login-password" class="login-input" placeholder="••••••••••••" required autocomplete="current-password">
-            </div>
-            <button class="btn btn-primary login-submit-btn" id="btn-cloud-login" type="button" style="width:100%; height:46px; border-radius:var(--radius-sm); font-weight:700; margin-top:8px;">
-              Authorize Access
-            </button>
-            <p class="login-toggle-link" id="link-goto-signup">New to The Taste? Create Customer Account</p>
-          </div>
-
-          <!-- Customer Sign-Up Form -->
-          <div class="login-section" id="section-signup" style="display: none;">
-            <div class="login-input-group">
-              <label class="login-label" for="signup-name">Full Name</label>
-              <input type="text" id="signup-name" class="login-input" placeholder="Aarav Sharma" required autocomplete="name">
-            </div>
-            <div class="login-input-group">
-              <label class="login-label" for="signup-email">Email Address</label>
-              <input type="email" id="signup-email" class="login-input" placeholder="aarav@gmail.com" required autocomplete="username">
-            </div>
-            <div class="login-input-group">
-              <label class="login-label" for="signup-password">Password</label>
-              <input type="password" id="signup-password" class="login-input" placeholder="Minimum 6 characters" required autocomplete="new-password">
-            </div>
-            <button class="btn btn-primary login-submit-btn" id="btn-submit-signup" type="button" style="width:100%; height:46px; border-radius:var(--radius-sm); font-weight:700; margin-top:8px;">
-              Register & Order
-            </button>
-            <p class="login-toggle-link" id="link-goto-signin">Already have an account? Sign In</p>
-          </div>
-
-          <!-- Local PIN Sign-In Form (Staff Backup) -->
-          <div class="login-section" id="section-pin" style="display: none;">
-            <div class="login-pin-section">
-              <label class="login-label">Enter Staff PIN</label>
-              <div class="login-pin-dots" id="login-pin-dots">
-                <span class="pin-dot"></span>
-                <span class="pin-dot"></span>
-                <span class="pin-dot"></span>
-                <span class="pin-dot"></span>
+        <div class="login-split-container">
+          
+          <!-- Left side: Premium Branding Panel (visible on desktop) -->
+          <div class="login-brand-panel">
+            <div class="login-brand-content">
+              <div class="login-brand-logo-wrapper">
+                <img src="/assets/aether-icon.png" class="brand-panel-logo" alt="The Taste Logo" />
+              </div>
+              <h2 class="brand-panel-title">The Taste</h2>
+              <p class="brand-panel-tagline">Restaurant Operating System</p>
+              
+              <div class="brand-features-list">
+                <div class="brand-feature-item">
+                  <span class="material-symbols-rounded feature-icon">sync</span>
+                  <div class="feature-text">
+                    <h4 class="feature-title">Real-Time Sync</h4>
+                    <p class="feature-desc">Instant table status and order updates across all staff devices.</p>
+                  </div>
+                </div>
+                <div class="brand-feature-item">
+                  <span class="material-symbols-rounded feature-icon">wifi_off</span>
+                  <div class="feature-text">
+                    <h4 class="feature-title">Offline Resilience</h4>
+                    <p class="feature-desc">Continuous operation even during internet outages, syncing automatically later.</p>
+                  </div>
+                </div>
+                <div class="brand-feature-item">
+                  <span class="material-symbols-rounded feature-icon">monitoring</span>
+                  <div class="feature-text">
+                    <h4 class="feature-title">Enterprise Analytics</h4>
+                    <p class="feature-desc">Detailed reports, item sales history, and customer behavior insights.</p>
+                  </div>
+                </div>
+                <div class="brand-feature-item">
+                  <span class="material-symbols-rounded feature-icon">print</span>
+                  <div class="feature-text">
+                    <h4 class="feature-title">Thermal Invoicing</h4>
+                    <p class="feature-desc">Wireless Bluetooth and ESC/POS printer support for instant customer bills.</p>
+                  </div>
+                </div>
               </div>
             </div>
-
-            <div class="login-numpad" id="login-numpad">
-              ${[1,2,3,4,5,6,7,8,9,'',0,'⌫'].map(k => k === '' ? '<button class="numpad-btn empty" disabled></button>' : `
-                <button class="numpad-btn ${k === '⌫' ? 'backspace' : ''}" data-key="${k}" type="button">
-                  ${k === '⌫' ? '<span class="material-symbols-rounded" style="font-size:20px;">backspace</span>' : k}
-                </button>
-              `).join('')}
+            
+            <div class="brand-panel-footer">
+              <span>Enterprise Cloud Edition</span>
+              <span class="brand-version">v4.0.0</span>
             </div>
           </div>
+          
+          <!-- Right side: Authentication Form Panel -->
+          <div class="login-form-panel">
+            <div class="login-card">
+              <!-- Home Navigation Button -->
+              <div class="login-home-btn-container">
+                <button id="login-home-btn" class="btn btn-secondary btn-sm home-nav-btn">
+                  <span class="material-symbols-rounded" style="font-size: 16px;">home</span>
+                  Home
+                </button>
+              </div>
+              
+              <div class="login-header-mobile">
+                <div class="login-logo-container" id="login-logo-btn">
+                  <img src="/assets/aether-icon.png" class="login-logo-img" alt="The Taste Logo" />
+                </div>
+                <h1 class="login-title" id="login-brand-title">The Taste</h1>
+                <p class="login-subtitle">Restaurant Operating System</p>
+              </div>
+              
+              <div class="login-tabs" id="login-tabs-container">
+                <button class="login-tab-btn active" id="tab-cloud" type="button">Enterprise Cloud</button>
+                <button class="login-tab-btn" id="tab-pin" type="button">Local PIN</button>
+              </div>
 
-          <div class="login-footer">
-            <span style="color:rgba(139,92,246,0.4);font-size:8px;">◆</span>
-            <span style="font-size:0.5rem;color:var(--text-secondary);opacity:0.4;letter-spacing:0.06em;">Powered by</span>
-            <span style="font-size:0.5rem;color:rgba(139,92,246,0.5);letter-spacing:0.06em;font-weight:700;">NextGenOS</span>
+              <div id="login-error" class="login-error"></div>
+
+              <!-- Cloud Sign-In Form -->
+              <div class="login-section" id="section-cloud" style="display: block;">
+                <div class="login-input-group">
+                  <label class="login-label" for="login-email">Account Email</label>
+                  <div class="input-with-icon">
+                    <span class="material-symbols-rounded input-icon">mail</span>
+                    <input type="email" id="login-email" class="login-input" placeholder="name@nextgenos.com" required autocomplete="username">
+                  </div>
+                </div>
+                <div class="login-input-group">
+                  <label class="login-label" for="login-password">Security Password</label>
+                  <div class="input-with-icon">
+                    <span class="material-symbols-rounded input-icon">lock</span>
+                    <input type="password" id="login-password" class="login-input" placeholder="••••••••••••" required autocomplete="current-password">
+                  </div>
+                </div>
+                <button class="btn btn-primary login-submit-btn" id="btn-cloud-login" type="button">
+                  Authorize Access
+                </button>
+                <p class="login-toggle-link" id="link-goto-signup">New to The Taste? Create Customer Account</p>
+              </div>
+
+              <!-- Customer Sign-Up Form -->
+              <div class="login-section" id="section-signup" style="display: none;">
+                <div class="login-input-group">
+                  <label class="login-label" for="signup-name">Full Name</label>
+                  <div class="input-with-icon">
+                    <span class="material-symbols-rounded input-icon">person</span>
+                    <input type="text" id="signup-name" class="login-input" placeholder="Aarav Sharma" required autocomplete="name">
+                  </div>
+                </div>
+                <div class="login-input-group">
+                  <label class="login-label" for="signup-email">Email Address</label>
+                  <div class="input-with-icon">
+                    <span class="material-symbols-rounded input-icon">mail</span>
+                    <input type="email" id="signup-email" class="login-input" placeholder="aarav@gmail.com" required autocomplete="username">
+                  </div>
+                </div>
+                <div class="login-input-group">
+                  <label class="login-label" for="signup-password">Password</label>
+                  <div class="input-with-icon">
+                    <span class="material-symbols-rounded input-icon">lock</span>
+                    <input type="password" id="signup-password" class="login-input" placeholder="Minimum 6 characters" required autocomplete="new-password">
+                  </div>
+                </div>
+                <button class="btn btn-primary login-submit-btn" id="btn-submit-signup" type="button">
+                  Register & Order
+                </button>
+                <p class="login-toggle-link" id="link-goto-signin">Already have an account? Sign In</p>
+              </div>
+
+              <!-- Local PIN Sign-In Form (Staff Backup) -->
+              <div class="login-section" id="section-pin" style="display: none;">
+                <div class="login-pin-section">
+                  <label class="login-label">Enter Staff PIN</label>
+                  <div class="login-pin-dots" id="login-pin-dots">
+                    <span class="pin-dot"></span>
+                    <span class="pin-dot"></span>
+                    <span class="pin-dot"></span>
+                    <span class="pin-dot"></span>
+                  </div>
+                </div>
+
+                <div class="login-numpad" id="login-numpad">
+                  ${[1,2,3,4,5,6,7,8,9,'',0,'⌫'].map(k => k === '' ? '<button class="numpad-btn empty" disabled></button>' : `
+                    <button class="numpad-btn ${k === '⌫' ? 'backspace' : ''}" data-key="${k}" type="button">
+                      ${k === '⌫' ? '<span class="material-symbols-rounded" style="font-size:22px;">backspace</span>' : k}
+                    </button>
+                  `).join('')}
+                </div>
+              </div>
+
+              <div class="login-footer">
+                <span class="footer-dot">◆</span>
+                <span class="footer-powered">Powered by</span>
+                <span class="footer-brand">NextGenOS</span>
+              </div>
+            </div>
           </div>
+          
         </div>
       </div>
 
       <style>
         .login-screen {
           position: fixed; inset: 0; z-index: 9998;
-          display: flex; align-items: center; justify-content: center;
-          background: radial-gradient(circle at center, #12121C 0%, #08080C 100%);
+          display: flex;
+          background: var(--bg-primary);
           overflow: hidden;
+          font-family: var(--font-sans);
         }
+        .login-split-container {
+          display: flex;
+          width: 100%;
+          height: 100%;
+        }
+        
+        /* ── Branding Panel (Left Column) ── */
+        .login-brand-panel {
+          display: none;
+        }
+        
+        @media (min-width: 768px) {
+          .login-brand-panel {
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            width: 45%;
+            padding: 56px 48px;
+            background: linear-gradient(135deg, #0F172A 0%, #020617 100%);
+            color: #FFFFFF;
+            position: relative;
+            overflow: hidden;
+            border-right: 1px solid var(--border-color);
+          }
+          
+          /* Ambient floating orbs */
+          .login-brand-panel::before {
+            content: '';
+            position: absolute;
+            width: 500px;
+            height: 500px;
+            background: radial-gradient(circle, rgba(255, 94, 54, 0.15) 0%, transparent 70%);
+            top: -150px;
+            left: -150px;
+            animation: floatGlow 15s infinite alternate ease-in-out;
+            pointer-events: none;
+          }
+          
+          .login-brand-panel::after {
+            content: '';
+            position: absolute;
+            width: 400px;
+            height: 400px;
+            background: radial-gradient(circle, rgba(139, 92, 246, 0.12) 0%, transparent 70%);
+            bottom: -100px;
+            right: -100px;
+            animation: floatGlow 20s infinite alternate-reverse ease-in-out;
+            pointer-events: none;
+          }
+        }
+        
+        @keyframes floatGlow {
+          0% { transform: translate(0, 0) scale(1); }
+          100% { transform: translate(50px, 40px) scale(1.1); }
+        }
+        
+        .login-brand-content {
+          position: relative;
+          z-index: 2;
+          display: flex;
+          flex-direction: column;
+          flex: 1;
+        }
+        .login-brand-logo-wrapper {
+          display: flex;
+          align-items: center;
+          margin-bottom: 24px;
+        }
+        .brand-panel-logo {
+          width: 56px;
+          height: 56px;
+          object-fit: contain;
+          border-radius: var(--radius-md);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          box-shadow: 0 8px 32px rgba(255, 94, 54, 0.25);
+          transition: transform var(--transition-normal) var(--ease-spring);
+        }
+        .brand-panel-logo:hover {
+          transform: scale(1.1) rotate(3deg);
+        }
+        .brand-panel-title {
+          font-family: var(--font-display);
+          font-size: 2.25rem;
+          font-weight: 800;
+          background: linear-gradient(135deg, #FFFFFF 0%, #E2E8F0 100%);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          background-clip: text;
+          margin: 0 0 4px;
+          letter-spacing: -0.04em;
+        }
+        .brand-panel-tagline {
+          font-size: 0.8rem;
+          color: #94A3B8;
+          text-transform: uppercase;
+          font-weight: 700;
+          letter-spacing: 0.08em;
+          margin: 0 0 48px;
+          opacity: 0.9;
+        }
+        
+        .brand-features-list {
+          display: flex;
+          flex-direction: column;
+          gap: 28px;
+          max-width: 380px;
+        }
+        .brand-feature-item {
+          display: flex;
+          gap: 20px;
+          align-items: flex-start;
+        }
+        .feature-icon {
+          color: var(--color-primary);
+          background: rgba(255, 94, 54, 0.1);
+          padding: 10px;
+          border-radius: var(--radius-md);
+          font-size: 20px;
+          flex-shrink: 0;
+          border: 1px solid rgba(255, 94, 54, 0.18);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        .feature-text {
+          display: flex;
+          flex-direction: column;
+          gap: 2px;
+        }
+        .feature-title {
+          font-size: 0.95rem;
+          font-weight: 700;
+          color: #FFFFFF;
+        }
+        .feature-desc {
+          font-size: 0.8125rem;
+          color: #94A3B8;
+          line-height: 1.45;
+        }
+        
+        .brand-panel-footer {
+          position: relative;
+          z-index: 2;
+          display: flex;
+          justify-content: space-between;
+          font-size: 0.72rem;
+          color: #64748B;
+          border-top: 1px solid rgba(255, 255, 255, 0.05);
+          padding-top: 16px;
+          margin-top: 24px;
+        }
+        
+        /* ── Form Panel (Right Column) ── */
+        .login-form-panel {
+          flex: 1;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 24px;
+          background: var(--bg-primary);
+          overflow-y: auto;
+        }
+        
         .login-card {
-          width: 90%; max-width: 350px; text-align: center;
-          padding: 48px 32px 32px;
+          width: 100%;
+          max-width: 380px;
+          padding: 40px 32px;
           background: var(--glass-bg);
           border: 1px solid var(--border-color);
           border-radius: var(--radius-xl);
           backdrop-filter: var(--glass-backdrop-filter);
           -webkit-backdrop-filter: var(--glass-backdrop-filter);
-          box-shadow: var(--shadow-xl), 0 0 100px rgba(139, 92, 246, 0.03);
-          animation: loginSlideUp var(--transition-slow) var(--ease-out-expo);
+          box-shadow: var(--shadow-xl);
+          position: relative;
+          animation: loginSlideUp var(--transition-normal) ease;
         }
+        
         @keyframes loginSlideUp {
-          from { opacity: 0; transform: translateY(30px) scale(0.96); }
-          to { opacity: 1; transform: translateY(0) scale(1); }
+          from { opacity: 0; transform: translateY(20px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .login-home-btn-container {
+          display: flex;
+          justify-content: flex-start;
+          margin-bottom: 24px;
+        }
+        .home-nav-btn {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          padding: 6px 12px !important;
+          font-size: 0.75rem !important;
+          font-weight: 600 !important;
+          border-radius: var(--radius-sm) !important;
+          border: 1px solid var(--border-color) !important;
+          color: var(--text-secondary) !important;
+          background: var(--bg-secondary) !important;
+          cursor: pointer;
+          transition: all var(--transition-fast) ease;
+        }
+        .home-nav-btn:hover {
+          background: var(--bg-card-hover) !important;
+          border-color: var(--border-active) !important;
+          color: var(--text-primary) !important;
+        }
+        
+        .login-header-mobile {
+          text-align: center;
+          margin-bottom: 24px;
         }
         .login-logo-container {
           display: flex;
           justify-content: center;
           align-items: center;
-          margin-bottom: 16px;
+          margin-bottom: 12px;
         }
         .login-logo-img {
-          width: 72px;
-          height: 72px;
+          width: 64px;
+          height: 64px;
           object-fit: contain;
           border-radius: var(--radius-md);
-          border: 1px solid var(--border-active);
-          box-shadow: var(--shadow-glow-active), 0 4px 12px rgba(0, 0, 0, 0.15);
+          border: 1px solid var(--border-color);
+          box-shadow: var(--shadow-sm);
           transition: transform var(--transition-fast) var(--ease-spring);
         }
         .login-logo-img:hover {
-          transform: scale(1.1) rotate(3deg);
+          transform: scale(1.08) rotate(3deg);
         }
+        
         .login-title {
           font-family: var(--font-display);
-          font-size: 1.75rem; font-weight: 800;
+          font-size: 1.75rem;
+          font-weight: 800;
           background: var(--gradient-primary);
-          -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-          background-clip: text; margin: 0 0 6px; letter-spacing: -0.04em;
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          background-clip: text;
+          margin: 0 0 4px;
+          letter-spacing: -0.03em;
         }
         .login-subtitle {
-          font-size: 0.72rem; color: var(--text-secondary);
-          letter-spacing: 0.08em; text-transform: uppercase;
-          font-weight: 700; margin: 0 0 24px;
+          font-size: 0.68rem;
+          color: var(--text-secondary);
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+          font-weight: 700;
+          margin: 0;
           opacity: 0.8;
         }
+        
         .login-tabs {
-          display: flex; gap: 8px; margin-bottom: 24px;
-          background: rgba(255, 255, 255, 0.015);
+          display: flex;
+          gap: 6px;
+          margin-bottom: 24px;
+          background: var(--bg-secondary);
           border: 1px solid var(--border-color);
           border-radius: var(--radius-md);
           padding: 4px;
         }
         .login-tab-btn {
-          flex: 1; padding: 8px; font-size: 0.72rem; font-weight: 700;
-          border-radius: var(--radius-sm); color: var(--text-secondary);
-          transition: all var(--transition-fast);
+          flex: 1;
+          padding: 8px;
+          font-size: 0.75rem;
+          font-weight: 700;
+          border-radius: var(--radius-sm);
+          color: var(--text-secondary);
+          transition: all var(--transition-fast) ease;
           cursor: pointer;
           border: none;
           background: none;
@@ -185,33 +459,109 @@ export class LoginScreen {
           color: #FFFFFF;
           box-shadow: var(--shadow-sm);
         }
+        
         .login-input-group {
-          margin-bottom: 16px;
+          margin-bottom: 18px;
           text-align: left;
         }
         .login-label {
-          font-size: 0.68rem; color: var(--text-muted);
-          font-weight: 700; letter-spacing: 0.08em;
-          text-transform: uppercase; display: block; margin-bottom: 8px;
+          font-size: 0.7rem;
+          color: var(--text-muted);
+          font-weight: 700;
+          letter-spacing: 0.06em;
+          text-transform: uppercase;
+          display: block;
+          margin-bottom: 6px;
         }
+        .input-with-icon {
+          position: relative;
+          display: flex;
+          align-items: center;
+        }
+        .input-icon {
+          position: absolute;
+          left: 14px;
+          color: var(--text-muted);
+          font-size: 18px;
+          pointer-events: none;
+        }
+        
         .login-input {
-          width: 100%; height: 46px; background: var(--bg-input);
-          border: 1px solid var(--border-color); border-radius: var(--radius-sm);
-          padding: 0 16px; color: var(--text-primary); font-size: var(--text-base);
-          transition: all var(--transition-fast) var(--ease-out-expo);
+          width: 100%;
+          height: 44px;
+          background: var(--bg-input);
+          border: 1.5px solid var(--border-color);
+          border-radius: var(--radius-sm);
+          padding: 0 16px 0 42px;
+          color: var(--text-primary);
+          font-size: 0.9375rem;
+          transition: all var(--transition-fast) ease;
+          box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.01);
         }
         .login-input:focus {
           border-color: var(--color-primary);
-          box-shadow: var(--shadow-primary);
+          box-shadow: 0 0 0 3px var(--color-primary-glow);
           outline: none;
         }
-        .login-pin-section { margin-bottom: 28px; }
+        
+        .login-submit-btn {
+          width: 100%;
+          height: 44px;
+          border-radius: var(--radius-sm);
+          font-weight: 700;
+          margin-top: 8px;
+          background: var(--gradient-primary);
+          border: none;
+          color: #FFFFFF;
+          font-size: 0.875rem;
+          letter-spacing: 0.02em;
+          transition: all var(--transition-fast) ease;
+          box-shadow: var(--shadow-sm);
+          cursor: pointer;
+        }
+        .login-submit-btn:hover:not(:disabled) {
+          opacity: 0.95;
+          transform: translateY(-1px);
+          box-shadow: var(--shadow-md);
+        }
+        .login-submit-btn:active:not(:disabled) {
+          transform: scale(0.98) translateY(0);
+        }
+        .login-submit-btn:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
+        }
+        
+        .login-toggle-link {
+          font-size: 0.72rem;
+          color: var(--text-secondary);
+          margin-top: 18px;
+          cursor: pointer;
+          text-decoration: underline;
+          transition: color var(--transition-fast);
+          display: inline-block;
+          text-align: center;
+          width: 100%;
+        }
+        .login-toggle-link:hover {
+          color: var(--color-primary);
+        }
+        
+        .login-pin-section {
+          margin-bottom: 24px;
+          text-align: center;
+        }
         .login-pin-dots {
-          display: flex; gap: 16px; justify-content: center; margin-bottom: 12px;
+          display: flex;
+          gap: 16px;
+          justify-content: center;
           margin-top: 12px;
+          margin-bottom: 12px;
         }
         .pin-dot {
-          width: 12px; height: 12px; border-radius: 50%;
+          width: 14px;
+          height: 14px;
+          border-radius: 50%;
           border: 2px solid var(--border-active);
           background: transparent;
           transition: all var(--transition-fast) var(--ease-out-expo);
@@ -220,7 +570,7 @@ export class LoginScreen {
           background: var(--color-primary);
           border-color: var(--color-primary);
           box-shadow: var(--shadow-primary);
-          transform: scale(1.15);
+          transform: scale(1.2);
         }
         .pin-dot.error {
           border-color: var(--color-danger);
@@ -233,22 +583,38 @@ export class LoginScreen {
           25% { transform: translateX(-6px); }
           75% { transform: translateX(6px); }
         }
+        
         .login-error {
-          font-size: 0.72rem; color: var(--color-danger); font-weight: 600;
-          min-height: 18px; margin-bottom: 12px;
+          font-size: 0.72rem;
+          color: var(--color-danger);
+          font-weight: 600;
+          min-height: 18px;
+          margin-bottom: 12px;
           letter-spacing: -0.01em;
+          text-align: center;
         }
+        
         .login-numpad {
-          display: grid; grid-template-columns: repeat(3, 1fr);
-          gap: 12px; max-width: 250px; margin: 0 auto 24px;
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 12px;
+          max-width: 250px;
+          margin: 0 auto 20px;
         }
         .numpad-btn {
-          height: 56px; border-radius: var(--radius-md); border: 1px solid var(--border-color);
-          background: var(--bg-card); color: var(--text-primary);
-          font-size: 1.3rem; font-weight: 700; cursor: pointer;
+          height: 56px;
+          border-radius: var(--radius-md);
+          border: 1px solid var(--border-color);
+          background: var(--bg-secondary);
+          color: var(--text-primary);
+          font-size: 1.3rem;
+          font-weight: 700;
+          cursor: pointer;
           font-family: var(--font-sans);
-          transition: all var(--transition-fast) var(--ease-out-expo), transform var(--transition-fast) var(--ease-spring);
-          display: flex; align-items: center; justify-content: center;
+          transition: all var(--transition-fast) ease, transform var(--transition-fast) var(--ease-spring);
+          display: flex;
+          align-items: center;
+          justify-content: center;
           box-shadow: var(--shadow-sm);
         }
         .numpad-btn:hover:not(:disabled) {
@@ -260,27 +626,66 @@ export class LoginScreen {
         .numpad-btn:active:not(:disabled) {
           transform: scale(0.93) translateY(0);
           background: rgba(var(--color-primary-rgb), 0.08);
-          border-color: var(--border-active);
+          border-color: var(--color-primary);
         }
-        .numpad-btn.empty { visibility: hidden; }
-        .numpad-btn.backspace { color: var(--text-secondary); }
+        .numpad-btn.empty {
+          visibility: hidden;
+        }
+        .numpad-btn.backspace {
+          color: var(--text-secondary);
+        }
+        
         .login-footer {
-          display: flex; align-items: center; justify-content: center;
-          gap: 6px; padding-top: 12px; border-top: 1px solid var(--border-color);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 6px;
+          padding-top: 16px;
+          border-top: 1px solid var(--border-color);
+          margin-top: 24px;
         }
-        .login-toggle-link {
-          font-size: 0.72rem; color: var(--text-secondary); margin-top: 18px;
-          cursor: pointer; text-decoration: underline; transition: color var(--transition-fast);
-          display: inline-block;
-        }
-        .login-toggle-link:hover {
+        .footer-dot {
           color: var(--color-primary);
+          font-size: 8px;
+          opacity: 0.5;
         }
-
-        /* ── Smartphone & Ultra-Narrow Compatibility ── */
+        .footer-powered {
+          font-size: 0.5rem;
+          color: var(--text-secondary);
+          opacity: 0.5;
+          letter-spacing: 0.06em;
+          text-transform: uppercase;
+          font-weight: 700;
+        }
+        .footer-brand {
+          font-size: 0.5rem;
+          color: var(--color-primary);
+          letter-spacing: 0.06em;
+          font-weight: 700;
+        }
+        
+        /* ── Responsive Layout Logic ── */
+        @media (min-width: 768px) {
+          .login-header-mobile {
+            display: none;
+          }
+          .login-card {
+            box-shadow: none;
+            border: none;
+            background: transparent;
+            padding: 0;
+            max-width: 360px;
+            backdrop-filter: none;
+            -webkit-backdrop-filter: none;
+          }
+          .login-form-panel {
+            background: var(--bg-surface);
+          }
+        }
+        
         @media (max-width: 360px) {
           .login-card {
-            padding: 32px 20px 24px;
+            padding: 24px 20px 20px;
             border-radius: var(--radius-lg);
           }
           .login-title {
@@ -289,7 +694,6 @@ export class LoginScreen {
           .login-logo-img {
             width: 56px;
             height: 56px;
-            margin-bottom: 8px;
           }
           .login-tabs {
             margin-bottom: 16px;
@@ -308,7 +712,7 @@ export class LoginScreen {
             margin-bottom: 16px;
           }
           .login-input {
-            height: 42px;
+            height: 40px;
             font-size: var(--text-sm);
           }
           .login-error {

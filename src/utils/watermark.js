@@ -27,6 +27,44 @@ export const APP_BUILD_VERSION =
   || NEXTGENOS.version;
 
 /**
+ * Helper function to clear auth state, cookies, and other memories from local storage.
+ */
+export function clearStaleState() {
+  console.log('[VersionGate] Clearing stale cache, cookies, and auth state.');
+
+  // 1. Wipe auth tokens that may reference old/stale staff/session data
+  localStorage.removeItem('auth_staff_pin');
+  localStorage.removeItem('auth_staff_email');
+  localStorage.removeItem('auth_failed_attempts');
+  localStorage.removeItem('auth_lockout_until');
+  localStorage.removeItem('gdrive_access_token');
+  localStorage.removeItem('gdrive_token_expires');
+
+  // Clear all Supabase client session local storage keys
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key && (key.startsWith('sb-') || key.includes('auth') || key.includes('session'))) {
+      localStorage.removeItem(key);
+      i--; // Decrement i since length has decreased
+    }
+  }
+
+  // 2. Clear all cookies
+  try {
+    const cookies = document.cookie.split(";");
+    for (let i = 0; i < cookies.length; i++) {
+      const cookie = cookies[i];
+      const eqPos = cookie.indexOf("=");
+      const name = eqPos > -1 ? cookie.substr(0, eqPos).trim() : cookie.trim();
+      document.cookie = name + "=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/";
+      document.cookie = name + "=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/;domain=" + window.location.hostname;
+    }
+  } catch (cookieErr) {
+    console.error('[VersionGate] Error clearing cookies:', cookieErr);
+  }
+}
+
+/**
  * Version gate — runs once on every app boot.
  * Compares the stored build version in localStorage with the current build.
  * On mismatch (i.e. the app was updated / redeployed):
@@ -40,39 +78,10 @@ export function performVersionGate() {
 
   if (stored && stored !== APP_BUILD_VERSION) {
     console.log(
-      `[VersionGate] Build changed: "${stored}" → "${APP_BUILD_VERSION}". Clearing stale cache, cookies, and auth state.`
+      `[VersionGate] Build changed: "${stored}" → "${APP_BUILD_VERSION}". Triggering local version gate.`
     );
 
-    // 1. Wipe auth tokens that may reference old/stale staff/session data
-    localStorage.removeItem('auth_staff_pin');
-    localStorage.removeItem('auth_staff_email');
-    localStorage.removeItem('auth_failed_attempts');
-    localStorage.removeItem('auth_lockout_until');
-    localStorage.removeItem('gdrive_access_token');
-    localStorage.removeItem('gdrive_token_expires');
-
-    // Clear all Supabase client session local storage keys
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (key && (key.startsWith('sb-') || key.includes('auth') || key.includes('session'))) {
-        localStorage.removeItem(key);
-        i--; // Decrement i since length has decreased
-      }
-    }
-
-    // 2. Clear all cookies
-    try {
-      const cookies = document.cookie.split(";");
-      for (let i = 0; i < cookies.length; i++) {
-        const cookie = cookies[i];
-        const eqPos = cookie.indexOf("=");
-        const name = eqPos > -1 ? cookie.substr(0, eqPos).trim() : cookie.trim();
-        document.cookie = name + "=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/";
-        document.cookie = name + "=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/;domain=" + window.location.hostname;
-      }
-    } catch (cookieErr) {
-      console.error('[VersionGate] Error clearing cookies:', cookieErr);
-    }
+    clearStaleState();
 
     // 3. Unregister all Service Workers to clear PWA cache and force fetch new files
     if ('serviceWorker' in navigator) {
@@ -97,6 +106,64 @@ export function performVersionGate() {
     // Stamp the current version on first boot without reload
     localStorage.setItem(STORAGE_KEY, APP_BUILD_VERSION);
   }
+}
+
+/**
+ * Asynchronously checks the server's version.json file to detect updates.
+ * If the remote build version is different from the running code version (APP_BUILD_VERSION):
+ *   1. Displays a status message on the loading screen.
+ *   2. Clears all cookies, local storage session tokens, and memories.
+ *   3. Unregisters all service workers.
+ *   4. Reloads the page immediately.
+ * @returns {Promise<boolean>} True if an update was triggered and page is reloading.
+ */
+export async function checkForUpdateAndGate() {
+  const STORAGE_KEY = 'app_build_version';
+  try {
+    const res = await fetch(`/version.json?t=${Date.now()}`, {
+      cache: 'no-store',
+      headers: { 'Cache-Control': 'no-cache' }
+    });
+
+    if (!res.ok) return false;
+
+    const data = await res.json();
+    const remoteVersion = data?.version;
+
+    if (remoteVersion && remoteVersion !== APP_BUILD_VERSION) {
+      console.log(
+        `[VersionGate] Remote version mismatch: local="${APP_BUILD_VERSION}", remote="${remoteVersion}". Forcing reload...`
+      );
+
+      // Update loading screen text if it exists
+      const loadingScreenText = document.querySelector('.loading-tagline');
+      if (loadingScreenText) {
+        loadingScreenText.textContent = 'Updating platform to latest version...';
+        loadingScreenText.style.color = '#FF6B35';
+      }
+
+      clearStaleState();
+
+      // Stamp the new version so we don't loop
+      localStorage.setItem(STORAGE_KEY, remoteVersion);
+
+      // Unregister service workers and reload
+      if ('serviceWorker' in navigator) {
+        try {
+          const registrations = await navigator.serviceWorker.getRegistrations();
+          await Promise.all(registrations.map(r => r.unregister()));
+        } catch (swErr) {
+          console.error('[VersionGate] Service worker unregister failed:', swErr);
+        }
+      }
+
+      window.location.reload();
+      return true;
+    }
+  } catch (err) {
+    console.debug('[VersionGate] Remote version check skipped or failed:', err.message);
+  }
+  return false;
 }
 
 /**

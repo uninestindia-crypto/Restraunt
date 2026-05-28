@@ -45,34 +45,49 @@ body {
 :root[data-theme="light"] .settings-card,
 :root[data-theme="light"] .premium-card,
 :root[data-theme="light"] .modal {
-  background: rgba(255, 255, 255, 0.85);
-  border-color: rgba(0, 0, 0, 0.08);
+  background: #FFFFFF;
+  border-color: rgba(15, 23, 42, 0.08);
+  box-shadow: var(--shadow-md);
 }
 
 :root[data-theme="light"] .pin-dot {
-  border-color: rgba(0, 0, 0, 0.2) !important;
+  border-color: rgba(15, 23, 42, 0.25) !important;
 }
 
 :root[data-theme="light"] .sidebar {
   background: #FFFFFF;
-  border-color: rgba(0, 0, 0, 0.06);
+  border-color: rgba(15, 23, 42, 0.06);
+  box-shadow: 2px 0 8px rgba(15, 23, 42, 0.02);
 }
 
 :root[data-theme="light"] .app-header {
   background: rgba(255, 255, 255, 0.9);
-  border-color: rgba(0, 0, 0, 0.06);
+  border-color: rgba(15, 23, 42, 0.06);
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.02);
 }
 
 :root[data-theme="light"] .btn-secondary {
-  background: rgba(0, 0, 0, 0.03);
-  border-color: rgba(0, 0, 0, 0.1);
+  background: #F1F5F9;
+  border-color: rgba(15, 23, 42, 0.08);
   color: var(--text-primary);
 }
 
+:root[data-theme="light"] .btn-secondary:hover {
+  background: #E2E8F0;
+  border-color: rgba(15, 23, 42, 0.16);
+}
+
 :root[data-theme="light"] .input {
-  background: rgba(0, 0, 0, 0.02);
-  border-color: rgba(0, 0, 0, 0.12);
+  background: #FFFFFF;
+  border: 1.5px solid rgba(15, 23, 42, 0.12);
   color: var(--text-primary);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.02);
+  transition: all var(--transition-fast) ease;
+}
+
+:root[data-theme="light"] .input:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(255, 94, 54, 0.15), inset 0 1px 2px rgba(0, 0, 0, 0.01);
 }
 
 :root[data-theme="light"] .tab.active {
@@ -86,30 +101,45 @@ body {
   :root[data-theme="system"] .settings-card,
   :root[data-theme="system"] .premium-card,
   :root[data-theme="system"] .modal {
-    background: rgba(255, 255, 255, 0.85);
-    border-color: rgba(0, 0, 0, 0.08);
+    background: #FFFFFF;
+    border-color: rgba(15, 23, 42, 0.08);
+    box-shadow: var(--shadow-md);
   }
 
   :root[data-theme="system"] .sidebar {
     background: #FFFFFF;
-    border-color: rgba(0, 0, 0, 0.06);
+    border-color: rgba(15, 23, 42, 0.06);
+    box-shadow: 2px 0 8px rgba(15, 23, 42, 0.02);
   }
 
   :root[data-theme="system"] .app-header {
     background: rgba(255, 255, 255, 0.9);
-    border-color: rgba(0, 0, 0, 0.06);
+    border-color: rgba(15, 23, 42, 0.06);
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.02);
   }
 
   :root[data-theme="system"] .btn-secondary {
-    background: rgba(0, 0, 0, 0.03);
-    border-color: rgba(0, 0, 0, 0.1);
+    background: #F1F5F9;
+    border-color: rgba(15, 23, 42, 0.08);
     color: var(--text-primary);
   }
 
+  :root[data-theme="system"] .btn-secondary:hover {
+    background: #E2E8F0;
+    border-color: rgba(15, 23, 42, 0.16);
+  }
+
   :root[data-theme="system"] .input {
-    background: rgba(0, 0, 0, 0.02);
-    border-color: rgba(0, 0, 0, 0.12);
+    background: #FFFFFF;
+    border: 1.5px solid rgba(15, 23, 42, 0.12);
     color: var(--text-primary);
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.02);
+    transition: all var(--transition-fast) ease;
+  }
+
+  :root[data-theme="system"] .input:focus {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(255, 94, 54, 0.15), inset 0 1px 2px rgba(0, 0, 0, 0.01);
   }
 }
 

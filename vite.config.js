@@ -1,6 +1,6 @@
 import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
-import { readFileSync } from 'fs';
+import { readFileSync, writeFileSync } from 'fs';
 
 const pkg = JSON.parse(readFileSync('./package.json', 'utf-8'));
 const buildHash = `${pkg.version}-${Date.now().toString(36)}`;
@@ -12,7 +12,7 @@ export default defineConfig({
   },
   plugins: [
     VitePWA({
-      registerType: 'prompt',
+      registerType: 'autoUpdate',
       includeAssets: ['favicon.svg', 'icons/*.png'],
       manifest: {
         name: 'The Taste - Restaurant POS',
@@ -79,7 +79,18 @@ export default defineConfig({
           }
         ]
       }
-    })
+    }),
+    {
+      name: 'generate-version-json',
+      writeBundle() {
+        try {
+          writeFileSync('dist/version.json', JSON.stringify({ version: buildHash }));
+          console.log(`[VersionPlugin] Generated version.json with build hash: ${buildHash}`);
+        } catch (err) {
+          console.error('[VersionPlugin] Failed to write version.json:', err);
+        }
+      }
+    }
   ],
   server: {
     port: 3000

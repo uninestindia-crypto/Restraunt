@@ -9,24 +9,52 @@ import { hashPin } from '../utils/crypto.js';
 export async function seedDatabase(options = {}) {
   const { publicOnly = false } = options;
 
-  // ── Cloud-First Hydration ─────────────────────────────────────
+  // ── Cloud-First Hydration (with retry) ────────────────────────
   // If Supabase is configured and has data, hydrate from cloud instead of seeding.
   // This is the KEY fix for multi-device consistency.
-  try {
-    const { cloudHasData, fullPull } = await import('../services/cloudDb.js');
-    const hasCloudData = await cloudHasData();
-    if (hasCloudData) {
-      console.log('[Seed] Cloud data detected — hydrating from Supabase instead of local seeds.');
-      await fullPull({ publicOnly });
-      // Still run migrations below, but skip seed data
-      await runMigrations();
-      if (!publicOnly) {
-        await ensureDefaultTables();
+  // We retry up to 3 times because navigator.onLine can be briefly false on mobile
+  // during startup, causing the initial check to fail silently.
+  const MAX_HYDRATION_RETRIES = 3;
+  const HYDRATION_RETRY_DELAY_MS = 1500;
+  let cloudHydrated = false;
+
+  for (let attempt = 1; attempt <= MAX_HYDRATION_RETRIES; attempt++) {
+    try {
+      // Wait for network readiness on retry attempts
+      if (attempt > 1) {
+        console.log(`[Seed] Cloud hydration retry ${attempt}/${MAX_HYDRATION_RETRIES} in ${HYDRATION_RETRY_DELAY_MS}ms...`);
+        await new Promise(r => setTimeout(r, HYDRATION_RETRY_DELAY_MS));
+        if (!navigator.onLine) {
+          console.warn(`[Seed] Still offline on attempt ${attempt}. Skipping.`);
+          continue;
+        }
       }
-      return;
+
+      const { cloudHasData, fullPull } = await import('../services/cloudDb.js');
+      const hasCloudData = await cloudHasData();
+      if (hasCloudData) {
+        console.log(`[Seed] Cloud data detected on attempt ${attempt} — hydrating from Supabase instead of local seeds.`);
+        await fullPull({ publicOnly });
+        cloudHydrated = true;
+        // Still run migrations below, but skip seed data
+        await runMigrations({ skipWeakPinCleanup: true });
+        if (!publicOnly) {
+          await ensureDefaultTables();
+        }
+        return;
+      } else if (attempt < MAX_HYDRATION_RETRIES && navigator.onLine) {
+        // Cloud is reachable but empty — might be a timing issue, retry
+        console.log(`[Seed] Cloud returned no data on attempt ${attempt}. Will retry...`);
+        continue;
+      }
+      // Cloud is reachable but genuinely empty — proceed to local seed
+      break;
+    } catch (err) {
+      console.warn(`[Seed] Cloud hydration attempt ${attempt} failed:`, err.message);
+      if (attempt >= MAX_HYDRATION_RETRIES) {
+        console.warn('[Seed] All cloud hydration attempts exhausted. Proceeding with local data.');
+      }
     }
-  } catch (err) {
-    console.warn('[Seed] Cloud hydration check skipped (offline or unconfigured):', err.message);
   }
 
   // Run data migrations (PIN hashing, UPI ID update) on the normal seed path too
@@ -339,7 +367,7 @@ export async function seedDatabase(options = {}) {
  * Run data migrations (PIN hashing, UPI ID update).
  * Extracted so it can be called from both cloud-first and normal seed paths.
  */
-async function runMigrations() {
+async function runMigrations(options = {}) {
   try {
     const staffCount = await db.staff.count();
     if (staffCount > 0) {
@@ -362,42 +390,35 @@ async function runMigrations() {
       await db.settings.delete('adminPin');
     }
 
-    // ── Weak PIN Cleanup ───────────────────────────────────────
-    // Deactivate any staff still using the insecure default PIN '1234'.
-    // This ensures old databases (e.g. on a laptop) can't keep working
-    // with a PIN that FirstRunSetup explicitly blocks on fresh installs.
-    try {
-      const weakHash = await hashPin('1234');
-      const weakStaff = await db.staff.where('pinHash').equals(weakHash).toArray();
-      for (const s of weakStaff) {
-        if (s.isActive === true || s.isActive === 1) {
-          console.warn(`[Seed] Deactivating staff "${s.name}" (id=${s.id}) — insecure default PIN '1234'.`);
-          await db.staff.update(s.id, { isActive: 0, pinHash: '', isSynced: 0 });
-        }
-      }
-    } catch (weakErr) {
-      console.error('[Seed] Weak PIN cleanup failed:', weakErr);
-    }
+    // ── Weak PIN Audit (non-destructive) ─────────────────────────
+    // Log a warning for staff using the insecure default PIN '1234',
+    // but do NOT deactivate them here. Deactivation caused a boot-loop
+    // where every new device lost its only owner and showed FirstRunSetup.
+    // The block is enforced only in FirstRunSetup (which rejects '1234').
+    if (!options?.skipWeakPinCleanup) {
+      try {
+        const weakHash = await hashPin('1234');
+        const weakStaff = await db.staff.where('pinHash').equals(weakHash).toArray();
+        const activeOwnerCount = await db.staff
+          .where('role')
+          .equals('owner')
+          .and(s => s.isActive === 1 || s.isActive === true)
+          .count();
 
-    // ── Owner Recovery Migration ────────────────────────────────
-    // If the database has no active owners, do not recreate the removed
-    // default PIN. FirstRunSetup or cloud admin recovery must be used.
-    try {
-      const activeOwnerCount = await db.staff
-        .where('role')
-        .equals('owner')
-        .and(s => s.isActive === 1 || s.isActive === true)
-        .count();
-
-      if (activeOwnerCount === 0) {
-        const deactivatedOwner = await db.staff.where('role').equals('owner').first();
-        if (deactivatedOwner) {
-          console.warn(`[Seed] No active owner remains. Owner "${deactivatedOwner.name}" stays inactive until secure recovery runs.`);
-          await db.settings.delete('adminPinHash');
+        for (const s of weakStaff) {
+          if (s.isActive === true || s.isActive === 1) {
+            // Only deactivate if there are OTHER active owners to fall back on
+            if (s.role === 'owner' && activeOwnerCount <= 1) {
+              console.warn(`[Seed] Owner "${s.name}" (id=${s.id}) uses weak PIN '1234' but is the ONLY active owner. Skipping deactivation to prevent lockout.`);
+            } else {
+              console.warn(`[Seed] Deactivating staff "${s.name}" (id=${s.id}) — insecure default PIN '1234'.`);
+              await db.staff.update(s.id, { isActive: 0, pinHash: '', isSynced: 0 });
+            }
+          }
         }
+      } catch (weakErr) {
+        console.error('[Seed] Weak PIN audit failed:', weakErr);
       }
-    } catch (recoveryErr) {
-      console.error('[Seed] Owner recovery migration failed:', recoveryErr);
     }
 
     // Clean up the legacy adminPin='1234' setting if it's still hanging around

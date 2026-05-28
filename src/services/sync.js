@@ -711,26 +711,56 @@ class SyncService {
       if (unsyncedStaff.length > 0) {
         console.log(`[Sync cache] Found ${unsyncedStaff.length} unsynced staff members in local cache.`);
 
-        try {
-          await retryWithBackoff(async () => {
-            for (const staff of unsyncedStaff) {
-              const result = await syncStaffViaAdminFunction(staff);
-              if (!result.success) throw new Error(result.message || 'Staff admin function failed.');
-            }
-          }, { maxRetries: 3 });
+        for (const staff of unsyncedStaff) {
+          let synced = false;
 
+          // Strategy 1: Try staff-admin edge function (works for anon PIN sessions)
           try {
-            await db.transaction('rw', db.staff, async () => {
-              for (const s of unsyncedStaff) {
-                await db.staff.update(s.id, { isSynced: 1 });
-              }
-            });
-            console.log(`[Sync cache] Successfully synced and updated cache for ${unsyncedStaff.length} staff members.`);
-          } catch (dbErr) {
-            console.error('[Sync db] Error updating staff sync status in local cache:', dbErr);
+            const result = await retryWithBackoff(async () => {
+              const res = await syncStaffViaAdminFunction(staff);
+              if (!res.success) throw new Error(res.message || 'Staff admin function failed.');
+              return res;
+            }, { maxRetries: 2 });
+            synced = result?.success === true;
+            if (synced) {
+              console.log(`[Sync cache] Staff "${staff.name}" synced via edge function.`);
+            }
+          } catch (edgeFnErr) {
+            console.warn(`[Sync net] Edge function failed for staff "${staff.name}":`, edgeFnErr.message);
           }
-        } catch (netErr) {
-          console.error('[Sync net] Failed to push unsynced staff to cloud after retries:', netErr);
+
+          // Strategy 2: Fallback to direct upsert (works for authenticated sessions)
+          if (!synced && supabase) {
+            try {
+              const remoteStaff = mapStaffToRemote(staff);
+              const { error } = await supabase.from('staff').upsert(remoteStaff);
+              if (error) {
+                // RLS denial is expected for anon/PIN sessions — don't retry
+                const isRlsDenied = error.message?.includes('policy') ||
+                  error.message?.includes('permission') ||
+                  error.code === '42501';
+                if (isRlsDenied) {
+                  console.warn(`[Sync net] Direct staff upsert denied by RLS for "${staff.name}". Staff sync requires edge function or authenticated session.`);
+                } else {
+                  console.error(`[Sync net] Direct staff upsert failed for "${staff.name}":`, error.message);
+                }
+              } else {
+                synced = true;
+                console.log(`[Sync cache] Staff "${staff.name}" synced via direct upsert.`);
+              }
+            } catch (directErr) {
+              console.error(`[Sync net] Direct staff upsert error for "${staff.name}":`, directErr.message);
+            }
+          }
+
+          // Update local sync status
+          try {
+            if (synced) {
+              await db.staff.update(staff.id, { isSynced: 1 });
+            }
+          } catch (dbErr) {
+            console.error(`[Sync db] Error updating staff sync status for "${staff.name}":`, dbErr);
+          }
         }
       }
 

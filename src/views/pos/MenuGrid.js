@@ -115,12 +115,16 @@ export class MenuGrid {
       ? '<span class="badge-veg" title="Vegetarian"></span>'
       : '<span class="badge-nonveg" title="Non-Vegetarian"></span>';
 
+    const imageContent = item.imageUrl
+      ? `<img src="${item.imageUrl}" alt="${item.name}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"><span class="fallback-emoji" style="display:none; width:100%; height:100%; align-items:center; justify-content:center;">${item.icon || this.getCategoryIcon(item.categoryId)}</span>`
+      : `${item.icon || this.getCategoryIcon(item.categoryId)}`;
+
     return `
       <div class="menu-item ${!item.isAvailable ? 'sold-out' : ''}" 
            data-item-id="${item.id}" 
            role="button" 
            tabindex="0">
-        <div class="menu-item-image">${item.icon || this.getCategoryIcon(item.categoryId)}</div>
+        <div class="menu-item-image">${imageContent}</div>
         <div class="menu-item-info">
           <div class="menu-item-name">${item.name}</div>
           <div class="menu-item-bottom">

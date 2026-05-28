@@ -72,7 +72,8 @@ export class ReceiptBuilder {
    * @param {string} str
    */
   text(str) {
-    const bytes = encoder.encode(str);
+    const sanitized = String(str).replace(/₹/g, 'Rs.');
+    const bytes = encoder.encode(sanitized);
     this.buffer.push(...bytes, LF);
     return this;
   }
@@ -123,8 +124,8 @@ export class ReceiptBuilder {
    * @param {string} rightText
    */
   leftRight(leftText, rightText) {
-    const leftStr = String(leftText);
-    const rightStr = String(rightText);
+    const leftStr = String(leftText).replace(/₹/g, 'Rs.');
+    const rightStr = String(rightText).replace(/₹/g, 'Rs.');
     const spacesNeeded = this.paperWidth - leftStr.length - rightStr.length;
 
     let lineStr;

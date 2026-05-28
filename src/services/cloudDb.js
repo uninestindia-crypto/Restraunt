@@ -50,7 +50,10 @@ window.addEventListener('online', () => { _isOnline = true; });
 window.addEventListener('offline', () => { _isOnline = false; });
 
 async function getClient() {
-  if (!_isOnline) return null;
+  // Use the live navigator.onLine instead of the cached _isOnline, because
+  // during app startup on mobile the 'online' event may not have fired yet
+  // even though the network is actually available.
+  if (!navigator.onLine && !_isOnline) return null;
   const client = await getSupabaseClient({ persistSession: true });
   _supabaseReady = !!client;
   return client;

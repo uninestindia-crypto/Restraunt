@@ -101,9 +101,9 @@ class PrinterService {
       throw new Error('Printer not connected');
     }
 
-    // BLE has a max write size (typically 512 bytes)
-    // Send data in chunks to avoid buffer overflow
-    const CHUNK_SIZE = 512;
+    // BLE has a max write size (typically 20-40 bytes for standard MTU)
+    // Send data in 20-byte chunks to prevent buffer overflow on typical BLE printer modules
+    const CHUNK_SIZE = 20;
     for (let i = 0; i < data.length; i += CHUNK_SIZE) {
       const chunk = data.slice(i, i + CHUNK_SIZE);
       if (this.characteristic.properties.writeWithoutResponse) {
@@ -111,9 +111,9 @@ class PrinterService {
       } else {
         await this.characteristic.writeValue(chunk);
       }
-      // Small delay between chunks for printer buffer
+      // Small delay between chunks for printer hardware buffer digestion
       if (i + CHUNK_SIZE < data.length) {
-        await new Promise(resolve => setTimeout(resolve, 50));
+        await new Promise(resolve => setTimeout(resolve, 15));
       }
     }
   }

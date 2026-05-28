@@ -26,7 +26,7 @@ import { router } from './router.js';
 import { showToast } from './utils/helpers.js';
 
 // NextGenOS
-import { printConsoleSignature, injectBuildGlobal, performVersionGate } from './utils/watermark.js';
+import { printConsoleSignature, injectBuildGlobal, performVersionGate, checkForUpdateAndGate } from './utils/watermark.js';
 class App {
   constructor() {
     this.deferredInstallPrompt = null;
@@ -95,6 +95,12 @@ class App {
 
   async init() {
     try {
+      // ── Remote Version Gate Check ─────────────────────
+      // Check for newer build version deployed on the server.
+      // If version differs, this triggers clean reload and stops boot.
+      const updating = await checkForUpdateAndGate();
+      if (updating) return;
+
       // ── Version Gate ──────────────────────────────────
       // Clear stale auth tokens whenever the build version changes.
       // This prevents ghost PIN sessions from old database states
@@ -194,12 +200,67 @@ class App {
       }
 
       // Verify if we have an active owner in the local database.
-      // If we don't, we show first-run setup.
-      const activeOwner = await db.staff
+      // If we don't, attempt a last-resort cloud pull before showing FirstRunSetup.
+      let activeOwner = await db.staff
         .where('role')
         .equals('owner')
         .and(staff => staff.isActive === 1 || staff.isActive === true)
         .first();
+
+      if (!activeOwner) {
+        // ── Last-Resort Cloud Staff Pull ──────────────────────────
+        // The seed-phase hydration might have failed (timing, offline, etc).
+        // Before showing FirstRunSetup (which creates a NEW owner), try one
+        // more direct cloud pull to fetch the real owner from Supabase.
+        // This prevents the "every device gets its own owner" bug.
+        try {
+          if (navigator.onLine) {
+            console.log('[App] No local owner found. Attempting direct cloud staff pull...');
+            const { getSupabaseClient } = await import('./services/supabaseClient.js');
+            const client = await getSupabaseClient({ persistSession: true });
+            if (client) {
+              const storeId = localStorage.getItem('store_id') || 'the-taste';
+              const { data: cloudStaff, error } = await client
+                .from('staff')
+                .select('*')
+                .eq('store_id', storeId)
+                .eq('is_active', true);
+
+              if (!error && cloudStaff && cloudStaff.length > 0) {
+                console.log(`[App] Found ${cloudStaff.length} active staff in cloud. Hydrating...`);
+                for (const row of cloudStaff) {
+                  const localStaff = {
+                    id: row.id,
+                    cloudUserId: row.auth_user_id || null,
+                    name: row.name,
+                    role: row.role,
+                    pinHash: row.pin_hash,
+                    allowExpress: row.allow_express ? 1 : 0,
+                    isActive: row.is_active ? 1 : 0,
+                    createdAt: row.created_at,
+                    updatedAt: row.updated_at,
+                    isSynced: 1
+                  };
+                  await db.staff.put(localStaff);
+                }
+
+                // Re-check for owner after hydration
+                activeOwner = await db.staff
+                  .where('role')
+                  .equals('owner')
+                  .and(staff => staff.isActive === 1 || staff.isActive === true)
+                  .first();
+
+                if (activeOwner) {
+                  console.log(`[App] Cloud owner "${activeOwner.name}" hydrated successfully. Showing login.`);
+                }
+              }
+            }
+          }
+        } catch (cloudErr) {
+          console.warn('[App] Last-resort cloud staff pull failed:', cloudErr.message);
+        }
+      }
 
       if (!activeOwner) {
         this.showFirstRunSetup();
@@ -662,7 +723,7 @@ class App {
       if (installBtn) installBtn.style.display = 'none';
     });
 
-    // PWA Service Worker Update Prompt Registry
+    // Setup automatic Service Worker updates
     const schedulePwaRegistration = (callback) => {
       if ('requestIdleCallback' in window) {
         window.requestIdleCallback(callback, { timeout: 8000 });
@@ -673,15 +734,33 @@ class App {
 
     schedulePwaRegistration(() => {
       try {
+        // Auto reload when a new service worker takes over control
+        let refreshing = false;
+        if ('serviceWorker' in navigator) {
+          const hasController = !!navigator.serviceWorker.controller;
+          navigator.serviceWorker.addEventListener('controllerchange', () => {
+            if (!hasController) return; // Ignore first SW registration
+            if (refreshing) return;
+            refreshing = true;
+            console.log('[PWA] Service worker updated. Reloading page...');
+            window.location.reload();
+          });
+        }
+
         import('virtual:pwa-register')
         .then(({ registerSW }) => {
-          const updateSW = registerSW({
-            onNeedRefresh: () => {
-              console.log('[PWA] A new service worker update is available. Prompting reload.');
-              this.showUpdateBanner(() => updateSW(true));
-            },
+          registerSW({
+            immediate: true,
             onOfflineReady: () => {
               console.log('[PWA] Platform is offline-ready and assets are fully cached.');
+            },
+            onRegisteredSW(swUrl, r) {
+              if (r) {
+                // Periodically check for service worker updates every 10 minutes
+                setInterval(() => {
+                  r.update();
+                }, 10 * 60 * 1000);
+              }
             }
           });
         })
@@ -689,7 +768,7 @@ class App {
           console.debug('[PWA] Service Worker registration skipped (expected during local dev/testing):', err.message);
         });
       } catch (e) {
-        console.warn('[PWA] Failed to set up Service Worker update prompt:', e);
+        console.warn('[PWA] Failed to set up Service Worker auto-update:', e);
       }
     });
   }

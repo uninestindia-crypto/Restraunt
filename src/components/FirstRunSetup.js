@@ -173,8 +173,9 @@ export class FirstRunSetup {
 
     try {
       const pinHash = await hashPin(pin);
+      let newOwnerId = null;
       await db.transaction('rw', db.staff, db.settings, async () => {
-        await db.staff.add({
+        newOwnerId = await db.staff.add({
           name: ownerName,
           role: 'owner',
           pinHash,
@@ -188,6 +189,62 @@ export class FirstRunSetup {
         await setSetting('adminPinHash', pinHash);
         await setSetting('ownerSetupComplete', 'true');
       });
+
+      // ── Immediately push owner to Supabase cloud ──────────────────
+      // This is critical for multi-device consistency: other devices need
+      // to find this owner in the cloud to avoid creating their own.
+      if (navigator.onLine && newOwnerId) {
+        try {
+          const ownerRecord = await db.staff.get(newOwnerId);
+          if (ownerRecord) {
+            // Try staff-admin edge function first (works with anon role)
+            try {
+              const { syncStaffViaAdminFunction } = await import('../services/staffAdmin.js');
+              const result = await syncStaffViaAdminFunction(ownerRecord);
+              if (result.success) {
+                await db.staff.update(newOwnerId, { isSynced: 1 });
+                console.log('[FirstRunSetup] Owner synced to cloud via edge function.');
+              } else {
+                console.warn('[FirstRunSetup] Edge function sync failed:', result.message);
+                // Fall through to direct upsert below
+              }
+            } catch (edgeFnErr) {
+              console.warn('[FirstRunSetup] Edge function unavailable:', edgeFnErr.message);
+            }
+
+            // Fallback: direct upsert (works if RLS allows it or user is authenticated)
+            if (!(await db.staff.get(newOwnerId))?.isSynced) {
+              try {
+                const { getSupabaseClient } = await import('../services/supabaseClient.js');
+                const client = await getSupabaseClient({ persistSession: true });
+                if (client) {
+                  const storeId = localStorage.getItem('store_id') || 'the-taste';
+                  const { error } = await client.from('staff').upsert({
+                    id: ownerRecord.id,
+                    store_id: storeId,
+                    name: ownerRecord.name,
+                    role: ownerRecord.role,
+                    pin_hash: ownerRecord.pinHash,
+                    is_active: true,
+                    created_at: ownerRecord.createdAt,
+                    updated_at: ownerRecord.updatedAt
+                  });
+                  if (!error) {
+                    await db.staff.update(newOwnerId, { isSynced: 1 });
+                    console.log('[FirstRunSetup] Owner synced to cloud via direct upsert.');
+                  } else {
+                    console.warn('[FirstRunSetup] Direct upsert failed (RLS):', error.message);
+                  }
+                }
+              } catch (directErr) {
+                console.warn('[FirstRunSetup] Direct cloud sync failed:', directErr.message);
+              }
+            }
+          }
+        } catch (syncErr) {
+          console.warn('[FirstRunSetup] Cloud sync attempt failed (will retry on next sync):', syncErr.message);
+        }
+      }
 
       playSound(900, 100);
       vibrateDevice([40, 20, 40]);
