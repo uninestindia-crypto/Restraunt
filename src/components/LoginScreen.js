@@ -903,9 +903,93 @@ export class LoginScreen {
         this.attemptCloudLogin();
       } else if (secSignup && secSignup.style.display === 'block' && e.key === 'Enter') {
         this.attemptSignup();
+      } else if (document.getElementById('section-setup-new-pin')?.style.display === 'block') {
+        if (e.key >= '0' && e.key <= '9') {
+          if (this.isConfirmMode) {
+            if (this.setupPinConfirm.length < 4) {
+              this.setupPinConfirm += e.key;
+              playSound(600, 50);
+              this.updateSetupDots();
+              if (this.setupPinConfirm.length === 4) setTimeout(() => this.handleSetupPinSubmit(), 200);
+            }
+          } else {
+            if (this.setupPinInput.length < 4) {
+              this.setupPinInput += e.key;
+              playSound(600, 50);
+              this.updateSetupDots();
+              if (this.setupPinInput.length === 4) setTimeout(() => this.handleSetupPinSubmit(), 200);
+            }
+          }
+        } else if (e.key === 'Backspace') {
+          if (this.isConfirmMode) {
+            this.setupPinConfirm = this.setupPinConfirm.slice(0, -1);
+          } else {
+            this.setupPinInput = this.setupPinInput.slice(0, -1);
+          }
+          playSound(400, 50);
+          this.updateSetupDots();
+        }
       }
     };
     document.addEventListener('keydown', this._keyHandler);
+
+    // Enable/Disable existing PIN button handlers
+    const btnEnableExistingPin = document.getElementById('btn-enable-existing-pin');
+    btnEnableExistingPin?.addEventListener('click', async () => {
+      const staff = this.tempStaff;
+      if (staff && staff.pinHash) {
+        localStorage.setItem(`pin_authorized_${staff.id}`, 'true');
+        localStorage.setItem('auth_staff_pin', staff.pinHash);
+
+        playSound(900, 100);
+        vibrateDevice([40, 20, 40]);
+        showToast(`PIN enabled on this device! Welcome, ${staff.name}!`, 'success');
+        this.destroy();
+        if (this.onLoginSuccess) this.onLoginSuccess(staff);
+      }
+    });
+
+    const btnSetupDifferentPin = document.getElementById('btn-setup-different-pin');
+    btnSetupDifferentPin?.addEventListener('click', () => {
+      playSound(700, 80);
+      this.startPinSetupFlow();
+    });
+
+    // Setup PIN numpad button handlers
+    const setupNumpad = document.getElementById('setup-numpad');
+    if (setupNumpad) {
+      setupNumpad.querySelectorAll('.numpad-btn:not(.empty)').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const key = btn.dataset.key;
+          if (key === '⌫') {
+            if (this.isConfirmMode) {
+              this.setupPinConfirm = this.setupPinConfirm.slice(0, -1);
+            } else {
+              this.setupPinInput = this.setupPinInput.slice(0, -1);
+            }
+            playSound(400, 50);
+          } else {
+            if (this.isConfirmMode) {
+              if (this.setupPinConfirm.length < 4) {
+                this.setupPinConfirm += key;
+                playSound(600, 50);
+              }
+            } else {
+              if (this.setupPinInput.length < 4) {
+                this.setupPinInput += key;
+                playSound(600, 50);
+              }
+            }
+          }
+          this.updateSetupDots();
+          
+          const currentLength = this.isConfirmMode ? this.setupPinConfirm.length : this.setupPinInput.length;
+          if (currentLength === 4) {
+            setTimeout(() => this.handleSetupPinSubmit(), 200);
+          }
+        });
+      });
+    }
   }
 
   updateDots() {
