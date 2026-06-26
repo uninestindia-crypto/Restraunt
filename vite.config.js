@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
+import preact from '@preact/preset-vite';
 import { readFileSync, writeFileSync } from 'fs';
 
 const pkg = JSON.parse(readFileSync('./package.json', 'utf-8'));
@@ -11,6 +12,7 @@ export default defineConfig({
     __APP_BUILD_HASH__: JSON.stringify(buildHash),
   },
   plugins: [
+    preact(),
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg', 'icons/*.png'],

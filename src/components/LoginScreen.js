@@ -13,8 +13,10 @@ import { signUpCustomer } from '../services/supabaseClient.js';
 import { showToast, playSound, vibrateDevice } from '../utils/helpers.js';
 
 export class LoginScreen {
-  constructor(onLoginSuccess) {
+  constructor(onLoginSuccess, options = {}) {
     this.onLoginSuccess = onLoginSuccess;
+    this.options = options;
+    this.mode = options.mode || 'staff'; // 'staff' or 'customer'
     this.pinInput = '';
     this.tempStaff = null;
     this.setupPinInput = '';
@@ -24,6 +26,8 @@ export class LoginScreen {
 
   render(container) {
     this.container = container;
+    const isCustomer = this.mode === 'customer';
+
     container.innerHTML = `
       <div class="login-screen">
         <div class="login-split-container">
@@ -35,42 +39,73 @@ export class LoginScreen {
                 <img src="/assets/the-taste-logo.png" class="brand-panel-logo" alt="The Taste Logo" />
               </div>
               <h2 class="brand-panel-title">The Taste</h2>
-              <p class="brand-panel-tagline">Restaurant Operating System</p>
+              <p class="brand-panel-tagline">${isCustomer ? 'Delicious Indo-Chinese Storefront' : 'Restaurant Operating System'}</p>
               
               <div class="brand-features-list">
-                <div class="brand-feature-item">
-                  <span class="material-symbols-rounded feature-icon">sync</span>
-                  <div class="feature-text">
-                    <h4 class="feature-title">Real-Time Sync</h4>
-                    <p class="feature-desc">Instant table status and order updates across all staff devices.</p>
+                ${isCustomer ? `
+                  <div class="brand-feature-item">
+                    <span class="material-symbols-rounded feature-icon">star</span>
+                    <div class="feature-text">
+                      <h4 class="feature-title">Loyalty Rewards</h4>
+                      <p class="feature-desc">Earn points on every bite and redeem them at checkout for discount coupons.</p>
+                    </div>
                   </div>
-                </div>
-                <div class="brand-feature-item">
-                  <span class="material-symbols-rounded feature-icon">wifi_off</span>
-                  <div class="feature-text">
-                    <h4 class="feature-title">Offline Resilience</h4>
-                    <p class="feature-desc">Continuous operation even during internet outages, syncing automatically later.</p>
+                  <div class="brand-feature-item">
+                    <span class="material-symbols-rounded feature-icon">shopping_bag</span>
+                    <div class="feature-text">
+                      <h4 class="feature-title">Skip the Queue</h4>
+                      <p class="feature-desc">Order ahead for self-pickup or dine-in, and have your meal ready when you arrive.</p>
+                    </div>
                   </div>
-                </div>
-                <div class="brand-feature-item">
-                  <span class="material-symbols-rounded feature-icon">monitoring</span>
-                  <div class="feature-text">
-                    <h4 class="feature-title">Enterprise Analytics</h4>
-                    <p class="feature-desc">Detailed reports, item sales history, and customer behavior insights.</p>
+                  <div class="brand-feature-item">
+                    <span class="material-symbols-rounded feature-icon">qr_code_2</span>
+                    <div class="feature-text">
+                      <h4 class="feature-title">Dine-In QR Ordering</h4>
+                      <p class="feature-desc">Scan any table QR code, choose your food, and place your order instantly from your browser.</p>
+                    </div>
                   </div>
-                </div>
-                <div class="brand-feature-item">
-                  <span class="material-symbols-rounded feature-icon">print</span>
-                  <div class="feature-text">
-                    <h4 class="feature-title">Thermal Invoicing</h4>
-                    <p class="feature-desc">Wireless Bluetooth and ESC/POS printer support for instant customer bills.</p>
+                  <div class="brand-feature-item">
+                    <span class="material-symbols-rounded feature-icon">payments</span>
+                    <div class="feature-text">
+                      <h4 class="feature-title">Flexible Payments</h4>
+                      <p class="feature-desc">Complete checkout seamlessly with UPI or select Cash on Delivery / Pay at Counter.</p>
+                    </div>
                   </div>
-                </div>
+                ` : `
+                  <div class="brand-feature-item">
+                    <span class="material-symbols-rounded feature-icon">sync</span>
+                    <div class="feature-text">
+                      <h4 class="feature-title">Real-Time Sync</h4>
+                      <p class="feature-desc">Instant table status and order updates across all staff devices.</p>
+                    </div>
+                  </div>
+                  <div class="brand-feature-item">
+                    <span class="material-symbols-rounded feature-icon">wifi_off</span>
+                    <div class="feature-text">
+                      <h4 class="feature-title">Offline Resilience</h4>
+                      <p class="feature-desc">Continuous operation even during internet outages, syncing automatically later.</p>
+                    </div>
+                  </div>
+                  <div class="brand-feature-item">
+                    <span class="material-symbols-rounded feature-icon">monitoring</span>
+                    <div class="feature-text">
+                      <h4 class="feature-title">Enterprise Analytics</h4>
+                      <p class="feature-desc">Detailed reports, item sales history, and customer behavior insights.</p>
+                    </div>
+                  </div>
+                  <div class="brand-feature-item">
+                    <span class="material-symbols-rounded feature-icon">print</span>
+                    <div class="feature-text">
+                      <h4 class="feature-title">Thermal Invoicing</h4>
+                      <p class="feature-desc">Wireless Bluetooth and ESC/POS printer support for instant customer bills.</p>
+                    </div>
+                  </div>
+                `}
               </div>
             </div>
             
             <div class="brand-panel-footer">
-              <span>Enterprise Cloud Edition</span>
+              <span>${isCustomer ? 'Customer Loyalty Edition' : 'Enterprise Cloud Edition'}</span>
               <span class="brand-version">v4.0.0</span>
             </div>
           </div>
@@ -91,13 +126,20 @@ export class LoginScreen {
                   <img src="/assets/the-taste-logo.png" class="login-logo-img" alt="The Taste Logo" />
                 </div>
                 <h1 class="login-title" id="login-brand-title">The Taste</h1>
-                <p class="login-subtitle">Restaurant Operating System</p>
+                <p class="login-subtitle">${isCustomer ? 'Delicious Indo-Chinese Storefront' : 'Restaurant Operating System'}</p>
               </div>
               
-              <div class="login-tabs" id="login-tabs-container">
-                <button class="login-tab-btn active" id="tab-cloud" type="button">Enterprise Cloud</button>
-                <button class="login-tab-btn" id="tab-pin" type="button">Local PIN</button>
-              </div>
+              ${!isCustomer ? `
+                <div class="login-tabs" id="login-tabs-container">
+                  <button class="login-tab-btn active" id="tab-cloud" type="button">Enterprise Cloud</button>
+                  <button class="login-tab-btn" id="tab-pin" type="button">Local PIN</button>
+                </div>
+              ` : `
+                <div style="margin-bottom: 20px; text-align: center;">
+                  <h2 style="font-family: var(--font-display); font-size: var(--text-md); font-weight: 700; color: var(--text-primary); margin-bottom: 4px; letter-spacing: -0.01em;">Welcome to Rewards</h2>
+                  <p style="color: var(--text-secondary); font-size: var(--text-xs); margin: 0; font-weight: 500;">Sign in to check points and place orders</p>
+                </div>
+              `}
 
               <div id="login-error" class="login-error"></div>
 
@@ -107,7 +149,7 @@ export class LoginScreen {
                   <label class="login-label" for="login-email">Account Email</label>
                   <div class="input-with-icon">
                     <span class="material-symbols-rounded input-icon">mail</span>
-                    <input type="email" id="login-email" class="login-input" placeholder="name@nextgenos.com" required autocomplete="username">
+                    <input type="email" id="login-email" class="login-input" placeholder="${isCustomer ? 'yourname@gmail.com' : 'name@nextgenos.com'}" required autocomplete="username">
                   </div>
                 </div>
                 <div class="login-input-group">
@@ -118,9 +160,9 @@ export class LoginScreen {
                   </div>
                 </div>
                 <button class="btn btn-primary login-submit-btn" id="btn-cloud-login" type="button">
-                  Authorize Access
+                  ${isCustomer ? 'Sign In & Order' : 'Authorize Access'}
                 </button>
-                <p class="login-toggle-link" id="link-goto-signup">New to The Taste? Create Customer Account</p>
+                <p class="login-toggle-link" id="link-goto-signup">${isCustomer ? 'New to The Taste? Register Account' : 'New to The Taste? Create Customer Account'}</p>
               </div>
 
               <!-- Customer Sign-Up Form -->
@@ -1029,12 +1071,18 @@ export class LoginScreen {
         btnCloud.textContent = 'Authenticating...';
       }
 
-      const staff = await authService.loginWithCloudCredentials(email, password);
+      let staff;
+      if (this.mode === 'customer') {
+        staff = await authService.loginCustomerWithCloudCredentials(email, password);
+      } else {
+        staff = await authService.loginWithCloudCredentials(email, password);
+      }
+      
       if (staff) {
         playSound(900, 100);
         vibrateDevice([40, 20, 40]);
 
-        if (staff.role === 'customer') {
+        if (staff.role === 'customer' || this.mode === 'customer') {
           const welcomeMsg = `Welcome to The Taste, ${staff.name}!`;
           showToast(welcomeMsg, 'success');
           this.destroy();
