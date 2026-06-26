@@ -6,7 +6,9 @@ import readline from 'readline';
 import { pathToFileURL } from 'url';
 
 export const DEFAULT_STORE_ID = 'the-taste';
-export const VALID_ROLES = ['owner', 'manager', 'cashier', 'kitchen', 'waiter', 'delivery'];
+export const VALID_ROLES = ['developer', 'owner', 'manager', 'cashier', 'kitchen', 'waiter', 'delivery'];
+// Only these privileged roles can be provisioned via this script (developer assigns owners)
+export const PROVISIONABLE_ROLES = ['developer', 'owner'];
 
 export const DEFAULT_CATEGORIES = [
   { name: 'Momos', icon: '', sort_order: 1 },
@@ -188,8 +190,10 @@ export async function repairAdmin({ client, config, admin }) {
   const email = admin.email;
   const password = admin.password;
   const pin = admin.pin;
-  const name = admin.name || email.split('@')[0] || 'Owner';
+  const role = admin.role || 'owner';
+  const name = admin.name || email.split('@')[0] || (role === 'developer' ? 'Developer' : 'Owner');
 
+  if (!PROVISIONABLE_ROLES.includes(role)) throw new Error(`Role "${role}" cannot be provisioned via this script. Use: ${PROVISIONABLE_ROLES.join(', ')}`);
   if (!email || !password || !pin) throw new Error('ADMIN_EMAIL, ADMIN_PASSWORD, and ADMIN_PIN are required.');
   if (!/^\d{4}$/.test(pin)) throw new Error('ADMIN_PIN must be exactly 4 digits.');
   if (isWeakPin(pin)) throw new Error('ADMIN_PIN is too weak. Choose a private non-sequential PIN.');
@@ -200,7 +204,7 @@ export async function repairAdmin({ client, config, admin }) {
       email_confirm: true,
       password,
       user_metadata: { ...(user.user_metadata || {}), name },
-      app_metadata: { ...(user.app_metadata || {}), role: 'owner', store_id: config.storeId, is_active: true }
+      app_metadata: { ...(user.app_metadata || {}), role, store_id: config.storeId, is_active: true }
     });
     if (error) throw error;
     user = data.user;
@@ -210,7 +214,7 @@ export async function repairAdmin({ client, config, admin }) {
       password,
       email_confirm: true,
       user_metadata: { name },
-      app_metadata: { role: 'owner', store_id: config.storeId, is_active: true }
+      app_metadata: { role, store_id: config.storeId, is_active: true }
     });
     if (error) throw error;
     user = data.user;
@@ -232,7 +236,7 @@ export async function repairAdmin({ client, config, admin }) {
     store_id: config.storeId,
     auth_user_id: user.id,
     name,
-    role: 'owner',
+    role,
     pin_hash: pinHash,
     allow_express: true,
     is_active: true,
@@ -249,18 +253,18 @@ export async function repairAdmin({ client, config, admin }) {
       store_id: config.storeId,
       staff_id: staffId,
       auth_user_id: user.id,
-      role: 'owner',
+      role,
       is_active: true,
       updated_at: now
     }, { onConflict: 'store_id,auth_user_id' });
   if (membershipError) throw membershipError;
 
   const { error: metadataError } = await client.auth.admin.updateUserById(user.id, {
-    app_metadata: { ...(user.app_metadata || {}), role: 'owner', store_id: config.storeId, staff_id: staffId, is_active: true }
+    app_metadata: { ...(user.app_metadata || {}), role, store_id: config.storeId, staff_id: staffId, is_active: true }
   });
   if (metadataError) throw metadataError;
 
-  return { authUserId: user.id, staffId, email, role: 'owner' };
+  return { authUserId: user.id, staffId, email, role };
 }
 
 async function ensureDefaultCategories(client, storeId) {
@@ -405,8 +409,15 @@ async function main() {
 
   if (mode === 'repair-admin' || mode === 'all') {
     admin = await collectAdminInput(env, { requirePassword: true });
+
+    // Parse --role flag from CLI args (e.g. node provision-admin.js repair-admin --role developer)
+    const roleArgIdx = process.argv.indexOf('--role');
+    if (roleArgIdx !== -1 && process.argv[roleArgIdx + 1]) {
+      admin.role = process.argv[roleArgIdx + 1].trim().toLowerCase();
+    }
+
     const result = await repairAdmin({ client, config, admin });
-    console.log('Admin repaired:', { email: result.email, role: result.role, staffId: result.staffId, authUserId: result.authUserId });
+    console.log(`${result.role.toUpperCase()} provisioned:`, { email: result.email, role: result.role, staffId: result.staffId, authUserId: result.authUserId });
   }
 
   if (mode === 'seed-cloud-menu' || mode === 'all') {

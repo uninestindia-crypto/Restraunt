@@ -146,25 +146,7 @@ class App {
       // Setup router auth handler
       router.onAuthRequired = async () => {
         this.initialized = false;
-        const activeOwner = await db.staff
-          .where('role')
-          .equals('owner')
-          .and(staff => staff.isActive === 1 || staff.isActive === true)
-          .first();
-
-        if (!activeOwner) {
-          // SECURITY: If Supabase is configured, never show FirstRunSetup.
-          // Force cloud login to prevent unauthorized admin creation.
-          const { getStoredSupabaseConfig } = await import('./services/supabaseClient');
-          const { url, key } = await getStoredSupabaseConfig();
-          if (url && key) {
-            this.showLogin();
-          } else {
-            this.showFirstRunSetup();
-          }
-        } else {
-          this.showLogin();
-        }
+        this.showLogin();
       };
 
       // Listen for session expiry
@@ -269,25 +251,8 @@ class App {
       }
 
       if (!activeOwner) {
-        // ── SECURITY GATE ─────────────────────────────────────────
-        // If Supabase is configured, this is a DEPLOYED app — NEVER show
-        // FirstRunSetup because it lets anyone create an admin account.
-        // Instead, force cloud login (email/password) which is verified
-        // by Supabase Auth. FirstRunSetup is ONLY allowed when Supabase
-        // is not configured (local dev / truly fresh install).
-        const { getStoredSupabaseConfig } = await import('./services/supabaseClient');
-        const { url, key } = await getStoredSupabaseConfig();
-        const supabaseIsConfigured = !!(url && key);
-
-        if (supabaseIsConfigured) {
-          console.warn('[App] No local owner found, but Supabase IS configured. Showing cloud login instead of FirstRunSetup to prevent unauthorized admin creation.');
-          this.showLogin();
-          return;
-        }
-
-        // Supabase is NOT configured — this is a genuinely fresh local install.
-        // FirstRunSetup is safe to show here.
-        this.showFirstRunSetup();
+        console.warn('[App] No active owner found. Showing login page.');
+        this.showLogin();
         return;
       }
 
@@ -327,15 +292,6 @@ class App {
     this.loginScreen.render(appEl);
   }
 
-  async showFirstRunSetup() {
-    const appEl = document.getElementById('app');
-    appEl.innerHTML = '';
-    const { FirstRunSetup } = await import('./components/FirstRunSetup');
-    const setup = new FirstRunSetup(() => {
-      this.showLogin();
-    });
-    setup.render(appEl);
-  }
 
   async onLoginSuccess(staff) {
     if (staff && staff.role === 'customer') {

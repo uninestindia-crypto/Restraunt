@@ -14,11 +14,13 @@ import { escapeHtml, showToast, playSound, vibrateDevice } from '../../utils/hel
 import { logShiftStarted, logShiftEnded } from '../../utils/activityLogger';
 import { hashPin } from '../../utils/crypto';
 import { lookupAuthUser } from '../../services/staffAdmin';
+import { authService } from '../../services/auth';
 
 // Roles that require a verified Supabase Auth account (operational backend access)
 const CLOUD_REQUIRED_ROLES = ['owner', 'manager', 'cashier', 'kitchen', 'waiter', 'delivery'];
 
 const ROLES = {
+  developer: { label: 'Developer', color: '#8B5CF6' },
   owner: { label: 'Owner', color: '#FF6B35' },
   manager: { label: 'Manager', color: '#6C5CE7' },
   cashier: { label: 'Cashier', color: '#10B981' },
@@ -45,6 +47,9 @@ export class StaffView {
   }
 
   render() {
+    const currentStaff = authService.getCurrentStaff();
+    const isDeveloper = currentStaff?.role === 'developer';
+
     this.container.innerHTML = `
       <div class="main-area">
         <div class="header-bar">
@@ -78,7 +83,7 @@ export class StaffView {
                 <option value="waiter">Waiter</option>
                 <option value="delivery">Delivery Staff</option>
                 <option value="manager">Manager</option>
-                <option value="owner">Owner</option>
+                ${isDeveloper ? '<option value="owner">Owner</option>' : ''}
               </select>
             </div>
 
@@ -273,6 +278,22 @@ export class StaffView {
       
       const isEdit = !!this.editingStaffId;
 
+      // SECURITY: Only active developers can create or modify owner or developer roles/accounts.
+      const currentStaff = authService.getCurrentStaff();
+      const isDeveloper = currentStaff?.role === 'developer';
+      const isOwnerOrDevRole = role === 'owner' || role === 'developer';
+      
+      let isExistingOwnerOrDev = false;
+      if (isEdit) {
+        const existing = await db.staff.get(this.editingStaffId);
+        isExistingOwnerOrDev = existing?.role === 'owner' || existing?.role === 'developer';
+      }
+
+      if ((isOwnerOrDevRole || isExistingOwnerOrDev) && !isDeveloper) {
+        showToast('Only developers can create, modify, or assign owner/developer roles.', 'error');
+        return;
+      }
+
       // ── Enforce cloud verification for operational backend roles ──
       if (CLOUD_REQUIRED_ROLES.includes(role)) {
         if (!this.verifiedCloudUser || !this.verifiedCloudUser.authUserId) {
@@ -355,13 +376,17 @@ export class StaffView {
     const content = document.getElementById('staff-content');
     if (!content) return;
     if (this.tab === 'directory') {
+      const currentStaff = authService.getCurrentStaff();
+      const isDeveloper = currentStaff?.role === 'developer';
       const staffList = await db.staff.toArray();
       const owners = staffList.filter(s => s.role === 'owner' && s.isActive);
 
       content.innerHTML = staffList.length === 0 ? '<div class="empty-state"><span class="material-symbols-rounded">person_off</span><p>No staff members yet.</p></div>' :
         `<div class="content-grid">${staffList.map(s => {
           const role = ROLES[s.role] || ROLES.cashier;
-          const isDeletable = !(s.role === 'owner' && owners.length <= 1);
+          const isOwnerOrDev = s.role === 'owner' || s.role === 'developer';
+          const canManageThis = !isOwnerOrDev || isDeveloper;
+          const isDeletable = canManageThis && !(s.role === 'owner' && owners.length <= 1);
           const hasExpress = s.allowExpress === 1 || s.allowExpress === true || s.role === 'owner';
           const expressBadge = hasExpress ? `<span style="font-size:0.6rem;padding:2px 8px;border-radius:6px;font-weight:700;color:var(--nextgenos-purple);background:var(--nextgenos-purple-bg);border:1px solid var(--nextgenos-purple-border);margin-left:4px;">Express Panel</span>` : '';
           return `
@@ -380,9 +405,11 @@ export class StaffView {
               </div>
               <div style="display:flex;align-items:center;gap:4px;">
                 <div style="font-size:0.7rem;color:var(--text-muted);font-weight:600;letter-spacing:0.2em;margin-right:8px;">****</div>
+                ${canManageThis ? `
                 <button class="btn-icon edit-staff-btn" data-id="${s.id}">
                   <span class="material-symbols-rounded" style="font-size:18px;">edit</span>
                 </button>
+                ` : ''}
                 ${isDeletable ? `
                   <button class="btn-icon delete-staff-btn" data-id="${s.id}" style="color:var(--color-danger);">
                     <span class="material-symbols-rounded" style="font-size:18px;">delete</span>

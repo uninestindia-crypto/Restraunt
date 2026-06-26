@@ -216,6 +216,13 @@ Deno.serve(async (req: Request) => {
         .maybeSingle();
       if (existingError) throw existingError;
 
+      // SECURITY: Only active developers can create or modify owner or developer roles/accounts.
+      const isOwnerOrDevRole = role === "owner" || role === "developer";
+      const isExistingOwnerOrDev = existing?.role === "owner" || existing?.role === "developer";
+      if ((isOwnerOrDevRole || isExistingOwnerOrDev) && owner.membership.role !== "developer") {
+        return bad("Only developers can create, modify, or assign owner/developer roles.", 403);
+      }
+
       if (existing?.role === "owner" && existing.is_active && (!isActive || role !== "owner")) {
         const owners = await activeOwnerCount(serviceClient, storeId);
         if (owners <= 1) return bad("Cannot remove or demote the last active owner.", 409);
@@ -272,6 +279,13 @@ Deno.serve(async (req: Request) => {
         .eq("id", staffId)
         .maybeSingle();
       if (existingError) throw existingError;
+
+      // SECURITY: Only active developers can activate or deactivate owner or developer accounts.
+      const isExistingOwnerOrDev = existing?.role === "owner" || existing?.role === "developer";
+      if (isExistingOwnerOrDev && owner.membership.role !== "developer") {
+        return bad("Only developers can activate or deactivate owner/developer accounts.", 403);
+      }
+
       if (existing?.role === "owner" && existing.is_active && !isActive) {
         const owners = await activeOwnerCount(serviceClient, storeId);
         if (owners <= 1) return bad("Cannot deactivate the last active owner.", 409);
@@ -308,6 +322,14 @@ Deno.serve(async (req: Request) => {
         .eq("id", staffId)
         .maybeSingle();
       if (existingError) throw existingError;
+
+      // SECURITY: Only active developers can assign or modify owner or developer roles.
+      const isOwnerOrDevRole = role === "owner" || role === "developer";
+      const isExistingOwnerOrDev = existing?.role === "owner" || existing?.role === "developer";
+      if ((isOwnerOrDevRole || isExistingOwnerOrDev) && owner.membership.role !== "developer") {
+        return bad("Only developers can assign or modify owner/developer roles.", 403);
+      }
+
       if (existing?.role === "owner" && existing.is_active && role !== "owner") {
         const owners = await activeOwnerCount(serviceClient, storeId);
         if (owners <= 1) return bad("Cannot demote the last active owner.", 409);
