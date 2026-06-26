@@ -1,4 +1,6 @@
-// @ts-nocheck
+/**
+ * NextGenOS Cloud-First Data Access Layer
+ */
 /**
  * ═══════════════════════════════════════════════════
  *  NextGenOS Restaurant Operating System
@@ -66,7 +68,7 @@ function isCloudAvailable() {
 
 // ── Mapping Helpers (Remote ↔ Local) ────────────────────────────
 
-function mapCategoryToLocal(row) {
+function mapCategoryToLocal(row: any) {
   return {
     id: row.id,
     name: row.name,
@@ -77,7 +79,7 @@ function mapCategoryToLocal(row) {
   };
 }
 
-function mapItemToLocal(row) {
+function mapItemToLocal(row: any) {
   return {
     id: row.id,
     categoryId: row.category_id,
@@ -90,7 +92,7 @@ function mapItemToLocal(row) {
   };
 }
 
-export function mapOrderToLocal(row) {
+export function mapOrderToLocal(row: any) {
   return {
     id: row.id,
     serverOrderId: row.id,
@@ -140,7 +142,7 @@ export function mapOrderToLocal(row) {
   };
 }
 
-function mapStaffToLocal(row) {
+function mapStaffToLocal(row: any) {
   return {
     id: row.id,
     cloudUserId: row.auth_user_id || null,
@@ -225,7 +227,7 @@ function mapShiftToLocal(row) {
  * @param {boolean} options.publicOnly - Only pull menu data (for customer storefront)
  * @returns {Promise<{success: boolean, tables: Object}>}
  */
-export async function fullPull(options = {}) {
+export async function fullPull(options: any = {}) {
   const { publicOnly = false } = options;
   const client = await getClient();
   if (!client) {
@@ -234,7 +236,7 @@ export async function fullPull(options = {}) {
   }
 
   const storeId = getStoreId();
-  const results = {};
+  const results: any = {};
 
   try {
     console.log(`[CloudDB] Starting full pull from cloud (store: ${storeId})...`);
@@ -507,7 +509,7 @@ export async function flushOfflineQueue() {
  * Write to Supabase first, then update local IndexedDB cache.
  * If offline, write to IndexedDB and queue for later cloud flush.
  */
-export async function cloudUpsert(tableName, localStoreName, remoteData, localData, options = {}) {
+export async function cloudUpsert(tableName: string, localStoreName: string, remoteData: any, localData: any, options: any = {}) {
   // Always write to local cache immediately (optimistic update)
   try {
     await db[localStoreName].put(localData);
@@ -541,7 +543,7 @@ export async function cloudUpsert(tableName, localStoreName, remoteData, localDa
 /**
  * Update specific fields in Supabase first, then local cache.
  */
-export async function cloudUpdate(tableName, localStoreName, id, remoteFields, localFields) {
+export async function cloudUpdate(tableName: string, localStoreName: string, id: any, remoteFields: any, localFields: any) {
   // Optimistic local update
   try {
     await db[localStoreName].update(id, { ...localFields, isSynced: 0 });
