@@ -305,15 +305,66 @@ export async function searchItems(query) {
  * @returns {Promise<Object>} The created order with id
  */
 export async function createOrder(orderData, options = {}) {
+  const clientOrderId = orderData.clientOrderId || generateLocalUuid();
+  const idempotencyKey = orderData.idempotencyKey || clientOrderId;
+
+  let serverOrderId = null;
+  let isSynced = 0;
+  let syncStatus = 'pending';
+
+  // Force cloud write first if not skipped (e.g. not cloud pull / seeding)
+  if (!options.skipSync) {
+    if (navigator.onLine) {
+      try {
+        const { getSupabaseClient } = await import('../services/supabaseClient.js');
+        const supabase = await getSupabaseClient();
+        if (!supabase) {
+          throw new Error('Supabase client is not configured.');
+        }
+
+        const { mapOrderToRemote } = await import('../services/sync.js');
+        const remoteOrder = mapOrderToRemote({
+          ...orderData,
+          clientOrderId,
+          idempotencyKey
+        });
+
+        const { data, error } = await supabase
+          .from('orders')
+          .insert(remoteOrder)
+          .select('id')
+          .single();
+
+        if (error) {
+          throw new Error(error.message);
+        }
+
+        if (data) {
+          serverOrderId = data.id;
+          isSynced = 1;
+          syncStatus = 'synced';
+        }
+      } catch (cloudErr) {
+        console.error('[Database] Direct cloud write failed for order:', cloudErr);
+        throw new Error(`Checkout Aborted: Direct cloud write failed to ensure data safety. Connection error or RLS policy violation. Details: ${cloudErr.message}`);
+      }
+    } else {
+      throw new Error('Checkout Aborted: Device is offline. An active internet connection is required to process and secure orders in the cloud.');
+    }
+  } else {
+    // If skipping sync (e.g. seeding / cloud pull), preserve incoming values
+    serverOrderId = orderData.serverOrderId || null;
+    isSynced = orderData.isSynced ? 1 : 0;
+    syncStatus = orderData.syncStatus || 'synced';
+  }
+
   let result;
   try {
     result = await db.transaction('rw', db.orders, async () => {
-      const clientOrderId = orderData.clientOrderId || generateLocalUuid();
-      const idempotencyKey = orderData.idempotencyKey || clientOrderId;
       const order = {
         clientOrderId,
         idempotencyKey,
-        serverOrderId: orderData.serverOrderId || null,
+        serverOrderId,
         orderNumber: orderData.orderNumber,
         displayToken: orderData.displayToken || getDisplayToken(orderData.orderNumber, idempotencyKey),
         type: orderData.type || 'takeaway',
@@ -353,9 +404,9 @@ export async function createOrder(orderData, options = {}) {
         requiresServerValidation: Boolean(orderData.requiresServerValidation),
         validationStatus: orderData.validationStatus || ((orderData.source === 'online' || orderData.source === 'qr') ? 'pending' : 'trusted_staff'),
         lastSyncError: orderData.lastSyncError || '',
-        syncStatus: orderData.syncStatus || 'pending',
+        syncStatus,
         syncAttempts: parseInt(orderData.syncAttempts) || 0,
-        isSynced: orderData.isSynced ? 1 : 0
+        isSynced
       };
 
       const id = await db.orders.add(order);
@@ -363,23 +414,7 @@ export async function createOrder(orderData, options = {}) {
     });
   } catch (error) {
     console.error('[Database] Dexie database error in createOrder transaction:', error);
-    throw error; // Re-throw to inform UI of creation failure
-  }
-
-  // Replicate to cloud
-  if (!options.skipSync) {
-    if (navigator.onLine) {
-      try {
-        const { syncService } = await import('../services/sync.js');
-        await syncService.syncUpOrder(result);
-        const updated = await db.orders.get(result.id);
-        if (updated) result = updated;
-      } catch (err) {
-        console.error('[Database] Synchronous sync failed for order:', err);
-      }
-    } else {
-      syncOrderInBackground(result, 'order creation');
-    }
+    throw error;
   }
 
   return result;

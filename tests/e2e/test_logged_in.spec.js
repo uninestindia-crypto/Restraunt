@@ -3,6 +3,10 @@ import fs from 'fs';
 
 test('reproduce staff logged-in blank page', async ({ page }) => {
   const logs = [];
+  const outputDir = './test-results';
+  if (!fs.existsSync(outputDir)) {
+    fs.mkdirSync(outputDir, { recursive: true });
+  }
 
   page.on('console', msg => {
     logs.push(`[${msg.type()}] ${msg.text()}`);
@@ -52,7 +56,7 @@ test('reproduce staff logged-in blank page', async ({ page }) => {
 
   // Capture screenshot of the logged-in state
   await page.screenshot({
-    path: 'C:/Users/user/.gemini/antigravity-ide/brain/6a0d3255-a81b-4d01-987c-233d725d0104/test_logged_in.png',
+    path: `${outputDir}/test_logged_in.png`,
     fullPage: true
   });
 
@@ -61,7 +65,7 @@ test('reproduce staff logged-in blank page', async ({ page }) => {
   logs.push(`[DOM CONTENT OF #app] ${appHtml}`);
 
   fs.writeFileSync(
-    'C:/Users/user/.gemini/antigravity-ide/brain/6a0d3255-a81b-4d01-987c-233d725d0104/browser_logged_in_errors.txt',
+    `${outputDir}/browser_logged_in_errors.txt`,
     logs.join('\n')
   );
 });

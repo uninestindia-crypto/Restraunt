@@ -1,9 +1,11 @@
 [debug] [vite] connecting...
 [debug] [vite] connected.
 [debug] [VersionGate] Remote version check skipped or failed: Unexpected token '<', "<!DOCTYPE "... is not valid JSON
-[warning] [CloudDB] Cloud categories exist but menu_items is empty. Local fallback seed will keep the storefront usable; run seed-cloud-menu to repair Supabase.
 [log] [Seed] Cloud is reachable but empty. Proceeding to local seed.
 [log] [Seed] UPI ID successfully migrated to paytmqr6zfcsx@ptys
+[log] [Seed] Restaurant phone successfully updated.
+[log] [Seed] Restaurant address successfully updated.
+[log] [Seed] Restaurant tagline successfully updated.
 [log] [Seed] Default tables seeded.
 [log] [Seed] High-fidelity inventory seeded.
 [log] [Seed] High-fidelity suppliers seeded.
@@ -20,11 +22,10 @@
 ║                                              ║
 ╚══════════════════════════════════════════════╝ color: #6C5CE7; font-family: monospace; font-size: 11px; line-height: 1.5;
 [log] [App] No local owner found. Attempting direct cloud staff pull...
-[warning] [App] No local owner found, but Supabase IS configured. Showing cloud login instead of FirstRunSetup to prevent unauthorized admin creation.
+[warning] The resource http://127.0.0.1:3000/assets/the-taste-hero.jpg was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.
 [debug] [vite] connecting...
 [debug] [vite] connected.
 [debug] [VersionGate] Remote version check skipped or failed: Unexpected token '<', "<!DOCTYPE "... is not valid JSON
-[warning] [CloudDB] Cloud categories exist but menu_items is empty. Local fallback seed will keep the storefront usable; run seed-cloud-menu to repair Supabase.
 [log] [Seed] Cloud is reachable but empty. Proceeding to local seed.
 [log] %c╔══════════════════════════════════════════════╗
 ║                                              ║
@@ -42,20 +43,7 @@
 [log] [AuthService] Staff "Test Owner" (owner) authenticated successfully.
 [log] 🍜 The Taste Restaurant OS — Logged in as Test Owner (owner)
 [log] [Sync status] Transitioned to: connecting (online: true, connected: false)
-[warning] GoTrueClient@sb-scxfkjtrrfgpusyigntx-auth-token:1 (2.106.2) 2026-05-28T08:18:03.925Z Multiple GoTrueClient instances detected in the same browser context. It is not an error, but this should be avoided as it may produce undefined behavior when used concurrently under the same storage key.
-[log] [Sync status] Transitioned to: connected (online: true, connected: true)
-[log] ☁️ Supabase cloud synchronization connected successfully
-[log] [Sync cache] Checking for unsynced local records...
-[log] [Sync cache] Found 9 unsynced categories in local cache.
-[error] Failed to load resource: the server responded with a status of 401 ()
-[warning] [Sync] Bad credentials or client error detected (new row violates row-level security policy for table "menu_categories"). Skipping retries.
-[error] [Sync net] Failed to push unsynced categories to cloud after retries: {code: 42501, details: null, hint: null, message: new row violates row-level security policy for table "menu_categories"}
-[log] [Sync cache] Found 57 unsynced items in local cache.
-[error] Failed to load resource: the server responded with a status of 400 ()
-[warning] [Sync] Attempt 1 failed: Could not find the 'image_url' column of 'menu_items' in the schema cache. Retrying in 897ms...
-[error] Failed to load resource: the server responded with a status of 400 ()
-[warning] [Sync] Attempt 2 failed: Could not find the 'image_url' column of 'menu_items' in the schema cache. Retrying in 2305ms...
-[error] Failed to load resource: the server responded with a status of 400 ()
-[warning] [Sync] Attempt 3 failed: Could not find the 'image_url' column of 'menu_items' in the schema cache. Retrying in 4085ms...
+[log] [Sync status] Transitioned to: unconfigured (online: true, connected: false)
+[warning] The resource http://127.0.0.1:3000/assets/the-taste-hero.jpg was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.
 [DEBUG] Current URL after login: http://127.0.0.1:3000/#/pos
 [DEBUG] Body HTML contains POS sidebar: true

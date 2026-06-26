@@ -70,6 +70,22 @@ export class CustomerView {
   }
 
   async loadData() {
+    // ── Multi-Tenant Store ID Detection ──────────────────────
+    const [, queryString = ''] = (window.location.hash || '').split('?');
+    const urlParams = new URLSearchParams(queryString);
+    const storeIdParam = urlParams.get('store_id');
+    const prevStoreId = localStorage.getItem('store_id') || 'the-taste';
+    const storeId = storeIdParam || prevStoreId;
+
+    if (storeIdParam && prevStoreId !== storeIdParam) {
+      localStorage.setItem('store_id', storeIdParam);
+      console.log(`[Storefront] Switched store_id from '${prevStoreId}' to '${storeIdParam}'. Purging local menu cache.`);
+      await Promise.all([
+        db.menuCategories.clear(),
+        db.menuItems.clear()
+      ]);
+    }
+
     const [name, tagline, phone, address] = await Promise.all([
       getSetting('restaurantName'),
       getSetting('restaurantTagline'),
@@ -78,8 +94,8 @@ export class CustomerView {
     ]);
 
     this.storeSettings = {
-      name: name || 'The Taste',
-      tagline: tagline || 'Fast Food & Chinese',
+      name: storeId !== 'the-taste' ? storeId.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') : (name || 'The Taste'),
+      tagline: storeId !== 'the-taste' ? 'Fresh & Delicious Online Store' : (tagline || 'Fast Food & Chinese'),
       phone: phone || '',
       address: address || ''
     };
@@ -108,6 +124,49 @@ export class CustomerView {
       this.loggedInCustomer = null;
       this.customerName = '';
       this.customerPhone = '';
+    }
+
+    // ── Online Menu Hydration from Cloud ──────────────────────
+    if (navigator.onLine) {
+      try {
+        const { getSupabaseClient } = await import('../../services/supabaseClient.js');
+        const supabase = await getSupabaseClient();
+        if (supabase) {
+          const { data: cloudCats } = await supabase
+            .from('menu_categories')
+            .select('*')
+            .eq('store_id', storeId)
+            .eq('is_active', true)
+            .order('sort_order');
+
+          if (cloudCats && cloudCats.length > 0) {
+            const { mapCategoryToLocal } = await import('../../services/sync.js');
+            const localCats = cloudCats.map(mapCategoryToLocal);
+            await db.transaction('rw', db.menuCategories, async () => {
+              await db.menuCategories.clear();
+              for (const c of localCats) await db.menuCategories.put(c);
+            });
+          }
+
+          const { data: cloudItems } = await supabase
+            .from('menu_items')
+            .select('*')
+            .eq('store_id', storeId)
+            .eq('is_available', true)
+            .order('sort_order');
+
+          if (cloudItems && cloudItems.length > 0) {
+            const { mapItemToLocal } = await import('../../services/sync.js');
+            const localItems = cloudItems.map(mapItemToLocal);
+            await db.transaction('rw', db.menuItems, async () => {
+              await db.menuItems.clear();
+              for (const i of localItems) await db.menuItems.put(i);
+            });
+          }
+        }
+      } catch (err) {
+        console.warn('[CustomerView] Direct cloud menu hydration failed. Falling back to local storage:', err);
+      }
     }
 
     this.categories = await getCategories();
@@ -459,7 +518,7 @@ export class CustomerView {
       const login = new LoginScreen(async (staff) => {
         await this.loadData();
         this.render();
-      });
+      }, { mode: 'customer' });
       login.render(appEl);
     });
 
@@ -586,9 +645,21 @@ export class CustomerView {
           `)}
 
           ${this.renderPanel('Payment', `
-            <div class="store-option-grid two">
+            <div class="store-option-grid three">
               ${this.renderPaymentButton('upi', 'qr_code_2', 'UPI QR', 'Staff verifies')}
+              ${this.renderPaymentButton('card', 'credit_card', 'Online Card', 'Instant checkout')}
               ${this.renderPaymentButton('cash', 'payments', 'Cash/COD', 'Collected later')}
+            </div>
+            <div id="card-fields" class="store-conditional-fields" style="display:${this.selectedPaymentMethod === 'card' ? 'block' : 'none'}; margin-top:14px;">
+              ${this.renderInput('card-num', 'Credit/Debit Card Number', '', '4111 2222 3333 4444')}
+              <div style="display:flex; gap:12px; margin-top:8px;">
+                <div style="flex:1;">
+                  ${this.renderInput('card-expiry', 'Expiry Date', '', 'MM/YY')}
+                </div>
+                <div style="flex:1;">
+                  ${this.renderInput('card-cvv', 'CVV', '', '3-digit CVV', 'password')}
+                </div>
+              </div>
             </div>
           `)}
         </main>
@@ -619,7 +690,7 @@ export class CustomerView {
       const login = new LoginScreen(async (staff) => {
         await this.loadData();
         this.renderCheckout();
-      });
+      }, { mode: 'customer' });
       login.render(appEl);
     });
     this.container.querySelector('#self-name')?.addEventListener('input', e => { this.customerName = e.target.value.trim(); });
@@ -700,6 +771,12 @@ export class CustomerView {
                 </a>
               </div>
               <p style="margin-top: 12px;">After paying, staff will verify UPI before marking this order as paid.</p>
+            </div>
+          ` : order.paymentMethod === 'card' ? `
+            <div class="store-payment-box cash" style="border-color:#10B981; background:rgba(16, 185, 129, 0.04);">
+              <span class="material-symbols-rounded" aria-hidden="true" style="color:#10B981;">check_circle</span>
+              <strong style="color:#10B981;">Online Payment Verified</strong>
+              <p>Amount ${formatCurrency(order.total)} paid via Credit/Debit card. Transaction ID: ${escapeHtml(order.paymentReference)}</p>
             </div>
           ` : `
             <div class="store-payment-box cash">
@@ -879,11 +956,118 @@ export class CustomerView {
       updateTelemetry(latest);
     };
 
+    // Supabase Realtime WebSocket subscription with polling fallback
+    let realtimeConnected = false;
+    if (navigator.onLine && this.placedOrder.clientOrderId) {
+      (async () => {
+        try {
+          const { getSupabaseClient } = await import('../../services/supabaseClient.js');
+          const supabase = await getSupabaseClient();
+          if (supabase) {
+            const storeId = localStorage.getItem('store_id') || 'the-taste';
+            
+            // Initial fetch to get latest status
+            const { data, error } = await supabase
+              .from('orders')
+              .select('*')
+              .eq('store_id', storeId)
+              .eq('client_order_id', this.placedOrder.clientOrderId)
+              .maybeSingle();
+
+            if (!error && data) {
+              const { mapOrderToLocal } = await import('../../services/sync.js');
+              const latest = mapOrderToLocal(data);
+              const existing = await db.orders.where('clientOrderId').equals(latest.clientOrderId).first();
+              if (existing) {
+                latest.id = existing.id;
+              }
+              await db.orders.put(latest);
+              checkAndUpdate(latest);
+            }
+
+            // Realtime postgres_changes subscription
+            this.statusChannel = supabase
+              .channel(`order-status-${this.placedOrder.clientOrderId}`)
+              .on(
+                'postgres_changes',
+                {
+                  event: 'UPDATE',
+                  schema: 'public',
+                  table: 'orders',
+                  filter: `client_order_id=eq.${this.placedOrder.clientOrderId}`
+                },
+                async (payload) => {
+                  if (payload.new) {
+                    const { mapOrderToLocal } = await import('../../services/sync.js');
+                    const updatedLocal = mapOrderToLocal(payload.new);
+                    const existing = await db.orders.where('clientOrderId').equals(updatedLocal.clientOrderId).first();
+                    if (existing) {
+                      updatedLocal.id = existing.id;
+                    }
+                    await db.orders.put(updatedLocal);
+                    checkAndUpdate(updatedLocal);
+                  }
+                }
+              )
+              .subscribe((status) => {
+                if (status === 'SUBSCRIBED') {
+                  realtimeConnected = true;
+                  console.log('[CustomerView] Subscribed to realtime order updates for:', this.placedOrder.clientOrderId);
+                }
+              });
+          }
+        } catch (e) {
+          console.warn('[CustomerView] Supabase Realtime initialization failed, relying on polling fallback:', e);
+        }
+      })();
+    }
+
+    // Polling fallback check
     this.pollInterval = setInterval(async () => {
-      const latest = await db.orders.get(this.placedOrder.id);
+      // If realtime successfully connected, we don't need to poll the database, just check local DB
+      if (realtimeConnected) {
+        const latest = await db.orders.get(this.placedOrder.id);
+        if (latest) checkAndUpdate(latest);
+        return;
+      }
+
+      // Otherwise run fallback direct cloud poll
+      let latest = null;
+      if (navigator.onLine && this.placedOrder.clientOrderId) {
+        try {
+          const { getSupabaseClient } = await import('../../services/supabaseClient.js');
+          const supabase = await getSupabaseClient();
+          if (supabase) {
+            const storeId = localStorage.getItem('store_id') || 'the-taste';
+            const { data, error } = await supabase
+              .from('orders')
+              .select('*')
+              .eq('store_id', storeId)
+              .eq('client_order_id', this.placedOrder.clientOrderId)
+              .maybeSingle();
+
+            if (!error && data) {
+              const { mapOrderToLocal } = await import('../../services/sync.js');
+              latest = mapOrderToLocal(data);
+              const existing = await db.orders.where('clientOrderId').equals(latest.clientOrderId).first();
+              if (existing) {
+                latest.id = existing.id;
+              }
+              await db.orders.put(latest);
+            }
+          }
+        } catch (e) {
+          console.warn('[CustomerView] Telemetry cloud status poll failed:', e);
+        }
+      }
+
+      if (!latest) {
+        latest = await db.orders.get(this.placedOrder.id);
+      }
+
       if (!latest) return;
       checkAndUpdate(latest);
-    }, 3000);
+    }, 5000);
 
     // Listen to sync events for real-time updates as well
     this.handleSyncChanged = async (event) => {
@@ -1011,6 +1195,24 @@ export class CustomerView {
       showToast('Please select your table number', 'warning');
       return;
     }
+    if (this.selectedPaymentMethod === 'card') {
+      const cardNum = this.container.querySelector('#card-num')?.value.replace(/\s/g, '');
+      const expiry = this.container.querySelector('#card-expiry')?.value;
+      const cvv = this.container.querySelector('#card-cvv')?.value;
+
+      if (!cardNum || cardNum.length < 16) {
+        showToast('Please enter a valid 16-digit card number', 'warning');
+        return;
+      }
+      if (!expiry || !/^\d{2}\/\d{2}$/.test(expiry)) {
+        showToast('Please enter expiry in MM/YY format', 'warning');
+        return;
+      }
+      if (!cvv || cvv.length < 3) {
+        showToast('Please enter a valid CVV', 'warning');
+        return;
+      }
+    }
     this.placeOrder();
   }
 
@@ -1043,6 +1245,16 @@ export class CustomerView {
   }
 
   async placeOrder() {
+    const isCard = this.selectedPaymentMethod === 'card';
+    if (isCard) {
+      const submitBtn = this.container.querySelector('#btn-submit-self-order');
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = `<span class="spinner store-spinner" style="display:inline-block;width:14px;height:14px;margin-right:6px;vertical-align:middle;"></span>Processing Card Payment...`;
+      }
+      await new Promise(resolve => setTimeout(resolve, 1500));
+    }
+
     try {
       const subtotal = this.cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
       const gstPercent = parseFloat(await getSetting('gstPercent') || '5');
@@ -1069,7 +1281,9 @@ export class CustomerView {
         deliveryFee,
         total,
         paymentMethod: this.selectedPaymentMethod,
-        paymentStatus: this.selectedPaymentMethod === 'upi' ? 'pending' : 'unpaid',
+        paymentStatus: isCard ? 'paid' : (this.selectedPaymentMethod === 'upi' ? 'pending' : 'unpaid'),
+        paymentReference: isCard ? `TXN-${Math.random().toString(36).substr(2, 9).toUpperCase()}` : '',
+        paymentVerifiedAt: isCard ? now : null,
         customerName: this.customerName,
         customerPhone: this.customerPhone,
         deliveryAddress: type === 'delivery' ? this.deliveryAddress : '',
@@ -1358,6 +1572,7 @@ export class CustomerView {
   }
 
   async openLoyaltyDrawer() {
+    const self = this;
     playSound(600, 70);
     vibrateDevice([15]);
 
@@ -1385,21 +1600,25 @@ export class CustomerView {
           </div>
 
           <div class="crm-body-content" id="crm-drawer-inner">
-            <div class="crm-auth-view">
-              <div class="input-group store-input-group">
-                <label class="store-field-label" for="crm-phone-input">Enter Phone Number</label>
-                <input type="tel" id="crm-phone-input" class="input store-input" placeholder="10-digit mobile number" maxlength="10" />
-              </div>
-              <button class="btn btn-primary btn-block" id="crm-lookup-btn" type="button" style="height:46px;margin-top:12px;font-weight:700;">
-                Access Account
-              </button>
-              <div style="text-align:center;margin-top:16px;">
-                <span style="font-size:0.75rem;color:var(--text-secondary);opacity:0.8;">Or secure your account with a password:</span>
-                <button class="btn btn-secondary btn-block btn-sm" id="crm-signin-link" type="button" style="margin-top:8px;font-weight:700;height:38px;">
-                  Sign In / Sign Up
+            ${self.loggedInCustomer ? `
+              <div style="text-align:center;padding:32px;"><div class="spinner store-spinner" style="margin:0 auto 12px;"></div>Loading rewards profile...</div>
+            ` : `
+              <div class="crm-auth-view">
+                <div class="input-group store-input-group">
+                  <label class="store-field-label" for="crm-phone-input">Enter Phone Number</label>
+                  <input type="tel" id="crm-phone-input" class="input store-input" placeholder="10-digit mobile number" maxlength="10" />
+                </div>
+                <button class="btn btn-primary btn-block" id="crm-lookup-btn" type="button" style="height:46px;margin-top:12px;font-weight:700;">
+                  Access Account
                 </button>
+                <div style="text-align:center;margin-top:16px;">
+                  <span style="font-size:0.75rem;color:var(--text-secondary);opacity:0.8;">Or secure your account with a password:</span>
+                  <button class="btn btn-secondary btn-block btn-sm" id="crm-signin-link" type="button" style="margin-top:8px;font-weight:700;height:38px;">
+                    Sign In / Sign Up
+                  </button>
+                </div>
               </div>
-            </div>
+            `}
           </div>
         </div>
       </div>
@@ -1429,7 +1648,7 @@ export class CustomerView {
     const phoneInput = overlay.querySelector('#crm-phone-input');
 
     const handleLookup = async () => {
-      const phone = phoneInput.value.trim();
+      const phone = phoneInput ? phoneInput.value.trim() : '';
       if (!/^[6-9]\d{9}$/.test(phone)) {
         showToast('Please enter a valid 10-digit mobile number', 'warning');
         return;
@@ -1471,15 +1690,87 @@ export class CustomerView {
       const appEl = document.getElementById('app');
       import('../../components/LoginScreen.js').then(({ LoginScreen }) => {
         const login = new LoginScreen(async (staff) => {
-          await this.loadData();
-          this.render();
-          this.openLoyaltyDrawer();
-        });
+          await self.loadData();
+          self.render();
+          self.openLoyaltyDrawer();
+        }, { mode: 'customer' });
         login.render(appEl);
       });
     });
 
-    const renderProfileView = (cust, orders) => {
+    // Auto-fetch if customer logged in
+    if (self.loggedInCustomer) {
+      (async () => {
+        try {
+          let customer = await db.customers.where('authUserId').equals(self.loggedInCustomer.cloudUserId).first();
+          let orders = [];
+
+          if (navigator.onLine) {
+            const { getSupabaseClient } = await import('../../services/supabaseClient.js');
+            const supabase = await getSupabaseClient();
+            if (supabase) {
+              const { data: custData, error: custErr } = await supabase
+                .from('customers')
+                .select('*')
+                .eq('auth_user_id', self.loggedInCustomer.cloudUserId)
+                .maybeSingle();
+
+              if (!custErr && custData) {
+                const { mapCustomerToLocal } = await import('../../services/sync.js');
+                const localCust = mapCustomerToLocal(custData);
+                const existingLocal = await db.customers.where('phone').equals(localCust.phone).first();
+                if (existingLocal) {
+                  localCust.id = existingLocal.id;
+                }
+                await db.customers.put(localCust);
+                customer = localCust;
+              }
+
+              const phoneToUse = customer?.phone || self.customerPhone;
+              if (phoneToUse) {
+                const { data: ordersData, error: ordersErr } = await supabase
+                  .from('orders')
+                  .select('*')
+                  .eq('customer_phone', phoneToUse)
+                  .order('created_at', { ascending: false });
+
+                if (!ordersErr && ordersData) {
+                  const { mapOrderToLocal } = await import('../../services/sync.js');
+                  orders = ordersData.map(mapOrderToLocal);
+                  await db.transaction('rw', db.orders, async () => {
+                    for (const order of orders) {
+                      const existing = await db.orders.where('clientOrderId').equals(order.clientOrderId).first();
+                      if (existing) order.id = existing.id;
+                      await db.orders.put(order);
+                    }
+                  });
+                }
+              }
+            }
+          }
+
+          if (!orders.length && customer?.phone) {
+            orders = await db.orders.where('customerPhone').equals(customer.phone).reverse().toArray();
+          }
+
+          if (customer) {
+            if (!customer.phone) {
+              renderLinkPhoneView(customer);
+            } else {
+              renderProfileView(customer, orders);
+            }
+          } else {
+            renderRegisterView('', true);
+          }
+        } catch (err) {
+          console.error('CRM lookup error:', err);
+          innerContainer.innerHTML = `<p style="text-align:center;color:var(--color-danger);padding:16px;">Failed to load profile details.</p>`;
+        }
+      })();
+    }
+
+    // Hoisted rendering/view helper functions using self scoping
+    function renderProfileView(cust, orders) {
       const tierGradients = {
         bronze: 'linear-gradient(135deg, #8C7853 0%, #4E3E28 100%)',
         silver: 'linear-gradient(135deg, #BDC3C7 0%, #2C3E50 100%)',
@@ -1511,7 +1802,8 @@ export class CustomerView {
       let ordersHtml = `<p class="crm-no-orders">No past order history found.</p>`;
       if (orders.length > 0) {
         ordersHtml = orders.map(order => {
-          const itemsDesc = order.items.map(i => `${i.quantity}x ${escapeHtml(i.itemName)}`).join(', ');
+          const parsedItems = parseOrderItems(order.items);
+          const itemsDesc = parsedItems.map(i => `${i.quantity}x ${escapeHtml(i.itemName || i.name)}`).join(', ');
           const dateStr = new Date(order.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
           return `
             <div class="crm-order-card">
@@ -1577,9 +1869,9 @@ export class CustomerView {
           const orderId = parseInt(btn.dataset.orderId, 10);
           const matchedOrder = orders.find(o => o.id === orderId);
           if (matchedOrder) {
-            this.cart = matchedOrder.items.map(item => ({
+            self.cart = parseOrderItems(matchedOrder.items).map(item => ({
               itemId: item.itemId,
-              itemName: item.itemName,
+              itemName: item.itemName || item.name,
               price: item.price,
               quantity: item.quantity,
               isVeg: item.isVeg,
@@ -1591,14 +1883,14 @@ export class CustomerView {
             showToast('Cart loaded with past items!', 'success');
 
             closeDrawer();
-            this.state = 'cart';
-            this.render();
+            self.state = 'cart';
+            self.render();
           }
         });
       });
-    };
+    }
 
-    const renderRegisterView = (phone, isCloud = false) => {
+    function renderRegisterView(phone, isCloud = false) {
       innerContainer.innerHTML = `
         <div class="crm-register-view" style="text-align:center;padding:16px 8px;">
           <span class="material-symbols-rounded" style="font-size:48px;color:var(--color-primary);margin-bottom:8px;">app_registration</span>
@@ -1607,7 +1899,7 @@ export class CustomerView {
 
           <div class="input-group store-input-group" style="text-align:left;">
             <label class="store-field-label" for="crm-reg-name">Your Full Name</label>
-            <input type="text" id="crm-reg-name" class="input store-input" value="${isCloud && this.loggedInCustomer ? escapeHtml(this.loggedInCustomer.name) : ''}" placeholder="E.g. Alexander Mercer" />
+            <input type="text" id="crm-reg-name" class="input store-input" value="${isCloud && self.loggedInCustomer ? escapeHtml(self.loggedInCustomer.name) : ''}" placeholder="E.g. Alexander Mercer" />
           </div>
 
           ${isCloud ? `
@@ -1639,7 +1931,7 @@ export class CustomerView {
         vibrateDevice([30]);
 
         try {
-          const authUserId = isCloud && this.loggedInCustomer ? this.loggedInCustomer.cloudUserId : null;
+          const authUserId = isCloud && self.loggedInCustomer ? self.loggedInCustomer.cloudUserId : null;
           const newProfile = {
             id: Date.now(),
             phone: phoneToUse,
@@ -1670,17 +1962,17 @@ export class CustomerView {
 
           await db.customers.add(newProfile);
           showToast('Welcome to TasteRewards!', 'success');
-          this.customerPhone = phoneToUse;
-          this.customerName = name;
+          self.customerPhone = phoneToUse;
+          self.customerName = name;
           renderProfileView(newProfile, []);
         } catch (err) {
           console.error('Registration failed:', err);
           showToast('Failed to register profile', 'error');
         }
       });
-    };
+    }
 
-    const renderLinkPhoneView = (customer) => {
+    function renderLinkPhoneView(customer) {
       innerContainer.innerHTML = `
         <div class="crm-register-view" style="text-align:center;padding:16px 8px;">
           <span class="material-symbols-rounded" style="font-size:48px;color:var(--color-primary);margin-bottom:8px;">phone_android</span>
@@ -1743,7 +2035,7 @@ export class CustomerView {
             await db.customers.update(customer.id, { phone, isSynced: 0 });
           }
 
-          this.customerPhone = phone;
+          self.customerPhone = phone;
           showToast('Phone number linked successfully!', 'success');
 
           innerContainer.innerHTML = `<div style="text-align:center;padding:32px;"><div class="spinner store-spinner" style="margin:0 auto 12px;"></div>Loading rewards profile...</div>`;
@@ -1772,83 +2064,15 @@ export class CustomerView {
           showToast('Failed to link phone number', 'error');
         }
       });
-    };
-
-    // Auto-fetch if customer logged in
-    if (this.loggedInCustomer) {
-      innerContainer.innerHTML = `<div style="text-align:center;padding:32px;"><div class="spinner store-spinner" style="margin:0 auto 12px;"></div>Loading rewards profile...</div>`;
-      (async () => {
-        try {
-          let customer = await db.customers.where('authUserId').equals(this.loggedInCustomer.cloudUserId).first();
-          let orders = [];
-
-          if (navigator.onLine) {
-            const { getSupabaseClient } = await import('../../services/supabaseClient.js');
-            const supabase = await getSupabaseClient();
-            if (supabase) {
-              const { data: custData, error: custErr } = await supabase
-                .from('customers')
-                .select('*')
-                .eq('auth_user_id', this.loggedInCustomer.cloudUserId)
-                .maybeSingle();
-
-              if (!custErr && custData) {
-                const { mapCustomerToLocal } = await import('../../services/sync.js');
-                const localCust = mapCustomerToLocal(custData);
-                const existingLocal = await db.customers.where('phone').equals(localCust.phone).first();
-                if (existingLocal) {
-                  localCust.id = existingLocal.id;
-                }
-                await db.customers.put(localCust);
-                customer = localCust;
-              }
-
-              const phoneToUse = customer?.phone || this.customerPhone;
-              if (phoneToUse) {
-                const { data: ordersData, error: ordersErr } = await supabase
-                  .from('orders')
-                  .select('*')
-                  .eq('customer_phone', phoneToUse)
-                  .order('created_at', { ascending: false });
-
-                if (!ordersErr && ordersData) {
-                  const { mapOrderToLocal } = await import('../../services/sync.js');
-                  orders = ordersData.map(mapOrderToLocal);
-                  await db.transaction('rw', db.orders, async () => {
-                    for (const order of orders) {
-                      const existing = await db.orders.where('clientOrderId').equals(order.clientOrderId).first();
-                      if (existing) order.id = existing.id;
-                      await db.orders.put(order);
-                    }
-                  });
-                }
-              }
-            }
-          }
-
-          if (!orders.length && customer?.phone) {
-            orders = await db.orders.where('customerPhone').equals(customer.phone).reverse().toArray();
-          }
-
-          if (customer) {
-            if (!customer.phone) {
-              renderLinkPhoneView(customer);
-            } else {
-              renderProfileView(customer, orders);
-            }
-          } else {
-            renderRegisterView('', true);
-          }
-        } catch (err) {
-          console.error('CRM lookup error:', err);
-          innerContainer.innerHTML = `<p style="text-align:center;color:var(--color-danger);padding:16px;">Failed to load profile details.</p>`;
-        }
-      })();
     }
   }
 
   unmount() {
     if (this.pollInterval) clearInterval(this.pollInterval);
+    if (this.statusChannel) {
+      this.statusChannel.unsubscribe();
+      this.statusChannel = null;
+    }
     if (this.handleSyncChanged) {
       window.removeEventListener('sync-data-changed', this.handleSyncChanged);
       this.handleSyncChanged = null;

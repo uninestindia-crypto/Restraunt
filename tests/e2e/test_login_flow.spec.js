@@ -3,6 +3,10 @@ import fs from 'fs';
 
 test('manually log in with PIN and check POS view', async ({ page }) => {
   const logs = [];
+  const outputDir = './test-results';
+  if (!fs.existsSync(outputDir)) {
+    fs.mkdirSync(outputDir, { recursive: true });
+  }
 
   page.on('console', msg => {
     logs.push(`[${msg.type()}] ${msg.text()}`);
@@ -74,7 +78,7 @@ test('manually log in with PIN and check POS view', async ({ page }) => {
 
     // Capture screenshot after login
     await page.screenshot({
-      path: 'C:/Users/user/.gemini/antigravity-ide/brain/6a0d3255-a81b-4d01-987c-233d725d0104/test_login_flow.png',
+      path: `${outputDir}/test_login_flow.png`,
       fullPage: true
     });
   } finally {

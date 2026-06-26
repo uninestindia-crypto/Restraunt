@@ -481,7 +481,13 @@ export async function flushOfflineQueue() {
       console.log(`[CloudDB] Flushed: ${entry.action} on ${entry.table}`);
     } catch (err) {
       console.error(`[CloudDB] Failed to flush: ${entry.action} on ${entry.table}:`, err);
-      failed.push(entry);
+      // Discard permanent database errors (like RLS/Permission violation) to avoid infinite sync retries
+      const isPermanentError = err.code === '42501' || err.status === 401 || err.status === 403 || String(err.message || '').includes('row-level security');
+      if (!isPermanentError) {
+        failed.push(entry);
+      } else {
+        console.warn(`[CloudDB] Permanent failure: Discarding ${entry.action} on ${entry.table} from sync queue due to permission constraints.`);
+      }
     }
   }
 

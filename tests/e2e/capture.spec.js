@@ -3,6 +3,10 @@ import fs from 'fs';
 
 test('capture screenshots of storefront and staff login', async ({ page }) => {
   const logs = [];
+  const outputDir = './test-results';
+  if (!fs.existsSync(outputDir)) {
+    fs.mkdirSync(outputDir, { recursive: true });
+  }
 
   page.on('console', msg => {
     logs.push(`[${msg.type()}] ${msg.text()}`);
@@ -17,7 +21,7 @@ test('capture screenshots of storefront and staff login', async ({ page }) => {
     await page.goto('/#/self-order');
     await page.waitForTimeout(5000); // Wait longer to see if it loads or stays stuck
     await page.screenshot({
-      path: 'C:/Users/user/.gemini/antigravity-ide/brain/ee45812b-7913-4bcd-96f1-31eaf214dfbc/storefront.png',
+      path: `${outputDir}/storefront.png`,
       fullPage: true
     });
 
@@ -25,12 +29,12 @@ test('capture screenshots of storefront and staff login', async ({ page }) => {
     await page.goto('/#/pos');
     await page.waitForTimeout(5000);
     await page.screenshot({
-      path: 'C:/Users/user/.gemini/antigravity-ide/brain/ee45812b-7913-4bcd-96f1-31eaf214dfbc/login.png',
+      path: `${outputDir}/login.png`,
       fullPage: true
     });
   } finally {
     fs.writeFileSync(
-      'C:/Users/user/.gemini/antigravity-ide/brain/ee45812b-7913-4bcd-96f1-31eaf214dfbc/browser_errors.txt',
+      `${outputDir}/browser_errors.txt`,
       logs.join('\n')
     );
   }

@@ -222,18 +222,20 @@ ALTER TABLE public_order_rate_limits ENABLE ROW LEVEL SECURITY;
 
 GRANT USAGE ON SCHEMA public TO anon, authenticated;
 GRANT SELECT ON menu_categories, menu_items TO anon, authenticated;
-GRANT SELECT, INSERT, UPDATE, DELETE ON menu_categories, menu_items, orders, tables, inventory, suppliers, staff, staff_memberships, shifts, activity_log, audit_events, customers TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON menu_categories, menu_items, tables, suppliers, staff, staff_memberships, shifts TO authenticated;
+GRANT SELECT, INSERT, UPDATE ON orders, inventory, customers TO authenticated;
+GRANT SELECT, INSERT ON activity_log, audit_events TO authenticated;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO authenticated;
 
 DROP POLICY IF EXISTS "public active menu categories read" ON menu_categories;
 CREATE POLICY "public active menu categories read" ON menu_categories
   FOR SELECT TO anon, authenticated
-  USING (store_id = 'the-taste' AND is_active = TRUE);
+  USING (is_active = TRUE);
 
 DROP POLICY IF EXISTS "public available menu items read" ON menu_items;
 CREATE POLICY "public available menu items read" ON menu_items
   FOR SELECT TO anon, authenticated
-  USING (store_id = 'the-taste' AND is_available = TRUE);
+  USING (is_available = TRUE);
 
 DROP POLICY IF EXISTS "staff memberships self read" ON staff_memberships;
 CREATE POLICY "staff memberships self read" ON staff_memberships
@@ -316,7 +318,16 @@ CREATE POLICY "customer self read write" ON customers
 DROP POLICY IF EXISTS "customer read own orders" ON orders;
 CREATE POLICY "customer read own orders" ON orders
   FOR SELECT TO authenticated
-  USING (customer_phone = (SELECT phone FROM customers WHERE auth_user_id = (SELECT auth.uid()) LIMIT 1));
+  USING (
+    customer_phone = (SELECT phone FROM customers WHERE auth_user_id = (SELECT auth.uid()) LIMIT 1)
+    OR auth_user_id = (SELECT auth.uid())
+  );
+
+-- Customer Own Orders Insert Policy
+DROP POLICY IF EXISTS "customer insert own orders" ON orders;
+CREATE POLICY "customer insert own orders" ON orders
+  FOR INSERT TO authenticated
+  WITH CHECK (auth_user_id = (SELECT auth.uid()));
 
 -- Create storage bucket for menu images
 INSERT INTO storage.buckets (id, name, public)
@@ -349,3 +360,81 @@ BEGIN
     END;
   END LOOP;
 END $$;
+
+-- ── Ledger Immutability & Audit Triggers ──
+
+-- Prevent any UPDATE or DELETE on activity_log and audit_events
+CREATE OR REPLACE FUNCTION prevent_modification()
+RETURNS TRIGGER AS $$
+BEGIN
+  RAISE EXCEPTION 'Data in this table is immutable and cannot be updated or deleted.';
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_prevent_mod_activity_log ON activity_log;
+CREATE TRIGGER trg_prevent_mod_activity_log
+  BEFORE UPDATE OR DELETE ON activity_log
+  FOR EACH ROW
+  EXECUTE FUNCTION prevent_modification();
+
+DROP TRIGGER IF EXISTS trg_prevent_mod_audit_events ON audit_events;
+CREATE TRIGGER trg_prevent_mod_audit_events
+  BEFORE UPDATE OR DELETE ON audit_events
+  FOR EACH ROW
+  EXECUTE FUNCTION prevent_modification();
+
+-- Prevent deletion of orders
+CREATE OR REPLACE FUNCTION prevent_order_deletion()
+RETURNS TRIGGER AS $$
+BEGIN
+  RAISE EXCEPTION 'Orders cannot be deleted once created. Use order status cancellation instead.';
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_prevent_delete_orders ON orders;
+CREATE TRIGGER trg_prevent_delete_orders
+  BEFORE DELETE ON orders
+  FOR EACH ROW
+  EXECUTE FUNCTION prevent_order_deletion();
+
+-- Log order status/total changes to audit_events
+CREATE OR REPLACE FUNCTION audit_order_changes()
+RETURNS TRIGGER AS $$
+DECLARE
+  change_details JSONB;
+BEGIN
+  -- Only log if there was a meaningful change
+  IF OLD.status IS DISTINCT FROM NEW.status OR 
+     OLD.payment_status IS DISTINCT FROM NEW.payment_status OR 
+     OLD.total IS DISTINCT FROM NEW.total THEN
+     
+     change_details := jsonb_build_object(
+       'old_status', OLD.status,
+       'new_status', NEW.status,
+       'old_payment_status', OLD.payment_status,
+       'new_payment_status', NEW.payment_status,
+       'old_total', OLD.total::text,
+       'new_total', NEW.total::text
+     );
+     
+     INSERT INTO audit_events (store_id, actor_staff_id, actor_auth_user_id, action, target_table, target_id, details)
+     VALUES (
+       NEW.store_id,
+       NEW.staff_id,
+       NEW.auth_user_id,
+       'order_update',
+       'orders',
+       NEW.id::text,
+       change_details
+     );
+  END IF;
+  
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_audit_order_changes ON orders;
+CREATE TRIGGER trg_audit_order_changes
+  AFTER UPDATE ON orders
+  FOR EACH ROW
+  EXECUTE FUNCTION audit_order_changes();

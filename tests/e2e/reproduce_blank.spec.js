@@ -3,6 +3,10 @@ import fs from 'fs';
 
 test('reproduce blank page issue', async ({ page }) => {
   const logs = [];
+  const outputDir = './test-results';
+  if (!fs.existsSync(outputDir)) {
+    fs.mkdirSync(outputDir, { recursive: true });
+  }
 
   page.on('console', msg => {
     logs.push(`[${msg.type()}] ${msg.text()}`);
@@ -19,12 +23,12 @@ test('reproduce blank page issue', async ({ page }) => {
 
     // Capture screenshot
     await page.screenshot({
-      path: 'C:/Users/user/.gemini/antigravity-ide/brain/6a0d3255-a81b-4d01-987c-233d725d0104/reproduce_blank.png',
+      path: `${outputDir}/reproduce_blank.png`,
       fullPage: true
     });
   } finally {
     fs.writeFileSync(
-      'C:/Users/user/.gemini/antigravity-ide/brain/6a0d3255-a81b-4d01-987c-233d725d0104/browser_reproduce_errors.txt',
+      `${outputDir}/browser_reproduce_errors.txt`,
       logs.join('\n')
     );
   }
