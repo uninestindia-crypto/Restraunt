@@ -329,6 +329,52 @@ export async function createOrder(orderData, options = {}) {
           idempotencyKey
         });
 
+        const storeId = localStorage.getItem('store_id') || 'the-taste';
+
+        // ── Cloud Inventory Lockout Check ──
+        const { data: dbInventory, error: invError } = await supabase
+          .from('inventory')
+          .select('id, name, quantity, min_threshold')
+          .eq('store_id', storeId);
+
+        if (!invError && dbInventory) {
+          const itemsToCheck = Array.isArray(orderData.items) ? orderData.items : [];
+          for (const item of itemsToCheck) {
+            let recipeFound = false;
+            if (item.itemId !== undefined && item.itemId !== null) {
+              const recipes = await db.recipes.where('menuItemId').equals(item.itemId).toArray();
+              if (recipes.length > 0) {
+                recipeFound = true;
+                for (const recipe of recipes) {
+                  for (const ingredient of recipe.ingredients || []) {
+                    const invItem = dbInventory.find(i => i.id === ingredient.inventoryId);
+                    if (invItem) {
+                      const required = (ingredient.quantity || 0) * (item.quantity || 1);
+                      if (invItem.quantity < required) {
+                        throw new Error(`Out of stock: Ingredient "${invItem.name}" has only ${invItem.quantity} units remaining.`);
+                      }
+                    }
+                  }
+                }
+              }
+            }
+            if (!recipeFound) {
+              const nameToMatch = item.itemName || item.name;
+              const match = dbInventory.find(inv => {
+                const na = (inv.name || '').toLowerCase().trim().replace(/\s+/g, ' ');
+                const nb = (nameToMatch || '').toLowerCase().trim().replace(/\s+/g, ' ');
+                return na && nb && (na.includes(nb) || nb.includes(na));
+              });
+              if (match) {
+                const required = item.quantity || 1;
+                if (match.quantity < required) {
+                  throw new Error(`Out of stock: "${match.name}" has only ${match.quantity} units remaining.`);
+                }
+              }
+            }
+          }
+        }
+
         const { data, error } = await supabase
           .from('orders')
           .insert(remoteOrder)

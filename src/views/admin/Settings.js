@@ -149,7 +149,7 @@ export class SettingsView {
       if (this.config.autoLockTerminal === '') this.config.autoLockTerminal = 'false';
       if (!this.config.autoLockTimeout) this.config.autoLockTimeout = '5';
       if (!this.config.sessionDuration) this.config.sessionDuration = '8';
-      if (!this.config.app_theme) this.config.app_theme = localStorage.getItem('app_theme') || 'dark';
+      if (!this.config.app_theme) this.config.app_theme = localStorage.getItem('app_theme') || 'system';
     } catch (e) {
       console.error('Failed to load system settings:', e);
     }
@@ -986,7 +986,7 @@ export class SettingsView {
     this._renderReceiptPreview();
 
     // Render initial theme preview
-    this._updateThemePreview(this.config.app_theme || 'dark');
+    this._updateThemePreview(this.config.app_theme || 'system');
   }
 
   /** Build a single toggle row with proper CSS toggle switch */
@@ -1735,7 +1735,7 @@ export class SettingsView {
         localStorage.setItem('app_tax_label', this.config.taxLabel || 'GST');
 
         // Apply theme immediately
-        const savedTheme = this.config.app_theme || 'dark';
+        const savedTheme = this.config.app_theme || 'system';
         localStorage.setItem('app_theme', savedTheme);
         document.documentElement.setAttribute('data-theme', savedTheme);
         window.dispatchEvent(new CustomEvent('theme-changed', { detail: { theme: savedTheme } }));

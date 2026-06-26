@@ -125,9 +125,9 @@ export class Sidebar {
     const themeBtn = container.querySelector('#sidebar-theme-btn');
     if (themeBtn) {
       themeBtn.addEventListener('click', () => {
-        const current = localStorage.getItem('app_theme') || 'dark';
+        const current = localStorage.getItem('app_theme') || 'system';
         const cycle = { dark: 'light', light: 'system', system: 'dark' };
-        const next = cycle[current] || 'dark';
+        const next = cycle[current] || 'system';
         // Use App.setTheme if available, otherwise manual
         localStorage.setItem('app_theme', next);
         document.documentElement.setAttribute('data-theme', next);
@@ -149,15 +149,15 @@ export class Sidebar {
   }
 
   _getThemeIcon() {
-    const theme = localStorage.getItem('app_theme') || 'dark';
+    const theme = localStorage.getItem('app_theme') || 'system';
     const icons = { dark: 'dark_mode', light: 'light_mode', system: 'computer' };
-    return icons[theme] || 'dark_mode';
+    return icons[theme] || 'computer';
   }
 
   _getThemeLabel() {
-    const theme = localStorage.getItem('app_theme') || 'dark';
+    const theme = localStorage.getItem('app_theme') || 'system';
     const labels = { dark: 'Dark', light: 'Light', system: 'System' };
-    return labels[theme] || 'Dark';
+    return labels[theme] || 'System';
   }
 
   _updateThemeUI() {

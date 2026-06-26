@@ -1,5 +1,6 @@
 import { getCategories, getItemsByCategory, createOrder, getNextOrderNumber, getSetting, db, generateLocalUuid } from '../../db/database.js';
 import { escapeHtml, formatCurrency, parseOrderItems, playSound, showToast, vibrateDevice } from '../../utils/helpers.js';
+import { globalStore } from '../../store/Store.js';
 
 const PHONE_RE = /^[6-9]\d{9}$/;
 
@@ -40,7 +41,6 @@ export class CustomerView {
     this.selectedTableId = '';
     this.orderType = 'delivery';
     this.selectedPaymentMethod = 'upi';
-    this.cart = [];
     this.state = 'menu';
     this.placedOrder = null;
     this.customerName = '';
@@ -55,6 +55,21 @@ export class CustomerView {
       phone: '',
       address: ''
     };
+
+    // Subscribe view updates to store changes reactively
+    globalStore.subscribe(() => {
+      if (this.container && this.state === 'menu') {
+        this.render();
+      }
+    });
+  }
+
+  get cart() {
+    return globalStore.state.cart;
+  }
+
+  set cart(val) {
+    globalStore.updateState({ cart: val });
   }
 
   async mount(container) {
@@ -276,7 +291,7 @@ export class CustomerView {
             <nav class="store-nav-links" aria-label="Public navigation" style="display:flex;align-items:center;gap:12px;">
               <a href="#menu">Menu</a>
               ${authLinksHtml}
-              <a href="/TheTaste.apk" download style="display:inline-flex;align-items:center;gap:4px;color:#FF6B35;font-weight:700;" title="Download Android App APK"><span class="material-symbols-rounded" style="font-size:16px;">android</span>Get App</a>
+              <a href="/TheTaste.apk" download class="store-get-app-link" style="display:inline-flex;align-items:center;gap:4px;color:#FF6B35;font-weight:700;" title="Download Android App APK"><span class="material-symbols-rounded" style="font-size:16px;">android</span>Get App</a>
               <a href="#/pos" class="store-staff-link">Staff</a>
             </nav>
           </header>
@@ -1217,28 +1232,14 @@ export class CustomerView {
   }
 
   addToCart(item) {
-    const existing = this.cart.find(ci => ci.itemId === item.id);
-    if (existing) existing.quantity += 1;
-    else {
-      this.cart.push({
-        itemId: item.id,
-        itemName: item.name,
-        price: item.price,
-        quantity: 1,
-        isVeg: item.isVeg,
-        notes: ''
-      });
-    }
+    globalStore.addToCart(item);
     playSound(650, 70);
     vibrateDevice([30]);
     this.render();
   }
 
   adjustCart(itemId, delta) {
-    const index = this.cart.findIndex(ci => ci.itemId === itemId);
-    if (index === -1) return;
-    this.cart[index].quantity += delta;
-    if (this.cart[index].quantity <= 0) this.cart.splice(index, 1);
+    globalStore.adjustCartQuantity(itemId, delta);
     playSound(600, 60);
     vibrateDevice([20]);
     if (this.state === 'menu') this.render();
@@ -1246,14 +1247,6 @@ export class CustomerView {
 
   async placeOrder() {
     const isCard = this.selectedPaymentMethod === 'card';
-    if (isCard) {
-      const submitBtn = this.container.querySelector('#btn-submit-self-order');
-      if (submitBtn) {
-        submitBtn.disabled = true;
-        submitBtn.innerHTML = `<span class="spinner store-spinner" style="display:inline-block;width:14px;height:14px;margin-right:6px;vertical-align:middle;"></span>Processing Card Payment...`;
-      }
-      await new Promise(resolve => setTimeout(resolve, 1500));
-    }
 
     try {
       const subtotal = this.cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
@@ -1281,9 +1274,9 @@ export class CustomerView {
         deliveryFee,
         total,
         paymentMethod: this.selectedPaymentMethod,
-        paymentStatus: isCard ? 'paid' : (this.selectedPaymentMethod === 'upi' ? 'pending' : 'unpaid'),
-        paymentReference: isCard ? `TXN-${Math.random().toString(36).substr(2, 9).toUpperCase()}` : '',
-        paymentVerifiedAt: isCard ? now : null,
+        paymentStatus: isCard ? 'unpaid' : (this.selectedPaymentMethod === 'upi' ? 'pending' : 'unpaid'),
+        paymentReference: '',
+        paymentVerifiedAt: null,
         customerName: this.customerName,
         customerPhone: this.customerPhone,
         deliveryAddress: type === 'delivery' ? this.deliveryAddress : '',
@@ -1319,14 +1312,207 @@ export class CustomerView {
         await db.table('tables').update(tableId, { status: 'occupied', isSynced: 0 });
       }
 
-      this.afterOrderCreated(order);
-      this.state = 'success';
-      playSound(900, 90);
-      vibrateDevice([50, 30, 50]);
-      this.render();
+      if (isCard) {
+        // Show Stripe Checkout modal
+        this.showStripeCheckoutModal(
+          order,
+          clientOrderId,
+          async () => {
+            // Emulate Stripe Webhook on checkout complete
+            if (navigator.onLine) {
+              const { getSupabaseClient } = await import('../../services/supabaseClient.js');
+              const supabase = await getSupabaseClient();
+              if (supabase) {
+                const paymentIntentId = `pi_mock_${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
+                const { data, error } = await supabase.rpc('emulate_stripe_webhook', {
+                  order_client_id: clientOrderId,
+                  payment_intent_id: paymentIntentId,
+                  status: 'succeeded'
+                });
+                if (error) {
+                  throw new Error('Payment webhook processing failed: ' + error.message);
+                }
+              }
+            } else {
+              throw new Error('Device is offline. Stripe payment cannot be finalized.');
+            }
+            
+            // Re-fetch localized order details to verify paid status
+            const updated = await db.orders.where('clientOrderId').equals(clientOrderId).first();
+            if (updated) {
+              this.placedOrder = updated;
+            }
+
+            this.afterOrderCreated(order);
+            this.state = 'success';
+            playSound(900, 90);
+            vibrateDevice([50, 30, 50]);
+            this.render();
+          },
+          () => {
+            showToast('Payment cancelled. Please try again.', 'info');
+            const submitBtn = this.container.querySelector('#btn-submit-self-order');
+            if (submitBtn) {
+              submitBtn.disabled = false;
+              submitBtn.innerHTML = 'Place Order';
+            }
+          }
+        );
+      } else {
+        this.afterOrderCreated(order);
+        this.state = 'success';
+        playSound(900, 90);
+        vibrateDevice([50, 30, 50]);
+        this.render();
+      }
     } catch (error) {
       console.error('Failed to submit self-order:', error);
       showToast('Order placement failed: ' + error.message, 'error');
+      const submitBtn = this.container.querySelector('#btn-submit-self-order');
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = 'Place Order';
+      }
+    }
+  }
+
+  showStripeCheckoutModal(order, clientOrderId, onComplete, onCancel) {
+    const modal = document.createElement('div');
+    modal.className = 'stripe-modal-overlay';
+    modal.style = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(8px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 10000;
+      padding: 16px;
+    `;
+
+    modal.innerHTML = `
+      <div style="
+        background: #fff;
+        border-radius: 12px;
+        width: 100%;
+        max-width: 420px;
+        box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+        overflow: hidden;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        color: #30313d;
+      ">
+        <!-- Stripe Header -->
+        <div style="background: #f8f9fa; padding: 20px; border-bottom: 1px solid #e3e6e8; display:flex; justify-content:space-between; align-items:center;">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <svg viewBox="0 0 40 16" style="width:38px; height:16px; fill:#635bff;"><path d="M4.09 10.37h1.49v4.29c0 .7.38.93 1.07.93.36 0 .66-.05.81-.12v-1.12a2.3 2.3 0 0 1-.36.03c-.28 0-.44-.08-.44-.45v-3.56H8.2V8.98H6.66V6.63L5.17 7.1v1.88H4.09v1.39zm4.74 3.73c0 .87.7 1.34 1.83 1.34.61 0 1.1-.1 1.38-.24v-1.18c-.28.11-.64.19-1.07.19-.52 0-.8-.17-.8-.58v-1.89h1.83V10.4h-1.83V8.98h-1.34v4.54l-.02.58zm6.54-6.42a2.6 2.6 0 0 0-1.88.75V3.88l-1.49.46v11.12h1.49V10.9a2.44 2.44 0 0 1 1.94-.85c1.23 0 1.91.86 1.91 2.31v3.1h1.49v-3.32c0-2.22-1.17-3.44-3.46-3.44zm6.06-1.57h1.49V4.62h-1.49v1.49zm0 2.27h1.49v9.12h-1.49V9.11zm3.87 0h1.49v1.07c.36-.67 1.08-1.25 2.1-1.25 1.7 0 2.59 1.15 2.59 3.03v6.27H33.4V12.1c0-1.14-.49-1.63-1.34-1.63-.58 0-1.08.3-1.34.78v4.21h-1.49V9.11zm9.35 3.32c0-2.12 1.38-3.32 3.13-3.32 1.82 0 2.92 1.25 2.92 3.25V12.9h-4.54c.05.95.73 1.39 1.63 1.39a3.2 3.2 0 0 0 1.38-.28v1.17c-.36.14-.9.24-1.58.24-1.8 0-2.94-1.17-2.94-3.32zm4.56-1.06c-.05-.73-.5-1.12-1.36-1.12-.76 0-1.23.4-1.32 1.12h2.68z"/></svg>
+            <span style="font-size:12px; color:#6a737d; font-weight:600;">Secure Checkout</span>
+          </div>
+          <button class="btn-stripe-close" style="background:transparent; border:none; color:#a3acb9; cursor:pointer; font-size:16px; padding:4px;"><span class="material-symbols-rounded" style="font-size:16px;">close</span></button>
+        </div>
+
+        <div style="padding: 24px;">
+          <!-- Order summary -->
+          <div style="margin-bottom:20px; display:flex; justify-content:space-between; align-items:center;">
+            <div>
+              <span style="font-size: 12px; color: #6a737d; font-weight: 500; display:block;">ORDER #${order.orderNumber}</span>
+              <strong style="font-size: 15px; color: #1a1b25;">The Taste Storefront</strong>
+            </div>
+            <strong style="font-size: 20px; color: #1a1b25; font-family:var(--font-display);">${formatCurrency(order.total)}</strong>
+          </div>
+
+          <!-- Card input -->
+          <div style="display:flex; flex-direction:column; gap:12px;">
+            <div style="display:flex; flex-direction:column; gap:4px;">
+              <label style="font-size: 11px; font-weight: 600; color: #4f5b66;">Card Number</label>
+              <div style="
+                border: 1px solid #e3e6e8;
+                border-radius: 6px;
+                padding: 10px 12px;
+                display: flex;
+                align-items: center;
+                background: #fff;
+                box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+              ">
+                <span class="material-symbols-rounded" style="font-size:18px; color:#a3acb9; margin-right:8px;">credit_card</span>
+                <input type="text" id="stripe-card-num" value="4242 4242 4242 4242" placeholder="4242 4242 4242 4242" style="border:none; outline:none; width:100%; font-size:14px; font-family:monospace;" />
+              </div>
+            </div>
+
+            <div style="display:flex; gap:12px;">
+              <div style="flex:1; display:flex; flex-direction:column; gap:4px;">
+                <label style="font-size: 11px; font-weight: 600; color: #4f5b66;">Expiration</label>
+                <input type="text" id="stripe-card-expiry" value="12/28" placeholder="MM/YY" style="border: 1px solid #e3e6e8; border-radius: 6px; padding: 10px 12px; font-size:14px; font-family:monospace; box-shadow: 0 1px 2px rgba(0,0,0,0.05); outline:none;" />
+              </div>
+              <div style="flex:1; display:flex; flex-direction:column; gap:4px;">
+                <label style="font-size: 11px; font-weight: 600; color: #4f5b66;">CVC</label>
+                <input type="password" id="stripe-card-cvc" value="123" placeholder="123" style="border: 1px solid #e3e6e8; border-radius: 6px; padding: 10px 12px; font-size:14px; font-family:monospace; box-shadow: 0 1px 2px rgba(0,0,0,0.05); outline:none;" />
+              </div>
+            </div>
+
+            <button id="stripe-pay-btn" style="
+              background: #635bff;
+              color: #fff;
+              border: none;
+              border-radius: 6px;
+              padding: 12px;
+              font-size: 14px;
+              font-weight: 700;
+              cursor: pointer;
+              margin-top: 16px;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              box-shadow: 0 2px 4px rgba(99, 91, 255, 0.2);
+              transition: background 0.2s;
+            ">
+              Pay ${formatCurrency(order.total)}
+            </button>
+          </div>
+          <div style="text-align:center; margin-top:16px;">
+            <a href="https://stripe.com" target="_blank" style="text-decoration:none; font-size:10px; color:#a3acb9; font-weight:600;">Powered by Stripe</a>
+          </div>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    const closeBtn = modal.querySelector('.btn-stripe-close');
+    const payBtn = modal.querySelector('#stripe-pay-btn');
+
+    closeBtn.addEventListener('click', () => {
+      modal.remove();
+      onCancel();
+    });
+
+    payBtn.addEventListener('click', async () => {
+      payBtn.disabled = true;
+      payBtn.innerHTML = `<span class="spinner" style="display:inline-block; width:12px; height:12px; border:2px solid #fff; border-top-color:transparent; border-radius:50%; animation:stripe-spin 0.8s linear infinite; margin-right:6px; vertical-align:middle;"></span>Processing...`;
+      
+      try {
+        await onComplete();
+        modal.remove();
+      } catch (err) {
+        payBtn.disabled = false;
+        payBtn.innerHTML = `Pay ${formatCurrency(order.total)}`;
+        showToast('Stripe payment failed: ' + err.message, 'error');
+      }
+    });
+
+    // Add inline keyframe spin style
+    if (!document.getElementById('stripe-spin-style')) {
+      const style = document.createElement('style');
+      style.id = 'stripe-spin-style';
+      style.textContent = `
+        @keyframes stripe-spin {
+          to { transform: rotate(360deg); }
+        }
+      `;
+      document.head.appendChild(style);
     }
   }
 

@@ -438,3 +438,100 @@ CREATE TRIGGER trg_audit_order_changes
   AFTER UPDATE ON orders
   FOR EACH ROW
   EXECUTE FUNCTION audit_order_changes();
+
+-- ── Recipes Cloud Setup ──
+CREATE TABLE IF NOT EXISTS recipes (
+  id BIGINT PRIMARY KEY,
+  store_id TEXT NOT NULL DEFAULT 'the-taste',
+  menu_item_id BIGINT REFERENCES menu_items(id) ON DELETE CASCADE,
+  ingredients JSONB NOT NULL DEFAULT '[]'::jsonb,
+  updated_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+ALTER TABLE recipes ENABLE ROW LEVEL SECURITY;
+GRANT SELECT, INSERT, UPDATE, DELETE ON recipes TO authenticated;
+
+DROP POLICY IF EXISTS "staff access recipes" ON recipes;
+CREATE POLICY "staff access recipes" ON recipes
+  FOR ALL TO authenticated
+  USING (EXISTS (SELECT 1 FROM staff_memberships sm WHERE sm.store_id = recipes.store_id AND sm.auth_user_id = (SELECT auth.uid()) AND sm.is_active = TRUE))
+  WITH CHECK (EXISTS (SELECT 1 FROM staff_memberships sm WHERE sm.store_id = recipes.store_id AND sm.auth_user_id = (SELECT auth.uid()) AND sm.is_active = TRUE));
+
+-- ── Secure Stripe Webhook Emulation RPC ──
+CREATE OR REPLACE FUNCTION emulate_stripe_webhook(
+  order_client_id UUID,
+  payment_intent_id TEXT,
+  status TEXT
+)
+RETURNS BOOLEAN AS $$
+BEGIN
+  IF status = 'succeeded' THEN
+    UPDATE orders
+    SET payment_status = 'paid',
+        payment_reference = payment_intent_id,
+        payment_verified_at = NOW(),
+        updated_at = NOW()
+    WHERE client_order_id = order_client_id;
+    
+    RETURN TRUE;
+  END IF;
+  RETURN FALSE;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- ── Cloud Inventory Auto-Deduction Trigger ──
+CREATE OR REPLACE FUNCTION deduct_inventory_on_order()
+RETURNS TRIGGER AS $$
+DECLARE
+  order_item RECORD;
+  recipe_ingredient RECORD;
+  recipe_rec RECORD;
+  inv_match_id BIGINT;
+  deduct_qty NUMERIC;
+BEGIN
+  -- Process each item in the order
+  FOR order_item IN 
+    SELECT * FROM jsonb_to_recordset(NEW.items) AS x(itemId BIGINT, itemName TEXT, quantity INT)
+  LOOP
+    -- Look for a recipe on the server
+    SELECT * INTO recipe_rec FROM recipes WHERE menu_item_id = order_item.itemId LIMIT 1;
+    
+    IF recipe_rec.id IS NOT NULL THEN
+      -- Loop through recipe ingredients
+      FOR recipe_ingredient IN 
+        SELECT * FROM jsonb_to_recordset(recipe_rec.ingredients) AS y(inventoryId BIGINT, quantity NUMERIC)
+      LOOP
+        deduct_qty := COALESCE(recipe_ingredient.quantity, 0) * COALESCE(order_item.quantity, 1);
+        UPDATE inventory 
+        SET quantity = GREATEST(0, quantity - deduct_qty),
+            updated_at = NOW()
+        WHERE id = recipe_ingredient.inventoryId AND store_id = NEW.store_id;
+      END LOOP;
+    ELSE
+      -- Fallback: Fuzzy name match against inventory table
+      SELECT id INTO inv_match_id 
+      FROM inventory 
+      WHERE store_id = NEW.store_id 
+        AND (LOWER(TRIM(name)) = LOWER(TRIM(order_item.itemName)) 
+             OR LOWER(TRIM(name)) LIKE '%' || LOWER(TRIM(order_item.itemName)) || '%'
+             OR LOWER(TRIM(order_item.itemName)) LIKE '%' || LOWER(TRIM(name)) || '%')
+      LIMIT 1;
+      
+      IF inv_match_id IS NOT NULL THEN
+        UPDATE inventory 
+        SET quantity = GREATEST(0, quantity - COALESCE(order_item.quantity, 1)),
+            updated_at = NOW()
+        WHERE id = inv_match_id AND store_id = NEW.store_id;
+      END IF;
+    END IF;
+  END LOOP;
+  
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_deduct_inventory_on_order ON orders;
+CREATE TRIGGER trg_deduct_inventory_on_order
+  AFTER INSERT ON orders
+  FOR EACH ROW
+  EXECUTE FUNCTION deduct_inventory_on_order();

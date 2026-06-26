@@ -23,6 +23,9 @@ import { seedDatabase } from './db/seed.js';
 // Router
 import { router } from './router.js';
 
+// Telemetry & Observability
+import { telemetry } from './services/telemetry.js';
+
 import { showToast } from './utils/helpers.js';
 
 // NextGenOS
@@ -41,18 +44,14 @@ class App {
     this.initTheme();
   }
 
-  /**
-   * Initialize theme from localStorage. Called synchronously in constructor
-   * to avoid flash of wrong theme on page load.
-   */
   initTheme() {
-    const saved = localStorage.getItem('app_theme') || 'dark';
+    const saved = localStorage.getItem('app_theme') || 'system';
     document.documentElement.setAttribute('data-theme', saved);
 
     // Listen for OS preference changes when using 'system' theme
     if (window.matchMedia) {
       window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
-        const current = localStorage.getItem('app_theme') || 'dark';
+        const current = localStorage.getItem('app_theme') || 'system';
         if (current === 'system') {
           // Re-apply system attribute to trigger CSS media query re-evaluation
           document.documentElement.setAttribute('data-theme', 'system');
@@ -67,7 +66,7 @@ class App {
    */
   static setTheme(theme) {
     const validThemes = ['dark', 'light', 'system'];
-    if (!validThemes.includes(theme)) theme = 'dark';
+    if (!validThemes.includes(theme)) theme = 'system';
     localStorage.setItem('app_theme', theme);
     document.documentElement.setAttribute('data-theme', theme);
     window.dispatchEvent(new CustomEvent('theme-changed', { detail: { theme } }));
@@ -78,7 +77,7 @@ class App {
    * @returns {'dark'|'light'|'system'}
    */
   static getTheme() {
-    return localStorage.getItem('app_theme') || 'dark';
+    return localStorage.getItem('app_theme') || 'system';
   }
 
   /**

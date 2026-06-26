@@ -27,6 +27,7 @@ export class AdminView {
     this.settingsView = null;
     this.brandingView = null;
     this.staffView = null;
+    this.analyticsView = null;
   }
 
   async mount(container) {
@@ -196,7 +197,7 @@ export class AdminView {
   }
 
   async renderAdminConsole() {
-    const currentTheme = localStorage.getItem('app_theme') || 'dark';
+    const currentTheme = localStorage.getItem('app_theme') || 'system';
 
     this.container.innerHTML = `
       <div class="main-area">
@@ -206,6 +207,10 @@ export class AdminView {
             <button class="tab admin-tab ${this.activeTab === 'dashboard' ? 'active' : ''}" data-tab="dashboard">
               <span class="material-symbols-rounded" style="font-size: 18px; vertical-align: middle; margin-right: 4px;">dashboard</span>
               Dashboard
+            </button>
+            <button class="tab admin-tab ${this.activeTab === 'analytics' ? 'active' : ''}" data-tab="analytics">
+              <span class="material-symbols-rounded" style="font-size: 18px; vertical-align: middle; margin-right: 4px;">analytics</span>
+              Analytics
             </button>
             <button class="tab admin-tab ${this.activeTab === 'menu' ? 'active' : ''}" data-tab="menu">
               <span class="material-symbols-rounded" style="font-size: 18px; vertical-align: middle; margin-right: 4px;">edit_document</span>
@@ -329,11 +334,16 @@ export class AdminView {
     if (this.settingsView && this.settingsView.unmount) this.settingsView.unmount();
     if (this.brandingView && this.brandingView.unmount) this.brandingView.unmount();
     if (this.staffView && this.staffView.unmount) this.staffView.unmount();
+    if (this.analyticsView && this.analyticsView.unmount) this.analyticsView.unmount();
 
     viewport.innerHTML = '';
 
     if (this.activeTab === 'dashboard') {
       await this.renderDashboard(viewport);
+    } else if (this.activeTab === 'analytics') {
+      const { AnalyticsView } = await import('./AnalyticsView.js');
+      this.analyticsView = new AnalyticsView(this.app);
+      await this.analyticsView.mount(viewport);
     } else if (this.activeTab === 'menu') {
       this.menuManager = new MenuManager(this.app);
       await this.menuManager.mount(viewport);
@@ -580,8 +590,8 @@ export class AdminView {
     const totalOrders = await db.orders.count();
     const isOnline = navigator.onLine;
 
-    const currentTheme = localStorage.getItem('app_theme') || 'dark';
-    const themeLabel = { dark: '🌙 Dark', light: '☀️ Light', system: '💻 System' }[currentTheme] || 'Dark';
+    const currentTheme = localStorage.getItem('app_theme') || 'system';
+    const themeLabel = { dark: '🌙 Dark', light: '☀️ Light', system: '💻 System' }[currentTheme] || 'System';
 
     const items = [
       { icon: 'cloud', label: 'Network Status', value: isOnline ? 'Online' : 'Offline', color: isOnline ? 'var(--color-success)' : 'var(--color-danger)' },
