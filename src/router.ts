@@ -97,7 +97,7 @@ export class Router {
           this.navigate('#/orders');
         } else if (staffRole === 'customer') {
           this.navigate('#/self-order');
-        } else if (['owner', 'manager', 'cashier'].includes(staffRole)) {
+        } else if (['developer', 'owner', 'manager', 'cashier'].includes(staffRole)) {
           this.navigate('#/pos');
         } else {
           this.navigate('#/self-order');

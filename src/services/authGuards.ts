@@ -1,5 +1,5 @@
 // @ts-nocheck
-export const STAFF_ROLES = ['owner', 'manager', 'cashier', 'kitchen', 'waiter', 'delivery'];
+export const STAFF_ROLES = ['developer', 'owner', 'manager', 'cashier', 'kitchen', 'waiter', 'delivery'];
 
 export class CloudStaffAccessError extends Error {
   constructor(message = 'This cloud account is not linked to an active staff profile.') {
@@ -78,7 +78,7 @@ export function canUnlockAdminPin({
   allowManager = true
 } = {}) {
   const role = normalizeStaffRole(staff?.role);
-  const allowedRoles = allowManager ? ['owner', 'manager'] : ['owner'];
+  const allowedRoles = allowManager ? ['developer', 'owner', 'manager'] : ['developer', 'owner'];
   const validStaff = isActiveStaffWithPin(staff) && allowedRoles.includes(role);
   const staffMatchesPin = validStaff && staff.pinHash === inputHash;
   const configuredMatchesPin = Boolean(configuredHash && inputHash && configuredHash === inputHash);

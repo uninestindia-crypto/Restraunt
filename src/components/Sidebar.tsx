@@ -15,34 +15,40 @@ const NAV_GROUPS = [
   {
     label: 'Operations',
     items: [
-      { hash: '#/pos', icon: 'point_of_sale', label: 'POS', roles: ['owner', 'manager', 'cashier', 'waiter'] },
-      { hash: '#/pos-kitchen', icon: 'bolt', label: 'Express Panel', roles: ['owner', 'manager', 'cashier', 'waiter', 'kitchen'] },
-      { hash: '#/kitchen', icon: 'restaurant', label: 'Kitchen', roles: ['owner', 'manager', 'cashier', 'kitchen'] },
-      { hash: '#/tables', icon: 'table_bar', label: 'Tables', roles: ['owner', 'manager', 'cashier', 'waiter', 'kitchen'] },
-      { hash: '#/channels', icon: 'hub', label: 'Channels', roles: ['owner', 'manager', 'cashier'] },
+      { hash: '#/pos', icon: 'point_of_sale', label: 'POS', roles: ['developer', 'owner', 'manager', 'cashier', 'waiter'] },
+      { hash: '#/pos-kitchen', icon: 'bolt', label: 'Express Panel', roles: ['developer', 'owner', 'manager', 'cashier', 'waiter', 'kitchen'] },
+      { hash: '#/kitchen', icon: 'restaurant', label: 'Kitchen', roles: ['developer', 'owner', 'manager', 'cashier', 'kitchen'] },
+      { hash: '#/tables', icon: 'table_bar', label: 'Tables', roles: ['developer', 'owner', 'manager', 'cashier', 'waiter', 'kitchen'] },
+      { hash: '#/channels', icon: 'hub', label: 'Channels', roles: ['developer', 'owner', 'manager', 'cashier'] },
     ],
   },
   {
     label: 'Business',
     items: [
-      { hash: '#/analytics', icon: 'analytics', label: 'Analytics', roles: ['owner', 'manager'] },
-      { hash: '#/inventory', icon: 'inventory_2', label: 'Inventory', roles: ['owner', 'manager'] },
-      { hash: '#/customers', icon: 'loyalty', label: 'Customers', roles: ['owner', 'manager', 'cashier', 'waiter'] },
-      { hash: '#/staff', icon: 'groups', label: 'Staff', roles: ['owner', 'manager'] },
+      { hash: '#/analytics', icon: 'analytics', label: 'Analytics', roles: ['developer', 'owner', 'manager'] },
+      { hash: '#/inventory', icon: 'inventory_2', label: 'Inventory', roles: ['developer', 'owner', 'manager'] },
+      { hash: '#/customers', icon: 'loyalty', label: 'Customers', roles: ['developer', 'owner', 'manager', 'cashier', 'waiter'] },
+      { hash: '#/staff', icon: 'groups', label: 'Staff', roles: ['developer', 'owner', 'manager'] },
     ],
   },
   {
     label: 'Intelligence',
     items: [
-      { hash: '#/ai', icon: 'smart_toy', label: 'AI Center', roles: ['owner', 'manager', 'cashier'] },
+      { hash: '#/ai', icon: 'smart_toy', label: 'AI Center', roles: ['developer', 'owner', 'manager', 'cashier'] },
     ],
   },
   {
     label: 'System',
     items: [
-      { hash: '#/orders', icon: 'receipt_long', label: 'Orders', roles: ['owner', 'manager', 'cashier', 'delivery'] },
-      { hash: '#/admin', icon: 'admin_panel_settings', label: 'Admin', roles: ['owner', 'manager'] },
-      { hash: '#/help', icon: 'help', label: 'Help Center', roles: ['owner', 'manager', 'cashier', 'waiter', 'kitchen', 'delivery'] },
+      { hash: '#/orders', icon: 'receipt_long', label: 'Orders', roles: ['developer', 'owner', 'manager', 'cashier', 'delivery'] },
+      { hash: '#/admin', icon: 'admin_panel_settings', label: 'Admin', roles: ['developer', 'owner', 'manager'] },
+      { hash: '#/help', icon: 'help', label: 'Help Center', roles: ['developer', 'owner', 'manager', 'cashier', 'waiter', 'kitchen', 'delivery'] },
+    ],
+  },
+  {
+    label: 'Developer',
+    items: [
+      { hash: '#/developer', icon: 'terminal', label: 'Dev Console', roles: ['developer'] },
     ],
   },
 ];
@@ -66,9 +72,9 @@ export class Sidebar {
 
         // Custom Express Panel permission check
         if (item.hash === '#/pos-kitchen') {
-          const isOwner = staffRole === 'owner';
+          const isDeveloperOrOwner = staffRole === 'developer' || staffRole === 'owner';
           const hasExpressAccess = currentStaff?.allowExpress === 1 || currentStaff?.allowExpress === true;
-          return isOwner || hasExpressAccess;
+          return isDeveloperOrOwner || hasExpressAccess;
         }
 
         return true;

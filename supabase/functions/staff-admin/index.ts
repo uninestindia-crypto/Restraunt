@@ -10,7 +10,7 @@ declare const Deno: {
 };
 
 const DEFAULT_STORE_ID = "the-taste";
-const STAFF_ROLES = ["owner", "manager", "cashier", "kitchen", "waiter", "delivery"];
+const STAFF_ROLES = ["developer", "owner", "manager", "cashier", "kitchen", "waiter", "delivery"];
 
 type StaffAdminPayload = {
   action?: string;
@@ -102,8 +102,8 @@ async function requireOwner({
     .maybeSingle();
 
   if (membershipError) return { error: `Membership check failed: ${membershipError.message}`, status: 500 };
-  if (membership?.role !== "owner") {
-    return { error: "Only active owners can manage cloud staff.", status: 403 };
+  if (membership?.role !== "owner" && membership?.role !== "developer") {
+    return { error: "Only active owners or developers can manage cloud staff.", status: 403 };
   }
 
   return { user, membership };
