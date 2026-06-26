@@ -282,9 +282,8 @@ CREATE POLICY "staff access suppliers" ON suppliers
 
 DROP POLICY IF EXISTS "staff access staff" ON staff;
 CREATE POLICY "staff access staff" ON staff
-  FOR ALL TO authenticated
-  USING (EXISTS (SELECT 1 FROM staff_memberships sm WHERE sm.store_id = staff.store_id AND sm.auth_user_id = (SELECT auth.uid()) AND sm.is_active = TRUE))
-  WITH CHECK (EXISTS (SELECT 1 FROM staff_memberships sm WHERE sm.store_id = staff.store_id AND sm.auth_user_id = (SELECT auth.uid()) AND sm.is_active = TRUE));
+  FOR SELECT TO authenticated
+  USING (EXISTS (SELECT 1 FROM staff_memberships sm WHERE sm.store_id = staff.store_id AND sm.auth_user_id = (SELECT auth.uid()) AND sm.is_active = TRUE));
 
 DROP POLICY IF EXISTS "staff access shifts" ON shifts;
 CREATE POLICY "staff access shifts" ON shifts
