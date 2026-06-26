@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { h } from 'preact';
+import React from 'react';
 import { globalStore } from '../../../store/Store';
 import { formatCurrency } from '../../../utils/helpers';
 

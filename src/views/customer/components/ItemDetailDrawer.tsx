@@ -1,6 +1,5 @@
 // @ts-nocheck
-import { h } from 'preact';
-import { useState } from 'preact/hooks';
+import React, { useState } from 'react';
 import { formatCurrency, playSound, vibrateDevice } from '../../../utils/helpers';
 
 const CATEGORY_IMAGE_MAP = {

@@ -1,22 +1,26 @@
 // @ts-nocheck
-import { h, render } from 'preact';
+import React from 'react';
+import { createRoot } from 'react-dom/client';
 import { CustomerApp } from './components/CustomerApp';
 
 export class CustomerView {
   constructor(app) {
     this.app = app;
     this.container = null;
+    this.root = null;
   }
 
   async mount(container) {
     this.container = container;
-    render(h(CustomerApp, { app: this.app }), container);
+    this.root = createRoot(container);
+    this.root.render(<CustomerApp app={this.app} />);
   }
 
   unmount() {
-    if (this.container) {
-      render(null, this.container);
-      this.container = null;
+    if (this.root) {
+      this.root.unmount();
+      this.root = null;
     }
+    this.container = null;
   }
 }

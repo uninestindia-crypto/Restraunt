@@ -1,6 +1,5 @@
 // @ts-nocheck
-import { h } from 'preact';
-import { useEffect, useRef, useState } from 'preact/hooks';
+import React, { useEffect, useRef, useState } from 'react';
 import { getSetting } from '../../../db/database';
 import { generateUPIQR } from '../../../services/upi';
 import { formatCurrency } from '../../../utils/helpers';

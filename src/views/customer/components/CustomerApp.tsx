@@ -1,6 +1,5 @@
 // @ts-nocheck
-import { h } from 'preact';
-import { useState, useEffect, useRef } from 'preact/hooks';
+import React, { useState, useEffect, useRef } from 'react';
 import { db, getCategories, getItemsByCategory, createOrder, getNextOrderNumber, getSetting, generateLocalUuid } from '../../../db/database';
 import { globalStore } from '../../../store/Store';
 import { formatCurrency, playSound, vibrateDevice, showToast, parseOrderItems, escapeHtml } from '../../../utils/helpers';

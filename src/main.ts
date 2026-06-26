@@ -1057,6 +1057,10 @@ class App {
   }
 }
 
-// Boot the app
-const app = new App();
-app.init();
+// Boot the app only once
+if (typeof window !== 'undefined') {
+  if (!window.__app_instance__) {
+    window.__app_instance__ = new App();
+    window.__app_instance__.init();
+  }
+}
