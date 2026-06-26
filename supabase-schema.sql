@@ -62,6 +62,7 @@ CREATE TABLE IF NOT EXISTS orders (
   delivery_assigned_at TIMESTAMPTZ,
   delivery_out_at TIMESTAMPTZ,
   delivered_at TIMESTAMPTZ,
+  auth_user_id UUID,
   staff_id BIGINT,
   staff_name VARCHAR(100) DEFAULT '',
   table_id BIGINT,
@@ -190,6 +191,7 @@ ALTER TABLE staff ADD COLUMN IF NOT EXISTS auth_user_id UUID;
 ALTER TABLE staff ADD COLUMN IF NOT EXISTS allow_express BOOLEAN DEFAULT FALSE;
 ALTER TABLE menu_items ADD COLUMN IF NOT EXISTS image_url VARCHAR(500) DEFAULT '';
 ALTER TABLE customers ADD COLUMN IF NOT EXISTS auth_user_id UUID;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS auth_user_id UUID;
 
 UPDATE orders SET client_order_id = gen_random_uuid() WHERE client_order_id IS NULL;
 UPDATE orders SET idempotency_key = client_order_id::text WHERE idempotency_key IS NULL;
