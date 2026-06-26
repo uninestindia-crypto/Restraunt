@@ -49,6 +49,7 @@ export class CustomerView {
     this.deliveryLandmark = '';
     this.pollInterval = null;
     this.loggedInCustomer = null;
+    this.searchQuery = '';
     this.storeSettings = {
       name: 'The Taste',
       tagline: 'Fast Food & Chinese',
@@ -80,6 +81,7 @@ export class CustomerView {
     this.deliveryAddress = '';
     this.deliveryLandmark = '';
     this.orderType = 'delivery';
+    this.searchQuery = '';
     await this.loadData();
     this.render();
   }
@@ -224,6 +226,27 @@ export class CustomerView {
     this.items = this.menuByCategory.get(this.activeCategoryId) || await getItemsByCategory(this.activeCategoryId);
   }
 
+  getFilteredItems() {
+    if (!this.searchQuery || !this.searchQuery.trim()) {
+      return this.items;
+    }
+    const query = this.searchQuery.toLowerCase().trim();
+    const results = [];
+    for (const [catId, items] of this.menuByCategory.entries()) {
+      for (const item of items) {
+        const matchesName = item.name && item.name.toLowerCase().includes(query);
+        const desc = this.getItemDescription(item) || '';
+        const matchesDesc = desc.toLowerCase().includes(query);
+        if (matchesName || matchesDesc) {
+          if (!results.some(r => r.id === item.id)) {
+            results.push(item);
+          }
+        }
+      }
+    }
+    return results;
+  }
+
   render() {
     if (this.pollInterval) {
       clearInterval(this.pollInterval);
@@ -242,7 +265,7 @@ export class CustomerView {
 
   renderMenu() {
     const categories = this.categories.map(cat => {
-      const active = cat.id === this.activeCategoryId;
+      const active = cat.id === this.activeCategoryId && !this.searchQuery;
       return `
         <button class="store-category-tab ${active ? 'is-active' : ''}" data-id="${cat.id}" aria-pressed="${active}">
           <span>${escapeHtml(cat.name)}</span>
@@ -250,7 +273,8 @@ export class CustomerView {
       `;
     }).join('');
 
-    const items = this.items.map(item => this.renderMenuItem(item)).join('');
+    const filteredItems = this.getFilteredItems();
+    const items = filteredItems.map(item => this.renderMenuItem(item)).join('');
     const featuredItems = this.getFeaturedItems().map(item => this.renderFeaturedItem(item)).join('');
     const cartCount = this.cart.reduce((sum, item) => sum + item.quantity, 0);
     const cartTotal = this.cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
@@ -341,6 +365,15 @@ export class CustomerView {
               <h2>Choose your favorites</h2>
             </div>
             <div class="store-menu-note">${escapeHtml(address)}</div>
+          </div>
+          <div class="store-search-container" style="margin-bottom: 20px; position: relative; width: 100%;">
+            <span class="material-symbols-rounded" style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); font-size: 20px; color: var(--text-secondary); pointer-events: none;">search</span>
+            <input type="text" id="store-menu-search" class="input" placeholder="Search for dishes, starters, desserts..." style="padding-left: 44px; width: 100%; border-radius: var(--radius-lg); height: 44px; font-size: var(--text-sm); font-weight: 500;" value="${escapeHtml(this.searchQuery || '')}">
+            ${this.searchQuery ? `
+              <button id="store-search-clear" class="btn-icon" style="position: absolute; right: 14px; top: 50%; transform: translateY(-50%); color: var(--text-secondary); background: none; border: none; cursor: pointer;" type="button" title="Clear Search">
+                <span class="material-symbols-rounded" style="font-size: 18px;">close</span>
+              </button>
+            ` : ''}
           </div>
           <div class="store-category-strip scrollbar-none" aria-label="Menu categories">
             ${categories}
@@ -448,6 +481,7 @@ export class CustomerView {
   bindMenuEvents() {
     this.container.querySelectorAll('.store-category-tab').forEach(btn => {
       btn.addEventListener('click', async () => {
+        this.searchQuery = ''; // Clear search on category click
         this.activeCategoryId = parseInt(btn.dataset.id, 10);
         await this.loadItems();
         playSound(650, 70);
@@ -551,6 +585,31 @@ export class CustomerView {
         this.render();
       }
     });
+
+    // Search input handlers
+    const searchInput = this.container.querySelector('#store-menu-search');
+    if (searchInput) {
+      searchInput.addEventListener('input', (e) => {
+        this.searchQuery = e.target.value;
+        this.renderMenu();
+        
+        // Restore focus to search input and place cursor at the end
+        const updatedInput = this.container.querySelector('#store-menu-search');
+        if (updatedInput) {
+          updatedInput.focus();
+          const valLen = updatedInput.value.length;
+          updatedInput.setSelectionRange(valLen, valLen);
+        }
+      });
+    }
+
+    const clearSearchBtn = this.container.querySelector('#store-search-clear');
+    if (clearSearchBtn) {
+      clearSearchBtn.addEventListener('click', () => {
+        this.searchQuery = '';
+        this.renderMenu();
+      });
+    }
   }
 
   renderCart() {

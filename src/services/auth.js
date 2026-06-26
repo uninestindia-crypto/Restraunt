@@ -9,6 +9,7 @@ import {
   requireCloudStaffAccess
 } from './authGuards.js';
 import { signInCloudStaff, signOutCloudStaff } from './supabaseClient.js';
+import { globalStore } from '../store/Store.js';
 
 const SESSION_DURATION_MS = 8 * 60 * 60 * 1000;
 const LOCKOUT_MAX_ATTEMPTS = 5;
@@ -213,6 +214,7 @@ class AuthService {
 
           this.currentStaff = staffRecord;
           this.isAuthenticated = true;
+          globalStore.updateState({ activeTerminalStaff: staffRecord });
           this._startSessionTimer();
           console.log(`[AuthService] Session restored for "${staffRecord.name}" via saved PIN hash.`);
           return staffRecord;
@@ -306,6 +308,7 @@ class AuthService {
 
       this.currentStaff = staff;
       this.isAuthenticated = true;
+      globalStore.updateState({ activeTerminalStaff: staff });
       localStorage.setItem('auth_staff_pin', hashedPin);
       localStorage.removeItem('auth_failed_attempts');
       localStorage.removeItem('auth_lockout_until');
@@ -355,6 +358,7 @@ class AuthService {
 
       this.currentStaff = staff;
       this.isAuthenticated = true;
+      globalStore.updateState({ activeTerminalStaff: staff });
       localStorage.setItem('auth_staff_email', email);
       
       // Authorize PIN login for this staff member on this device
@@ -398,6 +402,7 @@ class AuthService {
     const customer = await this._resolveCustomer(result.user, email);
     this.currentStaff = customer;
     this.isAuthenticated = true;
+    globalStore.updateState({ activeTerminalStaff: customer });
     this._startSessionTimer();
     return customer;
   }
@@ -417,6 +422,7 @@ class AuthService {
 
     this.currentStaff = null;
     this.isAuthenticated = false;
+    globalStore.updateState({ activeTerminalStaff: null });
     localStorage.removeItem('auth_staff_pin');
     localStorage.removeItem('auth_staff_email');
 

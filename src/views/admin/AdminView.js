@@ -11,6 +11,7 @@ import { hashPin } from '../../utils/crypto.js';
 import { MenuManager } from './MenuManager.js';
 import { OrderHistory } from './OrderHistory.js';
 import { SettingsView } from './Settings.js';
+import { globalStore } from '../../store/Store.js';
 
 export class AdminView {
   constructor(app) {
@@ -28,6 +29,20 @@ export class AdminView {
     this.brandingView = null;
     this.staffView = null;
     this.analyticsView = null;
+
+    // Reactively observe active cashier session changes
+    this.unsubscribeStore = globalStore.subscribe((state) => {
+      if (this.container && this.isAuthenticated) {
+        const headerStaffLabel = this.container.querySelector('#admin-header-staff-name');
+        if (headerStaffLabel) {
+          const currentStaff = state.activeTerminalStaff;
+          headerStaffLabel.textContent = currentStaff ? currentStaff.name : 'Unknown Staff';
+        }
+        if (this.activeTab === 'dashboard') {
+          this._loadSystemHealth();
+        }
+      }
+    });
   }
 
   async mount(container) {
@@ -198,6 +213,7 @@ export class AdminView {
 
   async renderAdminConsole() {
     const currentTheme = localStorage.getItem('app_theme') || 'system';
+    const activeStaff = globalStore.state.activeTerminalStaff;
 
     this.container.innerHTML = `
       <div class="main-area">
@@ -246,6 +262,10 @@ export class AdminView {
                 <span class="material-symbols-rounded" style="font-size: 14px;">computer</span>
               </button>
             </div>
+            <span style="font-size: var(--text-xs); color: var(--text-secondary); font-weight: 600; margin-right: 12px; display: flex; align-items: center; gap: 6px;">
+              <span class="material-symbols-rounded" style="font-size: 14px; color: var(--color-success); filter: drop-shadow(0 0 4px rgba(16,185,129,0.4));">check_circle</span>
+              <span id="admin-header-staff-name">${activeStaff ? activeStaff.name : 'Unknown Staff'}</span>
+            </span>
             <button class="btn btn-secondary btn-sm" id="btn-admin-logout" style="background: rgba(239, 68, 68, 0.04); border-color: rgba(239, 68, 68, 0.15); color: #FF4D4D;">
               <span class="material-symbols-rounded" style="font-size: 16px; margin-right: 4px;">lock</span>
               Lock Terminal
@@ -589,12 +609,14 @@ export class AdminView {
     const totalMenuItems = await db.menuItems.count();
     const totalOrders = await db.orders.count();
     const isOnline = navigator.onLine;
+    const activeStaff = globalStore.state.activeTerminalStaff;
 
     const currentTheme = localStorage.getItem('app_theme') || 'system';
     const themeLabel = { dark: '🌙 Dark', light: '☀️ Light', system: '💻 System' }[currentTheme] || 'System';
 
     const items = [
       { icon: 'cloud', label: 'Network Status', value: isOnline ? 'Online' : 'Offline', color: isOnline ? 'var(--color-success)' : 'var(--color-danger)' },
+      { icon: 'person', label: 'Terminal Operator', value: activeStaff ? `${activeStaff.name} (${activeStaff.role})` : 'None', color: 'var(--color-success)' },
       { icon: 'groups', label: 'Active Staff', value: `${staffCount} members`, color: 'var(--color-info)' },
       { icon: 'restaurant_menu', label: 'Menu Items', value: `${totalMenuItems} items`, color: 'var(--color-warning)' },
       { icon: 'receipt_long', label: 'Total Orders (All Time)', value: `${totalOrders}`, color: 'var(--color-primary)' },
@@ -785,6 +807,10 @@ export class AdminView {
   }
 
   unmount() {
+    if (this.unsubscribeStore) {
+      this.unsubscribeStore();
+      this.unsubscribeStore = null;
+    }
     if (this.menuManager && this.menuManager.unmount) this.menuManager.unmount();
     if (this.orderHistory && this.orderHistory.unmount) this.orderHistory.unmount();
     if (this.settingsView && this.settingsView.unmount) this.settingsView.unmount();
