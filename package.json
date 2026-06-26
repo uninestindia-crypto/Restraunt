@@ -7,9 +7,9 @@
     "dev": "vite --host",
     "build": "vite build",
     "preview": "vite preview --host",
-    "test": "node --test tests/**/*.test.js",
+    "test": "tsx --test tests/**/*.test.ts",
     "test:e2e": "playwright test",
-    "test:a11y": "playwright test tests/e2e/accessibility.spec.js",
+    "test:a11y": "playwright test tests/e2e/accessibility.spec.ts",
     "launch:verify": "npm run test && npm run build && npm audit --omit=dev",
     "staff:manage": "node scripts/manage-staff.js",
     "cloud:admin": "node scripts/provision-admin.js"
@@ -28,7 +28,10 @@
     "@capacitor/cli": "^8.3.4",
     "@playwright/test": "^1.60.0",
     "@preact/preset-vite": "^2.10.5",
+    "@types/node": "^26.0.1",
     "lighthouse": "^13.3.0",
+    "tsx": "^4.22.4",
+    "typescript": "^6.0.3",
     "vite": "^6.3.5",
     "vite-plugin-pwa": "^0.21.1"
   }

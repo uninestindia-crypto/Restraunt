@@ -1,0 +1,480 @@
+// @ts-nocheck
+import { db, generateLocalUuid, getDisplayToken } from './database';
+import { hashPin } from '../utils/crypto';
+
+/**
+ * Seeds the database with initial data if empty.
+ * Cloud-first: If Supabase has data, pull from cloud instead of seeding locally.
+ * This ensures new devices always get the real production data.
+ */
+export async function seedDatabase(options = {}) {
+  const { publicOnly = false } = options;
+
+  // ── Cloud-First Hydration (with retry) ────────────────────────
+  // If Supabase is configured and has data, hydrate from cloud instead of seeding.
+  // This is the KEY fix for multi-device consistency.
+  // We retry up to 3 times because navigator.onLine can be briefly false on mobile
+  // during startup, causing the initial check to fail silently.
+  const MAX_HYDRATION_RETRIES = 3;
+  const HYDRATION_RETRY_DELAY_MS = 1500;
+  let cloudHydrated = false;
+
+  for (let attempt = 1; attempt <= MAX_HYDRATION_RETRIES; attempt++) {
+    try {
+      // Wait for network readiness on retry attempts
+      if (attempt > 1) {
+        console.log(`[Seed] Cloud hydration retry ${attempt}/${MAX_HYDRATION_RETRIES} in ${HYDRATION_RETRY_DELAY_MS}ms...`);
+        await new Promise(r => setTimeout(r, HYDRATION_RETRY_DELAY_MS));
+        if (!navigator.onLine) {
+          console.warn(`[Seed] Still offline on attempt ${attempt}. Skipping.`);
+          continue;
+        }
+      }
+
+      const { cloudHasData, fullPull } = await import('../services/cloudDb');
+      const hasCloudData = await cloudHasData();
+      if (hasCloudData) {
+        console.log(`[Seed] Cloud data detected on attempt ${attempt} — hydrating from Supabase instead of local seeds.`);
+        await fullPull({ publicOnly });
+        cloudHydrated = true;
+        // Still run migrations below, but skip seed data
+        await runMigrations({ skipWeakPinCleanup: true });
+        if (!publicOnly) {
+          await ensureDefaultTables();
+        }
+        return;
+      } else {
+        // Cloud is reachable and genuinely empty (no error thrown) — proceed to local seed immediately without retry
+        console.log(`[Seed] Cloud is reachable but empty. Proceeding to local seed.`);
+        break;
+      }
+    } catch (err) {
+      console.warn(`[Seed] Cloud hydration attempt ${attempt} failed:`, err.message);
+      if (attempt >= MAX_HYDRATION_RETRIES) {
+        console.warn('[Seed] All cloud hydration attempts exhausted. Proceeding with local data.');
+      }
+    }
+  }
+
+  // Run data migrations (PIN hashing, UPI ID update) on the normal seed path too
+  await runMigrations();
+
+  if (!publicOnly) {
+    await ensureDefaultTables();
+  }
+
+  const existingCategories = await db.menuCategories.count();
+  const existingItems = await db.menuItems.count();
+  if (existingCategories > 0 && existingItems > 0) {
+    return; // Data already exists
+  }
+  if (existingCategories > 0 && existingItems === 0) {
+    console.warn('[Seed] Local categories exist without menu items. Rebuilding public menu cache.');
+    await db.menuCategories.clear();
+  }
+
+  const seedStores = publicOnly
+    ? [db.menuCategories, db.menuItems, db.settings]
+    : [db.menuCategories, db.menuItems, db.settings, db.inventory, db.suppliers, db.customers, db.orders];
+
+  await db.transaction('rw', ...seedStores, async () => {
+    // ── Categories ──────────────────────────────────────────────
+    const categories = [
+      { name: 'Momos', icon: '🥟', sortOrder: 1, isActive: 1, isSynced: 0 },
+      { name: 'Starters', icon: '🥢', sortOrder: 2, isActive: 1, isSynced: 0 },
+      { name: 'Noodles', icon: '🍜', sortOrder: 3, isActive: 1, isSynced: 0 },
+      { name: 'Rice', icon: '🍚', sortOrder: 4, isActive: 1, isSynced: 0 },
+      { name: 'Main Course', icon: '🍛', sortOrder: 5, isActive: 1, isSynced: 0 },
+      { name: 'Burgers', icon: '🍔', sortOrder: 6, isActive: 1, isSynced: 0 },
+      { name: 'Sides', icon: '🍟', sortOrder: 7, isActive: 1, isSynced: 0 },
+      { name: 'Beverages', icon: '🥤', sortOrder: 8, isActive: 1, isSynced: 0 },
+      { name: 'Desserts', icon: '🍨', sortOrder: 9, isActive: 1, isSynced: 0 },
+    ];
+
+    const categoryIds = await db.menuCategories.bulkAdd(categories, { allKeys: true });
+
+    // Map category names to their IDs for easy reference
+    const catMap = {};
+    categories.forEach((cat, idx) => {
+      catMap[cat.name] = categoryIds[idx];
+    });
+
+    // ── Menu Items ──────────────────────────────────────────────
+    let sortOrder = 0;
+    const menuItems = [];
+
+    const addItem = (categoryName, name, price, isVeg) => {
+      sortOrder++;
+      menuItems.push({
+        categoryId: catMap[categoryName],
+        name,
+        price,
+        isVeg: isVeg ? 1 : 0,
+        isAvailable: 1,
+        sortOrder,
+        isSynced: 0
+      });
+    };
+
+    // Momos
+    addItem('Momos', 'Steamed Veg Momos', 80, true);
+    addItem('Momos', 'Fried Veg Momos', 100, true);
+    addItem('Momos', 'Steamed Chicken Momos', 120, false);
+    addItem('Momos', 'Fried Chicken Momos', 140, false);
+    addItem('Momos', 'Paneer Momos', 120, true);
+    addItem('Momos', 'Tandoori Momos (Chicken)', 150, false);
+    addItem('Momos', 'Afghani Momos', 160, false);
+    addItem('Momos', 'Kurkure Momos', 130, true);
+
+    // Starters
+    addItem('Starters', 'Veg Spring Rolls (4pc)', 120, true);
+    addItem('Starters', 'Chilli Paneer Dry', 160, true);
+    addItem('Starters', 'Honey Chilli Potato', 140, true);
+    addItem('Starters', 'Crispy Corn', 120, true);
+    addItem('Starters', 'Manchurian Dry', 140, true);
+    addItem('Starters', 'Chicken 65', 180, false);
+    addItem('Starters', 'Chilli Chicken Dry', 180, false);
+    addItem('Starters', 'Dragon Chicken', 200, false);
+
+    // Noodles
+    addItem('Noodles', 'Veg Hakka Noodles', 120, true);
+    addItem('Noodles', 'Chicken Hakka Noodles', 160, false);
+    addItem('Noodles', 'Veg Schezwan Noodles', 140, true);
+    addItem('Noodles', 'Chow Mein', 100, true);
+    addItem('Noodles', 'Singapore Noodles', 150, true);
+    addItem('Noodles', 'Triple Schezwan Noodles', 180, true);
+
+    // Rice
+    addItem('Rice', 'Veg Fried Rice', 120, true);
+    addItem('Rice', 'Chicken Fried Rice', 160, false);
+    addItem('Rice', 'Schezwan Fried Rice', 140, true);
+    addItem('Rice', 'Triple Schezwan Rice', 170, true);
+    addItem('Rice', 'Egg Fried Rice', 130, false);
+
+    // Main Course
+    addItem('Main Course', 'Manchurian Gravy', 160, true);
+    addItem('Main Course', 'Chilli Paneer Gravy', 180, true);
+    addItem('Main Course', 'Sweet Corn Soup', 100, true);
+    addItem('Main Course', 'Hot & Sour Soup', 100, true);
+    addItem('Main Course', 'Manchow Soup', 120, true);
+    addItem('Main Course', 'Chicken Manchow Soup', 140, false);
+
+    // Burgers
+    addItem('Burgers', 'Classic Veg Burger', 80, true);
+    addItem('Burgers', 'Aloo Tikki Burger', 90, true);
+    addItem('Burgers', 'Paneer Burger', 110, true);
+    addItem('Burgers', 'Chicken Burger', 120, false);
+    addItem('Burgers', 'Chicken Zinger', 150, false);
+    addItem('Burgers', 'Paneer Wrap', 100, true);
+    addItem('Burgers', 'Chicken Wrap', 130, false);
+
+    // Sides
+    addItem('Sides', 'French Fries', 80, true);
+    addItem('Sides', 'Peri Peri Fries', 100, true);
+    addItem('Sides', 'Loaded Cheese Fries', 140, true);
+    addItem('Sides', 'Garlic Bread (4pc)', 100, true);
+    addItem('Sides', 'Cheese Garlic Bread', 130, true);
+
+    // Beverages
+    addItem('Beverages', 'Cold Coffee', 80, true);
+    addItem('Beverages', 'Lemon Iced Tea', 60, true);
+    addItem('Beverages', 'Mango Shake', 90, true);
+    addItem('Beverages', 'Oreo Shake', 100, true);
+    addItem('Beverages', 'Coca Cola (300ml)', 40, true);
+    addItem('Beverages', 'Sprite (300ml)', 40, true);
+    addItem('Beverages', 'Thumbs Up (300ml)', 40, true);
+    addItem('Beverages', 'Water Bottle', 20, true);
+    addItem('Beverages', 'Masala Chai', 20, true);
+
+    // Desserts
+    addItem('Desserts', 'Brownie with Ice Cream', 120, true);
+    addItem('Desserts', 'Gulab Jamun (2pc)', 60, true);
+    addItem('Desserts', 'Chocolate Lava Cake', 150, true);
+
+    await db.menuItems.bulkAdd(menuItems);
+
+    // ── Default Settings ────────────────────────────────────────
+    const defaultSettings = [
+      { key: 'restaurantName', value: 'The Taste' },
+      { key: 'restaurantTagline', value: 'Chinese Food — Fresh & Reasonable' },
+      { key: 'restaurantPhone', value: '+91 8809696025' },
+      { key: 'restaurantAddress', value: 'Sandalpur Road, Kumhrar, Patna, Bihar' },
+      { key: 'upiId', value: 'paytmqr6zfcsx@ptys' },
+      { key: 'upiName', value: 'The Taste' },
+      { key: 'gstPercent', value: '5' },
+      { key: 'printerWidth', value: '58' },
+      { key: 'orderNumberPrefix', value: 'TT' },
+    ];
+
+    await db.settings.bulkPut(defaultSettings);
+
+    if (publicOnly) {
+      return;
+    }
+
+    // ── Inventory Seeding ───────────────────────────────────────
+    const inventoryItems = [
+      { name: 'Chicken', unit: 'kg', quantity: 50, minThreshold: 10, maxCapacity: 100, categoryTag: 'Meat', isSynced: 0, _platform: 'nextgenos' },
+      { name: 'Paneer', unit: 'kg', quantity: 30, minThreshold: 5, maxCapacity: 50, categoryTag: 'Dairy', isSynced: 0, _platform: 'nextgenos' },
+      { name: 'Flour', unit: 'kg', quantity: 4, minThreshold: 15, maxCapacity: 100, categoryTag: 'Dry Goods', isSynced: 0, _platform: 'nextgenos' }, // below threshold!
+      { name: 'Oil', unit: 'liters', quantity: 40, minThreshold: 10, maxCapacity: 80, categoryTag: 'Dry Goods', isSynced: 0, _platform: 'nextgenos' },
+      { name: 'Potatoes', unit: 'kg', quantity: 60, minThreshold: 20, maxCapacity: 120, categoryTag: 'Produce', isSynced: 0, _platform: 'nextgenos' },
+      { name: 'Rice', unit: 'kg', quantity: 80, minThreshold: 20, maxCapacity: 150, categoryTag: 'Dry Goods', isSynced: 0, _platform: 'nextgenos' },
+      { name: 'Noodles', unit: 'packs', quantity: 25, minThreshold: 10, maxCapacity: 50, categoryTag: 'Dry Goods', isSynced: 0, _platform: 'nextgenos' },
+      { name: 'Sugar', unit: 'kg', quantity: 12, minThreshold: 5, maxCapacity: 30, categoryTag: 'Dry Goods', isSynced: 0, _platform: 'nextgenos' },
+      { name: 'Coffee', unit: 'kg', quantity: 8, minThreshold: 2, maxCapacity: 15, categoryTag: 'Beverages', isSynced: 0, _platform: 'nextgenos' },
+      { name: 'Milk', unit: 'liters', quantity: 25, minThreshold: 5, maxCapacity: 50, categoryTag: 'Dairy', isSynced: 0, _platform: 'nextgenos' },
+      { name: 'Cheese', unit: 'kg', quantity: 15, minThreshold: 5, maxCapacity: 30, categoryTag: 'Dairy', isSynced: 0, _platform: 'nextgenos' },
+      { name: 'Veggies', unit: 'kg', quantity: 3, minThreshold: 10, maxCapacity: 40, categoryTag: 'Produce', isSynced: 0, _platform: 'nextgenos' } // below threshold!
+    ];
+    await db.inventory.bulkAdd(inventoryItems);
+    console.log('[Seed] High-fidelity inventory seeded.');
+
+    // ── Suppliers Seeding ────────────────────────────────────────
+    const detailedSuppliers = [
+      { name: 'Dairy Farm', phone: '9876543210', email: 'dairy@farm.com', category: 'Dairy', isSynced: 0, _platform: 'nextgenos', createdAt: new Date().toISOString() },
+      { name: 'Meat Kings', phone: '9876543211', email: 'info@meatkings.com', category: 'Meat', isSynced: 0, _platform: 'nextgenos', createdAt: new Date().toISOString() },
+      { name: 'Green Grocery', phone: '9876543212', email: 'order@greengrocery.com', category: 'Produce', isSynced: 0, _platform: 'nextgenos', createdAt: new Date().toISOString() },
+      { name: 'Dry Bulk Co', phone: '9876543213', email: 'sales@drybulk.com', category: 'Dry Goods', isSynced: 0, _platform: 'nextgenos', createdAt: new Date().toISOString() }
+    ];
+    await db.suppliers.bulkAdd(detailedSuppliers);
+    console.log('[Seed] High-fidelity suppliers seeded.');
+
+    // ── CRM Customers Seeding ──────────────────────────────────
+    const distinctCustomers = [
+      { name: 'Aarav Sharma', phone: '9999911111', totalSpent: 6200, visitCount: 15, loyaltyPoints: 620, tier: 'platinum', lastVisit: new Date().toISOString(), createdAt: new Date().toISOString(), isSynced: 0, _platform: 'nextgenos' },
+      { name: 'Priya Patel', phone: '9999922222', totalSpent: 3500, visitCount: 8, loyaltyPoints: 350, tier: 'gold', lastVisit: new Date().toISOString(), createdAt: new Date().toISOString(), isSynced: 0, _platform: 'nextgenos' },
+      { name: 'Vikram Singh', phone: '9999933333', totalSpent: 1200, visitCount: 4, loyaltyPoints: 120, tier: 'silver', lastVisit: new Date().toISOString(), createdAt: new Date().toISOString(), isSynced: 0, _platform: 'nextgenos' },
+      { name: 'Ananya Iyer', phone: '9999944444', totalSpent: 450, visitCount: 2, loyaltyPoints: 45, tier: 'bronze', lastVisit: new Date().toISOString(), createdAt: new Date().toISOString(), isSynced: 0, _platform: 'nextgenos' },
+      { name: 'Kabir Mehta', phone: '9999955555', totalSpent: 7500, visitCount: 18, loyaltyPoints: 750, tier: 'platinum', lastVisit: new Date().toISOString(), createdAt: new Date().toISOString(), isSynced: 0, _platform: 'nextgenos' },
+      { name: 'Neha Gupta', phone: '9999966666', totalSpent: 2800, visitCount: 7, loyaltyPoints: 280, tier: 'gold', lastVisit: new Date().toISOString(), createdAt: new Date().toISOString(), isSynced: 0, _platform: 'nextgenos' },
+      { name: 'Rahul Verma', phone: '9999977777', totalSpent: 850, visitCount: 3, loyaltyPoints: 85, tier: 'silver', lastVisit: new Date().toISOString(), createdAt: new Date().toISOString(), isSynced: 0, _platform: 'nextgenos' },
+      { name: 'Riya Sen', phone: '9999988888', totalSpent: 150, visitCount: 1, loyaltyPoints: 15, tier: 'bronze', lastVisit: new Date().toISOString(), createdAt: new Date().toISOString(), isSynced: 0, _platform: 'nextgenos' }
+    ];
+    await db.customers.bulkAdd(distinctCustomers);
+    console.log('[Seed] High-fidelity customers seeded.');
+
+    // ── Historical Orders Seeding ────────────────────────────────
+    const historicalOrders = [];
+    const orderItemsPool = [
+      { name: 'Steamed Veg Momos', price: 80, isVeg: 1 },
+      { name: 'Veg Hakka Noodles', price: 120, isVeg: 1 },
+      { name: 'Chicken Hakka Noodles', price: 160, isVeg: 0 },
+      { name: 'French Fries', price: 80, isVeg: 1 },
+      { name: 'Cold Coffee', price: 80, isVeg: 1 },
+      { name: 'Chilli Paneer Dry', price: 160, isVeg: 1 },
+      { name: 'Chilli Chicken Dry', price: 180, isVeg: 0 },
+      { name: 'Veg Fried Rice', price: 120, isVeg: 1 },
+      { name: 'Classic Veg Burger', price: 80, isVeg: 1 },
+      { name: 'Chocolate Lava Cake', price: 150, isVeg: 1 }
+    ];
+
+    const customersPool = [
+      { name: 'Aarav Sharma', phone: '9999911111' },
+      { name: 'Priya Patel', phone: '9999922222' },
+      { name: 'Vikram Singh', phone: '9999933333' },
+      { name: 'Ananya Iyer', phone: '9999944444' },
+      { name: 'Kabir Mehta', phone: '9999955555' },
+      { name: 'Neha Gupta', phone: '9999966666' },
+      { name: 'Rahul Verma', phone: '9999977777' },
+      { name: 'Riya Sen', phone: '9999988888' },
+      { name: 'Walk-in Customer', phone: '' },
+      { name: 'Walk-in Customer', phone: '' }
+    ];
+
+    const typesPool = ['takeaway', 'dinein', 'delivery'];
+    const paymentsPool = ['upi', 'cash'];
+
+    for (let i = 1; i <= 25; i++) {
+      const dayDiff = Math.floor((i - 1) / 3.5);
+      const orderDate = new Date();
+      orderDate.setDate(orderDate.getDate() - dayDiff);
+      const hour = 11 + (i % 11);
+      const minute = (i * 17) % 60;
+      orderDate.setHours(hour, minute, 0, 0);
+
+      const createdAt = orderDate.toISOString();
+      const completedAt = new Date(orderDate.getTime() + (10 * 60 * 1000) + ((i * 3) % 20) * 60 * 1000).toISOString();
+
+      const cartItems = [];
+      const numItems = 1 + (i % 3);
+      let subtotal = 0;
+
+      for (let j = 0; j < numItems; j++) {
+        const poolIndex = (i + j * 3) % orderItemsPool.length;
+        const item = orderItemsPool[poolIndex];
+        const quantity = 1 + ((i + j) % 2);
+        cartItems.push({
+          itemId: poolIndex + 1,
+          itemName: item.name,
+          price: item.price,
+          quantity,
+          isVeg: item.isVeg,
+          notes: ''
+        });
+        subtotal += item.price * quantity;
+      }
+
+      const gstPercent = 5;
+      const tax = subtotal * (gstPercent / 100);
+      const total = subtotal + tax;
+
+      const customer = customersPool[i % customersPool.length];
+      const type = typesPool[i % typesPool.length];
+      const paymentMethod = paymentsPool[i % paymentsPool.length];
+
+      const orderNumber = `TT-${orderDate.getFullYear()}${String(orderDate.getMonth() + 1).padStart(2, '0')}${String(orderDate.getDate()).padStart(2, '0')}-${String(i).padStart(3, '0')}`;
+      const clientOrderId = generateLocalUuid();
+
+      historicalOrders.push({
+        clientOrderId,
+        idempotencyKey: clientOrderId,
+        orderNumber,
+        displayToken: getDisplayToken(orderNumber, clientOrderId),
+        type,
+        channel: 'pos',
+        source: 'pos',
+        status: 'completed',
+        items: JSON.stringify(cartItems),
+        subtotal,
+        tax,
+        taxPercent: gstPercent,
+        total,
+        paymentMethod,
+        paymentStatus: 'paid',
+        customerName: customer.name,
+        customerPhone: customer.phone,
+        validationStatus: 'trusted_staff',
+        requiresServerValidation: false,
+        syncStatus: 'pending',
+        syncAttempts: 0,
+        staffId: 1,
+        staffName: 'Owner',
+        tableId: type === 'dinein' ? (1 + (i % 8)) : null,
+        createdAt,
+        completedAt,
+        isSynced: 0
+      });
+    }
+
+    await db.orders.bulkAdd(historicalOrders);
+    console.log('[Seed] High-fidelity historical orders seeded.');
+  });
+}
+
+/**
+ * Run data migrations (PIN hashing, UPI ID update).
+ * Extracted so it can be called from both cloud-first and normal seed paths.
+ */
+async function runMigrations(options = {}) {
+  try {
+    const staffCount = await db.staff.count();
+    if (staffCount > 0) {
+      const staffMembers = await db.staff.toArray();
+      for (const staff of staffMembers) {
+        if (staff.pin && !staff.pinHash) {
+          await db.staff.update(staff.id, {
+            pinHash: await hashPin(staff.pin),
+            pin: undefined,
+            isSynced: 0
+          });
+        }
+      }
+    }
+
+    const legacyAdminPin = await db.settings.get('adminPin');
+    const adminPinHash = await db.settings.get('adminPinHash');
+    if (legacyAdminPin?.value && !adminPinHash?.value && legacyAdminPin.value !== '1234') {
+      await db.settings.put({ key: 'adminPinHash', value: await hashPin(legacyAdminPin.value) });
+      await db.settings.delete('adminPin');
+    }
+
+    // ── Weak PIN Audit (non-destructive) ─────────────────────────
+    // Log a warning for staff using the insecure default PIN '1234',
+    // but do NOT deactivate them here. Deactivation caused a boot-loop
+    // where every new device lost its only owner and showed FirstRunSetup.
+    // The block is enforced only in FirstRunSetup (which rejects '1234').
+    if (!options?.skipWeakPinCleanup) {
+      try {
+        const weakHash = await hashPin('1234');
+        const weakStaff = await db.staff.where('pinHash').equals(weakHash).toArray();
+        const activeOwnerCount = await db.staff
+          .where('role')
+          .equals('owner')
+          .and(s => s.isActive === 1 || s.isActive === true)
+          .count();
+
+        for (const s of weakStaff) {
+          if (s.isActive === true || s.isActive === 1) {
+            // Only deactivate if there are OTHER active owners to fall back on
+            if (s.role === 'owner' && activeOwnerCount <= 1) {
+              console.warn(`[Seed] Owner "${s.name}" (id=${s.id}) uses weak PIN '1234' but is the ONLY active owner. Skipping deactivation to prevent lockout.`);
+            } else {
+              console.warn(`[Seed] Deactivating staff "${s.name}" (id=${s.id}) — insecure default PIN '1234'.`);
+              await db.staff.update(s.id, { isActive: 0, pinHash: '', isSynced: 0 });
+            }
+          }
+        }
+      } catch (weakErr) {
+        console.error('[Seed] Weak PIN audit failed:', weakErr);
+      }
+    }
+
+    // Clean up the legacy adminPin='1234' setting if it's still hanging around
+    try {
+      const legacyDefault = await db.settings.get('adminPin');
+      if (legacyDefault?.value === '1234') {
+        await db.settings.delete('adminPin');
+      }
+    } catch (e) { /* non-critical */ }
+
+    // Dynamic UPI ID Migration
+    const currentUpiIdSetting = await db.settings.get('upiId');
+    if (!currentUpiIdSetting || currentUpiIdSetting.value === 'thetaste@upi' || currentUpiIdSetting.value === '') {
+      await db.settings.put({ key: 'upiId', value: 'paytmqr6zfcsx@ptys' });
+      console.log('[Seed] UPI ID successfully migrated to paytmqr6zfcsx@ptys');
+    }
+
+    // Dynamic Store Details Migration
+    const phoneSetting = await db.settings.get('restaurantPhone');
+    if (!phoneSetting || phoneSetting.value === '') {
+      await db.settings.put({ key: 'restaurantPhone', value: '+91 8809696025' });
+      console.log('[Seed] Restaurant phone successfully updated.');
+    }
+    const addressSetting = await db.settings.get('restaurantAddress');
+    if (!addressSetting || addressSetting.value === '' || addressSetting.value.includes('Kolkata')) {
+      await db.settings.put({ key: 'restaurantAddress', value: 'Sandalpur Road, Kumhrar, Patna, Bihar' });
+      console.log('[Seed] Restaurant address successfully updated.');
+    }
+    const taglineSetting = await db.settings.get('restaurantTagline');
+    if (!taglineSetting || taglineSetting.value === 'Fast Food & Chinese') {
+      await db.settings.put({ key: 'restaurantTagline', value: 'Chinese Food — Fresh & Reasonable' });
+      console.log('[Seed] Restaurant tagline successfully updated.');
+    }
+  } catch (err) {
+    console.error('[Seed] Failed to run migrations:', err);
+  }
+}
+
+async function ensureDefaultTables() {
+  try {
+    const tableStore = db.table('tables');
+    const tableCount = await tableStore.count();
+    if (tableCount === 0) {
+      const defaultTables = [
+        { number: 1, status: 'available', floorSection: 'Main Hall' },
+        { number: 2, status: 'available', floorSection: 'Main Hall' },
+        { number: 3, status: 'available', floorSection: 'Main Hall' },
+        { number: 4, status: 'available', floorSection: 'Main Hall' },
+        { number: 5, status: 'available', floorSection: 'Window Side' },
+        { number: 6, status: 'available', floorSection: 'Window Side' },
+        { number: 7, status: 'available', floorSection: 'Balcony' },
+        { number: 8, status: 'available', floorSection: 'Balcony' }
+      ];
+      await tableStore.bulkAdd(defaultTables);
+      console.log('[Seed] Default tables seeded.');
+    }
+  } catch (err) {
+    console.error('[Seed] Failed to seed default tables:', err);
+  }
+}
