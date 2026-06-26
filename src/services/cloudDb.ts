@@ -90,7 +90,7 @@ function mapItemToLocal(row) {
   };
 }
 
-function mapOrderToLocal(row) {
+export function mapOrderToLocal(row) {
   return {
     id: row.id,
     serverOrderId: row.id,

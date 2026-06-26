@@ -1,4 +1,6 @@
-// @ts-nocheck
+/**
+ * NextGenOS Sync Service
+ */
 import { db } from '../db/database';
 import { getSupabaseClient, resetSupabaseClient, testSupabaseMenuRead } from './supabaseClient';
 import { submitPublicOrder } from './publicOrders';
@@ -36,7 +38,7 @@ function needsServerValidation(order) {
 }
 
 // Table mapping helper functions
-function mapCategoryToRemote(cat) {
+function mapCategoryToRemote(cat: any) {
   return {
     id: cat.id,
     store_id: getStoreId(),
@@ -47,7 +49,7 @@ function mapCategoryToRemote(cat) {
   };
 }
 
-function mapCategoryToLocal(row) {
+function mapCategoryToLocal(row: any) {
   return {
     id: row.id,
     name: row.name,
@@ -58,7 +60,7 @@ function mapCategoryToLocal(row) {
   };
 }
 
-function mapItemToRemote(item) {
+function mapItemToRemote(item: any) {
   return {
     id: item.id,
     store_id: getStoreId(),
@@ -72,7 +74,7 @@ function mapItemToRemote(item) {
   };
 }
 
-function mapItemToLocal(row) {
+function mapItemToLocal(row: any) {
   return {
     id: row.id,
     categoryId: row.category_id,
@@ -86,8 +88,8 @@ function mapItemToLocal(row) {
   };
 }
 
-export function mapOrderToRemote(order) {
-  const remote = {
+export function mapOrderToRemote(order: any) {
+  const remote: any = {
     store_id: getStoreId(),
     client_order_id: order.clientOrderId,
     idempotency_key: order.idempotencyKey || order.clientOrderId,
@@ -135,7 +137,7 @@ export function mapOrderToRemote(order) {
   return remote;
 }
 
-export function mapOrderToLocal(row) {
+export function mapOrderToLocal(row: any) {
   return {
     id: row.id,
     serverOrderId: row.id,
@@ -185,7 +187,7 @@ export function mapOrderToLocal(row) {
   };
 }
 
-function mapStaffToRemote(staff) {
+function mapStaffToRemote(staff: any) {
   return {
     id: staff.id,
     store_id: getStoreId(),
@@ -200,7 +202,7 @@ function mapStaffToRemote(staff) {
   };
 }
 
-function mapStaffToLocal(row) {
+function mapStaffToLocal(row: any) {
   return {
     id: row.id,
     cloudUserId: row.auth_user_id || null,
@@ -359,7 +361,7 @@ let supabase = null;
  * Exponential backoff helper for network calls.
  * Throws immediately for bad credentials or format errors.
  */
-async function retryWithBackoff(fn, options = {}) {
+async function retryWithBackoff(fn: any, options: any = {}) {
   const {
     maxRetries = 5,
     initialDelayMs = 1000,
@@ -429,6 +431,14 @@ async function retryWithBackoff(fn, options = {}) {
 }
 
 class SyncService {
+  isConnected: boolean;
+  isOnline: boolean;
+  status: string;
+  onStatusChangeCallbacks: Function[];
+  isSyncingFromServer: boolean;
+  channel: any;
+  lastFullPullTime: number;
+
   constructor() {
     this.isConnected = false;
     this.isOnline = navigator.onLine;
@@ -447,7 +457,7 @@ class SyncService {
     }
   }
 
-  async fullPull(options = {}) {
+  async fullPull(options: any = {}) {
     const force = options.force === true;
     const now = Date.now();
     if (!force && this.lastFullPullTime && (now - this.lastFullPullTime < 15000)) {

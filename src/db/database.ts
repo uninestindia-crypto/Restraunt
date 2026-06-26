@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * ═══════════════════════════════════════════════════
  *  NextGenOS Restaurant Operating System
@@ -11,7 +10,210 @@
 
 import Dexie from 'dexie';
 
-export const db = new Dexie('TheTastePOS');
+export interface MenuCategory {
+  id?: number;
+  name: string;
+  sortOrder: number;
+  isActive: number | boolean;
+  updatedAt?: string;
+  isSynced?: number;
+}
+
+export interface MenuItem {
+  id?: number;
+  categoryId: number;
+  name: string;
+  price: number;
+  isAvailable: number | boolean;
+  isVeg: number | boolean;
+  sortOrder: number;
+  imageUrl?: string;
+  updatedAt?: string;
+  isSynced?: number;
+}
+
+export interface OrderItem {
+  itemId?: number;
+  itemName?: string;
+  name?: string;
+  price: number;
+  quantity: number;
+  notes?: string;
+}
+
+export interface Order {
+  id?: number;
+  clientOrderId: string;
+  idempotencyKey: string;
+  orderNumber: string;
+  displayToken: string;
+  type: 'takeaway' | 'dinein' | 'delivery' | string;
+  status: 'pending' | 'preparing' | 'ready' | 'completed' | 'cancelled' | string;
+  paymentMethod: 'cash' | 'upi' | 'card' | 'pending' | string | null;
+  paymentStatus: 'pending' | 'paid' | 'failed' | 'unpaid' | string;
+  createdAt: string;
+  completedAt?: string | null;
+  customerId?: number | null;
+  staffId?: number | null;
+  tableId?: number | null;
+  channel: string;
+  source: string;
+  deliveryStatus: 'none' | 'pending' | 'assigned' | 'out_for_delivery' | 'delivered' | 'failed' | string;
+  deliveryStaffId?: number | null;
+  updatedAt: string;
+  syncStatus: 'pending' | 'synced' | 'failed' | string;
+  syncAttempts?: number;
+  validationStatus: string;
+  items: string | OrderItem[];
+  subtotal: number;
+  tax: number;
+  taxPercent?: number;
+  deliveryFee?: number;
+  total: number;
+  serverOrderId?: string | null;
+  paymentReference?: string;
+  paymentVerifiedAt?: string | null;
+  paymentVerifiedBy?: string;
+  paymentCollectedAt?: string | null;
+  customerName?: string;
+  customerPhone?: string;
+  deliveryAddress?: string;
+  deliveryLandmark?: string;
+  deliveryNotes?: string;
+  deliveryStaffName?: string;
+  deliveryAssignedAt?: string | null;
+  deliveryOutAt?: string | null;
+  deliveredAt?: string | null;
+  staffName?: string;
+  notes?: string;
+  requiresServerValidation?: boolean;
+  lastSyncError?: string;
+  lastSyncedAt?: string | null;
+  lastSyncAttemptAt?: string | null;
+  isSynced?: number;
+}
+
+export interface Setting {
+  key: string;
+  value: any;
+}
+
+export interface Customer {
+  id?: number;
+  phone: string;
+  name: string;
+  authUserId?: string;
+  totalSpent: number;
+  visitCount: number;
+  loyaltyPoints: number;
+  tier: string;
+  lastVisit?: string;
+  createdAt: string;
+  isSynced?: number;
+}
+
+export interface Staff {
+  id?: number;
+  name: string;
+  role: string;
+  pinHash: string;
+  cloudUserId?: string;
+  isActive: number | boolean;
+  createdAt: string;
+  pin?: string;
+  allowExpress?: number | boolean;
+  isSynced?: number;
+}
+
+export interface Shift {
+  id?: number;
+  staffId: number;
+  date: string;
+  clockIn: string;
+  clockOut?: string;
+  isSynced?: number;
+}
+
+export interface InventoryItem {
+  id?: number;
+  name: string;
+  unit: string;
+  quantity: number;
+  minThreshold: number;
+  categoryTag?: string;
+  isSynced?: number;
+}
+
+export interface Supplier {
+  id?: number;
+  name: string;
+  phone: string;
+  category?: string;
+  isSynced?: number;
+}
+
+export interface Recipe {
+  id?: number;
+  menuItemId: number;
+  ingredients?: Array<{ inventoryId: number; name: string; quantity: number }>;
+  isSynced?: number;
+}
+
+export interface Table {
+  id?: number;
+  number: number;
+  status: string;
+  floorSection?: string;
+  capacity?: number;
+  isSynced?: number;
+}
+
+export interface Reservation {
+  id?: number;
+  tableId: number;
+  customerId: number;
+  date: string;
+  time: string;
+  status: string;
+  isSynced?: number;
+}
+
+export interface ActivityLogEntry {
+  id?: number;
+  staffId: number;
+  action: string;
+  timestamp: string;
+  isSynced?: number;
+}
+
+export interface AIConversation {
+  id?: number;
+  createdAt: string;
+  title: string;
+  isSynced?: number;
+}
+
+export class RestaurantDatabase extends Dexie {
+  menuCategories!: Dexie.Table<MenuCategory, number>;
+  menuItems!: Dexie.Table<MenuItem, number>;
+  orders!: Dexie.Table<Order, number>;
+  settings!: Dexie.Table<Setting, string>;
+  customers!: Dexie.Table<Customer, number>;
+  staff!: Dexie.Table<Staff, number>;
+  shifts!: Dexie.Table<Shift, number>;
+  inventory!: Dexie.Table<InventoryItem, number>;
+  suppliers!: Dexie.Table<Supplier, number>;
+  recipes!: Dexie.Table<Recipe, number>;
+  reservations!: Dexie.Table<Reservation, number>;
+  activityLog!: Dexie.Table<ActivityLogEntry, number>;
+  aiConversations!: Dexie.Table<AIConversation, number>;
+
+  constructor() {
+    super('TheTastePOS');
+  }
+}
+
+export const db = new RestaurantDatabase();
 
 // ── Schema v1 (Original) ────────────────────────
 db.version(1).stores({
@@ -305,7 +507,7 @@ export async function searchItems(query) {
  * @param {Object} orderData - Order data including items array
  * @returns {Promise<Object>} The created order with id
  */
-export async function createOrder(orderData, options = {}) {
+export async function createOrder(orderData: any, options: any = {}) {
   const clientOrderId = orderData.clientOrderId || generateLocalUuid();
   const idempotencyKey = orderData.idempotencyKey || clientOrderId;
 
@@ -585,7 +787,7 @@ export async function updateOrderStatus(id, status) {
   let result = 0;
   try {
     const existing = await db.orders.get(id);
-    const updates = {
+    const updates: Partial<Order> = {
       status,
       updatedAt: new Date().toISOString(),
       syncStatus: 'pending',
@@ -629,7 +831,7 @@ export async function updateOrderStatus(id, status) {
  * @param {string} paymentStatus
  * @returns {Promise<number>} Number of updated records
  */
-export async function updatePayment(id, paymentMethod, paymentStatus, metadata = {}) {
+export async function updatePayment(id: number, paymentMethod: string, paymentStatus: string, metadata: any = {}) {
   let result = 0;
   try {
     result = await db.orders.update(id, {
