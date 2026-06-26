@@ -72,3 +72,43 @@ test('admin PIN unlock respects active owner or manager staff and configured has
     true
   );
 });
+
+test('developer role is accepted as a valid staff role with full access', () => {
+  // Developer membership is accepted
+  assert.deepEqual(
+    membershipToStaffAccess({ store_id: 'the-taste', role: 'developer', is_active: true }),
+    { role: 'developer', staffId: null, storeId: 'the-taste' }
+  );
+
+  // Developer is recognized as active staff with valid PIN
+  assert.equal(isActiveStaffWithPin({ role: 'developer', isActive: true, pinHash: VALID_HASH }), true);
+  assert.equal(isActiveStaffWithPin({ role: 'developer', isActive: false, pinHash: VALID_HASH }), false);
+
+  // Developer can unlock admin PIN (same privilege as owner)
+  assert.equal(
+    canUnlockAdminPin({
+      staff: { role: 'developer', isActive: true, pinHash: VALID_HASH },
+      inputHash: VALID_HASH
+    }),
+    true
+  );
+
+  // Developer can unlock admin PIN even when allowManager is false
+  assert.equal(
+    canUnlockAdminPin({
+      staff: { role: 'developer', isActive: true, pinHash: VALID_HASH },
+      inputHash: VALID_HASH,
+      allowManager: false
+    }),
+    true
+  );
+
+  // Developer cloud staff access works via membership
+  assert.deepEqual(
+    requireCloudStaffAccess(
+      { user_metadata: { role: 'customer' } },
+      { store_id: 'the-taste', role: 'developer', staff_id: 99, is_active: true }
+    ),
+    { role: 'developer', staffId: 99, storeId: 'the-taste' }
+  );
+});

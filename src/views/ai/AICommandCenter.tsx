@@ -2,7 +2,7 @@
 /**
  * ═══════════════════════════════════════════════════
  *  NextGenOS Restaurant Operating System
- *  Module: AI Command Center
+ *  Module: AI Command Center (3-Tier)
  *  Version: 2.0.0
  *  © 2026 NextGenOS. All Rights Reserved.
  *  This software is proprietary and confidential.
@@ -11,6 +11,12 @@
 
 import { aiService } from '../../services/ai';
 import { showToast, playSound, vibrateDevice } from '../../utils/helpers';
+
+const TIER_BADGES = {
+  codebase: { label: '💻 Local AI', color: 'rgba(148,163,184,0.6)', bg: 'rgba(148,163,184,0.08)' },
+  groq: { label: '⚡ Groq', color: '#10B981', bg: 'rgba(16,185,129,0.08)' },
+  lightning: { label: '🧠 Lightning', color: '#8B5CF6', bg: 'rgba(139,92,246,0.08)' },
+};
 
 export class AICommandCenter {
   constructor(app) {
@@ -22,9 +28,29 @@ export class AICommandCenter {
   async mount(container) {
     this.container = container;
     this.messages = [];
+
+    // Pre-load AI config
+    await aiService.loadConfig();
+
     this.render();
     this.bindEvents();
-    this.addAIMessage(`👋 **Welcome to the AI Command Center!**\n\nI'm your offline restaurant assistant. Ask me anything about your business — revenue, best sellers, forecasts, generate reports, or WhatsApp receipt sharing guide.\n\nTry one of the quick actions below, or type your own question!`, ['📊 Today\'s Summary', '🏆 Best Sellers', '📊 Generate Report', '📱 WhatsApp Guide']);
+
+    // Dynamic welcome message based on available tiers
+    const tiers = [];
+    tiers.push('💻 **Local AI** (always available)');
+    if (aiService.isGroqAvailable) tiers.push('⚡ **Groq** (cloud chat)');
+    if (aiService.isLightningAvailable) tiers.push('🧠 **Lightning** (complex analytics)');
+
+    const tierList = tiers.map(t => `• ${t}`).join('\n');
+
+    this.addAIMessage(
+      `👋 **Welcome to the AI Command Center!**\n\n` +
+      `I'm your restaurant intelligence assistant powered by a 3-tier AI system:\n\n${tierList}\n\n` +
+      `Ask me anything about your business — revenue, best sellers, forecasts, generate reports, or get marketing ideas.\n\n` +
+      `Try one of the quick actions below!`,
+      ['📊 Today\'s Summary', '🏆 Best Sellers', '📈 Forecast Tomorrow', '📊 Generate Report'],
+      'codebase'
+    );
   }
 
   render() {
@@ -37,7 +63,12 @@ export class AICommandCenter {
           </div>
           <div>
             <h2 style="font-family:'Plus Jakarta Sans',sans-serif;font-size:var(--text-lg);font-weight:800;color:var(--text-primary);letter-spacing:-0.02em;margin:0;">AI Command Center</h2>
-            <div style="font-size:0.55rem;color:rgba(162,155,254,0.45);font-weight:500;letter-spacing:0.08em;text-transform:uppercase;">Local AI — Offline Keyword Intelligence • No Cloud API</div>
+            <div style="font-size:0.55rem;color:rgba(162,155,254,0.45);font-weight:500;letter-spacing:0.08em;text-transform:uppercase;">3-Tier AI • Groq Chat • Lightning Analytics • Local Offline</div>
+          </div>
+          <div style="margin-left:auto;display:flex;gap:6px;">
+            ${aiService.isGroqAvailable ? '<span style="padding:3px 8px;border-radius:12px;background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.2);font-size:0.6rem;color:#10B981;font-weight:600;">⚡ Groq</span>' : ''}
+            ${aiService.isLightningAvailable ? '<span style="padding:3px 8px;border-radius:12px;background:rgba(139,92,246,0.08);border:1px solid rgba(139,92,246,0.2);font-size:0.6rem;color:#8B5CF6;font-weight:600;">🧠 Lightning</span>' : ''}
+            <span style="padding:3px 8px;border-radius:12px;background:rgba(148,163,184,0.08);border:1px solid rgba(148,163,184,0.15);font-size:0.6rem;color:rgba(148,163,184,0.7);font-weight:600;">💻 Local</span>
           </div>
         </div>
 
@@ -89,9 +120,11 @@ export class AICommandCenter {
     this.scrollToBottom();
   }
 
-  addAIMessage(text, suggestions = []) {
+  addAIMessage(text, suggestions = [], tier = 'codebase') {
     const container = document.getElementById('ai-messages');
     if (!container) return;
+
+    const badge = TIER_BADGES[tier] || TIER_BADGES.codebase;
 
     const formatted = text
       .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
@@ -109,8 +142,11 @@ export class AICommandCenter {
     div.innerHTML = `
       <div style="max-width:85%;">
         <div style="padding:16px 18px;background:rgba(255,255,255,0.02);border:1px solid var(--border-glass);border-radius:4px 16px 16px 16px;color:var(--text-primary);font-size:var(--text-sm);line-height:1.6;backdrop-filter:blur(8px);">
-          <div style="display:flex;align-items:center;gap:5px;margin-bottom:8px;font-size:0.6rem;color:rgba(162,155,254,0.45);font-weight:600;letter-spacing:0.06em;text-transform:uppercase;">
-            <span class="material-symbols-rounded" style="font-size:13px;">smart_toy</span> AI Assistant
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+            <div style="display:flex;align-items:center;gap:5px;font-size:0.6rem;color:rgba(162,155,254,0.45);font-weight:600;letter-spacing:0.06em;text-transform:uppercase;">
+              <span class="material-symbols-rounded" style="font-size:13px;">smart_toy</span> AI Assistant
+            </div>
+            <span style="padding:2px 8px;border-radius:10px;background:${badge.bg};font-size:0.55rem;color:${badge.color};font-weight:700;letter-spacing:0.04em;">${badge.label}</span>
           </div>
           ${formatted}
           ${chipsHTML}
@@ -165,11 +201,11 @@ export class AICommandCenter {
     this.addTypingIndicator();
 
     // Simulate slight delay for natural feel
-    await new Promise(r => setTimeout(r, 600 + Math.random() * 600));
+    await new Promise(r => setTimeout(r, 400 + Math.random() * 400));
 
     const response = await aiService.processQuery(query);
     this.removeTypingIndicator();
-    this.addAIMessage(response.content, response.suggestions || []);
+    this.addAIMessage(response.content, response.suggestions || [], response.tier || 'codebase');
     playSound(800, 80);
     vibrateDevice([30]);
   }

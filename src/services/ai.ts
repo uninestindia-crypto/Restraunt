@@ -2,37 +2,71 @@
 /**
  * ═══════════════════════════════════════════════════
  *  NextGenOS Restaurant Operating System
- *  Module: AI Service
+ *  Module: AI Service (3-Tier Architecture)
  *  Version: 2.0.0
  *  © 2026 NextGenOS. All Rights Reserved.
  *  This software is proprietary and confidential.
+ *
+ *  Tier 1 — Codebase AI: Offline keyword matching (reports, lookups)
+ *  Tier 2 — Groq AI: Cloud LLM chat assistant (fast conversational)
+ *  Tier 3 — Lightning AI: Complex analytical tasks (forecasting, anomaly)
  * ═══════════════════════════════════════════════════
  */
 
-import { db } from '../db/database';
+import { db, getSetting } from '../db/database';
 import { parseOrderItems } from '../utils/helpers';
 
+// ── Intent Definitions with Tier Routing ──
+
 const INTENTS = [
-  { id: 'REVENUE_TODAY', keywords: ['revenue', 'sales', 'earned', 'money', 'income', 'earning'], handler: 'getRevenueToday' },
-  { id: 'BEST_SELLERS', keywords: ['best', 'top', 'popular', 'selling', 'seller', 'famous', 'trending'], handler: 'getBestSellers' },
-  { id: 'WORST_SELLERS', keywords: ['worst', 'least', 'slow', 'flop', 'not selling', 'poor'], handler: 'getWorstSellers' },
-  { id: 'GENERATE_REPORT', keywords: ['csv report', 'excel report', 'excel', 'download report', 'export', 'spreadsheet', 'sheet'], handler: 'generateReport' },
-  { id: 'WHATSAPP_SHARE', keywords: ['whatsapp bill', 'whatsapp', 'share bill', 'send bill', 'receipt message', 'bill on whatsapp'], handler: 'whatsappGuide' },
-  { id: 'DAILY_SUMMARY', keywords: ['summary', 'overview', 'report', 'how was', 'day going', 'today'], handler: 'getDailySummary' },
-  { id: 'PEAK_HOURS', keywords: ['peak', 'busy', 'rush', 'busiest', 'hour', 'when'], handler: 'getPeakHours' },
-  { id: 'ORDER_COUNT', keywords: ['orders', 'count', 'how many orders', 'total orders', 'number of orders'], handler: 'getOrderCount' },
-  { id: 'AVG_ORDER', keywords: ['average', 'avg', 'bill', 'ticket', 'order value', 'per order'], handler: 'getAvgOrderValue' },
-  { id: 'FORECAST', keywords: ['predict', 'forecast', 'tomorrow', 'expect', 'projection', 'estimate'], handler: 'forecastRevenue' },
-  { id: 'PROMO', keywords: ['promo', 'marketing', 'message', 'offer', 'write', 'promotion', 'advertise'], handler: 'generatePromo' },
-  { id: 'CUSTOMER_COUNT', keywords: ['customer', 'customers', 'visitor', 'how many people', 'footfall'], handler: 'getCustomerCount' },
-  { id: 'PAYMENT_SPLIT', keywords: ['payment', 'upi', 'cash', 'method', 'digital', 'split'], handler: 'getPaymentSplit' },
-  { id: 'ANOMALY', keywords: ['unusual', 'anomaly', 'strange', 'weird', 'different', 'abnormal'], handler: 'detectAnomalies' },
+  // Tier 1 — Codebase AI (local, offline)
+  { id: 'GENERATE_REPORT', tier: 'codebase', keywords: ['csv report', 'excel report', 'excel', 'download report', 'export', 'spreadsheet', 'sheet'], handler: 'generateReport' },
+  { id: 'WHATSAPP_SHARE', tier: 'codebase', keywords: ['whatsapp bill', 'whatsapp', 'share bill', 'send bill', 'receipt message', 'bill on whatsapp'], handler: 'whatsappGuide' },
+  { id: 'ORDER_COUNT', tier: 'codebase', keywords: ['orders', 'count', 'how many orders', 'total orders', 'number of orders'], handler: 'getOrderCount' },
+  { id: 'CUSTOMER_COUNT', tier: 'codebase', keywords: ['customer', 'customers', 'visitor', 'how many people', 'footfall'], handler: 'getCustomerCount' },
+
+  // Tier 2 — Groq AI (cloud chat — falls back to local)
+  { id: 'REVENUE_TODAY', tier: 'groq', keywords: ['revenue', 'sales', 'earned', 'money', 'income', 'earning'], handler: 'getRevenueToday', fallback: 'getRevenueToday' },
+  { id: 'BEST_SELLERS', tier: 'groq', keywords: ['best', 'top', 'popular', 'selling', 'seller', 'famous', 'trending'], handler: 'getBestSellers', fallback: 'getBestSellers' },
+  { id: 'WORST_SELLERS', tier: 'groq', keywords: ['worst', 'least', 'slow', 'flop', 'not selling', 'poor'], handler: 'getWorstSellers', fallback: 'getWorstSellers' },
+  { id: 'DAILY_SUMMARY', tier: 'groq', keywords: ['summary', 'overview', 'report', 'how was', 'day going', 'today'], handler: 'getDailySummary', fallback: 'getDailySummary' },
+  { id: 'PEAK_HOURS', tier: 'groq', keywords: ['peak', 'busy', 'rush', 'busiest', 'hour', 'when'], handler: 'getPeakHours', fallback: 'getPeakHours' },
+  { id: 'AVG_ORDER', tier: 'groq', keywords: ['average', 'avg', 'bill', 'ticket', 'order value', 'per order'], handler: 'getAvgOrderValue', fallback: 'getAvgOrderValue' },
+  { id: 'PROMO', tier: 'groq', keywords: ['promo', 'marketing', 'message', 'offer', 'write', 'promotion', 'advertise'], handler: 'generatePromo', fallback: 'generatePromo' },
+  { id: 'PAYMENT_SPLIT', tier: 'groq', keywords: ['payment', 'upi', 'cash', 'method', 'digital', 'split'], handler: 'getPaymentSplit', fallback: 'getPaymentSplit' },
+
+  // Tier 3 — Lightning AI (complex compute — falls back to local)
+  { id: 'FORECAST', tier: 'lightning', keywords: ['predict', 'forecast', 'tomorrow', 'expect', 'projection', 'estimate'], handler: 'forecastRevenue', fallback: 'forecastRevenue' },
+  { id: 'ANOMALY', tier: 'lightning', keywords: ['unusual', 'anomaly', 'strange', 'weird', 'different', 'abnormal'], handler: 'detectAnomalies', fallback: 'detectAnomalies' },
 ];
 
 class AIService {
   constructor() {
     this.conversationHistory = [];
+    this._groqKeyCache = null;
+    this._lightningKeyCache = null;
+    this._configLoaded = false;
   }
+
+  // ── Config Loading ──
+
+  async loadConfig() {
+    if (this._configLoaded) return;
+    this._groqKeyCache = await getSetting('groqApiKey') || '';
+    this._lightningKeyCache = await getSetting('lightningApiKey') || '';
+    this._configLoaded = true;
+  }
+
+  invalidateConfigCache() {
+    this._configLoaded = false;
+    this._groqKeyCache = null;
+    this._lightningKeyCache = null;
+  }
+
+  get isGroqAvailable() { return Boolean(this._groqKeyCache); }
+  get isLightningAvailable() { return Boolean(this._lightningKeyCache); }
+
+  // ── Formatting Helpers ──
 
   formatCurrency(amount) {
     const symbol = localStorage.getItem('app_currency_symbol') || '₹';
@@ -40,6 +74,12 @@ class AIService {
     const locale = code === 'INR' ? 'en-IN' : (code === 'EUR' ? 'de-DE' : (code === 'GBP' ? 'en-GB' : (code === 'AUD' ? 'en-AU' : (code === 'CAD' ? 'en-CA' : 'en-US'))));
     return symbol + Number(amount || 0).toLocaleString(locale, { minimumFractionDigits: 0, maximumFractionDigits: 0 });
   }
+
+  formatResponse(type, content, data = null, suggestions = [], tier = 'codebase') {
+    return { type, content, data, suggestions, tier, timestamp: new Date().toISOString() };
+  }
+
+  // ── Intent Classification ──
 
   classifyIntent(query) {
     const lower = query.toLowerCase().trim();
@@ -57,26 +97,240 @@ class AIService {
       }
     }
 
-    return bestMatch || { id: 'DAILY_SUMMARY', handler: 'getDailySummary' };
+    return bestMatch || { id: 'DAILY_SUMMARY', tier: 'groq', handler: 'getDailySummary', fallback: 'getDailySummary' };
   }
 
+  // ── Main Query Processor (3-Tier Router) ──
+
   async processQuery(query) {
+    await this.loadConfig();
+
     try {
       const intent = this.classifyIntent(query);
-      const response = await this[intent.handler](query);
-      return response;
+
+      // Tier 1 — Codebase AI: always local
+      if (intent.tier === 'codebase') {
+        return await this[intent.handler](query);
+      }
+
+      // Tier 2 — Groq AI: try cloud, fallback to local
+      if (intent.tier === 'groq') {
+        const aiEnabled = await getSetting('enableAIChat');
+        if (this.isGroqAvailable && aiEnabled !== 'false') {
+          try {
+            return await this.queryGroq(query, intent);
+          } catch (err) {
+            console.warn('[AI] Groq call failed, falling back to local:', err.message);
+          }
+        }
+        // Fallback to local handler
+        return await this[intent.fallback || intent.handler](query);
+      }
+
+      // Tier 3 — Lightning AI: try cloud, fallback to local
+      if (intent.tier === 'lightning') {
+        const analyticsEnabled = await getSetting('enableAIAnalytics');
+        if (this.isLightningAvailable && analyticsEnabled !== 'false') {
+          try {
+            return await this.queryLightning(query, intent);
+          } catch (err) {
+            console.warn('[AI] Lightning call failed, falling back to local:', err.message);
+          }
+        }
+        // Fallback to local handler
+        return await this[intent.fallback || intent.handler](query);
+      }
+
+      // Default fallback
+      return await this.getDailySummary();
     } catch (err) {
       console.error('AI query error:', err);
       return this.formatResponse('text',
         `I encountered an issue processing your request. Please try again.\n\n*Error: ${err.message}*`,
-        null, ['📊 Today\'s Summary', '🏆 Best Sellers']
+        null, ['📊 Today\'s Summary', '🏆 Best Sellers'], 'codebase'
       );
     }
   }
 
-  formatResponse(type, content, data = null, suggestions = []) {
-    return { type, content, data, suggestions, timestamp: new Date().toISOString() };
+  // ── Cloud AI Callers ──
+
+  async queryGroq(query, intent) {
+    const groqApiKey = this._groqKeyCache;
+    const model = await getSetting('groqModel') || 'llama-3.3-70b-versatile';
+
+    // Gather business context
+    const context = await this.gatherBusinessContext();
+
+    const systemPrompt = `You are an AI assistant for "${context.restaurantName || 'The Taste'}" restaurant. 
+You help restaurant staff with business insights, analytics, and operational questions.
+Respond concisely in markdown. Use bold, emojis, and bullet points for readability.
+Currency: ${context.currency}. Today: ${new Date().toLocaleDateString()}.
+
+Current business data:
+- Today's orders: ${context.todayOrders}, Revenue: ${context.todayRevenue}
+- This week's orders: ${context.weekOrders}, Revenue: ${context.weekRevenue}
+- Top sellers this week: ${context.topSellers}
+- Payment methods breakdown: ${context.paymentBreakdown}`;
+
+    this.conversationHistory.push({ role: 'user', content: query });
+    if (this.conversationHistory.length > 10) {
+      this.conversationHistory = this.conversationHistory.slice(-8);
+    }
+
+    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${groqApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          ...this.conversationHistory,
+        ],
+        temperature: 0.7,
+        max_tokens: 1024,
+      }),
+    });
+
+    if (!response.ok) {
+      const errBody = await response.text();
+      throw new Error(`Groq API error ${response.status}: ${errBody.slice(0, 200)}`);
+    }
+
+    const data = await response.json();
+    const assistantMessage = data.choices?.[0]?.message?.content || 'No response from Groq.';
+
+    this.conversationHistory.push({ role: 'assistant', content: assistantMessage });
+
+    return this.formatResponse('text', assistantMessage, null,
+      ['📊 Today\'s Summary', '🏆 Best Sellers', '📈 Forecast Tomorrow'], 'groq'
+    );
   }
+
+  async queryLightning(query, intent) {
+    const lightningKey = this._lightningKeyCache;
+    const endpoint = await getSetting('lightningEndpoint') || '';
+
+    if (!endpoint) throw new Error('Lightning AI endpoint not configured');
+
+    const context = await this.gatherBusinessContext();
+
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${lightningKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        query,
+        intent: intent.id,
+        context,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Lightning API error ${response.status}`);
+    }
+
+    const data = await response.json();
+    const content = data.result || data.content || data.message || JSON.stringify(data);
+
+    return this.formatResponse('text', content, data,
+      ['📊 Summary', '🔍 Detect Anomalies', '📈 Forecast'], 'lightning'
+    );
+  }
+
+  // ── Business Context Gatherer ──
+
+  async gatherBusinessContext() {
+    const todayOrders = await this.getOrdersInRange(0);
+    const weekOrders = await this.getOrdersInRange(6);
+    const todayRevenue = todayOrders.reduce((s, o) => s + (o.total || 0), 0);
+    const weekRevenue = weekOrders.reduce((s, o) => s + (o.total || 0), 0);
+
+    // Top sellers
+    const itemMap = {};
+    weekOrders.forEach(o => {
+      this.parseItems(o).forEach(item => {
+        const name = item.itemName || item.name;
+        if (!itemMap[name]) itemMap[name] = 0;
+        itemMap[name] += item.quantity || 1;
+      });
+    });
+    const topSellers = Object.entries(itemMap)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([name, qty]) => `${name}(${qty})`)
+      .join(', ');
+
+    // Payment breakdown
+    const paymentMap = {};
+    weekOrders.forEach(o => {
+      const m = o.paymentMethod || 'unknown';
+      paymentMap[m] = (paymentMap[m] || 0) + 1;
+    });
+    const paymentBreakdown = Object.entries(paymentMap)
+      .map(([m, c]) => `${m}:${c}`)
+      .join(', ');
+
+    const restaurantName = localStorage.getItem('app_restaurant_name') || await getSetting('restaurantName') || 'The Taste';
+    const currency = `${localStorage.getItem('app_currency_symbol') || '₹'} ${localStorage.getItem('app_currency_code') || 'INR'}`;
+
+    return {
+      restaurantName,
+      currency,
+      todayOrders: todayOrders.length,
+      todayRevenue: this.formatCurrency(todayRevenue),
+      weekOrders: weekOrders.length,
+      weekRevenue: this.formatCurrency(weekRevenue),
+      topSellers: topSellers || 'No data',
+      paymentBreakdown: paymentBreakdown || 'No data',
+    };
+  }
+
+  // ── Connection Testers ──
+
+  async testGroqConnection() {
+    await this.loadConfig();
+    if (!this._groqKeyCache) return false;
+    try {
+      const resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${this._groqKeyCache}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'llama-3.1-8b-instant',
+          messages: [{ role: 'user', content: 'Say "connected" in one word.' }],
+          max_tokens: 10,
+        }),
+      });
+      return resp.ok;
+    } catch { return false; }
+  }
+
+  async testLightningConnection() {
+    await this.loadConfig();
+    if (!this._lightningKeyCache) return false;
+    const endpoint = await getSetting('lightningEndpoint');
+    if (!endpoint) return false;
+    try {
+      const resp = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${this._lightningKeyCache}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ query: 'ping', intent: 'test' }),
+      });
+      return resp.ok;
+    } catch { return false; }
+  }
+
+  // ── Data Helpers ──
 
   getDateRange(daysBack = 0) {
     const now = new Date();
@@ -95,7 +349,7 @@ class AIService {
     return parseOrderItems(order.items);
   }
 
-  // ─── Intent Handlers ────────────────────────────
+  // ── Tier 1: Codebase AI Intent Handlers (Offline) ──
 
   async getRevenueToday() {
     const orders = await this.getOrdersInRange(0);
@@ -107,7 +361,8 @@ class AIService {
       `From **${count}** completed orders.\n` +
       (count > 0 ? `Average bill: ${this.formatCurrency(revenue / count)}` : 'No orders yet today.'),
       { revenue, count },
-      ['🏆 Best Sellers', '⏰ Peak Hours', '📈 Forecast Tomorrow']
+      ['🏆 Best Sellers', '⏰ Peak Hours', '📈 Forecast Tomorrow'],
+      'codebase'
     );
   }
 
@@ -135,7 +390,8 @@ class AIService {
     if (sorted.length === 0) text = '📭 No order data available for the last 7 days.';
 
     return this.formatResponse('text', text, { items: sorted },
-      ['📊 Today\'s Summary', '📉 Worst Sellers', '💰 Revenue Today']
+      ['📊 Today\'s Summary', '📉 Worst Sellers', '💰 Revenue Today'],
+      'codebase'
     );
   }
 
@@ -161,7 +417,8 @@ class AIService {
     text += `\n💡 *Consider running promotions on these items or reviewing if they should stay on the menu.*`;
 
     return this.formatResponse('text', text, null,
-      ['🏆 Best Sellers', '📊 Today\'s Summary']
+      ['🏆 Best Sellers', '📊 Today\'s Summary'],
+      'codebase'
     );
   }
 
@@ -201,7 +458,8 @@ class AIService {
     if (count === 0) text = `📋 **Today's Summary**\n\nNo orders yet today. The day is young! 🌅`;
 
     return this.formatResponse('text', text, { revenue, count, avg, growth },
-      ['🏆 Best Sellers', '⏰ Peak Hours', '📈 Forecast Tomorrow']
+      ['🏆 Best Sellers', '⏰ Peak Hours', '📈 Forecast Tomorrow'],
+      'codebase'
     );
   }
 
@@ -232,7 +490,8 @@ class AIService {
     text += `\n💡 *Schedule extra staff during peak hours for faster service.*`;
 
     return this.formatResponse('text', text, null,
-      ['📊 Today\'s Summary', '🏆 Best Sellers']
+      ['📊 Today\'s Summary', '🏆 Best Sellers'],
+      'codebase'
     );
   }
 
@@ -241,7 +500,8 @@ class AIService {
     const allOrders = await db.orders.toArray();
     return this.formatResponse('text',
       `📦 **Order Count**\n\nToday: **${orders.length}** orders\nAll Time: **${allOrders.length}** orders`,
-      null, ['💰 Revenue Today', '📊 Summary']
+      null, ['💰 Revenue Today', '📊 Summary'],
+      'codebase'
     );
   }
 
@@ -252,18 +512,12 @@ class AIService {
     return this.formatResponse('text',
       `🧾 **Average Order Value** (Last 7 Days)\n\n` +
       `Average bill: **${this.formatCurrency(avg)}**\nFrom ${orders.length} orders totalling ${this.formatCurrency(revenue)}`,
-      null, ['📊 Summary', '🏆 Best Sellers']
+      null, ['📊 Summary', '🏆 Best Sellers'],
+      'codebase'
     );
   }
 
   async forecastRevenue() {
-    const dayTotals = [];
-    for (let d = 1; d <= 14; d++) {
-      const orders = await this.getOrdersInRange(d);
-      const prevOrders = d > 0 ? await this.getOrdersInRange(d - 1) : [];
-      // Simplified: we'll use the last 7 same-day-of-week averages
-    }
-
     // Simpler approach: average of last 7 days
     const weekOrders = await this.getOrdersInRange(6);
     const totalRev = weekOrders.reduce((s, o) => s + (o.total || 0), 0);
@@ -278,7 +532,8 @@ class AIService {
       `📊 Optimistic: **${this.formatCurrency(optimistic)}**\n` +
       `📉 Conservative: **${this.formatCurrency(pessimistic)}**\n\n` +
       `*Based on daily average of ${this.formatCurrency(avgDaily)} over the last week.*`,
-      null, ['📊 Today\'s Summary', '⏰ Peak Hours']
+      null, ['📊 Today\'s Summary', '⏰ Peak Hours'],
+      'codebase'
     );
   }
 
@@ -298,7 +553,9 @@ class AIService {
       text += `${icon} **${method.toUpperCase()}**: ${data.count} orders — ${this.formatCurrency(data.total)}\n`;
     });
 
-    return this.formatResponse('text', text, null, ['📊 Summary', '💰 Revenue']);
+    return this.formatResponse('text', text, null, ['📊 Summary', '💰 Revenue'],
+      'codebase'
+    );
   }
 
   async getCustomerCount() {
@@ -306,7 +563,8 @@ class AIService {
     return this.formatResponse('text',
       `👥 **Customer Base**\n\nTotal registered customers: **${count}**\n\n` +
       (count === 0 ? '*Customers are auto-added when orders include phone numbers.*' : ''),
-      null, ['📊 Summary']
+      null, ['📊 Summary'],
+      'codebase'
     );
   }
 
@@ -332,7 +590,8 @@ class AIService {
       `📍 Order now at The Taste\n` +
       `---\n\n` +
       `*Copy and paste this to WhatsApp, Instagram, or any social platform!*`,
-      null, ['📊 Summary', '🏆 Best Sellers']
+      null, ['📊 Summary', '🏆 Best Sellers'],
+      'codebase'
     );
   }
 
@@ -354,7 +613,9 @@ class AIService {
       text += `Revenue (${this.formatCurrency(todayRev)}) is within expected range of your weekly average (${this.formatCurrency(avgRev)}).`;
     }
 
-    return this.formatResponse('text', text, null, ['📊 Summary', '📈 Forecast']);
+    return this.formatResponse('text', text, null, ['📊 Summary', '📈 Forecast'],
+      'codebase'
+    );
   }
 
   async generateReport(query) {
@@ -394,7 +655,8 @@ class AIService {
           `• **Order Details**\n` +
           `• **Item Sales Analysis**`,
           { type, filename },
-          ['📊 Today\'s CSV Report', '📈 Weekly CSV Report', '📅 Monthly CSV Report', '🏆 Best Sellers']
+          ['📊 Today\'s CSV Report', '📈 Weekly CSV Report', '📅 Monthly CSV Report', '🏆 Best Sellers'],
+          'codebase'
         );
       }
     } catch (err) {
@@ -403,7 +665,8 @@ class AIService {
         `❌ **Failed to generate CSV report**\n\n` +
         `Error: ${err.message}`,
         null,
-        ['📊 Today\'s Summary', '🏆 Best Sellers']
+        ['📊 Today\'s Summary', '🏆 Best Sellers'],
+        'codebase'
       );
     }
   }
@@ -419,7 +682,8 @@ class AIService {
       `4. Enter the customer's phone number and hit OK.\n\n` +
       `The app will open a WhatsApp chat window with the pre-formatted text receipt ready to send!`,
       null,
-      ['📋 Today\'s Summary', '📊 Generate Report', '🏆 Best Sellers']
+      ['📋 Today\'s Summary', '📊 Generate Report', '🏆 Best Sellers'],
+      'codebase'
     );
   }
 }
