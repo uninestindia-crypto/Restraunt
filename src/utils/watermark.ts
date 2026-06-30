@@ -3,49 +3,6 @@
  * ═══════════════════════════════════════════════════
  *  NextGenOS Restaurant Operating System
  *  Module: Watermark Utilities
- *  Version: 2.0.0
- *  © 2026 NextGenOS. All Rights Reserved.
- *  This software is proprietary and confidential.
- * ═══════════════════════════════════════════════════
- */
-
-export const NEXTGENOS = {
-  name: 'NextGenOS',
-    console.log(
-      `[VersionGate] Build changed: "${stored}" → "${APP_BUILD_VERSION}". Triggering local version gate.`
-    );
-
-    clearStaleState();
-
-    // 3. Unregister all Service Workers to clear PWA cache and force fetch new files
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.getRegistrations()
-        .then(registrations => {
-          const promises = registrations.map(r => r.unregister());
-          return Promise.all(promises);
-        })
-        .catch(err => {
-          console.error('[VersionGate] Service worker unregister failed:', err);
-        })
-        .finally(() => {
-          // Stamp the new version and reload
-          localStorage.setItem(STORAGE_KEY, APP_BUILD_VERSION);
-          window.location.reload();
-        });
-    } else {
-      localStorage.setItem(STORAGE_KEY, APP_BUILD_VERSION);
-      window.location.reload();
-    }
-  } else if (!stored) {
-    // Stamp the current version on first boot without reload
-    localStorage.setItem(STORAGE_KEY, APP_BUILD_VERSION);
-  }
-}
-
-/**
- * Asynchronously checks the server's version.json file to detect updates.
- * If the remote build version is different from the running code version (APP_BUILD_VERSION):
- *   1. Displays a status message on the loading screen.
  *   2. Clears all cookies, local storage session tokens, and memories.
  *   3. Unregisters all service workers.
  *   4. Reloads the page immediately.
