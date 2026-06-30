@@ -141,7 +141,7 @@ class App {
       injectBuildGlobal();
 
       // Inject interactive portal switcher widget
-      this.injectSandboxWidget();
+      // this.injectSandboxWidget();
 
       // Setup router auth handler
       router.onAuthRequired = async () => {
