@@ -214,6 +214,15 @@ function mapShiftToLocal(row) {
   };
 }
 
+function mapRecipeToLocal(row) {
+  return {
+    id: row.id,
+    menuItemId: row.menu_item_id,
+    ingredients: Array.isArray(row.ingredients) ? row.ingredients : [],
+    isSynced: 1
+  };
+}
+
 // ── Full Cloud Pull (Hydration) ─────────────────────────────────
 // This is THE key function that solves multi-device data consistency.
 // On every login/reconnect, it pulls ALL data from Supabase → IndexedDB.
@@ -441,6 +450,29 @@ export async function fullPull(options: any = {}) {
         }
       });
       results.shifts = localShifts.length;
+    }
+
+    // 10. Recipes
+    const { data: recipes, error: recipeErr } = await client
+      .from('recipes')
+      .select('*')
+      .eq('store_id', storeId);
+    if (!recipeErr && recipes?.length > 0) {
+      const localRecipes = recipes.map(mapRecipeToLocal);
+      await db.transaction('rw', db.recipes, async () => {
+        for (const recipe of localRecipes) {
+          const existing = await db.recipes
+            .where('menuItemId')
+            .equals(recipe.menuItemId)
+            .first();
+          if (existing) {
+            recipe.id = existing.id;
+          }
+          await db.recipes.put(recipe);
+        }
+      });
+      results.recipes = localRecipes.length;
+      console.log(`[CloudDB] Hydrated ${localRecipes.length} recipes from cloud.`);
     }
 
     console.log('[CloudDB] ✅ Full pull complete. Results:', results);

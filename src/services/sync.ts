@@ -299,6 +299,24 @@ function mapShiftToLocal(row) {
   };
 }
 
+function mapRecipeToRemote(recipe) {
+  return {
+    id: recipe.id,
+    store_id: getStoreId(),
+    menu_item_id: recipe.menuItemId,
+    ingredients: Array.isArray(recipe.ingredients) ? recipe.ingredients : JSON.parse(recipe.ingredients || '[]')
+  };
+}
+
+function mapRecipeToLocal(row) {
+  return {
+    id: row.id,
+    menuItemId: row.menu_item_id,
+    ingredients: Array.isArray(row.ingredients) ? row.ingredients : [],
+    isSynced: 1
+  };
+}
+
 function mapActivityToRemote(log) {
   return {
     id: log.id,
@@ -986,6 +1004,38 @@ class SyncService {
         }
       }
 
+      // 11. Sync Recipes
+      let unsyncedRecipes = [];
+      try {
+        unsyncedRecipes = await db.recipes.filter(r => !r.isSynced).toArray();
+      } catch (dbErr) {
+        console.error('[Sync db] Error fetching unsynced recipes:', dbErr);
+      }
+
+      if (unsyncedRecipes.length > 0) {
+        console.log(`[Sync cache] Found ${unsyncedRecipes.length} unsynced recipes in local cache.`);
+        const remoteRecipes = unsyncedRecipes.map(mapRecipeToRemote);
+        try {
+          await retryWithBackoff(async () => {
+            const { error } = await supabase.from('recipes').upsert(remoteRecipes);
+            if (error) throw error;
+          }, { maxRetries: 3 });
+
+          try {
+            await db.transaction('rw', db.recipes, async () => {
+              for (const r of unsyncedRecipes) {
+                await db.recipes.update(r.id, { isSynced: 1 });
+              }
+            });
+            console.log(`[Sync cache] Successfully synced and updated cache for ${unsyncedRecipes.length} recipes.`);
+          } catch (dbErr) {
+            console.error('[Sync db] Error updating recipe sync status in local cache:', dbErr);
+          }
+        } catch (netErr) {
+          console.error('[Sync net] Failed to push unsynced recipes to cloud after retries:', netErr);
+        }
+      }
+
     } catch (e) {
       console.error('[Sync] Failed to perform initial push of unsynced records:', e);
       showToast('Failed to sync local data to cloud: ' + e.message, 'error');
@@ -1084,6 +1134,15 @@ class SyncService {
       { event: '*', schema: 'public', table: 'customers' },
       async (payload) => {
         await this.handleRemoteChange('customers', payload, mapCustomerToLocal);
+      }
+    );
+
+    // Handle recipes updates
+    this.channel.on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'recipes' },
+      async (payload) => {
+        await this.handleRemoteChange('recipes', payload, mapRecipeToLocal);
       }
     );
 
@@ -1456,6 +1515,34 @@ class SyncService {
     }
   }
 
+  // Active sync-up method for Recipes
+  async syncUpRecipe(recipe) {
+    if (!this.isConnected || !supabase) {
+      console.warn(`[Sync cache] Skipping recipe sync for ${recipe?.id}: offline or disconnected.`);
+      return;
+    }
+    try {
+      const remote = mapRecipeToRemote(recipe);
+
+      await retryWithBackoff(async () => {
+        const { error } = await supabase.from('recipes').upsert(remote);
+        if (error) throw error;
+      }, { maxRetries: 3, initialDelayMs: 1000, backoffFactor: 2 });
+
+      this.isSyncingFromServer = true;
+      try {
+        await db.recipes.update(recipe.id, { isSynced: 1 });
+      } catch (dbErr) {
+        console.error(`[Sync db] Error marking recipe ${recipe.id} as synced:`, dbErr);
+      } finally {
+        this.isSyncingFromServer = false;
+      }
+      console.log(`[Sync cache] Recipe ${recipe.id} (menuItemId: ${recipe.menuItemId}) successfully replicated to cloud.`);
+    } catch (e) {
+      console.error(`[Sync net] Cloud replication failed for recipe ${recipe?.id}:`, e);
+    }
+  }
+
   setupLocalHooks() {
     // Menu Categories hook
     db.menuCategories.hook('creating', (primKey, obj, transaction) => {
@@ -1786,6 +1873,46 @@ class SyncService {
           console.log(`[Sync cache] Deleted customer ${primKey} from cloud.`);
         } catch (e) {
           console.error(`[Sync net] Failed to delete customer ${primKey} from cloud after retries:`, e);
+        }
+      }, 50);
+    });
+
+    // Recipes hooks
+    db.recipes.hook('creating', (primKey, obj, transaction) => {
+      setTimeout(async () => {
+        if (this.isSyncingFromServer) return;
+        try {
+          const r = await db.recipes.get(primKey);
+          if (r) await this.syncUpRecipe(r);
+        } catch (dbErr) {
+          console.error('[Sync db] Error in recipes creating hook:', dbErr);
+        }
+      }, 50);
+    });
+
+    db.recipes.hook('updating', (mods, primKey, obj, transaction) => {
+      setTimeout(async () => {
+        if (this.isSyncingFromServer) return;
+        try {
+          const r = await db.recipes.get(primKey);
+          if (r) await this.syncUpRecipe(r);
+        } catch (dbErr) {
+          console.error('[Sync db] Error in recipes updating hook:', dbErr);
+        }
+      }, 50);
+    });
+
+    db.recipes.hook('deleting', (primKey, obj, transaction) => {
+      setTimeout(async () => {
+        if (this.isSyncingFromServer || !this.isConnected || !supabase) return;
+        try {
+          await retryWithBackoff(async () => {
+            const { error } = await supabase.from('recipes').delete().eq('id', primKey);
+            if (error) throw error;
+          }, { maxRetries: 3 });
+          console.log(`[Sync cache] Deleted recipe ${primKey} from cloud.`);
+        } catch (e) {
+          console.error(`[Sync net] Failed to delete recipe ${primKey} from cloud after retries:`, e);
         }
       }, 50);
     });
