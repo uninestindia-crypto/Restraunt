@@ -60,3 +60,7 @@ credentials.json
 
 # Next.js build output/cache
 .next/
+
+# Generated version files
+public/version.json
+

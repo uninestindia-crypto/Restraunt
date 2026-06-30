@@ -25,17 +25,21 @@ CREATE POLICY "staff access reservations" ON reservations
   WITH CHECK (EXISTS (SELECT 1 FROM staff_memberships sm WHERE sm.store_id = reservations.store_id AND sm.auth_user_id = (SELECT auth.uid()) AND sm.is_active = TRUE));
 
 -- ── 2. Add Missing Tables to Realtime Publication ──────────────────
+-- Only adds tables that actually exist in the database (safe if customer
+-- platform migration has not been applied yet).
 DO $$
 DECLARE
-  table_name TEXT;
+  tbl TEXT;
 BEGIN
-  FOREACH table_name IN ARRAY ARRAY['recipes','reservations','customer_offers','customer_favorites','customer_reviews']
+  FOREACH tbl IN ARRAY ARRAY['recipes','reservations','customer_offers','customer_favorites','customer_reviews']
   LOOP
-    BEGIN
-      EXECUTE format('ALTER PUBLICATION supabase_realtime ADD TABLE %I', table_name);
-    EXCEPTION
-      WHEN duplicate_object THEN NULL;
-      WHEN undefined_object THEN NULL;
-    END;
+    IF EXISTS (SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE c.relname = tbl AND n.nspname = 'public') THEN
+      BEGIN
+        EXECUTE format('ALTER PUBLICATION supabase_realtime ADD TABLE %I', tbl);
+      EXCEPTION
+        WHEN duplicate_object THEN NULL;
+        WHEN undefined_object THEN NULL;
+      END;
+    END IF;
   END LOOP;
 END $$;
