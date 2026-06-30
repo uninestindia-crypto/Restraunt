@@ -107,6 +107,45 @@ class App {
       // surviving across app updates (laptop vs phone inconsistency).
       performVersionGate();
 
+      // Set up background periodic check for new deployments (every 5 minutes)
+      setInterval(() => {
+        checkForUpdateAndGate().catch(err => console.debug('[App] Background version check failed:', err));
+      }, 5 * 60 * 1000);
+
+      // Set up visibility change check (when tab becomes active/visible)
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') {
+          console.log('[App] Tab visible. Checking for updates...');
+          checkForUpdateAndGate().catch(err => console.debug('[App] Visibility change version check failed:', err));
+        }
+      });
+
+      // Set up global ChunkLoadError / script load failure listener
+      window.addEventListener('error', (event) => {
+        const message = event.message || '';
+        const error = event.error || {};
+        const isChunkError = 
+          /chunk|loading/i.test(message) || 
+          /loading.*chunk/i.test(message) ||
+          /failed.*import/i.test(message) ||
+          (error.message && /chunk|loading|import/i.test(error.message));
+        
+        if (isChunkError) {
+          console.warn('[App] Dynamic chunk/script load failure detected. Triggering urgent version check...');
+          checkForUpdateAndGate().catch(err => console.debug('[App] Error handler version check failed:', err));
+        }
+      });
+      window.addEventListener('unhandledrejection', (event) => {
+        const reason = event.reason || {};
+        const message = reason.message || String(reason);
+        const isChunkError = /chunk|loading|import/i.test(message);
+        
+        if (isChunkError) {
+          console.warn('[App] Unhandled dynamic import rejection detected. Triggering urgent version check...');
+          checkForUpdateAndGate().catch(err => console.debug('[App] Promise rejection version check failed:', err));
+        }
+      });
+
       // Cache currency and tax settings to localStorage for synchronous access in helpers
       try {
         const appCurrencySymbol = await db.settings.get('currencySymbol');
