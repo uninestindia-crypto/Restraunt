@@ -49,7 +49,7 @@ function mapCategoryToRemote(cat: any) {
   };
 }
 
-function mapCategoryToLocal(row: any) {
+export function mapCategoryToLocal(row: any) {
   return {
     id: row.id,
     name: row.name,
@@ -74,7 +74,7 @@ function mapItemToRemote(item: any) {
   };
 }
 
-function mapItemToLocal(row: any) {
+export function mapItemToLocal(row: any) {
   return {
     id: row.id,
     categoryId: row.category_id,

@@ -502,13 +502,19 @@ export function CustomerApp({ app }) {
 
   const handleShowLogin = async () => {
     playSound(700, 80);
-    const appEl = document.getElementById('app');
+    let overlay = document.getElementById('login-overlay');
+    if (!overlay) {
+      overlay = document.createElement('div');
+      overlay.id = 'login-overlay';
+      document.body.appendChild(overlay);
+    }
     const { LoginScreen } = await import('../../../components/LoginScreen');
     const login = new LoginScreen(async (staff) => {
+      overlay?.remove();
       // Re-fetch login state
       await loadData();
     }, { mode: 'customer' });
-    login.render(appEl);
+    login.render(overlay);
   };
 
   const toggleCustomerPreference = (key) => {
