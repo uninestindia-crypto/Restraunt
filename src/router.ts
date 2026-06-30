@@ -3,6 +3,8 @@
  * Simple hash-based SPA router with Role-Based Access Control (RBAC)
  */
 
+import { checkForUpdateAndGate } from './utils/watermark';
+
 export class Router {
   constructor() {
     this.routes = {};
@@ -45,6 +47,9 @@ export class Router {
    * Handle route change
    */
   async handleRoute() {
+    // Trigger non-blocking version check in background on route change
+    checkForUpdateAndGate().catch(err => console.debug('[Router] Version check error:', err));
+
     const fullHash = window.location.hash || '#/self-order';
     const path = fullHash.split('?')[0];
 
