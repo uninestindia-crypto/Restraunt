@@ -90,9 +90,9 @@ export async function lookupAuthUser(email) {
   return invokeStaffAdmin('lookup-auth-user', { email: email.toLowerCase().trim() });
 }
 
-export async function onlineLookupStaffByPin(pinHash) {
-  if (!pinHash || pinHash.length !== 64) {
-    return { success: false, message: 'A valid PIN hash is required.' };
+export async function onlineLookupStaffByPin(pin) {
+  if (!/^\d{4,8}$/.test(pin || '')) {
+    return { success: false, message: 'A valid PIN is required.' };
   }
-  return invokeStaffAdmin('login-by-pin', { pinHash });
+  return invokeStaffAdmin('login-by-pin', { pin });
 }

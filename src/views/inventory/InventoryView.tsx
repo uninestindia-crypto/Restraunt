@@ -11,7 +11,7 @@
 
 import { db } from '../../db/database';
 import { inventoryService } from '../../services/inventory';
-import { showToast, playSound, vibrateDevice } from '../../utils/helpers';
+import { escapeHtml, showToast, playSound, vibrateDevice } from '../../utils/helpers';
 
 export class InventoryView {
   constructor(app) { this.app = app; this.container = null; this.tab = 'stock'; }
@@ -173,7 +173,7 @@ export class InventoryView {
     if (alert) {
       if (lowStock.length > 0) {
         alert.style.display = 'flex';
-        alert.innerHTML = `<span class="material-symbols-rounded" style="font-size:16px;color:var(--color-error);margin-right:8px;">warning</span><span style="font-size:var(--text-xs);color:var(--color-error);font-weight:600;">⚠️ ${lowStock.length} item${lowStock.length > 1 ? 's' : ''} below minimum stock: ${lowStock.map(i => i.name).join(', ')}</span>`;
+        alert.innerHTML = `<span class="material-symbols-rounded" style="font-size:16px;color:var(--color-error);margin-right:8px;">warning</span><span style="font-size:var(--text-xs);color:var(--color-error);font-weight:600;">⚠️ ${lowStock.length} item${lowStock.length > 1 ? 's' : ''} below minimum stock: ${lowStock.map(i => escapeHtml(i.name)).join(', ')}</span>`;
       } else { alert.style.display = 'none'; }
     }
 
@@ -190,15 +190,15 @@ export class InventoryView {
             <div class="card">
               <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
                 <div>
-                  <span style="font-size:var(--text-sm);font-weight:700;color:var(--text-primary);">${item.name}</span>
-                  <span style="font-size:0.65rem;color:var(--text-muted);margin-left:8px;">${item.unit}</span>
+                  <span style="font-size:var(--text-sm);font-weight:700;color:var(--text-primary);">${escapeHtml(item.name)}</span>
+                  <span style="font-size:0.65rem;color:var(--text-muted);margin-left:8px;">${escapeHtml(item.unit)}</span>
                 </div>
                 <div style="font-size:var(--text-sm);font-weight:800;color:${barColor};">${status} ${item.quantity} / ${max}</div>
               </div>
               <div style="height:8px;background:rgba(0,0,0,0.3);border-radius:99px;overflow:hidden;">
                 <div style="height:100%;width:${pct}%;background:${barColor};border-radius:99px;transition:width 0.5s ease;"></div>
               </div>
-              <div style="font-size:0.6rem;color:var(--text-muted);margin-top:6px;">Min threshold: ${item.minThreshold || 0} ${item.unit}</div>
+              <div style="font-size:0.6rem;color:var(--text-muted);margin-top:6px;">Min threshold: ${item.minThreshold || 0} ${escapeHtml(item.unit)}</div>
             </div>`;
         }).join('')}</div>`;
     } else {
@@ -207,9 +207,9 @@ export class InventoryView {
         '<div class="empty-state"><span class="material-symbols-rounded">local_shipping</span><p>No suppliers yet.</p></div>' :
         `<div class="content-grid">${suppliers.map(s => `
           <div class="card">
-            <div style="font-size:var(--text-sm);font-weight:700;color:var(--text-primary);">${s.name}</div>
-            <div style="font-size:0.7rem;color:var(--text-muted);margin-top:4px;">📱 ${s.phone || '—'} · ✉️ ${s.email || '—'}</div>
-            <span style="display:inline-block;margin-top:8px;font-size:0.6rem;padding:2px 8px;border-radius:6px;font-weight:700;color:var(--color-primary);background:rgba(255,107,53,0.08);border:1px solid rgba(255,107,53,0.15);">${s.category || 'Other'}</span>
+            <div style="font-size:var(--text-sm);font-weight:700;color:var(--text-primary);">${escapeHtml(s.name)}</div>
+            <div style="font-size:0.7rem;color:var(--text-muted);margin-top:4px;">📱 ${escapeHtml(s.phone || '—')} · ✉️ ${escapeHtml(s.email || '—')}</div>
+            <span style="display:inline-block;margin-top:8px;font-size:0.6rem;padding:2px 8px;border-radius:6px;font-weight:700;color:var(--color-primary);background:rgba(255,107,53,0.08);border:1px solid rgba(255,107,53,0.15);">${escapeHtml(s.category || 'Other')}</span>
           </div>
         `).join('')}</div>`;
     }

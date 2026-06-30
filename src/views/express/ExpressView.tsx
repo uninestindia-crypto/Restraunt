@@ -1381,9 +1381,18 @@ export class ExpressView {
         : '<span class="badge-nonveg" style="transform:scale(0.85);"></span>';
 
       const fallbackEmoji = item.icon || this.getCategoryIcon(item.categoryId) || '🍽️';
-      const imageContent = item.imageUrl
-        ? `<img src="${item.imageUrl}" alt="${escapeHtml(item.name)}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"><span class="fallback-emoji" style="display:none; width:100%; height:100%; align-items:center; justify-content:center;">${fallbackEmoji}</span>`
-        : `<span class="fallback-emoji" style="width:100%; height:100%; display:flex; align-items:center; justify-content:center;">${fallbackEmoji}</span>`;
+      const safeImageUrl = (() => {
+        if (!item.imageUrl) return '';
+        try {
+          const url = new URL(String(item.imageUrl), window.location.origin);
+          return ['http:', 'https:'].includes(url.protocol) ? escapeHtml(url.href) : '';
+        } catch (_error) {
+          return '';
+        }
+      })();
+      const imageContent = safeImageUrl
+        ? `<img src="${safeImageUrl}" alt="${escapeHtml(item.name)}"><span class="fallback-emoji" style="display:none; width:100%; height:100%; align-items:center; justify-content:center;">${escapeHtml(fallbackEmoji)}</span>`
+        : `<span class="fallback-emoji" style="width:100%; height:100%; display:flex; align-items:center; justify-content:center;">${escapeHtml(fallbackEmoji)}</span>`;
 
       return `
         <div class="express-product-card" data-item-id="${item.id}">

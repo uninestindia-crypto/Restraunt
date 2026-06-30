@@ -9,13 +9,92 @@ import { CartDrawer } from './CartDrawer';
 import { OrderSuccessTele } from './OrderSuccessTele';
 import { ItemDetailDrawer } from './ItemDetailDrawer';
 import { LoyaltyDrawer } from './LoyaltyDrawer';
+import { OffersPage, AboutPage, CateringPage, SupportPage, AccountPage } from './CustomerPages';
 import { getCurrentCoordinates, reverseGeocode, autocompleteAddress } from '../../../services/geocoding';
+import { buildCustomerFavoritesFromOrders, fetchCustomerOffers, injectCustomerStructuredData, RETENTION_PREFERENCES, syncCustomerFavorite } from '../../../services/customerPlatform';
 
 const PHONE_RE = /^[6-9]\d{9}$/;
+const CUSTOMER_PREFERENCE_OPTIONS = [
+  { key: 'less_spice', label: 'Less spice', icon: 'local_fire_department' },
+  { key: 'extra_sauce', label: 'Extra sauce', icon: 'ramen_dining' },
+  { key: 'call_before_delivery', label: 'Call before delivery', icon: 'call' },
+  { key: 'no_cutlery', label: 'No cutlery', icon: 'eco' },
+  { key: 'reduced_motion', label: 'Reduced motion', icon: 'motion_photos_off' },
+  { key: 'larger_text', label: 'Larger text', icon: 'format_size' },
+  { key: 'high_contrast', label: 'High contrast', icon: 'contrast' },
+];
+
+const CUSTOMER_ROUTES = {
+  home: { page: 'home', label: 'Home', icon: 'home', path: '#/self-order' },
+  menu: { page: 'home', label: 'Menu', icon: 'restaurant_menu', path: '#/self-order?page=menu' },
+  offers: { page: 'offers', label: 'Offers', icon: 'local_offer', path: '#/self-order?page=offers' },
+  account: { page: 'account', label: 'Account', icon: 'person', path: '#/self-order?page=account' },
+  support: { page: 'support', label: 'Help', icon: 'support_agent', path: '#/self-order?page=support' },
+  about: { page: 'about', label: 'About', icon: 'info', path: '#/self-order?page=about' },
+  catering: { page: 'catering', label: 'Catering', icon: 'celebration', path: '#/self-order?page=catering' },
+};
+
+function getCustomerRouteFromHash() {
+  const [, queryString = ''] = (window.location.hash || '#/self-order').split('?');
+  const params = new URLSearchParams(queryString);
+  const page = params.get('page') || 'home';
+  return CUSTOMER_ROUTES[page] ? page : 'home';
+}
+
+function CustomerShellNav({ activePage, cartCount, loggedInCustomer, onNavigate, onOpenCart, onSignIn, onLogout }) {
+  const desktopRoutes = ['menu', 'offers', 'about', 'catering', 'support'];
+  const mobileRoutes = ['home', 'menu', 'offers', 'account', 'support'];
+  return (
+    <>
+      <header className="customer-shell-nav">
+        <a className="store-brand" href="#/self-order" onClick={(e) => { e.preventDefault(); onNavigate('home'); }}>
+          <img src="/assets/the-taste-logo.png" className="store-brand-mark" alt="The Taste Logo" style={{ objectFit: 'contain', padding: '2px', background: '#fff' }} />
+          <div>THE TASTE</div>
+        </a>
+        <nav className="store-nav-links" aria-label="Customer navigation">
+          {desktopRoutes.map(key => (
+            <a key={key} href={CUSTOMER_ROUTES[key].path} className={activePage === CUSTOMER_ROUTES[key].page ? 'is-active' : ''} onClick={(e) => { e.preventDefault(); onNavigate(key); }}>
+              {CUSTOMER_ROUTES[key].label}
+            </a>
+          ))}
+          {loggedInCustomer ? (
+            <button type="button" className="store-rewards-link store-nav-text-button" onClick={() => onNavigate('account')}>
+              <span className="material-symbols-rounded" style={{ fontSize: '16px' }}>account_circle</span>
+              Account
+            </button>
+          ) : (
+            <button onClick={onSignIn} className="store-login-btn" type="button">
+              <span className="material-symbols-rounded" style={{ fontSize: '14px' }}>login</span>
+              Sign In
+            </button>
+          )}
+          {loggedInCustomer && (
+            <button onClick={onLogout} className="store-logout-btn" type="button" title="Sign Out">
+              <span className="material-symbols-rounded" style={{ fontSize: '18px' }}>logout</span>
+            </button>
+          )}
+        </nav>
+      </header>
+      <nav className="customer-bottom-nav" aria-label="Mobile customer navigation">
+        {mobileRoutes.map(key => (
+          <button key={key} type="button" className={activePage === CUSTOMER_ROUTES[key].page ? 'is-active' : ''} onClick={() => onNavigate(key)}>
+            <span className="material-symbols-rounded" aria-hidden="true">{CUSTOMER_ROUTES[key].icon}</span>
+            <small>{CUSTOMER_ROUTES[key].label}</small>
+          </button>
+        ))}
+        <button type="button" className={cartCount ? 'has-cart' : ''} onClick={onOpenCart}>
+          <span className="material-symbols-rounded" aria-hidden="true">shopping_bag</span>
+          <small>Cart{cartCount ? ` ${cartCount}` : ''}</small>
+        </button>
+      </nav>
+    </>
+  );
+}
 
 export function CustomerApp({ app }) {
   // Navigation & View states
   const [state, setState] = useState('menu'); // 'menu' | 'cart' | 'checkout' | 'success'
+  const [customerPage, setCustomerPage] = useState('home');
   const [categories, setCategories] = useState([]);
   const [activeCategoryId, setActiveCategoryId] = useState(null);
   const [items, setItems] = useState([]);
@@ -32,6 +111,26 @@ export function CustomerApp({ app }) {
   const [deliveryAddress, setDeliveryAddress] = useState('');
   const [deliveryLandmark, setDeliveryLandmark] = useState('');
   const [loggedInCustomer, setLoggedInCustomer] = useState(null);
+  const [customerOrders, setCustomerOrders] = useState([]);
+  const [customerFavorites, setCustomerFavorites] = useState([]);
+  const [customerAddresses, setCustomerAddresses] = useState([]);
+  const [customerOffers, setCustomerOffers] = useState([]);
+  const [customerPreferences, setCustomerPreferences] = useState(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem('customer_preferences') || '[]');
+      return CUSTOMER_PREFERENCE_OPTIONS.map(option => ({ ...option, enabled: saved.includes(option.key) }));
+    } catch (error) {
+      return CUSTOMER_PREFERENCE_OPTIONS.map(option => ({ ...option, enabled: false }));
+    }
+  });
+  const [retentionPreferences, setRetentionPreferences] = useState(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem('customer_retention_preferences') || '[]');
+      return RETENTION_PREFERENCES.map(option => ({ ...option, enabled: saved.includes(option.key) }));
+    } catch (error) {
+      return RETENTION_PREFERENCES.map(option => ({ ...option, enabled: false }));
+    }
+  });
   const [searchQuery, setSearchQuery] = useState('');
   const [placedOrder, setPlacedOrder] = useState(null);
 
@@ -128,17 +227,38 @@ export function CustomerApp({ app }) {
         setState(e.detail.state);
       }
     };
+    const handleCustomerRoute = () => {
+      setCustomerPage(CUSTOMER_ROUTES[getCustomerRouteFromHash()].page);
+      if (getCustomerRouteFromHash() === 'menu') {
+        requestAnimationFrame(() => document.getElementById('menu')?.scrollIntoView({ block: 'start' }));
+      }
+    };
     window.addEventListener('switch-store-state', handleSwitchState);
+    window.addEventListener('hashchange', handleCustomerRoute);
 
     // Initial loading
+    handleCustomerRoute();
     loadData();
 
     return () => {
       unsubscribe();
       window.removeEventListener('switch-store-state', handleSwitchState);
+      window.removeEventListener('hashchange', handleCustomerRoute);
       cleanupTelemetry();
     };
   }, []);
+
+  useEffect(() => {
+    loadCustomerInsights();
+  }, [customerPhone, loggedInCustomer]);
+
+  useEffect(() => {
+    fetchCustomerOffers(loggedInCustomer).then(setCustomerOffers);
+  }, [loggedInCustomer]);
+
+  useEffect(() => {
+    injectCustomerStructuredData(storeSettings);
+  }, [storeSettings]);
 
   const cleanupTelemetry = () => {
     if (pollIntervalRef.current) {
@@ -148,6 +268,37 @@ export function CustomerApp({ app }) {
     if (statusChannelRef.current) {
       statusChannelRef.current.unsubscribe();
       statusChannelRef.current = null;
+    }
+  };
+
+  const loadCustomerInsights = async () => {
+    const normalizedPhone = String(customerPhone || loggedInCustomer?.phone || '').trim();
+    if (!normalizedPhone) {
+      setCustomerOrders([]);
+      setCustomerFavorites([]);
+      setCustomerAddresses([]);
+      return;
+    }
+
+    try {
+      const allOrders = await db.orders.toArray();
+      const matchingOrders = allOrders
+        .filter(order => String(order.customerPhone || '').trim() === normalizedPhone)
+        .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+
+      const addressSet = new Set();
+
+      for (const order of matchingOrders) {
+        if (order.deliveryAddress) {
+          addressSet.add(order.deliveryAddress);
+        }
+      }
+
+      setCustomerOrders(matchingOrders);
+      setCustomerFavorites(buildCustomerFavoritesFromOrders(matchingOrders).slice(0, 6));
+      setCustomerAddresses([...addressSet]);
+    } catch (error) {
+      console.warn('[CustomerView] Failed to load customer insights:', error);
     }
   };
 
@@ -360,6 +511,59 @@ export function CustomerApp({ app }) {
     login.render(appEl);
   };
 
+  const toggleCustomerPreference = (key) => {
+    const next = customerPreferences.map(pref => pref.key === key ? { ...pref, enabled: !pref.enabled } : pref);
+    setCustomerPreferences(next);
+    localStorage.setItem('customer_preferences', JSON.stringify(next.filter(pref => pref.enabled).map(pref => pref.key)));
+    showToast('Preference updated', 'success');
+  };
+
+  const toggleRetentionPreference = (key) => {
+    const next = retentionPreferences.map(pref => pref.key === key ? { ...pref, enabled: !pref.enabled } : pref);
+    setRetentionPreferences(next);
+    localStorage.setItem('customer_retention_preferences', JSON.stringify(next.filter(pref => pref.enabled).map(pref => pref.key)));
+    showToast('Communication preference updated', 'success');
+  };
+
+  const handleFavoriteItem = async (item) => {
+    const result = await syncCustomerFavorite({ customer: loggedInCustomer, item });
+    const existing = customerFavorites.find(fav => String(fav.itemId) === String(item.id) || fav.itemName === item.name);
+    if (!existing) {
+      setCustomerFavorites([{ itemId: item.id, itemName: item.name, count: 1, source: result.synced ? 'server' : 'local' }, ...customerFavorites].slice(0, 6));
+    }
+    showToast(result.synced ? 'Saved to favourites' : 'Favourite saved locally', 'success');
+  };
+
+  const handleReorder = (order) => {
+    const menuItems = categories.flatMap(category => menuByCategory.get(category.id) || []);
+    const availableById = new Map(menuItems.map(item => [String(item.id), item]));
+    const availableByName = new Map(menuItems.map(item => [String(item.name || '').toLowerCase(), item]));
+    const orderItems = parseOrderItems(order.items);
+    let restoredCount = 0;
+
+    globalStore.clearCart();
+
+    for (const orderItem of orderItems) {
+      const menuItem = availableById.get(String(orderItem.itemId || orderItem.id || orderItem.menuItemId)) ||
+        availableByName.get(String(orderItem.itemName || orderItem.name || '').toLowerCase());
+
+      if (menuItem) {
+        globalStore.addToCart(menuItem, Number(orderItem.quantity || 1), orderItem.notes || '');
+        restoredCount += 1;
+      }
+    }
+
+    if (order.type) setOrderType(order.type === 'dinein' ? 'takeaway' : order.type);
+    if (order.deliveryAddress) setDeliveryAddress(order.deliveryAddress);
+
+    openMenu();
+    if (restoredCount) {
+      showToast(`Restored ${restoredCount} item${restoredCount === 1 ? '' : 's'} from your last order`, 'success');
+    } else {
+      showToast('Those items are not available right now. Please choose from today’s menu.', 'warning');
+    }
+  };
+
   const handleLogout = async () => {
     if (confirm('Are you sure you want to sign out?')) {
       playSound(600, 80);
@@ -560,6 +764,7 @@ export function CustomerApp({ app }) {
             }
 
             await afterOrderCreated(order);
+            await loadCustomerInsights();
             setState('success');
             playSound(900, 90);
             vibrateDevice([50, 30, 50]);
@@ -574,6 +779,7 @@ export function CustomerApp({ app }) {
         );
       } else {
         await afterOrderCreated(order);
+        await loadCustomerInsights();
         setState('success');
         playSound(900, 90);
         vibrateDevice([50, 30, 50]);
@@ -680,8 +886,28 @@ export function CustomerApp({ app }) {
     setState('menu');
   };
 
+  const openCustomerPage = (pageOrRoute) => {
+    const route = CUSTOMER_ROUTES[pageOrRoute] || { page: pageOrRoute, path: `#/self-order?page=${pageOrRoute}` };
+    setCustomerPage(route.page);
+    if (window.location.hash !== route.path) {
+      window.history.pushState(null, '', route.path);
+      window.dispatchEvent(new Event('hashchange'));
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const openMenu = () => {
+    openCustomerPage('menu');
+    requestAnimationFrame(() => document.getElementById('menu')?.scrollIntoView({ block: 'start', behavior: 'smooth' }));
+  };
+
   const total = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
+  const accessibilityClass = [
+    customerPreferences.some(pref => pref.key === 'reduced_motion' && pref.enabled) ? 'pref-reduced-motion' : '',
+    customerPreferences.some(pref => pref.key === 'larger_text' && pref.enabled) ? 'pref-larger-text' : '',
+    customerPreferences.some(pref => pref.key === 'high_contrast' && pref.enabled) ? 'pref-high-contrast' : '',
+  ].filter(Boolean).join(' ');
 
   // Dynamic values
   const modeStr = detectedTable ? `Table ${detectedTable.number}` : 'Order online from home';
@@ -689,85 +915,59 @@ export function CustomerApp({ app }) {
 
   // Main UI Render depending on state route
   return (
-    <div className="storefront-root">
+    <div className={`storefront-root ${accessibilityClass}`}>
       {state === 'menu' && (
         <div className="storefront-shell">
+          <CustomerShellNav
+            activePage={customerPage}
+            cartCount={cartCount}
+            loggedInCustomer={loggedInCustomer}
+            onNavigate={openCustomerPage}
+            onOpenCart={() => { playSound(800, 80); setState('cart'); }}
+            onSignIn={handleShowLogin}
+            onLogout={handleLogout}
+          />
+          {customerPage === 'offers' && <OffersPage onBack={() => openCustomerPage('home')} onOrder={openMenu} offers={customerOffers} />}
+          {customerPage === 'about' && <AboutPage onBack={() => openCustomerPage('home')} />}
+          {customerPage === 'catering' && <CateringPage onBack={() => openCustomerPage('home')} />}
+          {customerPage === 'support' && <SupportPage onBack={() => openCustomerPage('home')} />}
+          {customerPage === 'account' && (
+            <AccountPage
+              onBack={() => openCustomerPage('home')}
+              customer={loggedInCustomer}
+              orders={customerOrders}
+              favorites={customerFavorites}
+              addresses={customerAddresses}
+              preferences={customerPreferences}
+              retentionPreferences={retentionPreferences}
+              offers={customerOffers}
+              onSignIn={handleShowLogin}
+              onRewards={() => setShowLoyaltyDrawer(true)}
+              onReorder={handleReorder}
+              onOpenMenu={openMenu}
+              onTogglePreference={toggleCustomerPreference}
+              onToggleRetentionPreference={toggleRetentionPreference}
+            />
+          )}
+          {customerPage === 'home' && <>
           {/* Hero Section */}
           <section className="store-hero" aria-label="The Taste storefront">
             <div className="store-hero-bg" aria-hidden="true"></div>
-            <header className="store-nav">
-              <a className="store-brand" href="#/self-order">
-                <img src="/assets/the-taste-logo.png" className="store-brand-mark" alt="The Taste Logo" style={{ objectFit: 'contain', padding: '2px', background: '#fff' }} />
-                <div>THE TASTE</div>
-              </a>
-              <nav className="store-nav-links" aria-label="Public navigation" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <a href="#menu">Menu</a>
-                {loggedInCustomer ? (
-                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
-                    <a 
-                      href="#loyalty" 
-                      onClick={(e) => { e.preventDefault(); setShowLoyaltyDrawer(true); }}
-                      style={{ color: '#D4AF37', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '4px' }}
-                    >
-                      <span className="material-symbols-rounded" style={{ fontSize: '16px' }}>account_circle</span>
-                      Hi, {loggedInCustomer.name.split(' ')[0]}
-                    </a>
-                    <button 
-                      onClick={handleLogout}
-                      className="store-logout-btn" 
-                      type="button" 
-                      title="Sign Out" 
-                      style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '4px', display: 'inline-flex', alignItems: 'center' }}
-                    >
-                      <span className="material-symbols-rounded" style={{ fontSize: '18px' }}>logout</span>
-                    </button>
-                  </div>
-                ) : (
-                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
-                    <a 
-                      href="#loyalty" 
-                      onClick={(e) => { e.preventDefault(); setShowLoyaltyDrawer(true); }}
-                      style={{ color: '#D4AF37', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '4px' }}
-                    >
-                      <span className="material-symbols-rounded" style={{ fontSize: '16px' }}>star</span>
-                      Rewards
-                    </a>
-                    <button 
-                      onClick={handleShowLogin}
-                      className="store-login-btn" 
-                      type="button" 
-                      style={{ background: 'rgba(212,175,55,0.15)', border: '1px solid #D4AF37', color: '#D4AF37', cursor: 'pointer', padding: '4px 10px', borderRadius: 'var(--radius-sm)', fontWeight: 700, fontSize: '0.7rem', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
-                    >
-                      <span className="material-symbols-rounded" style={{ fontSize: '14px' }}>login</span>
-                      Sign In
-                    </button>
-                  </div>
-                )}
-                <a href="/TheTaste.apk" download className="store-get-app-link" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: '#FF6B35', fontWeight: 700 }} title="Download Android App APK">
-                  <span className="material-symbols-rounded" style={{ fontSize: '16px' }}>android</span>Get App
-                </a>
-                <a href="#/pos" className="store-staff-link">Staff</a>
-              </nav>
-            </header>
 
             <div className="store-hero-content">
-              <p className="store-kicker">{modeStr}</p>
+              <p className="store-kicker"><span aria-hidden="true">✦</span> {modeStr}</p>
               <h1>{storeSettings.name}</h1>
-              <p className="store-hero-copy">{storeSettings.tagline} for delivery, pickup, and dine-in QR ordering. Freshly made, clearly priced, and ready for manual UPI or cash.</p>
+              <p className="store-hero-copy">Bold Indo-Chinese flavours, wok-tossed fresh and delivered hot. Your neighbourhood favourites, made the way they should be.</p>
               <div className="store-hero-actions">
                 <a className="store-primary-action" href="#menu">
                   <span className="material-symbols-rounded" aria-hidden="true">restaurant_menu</span>
                   Order now
                 </a>
-                <button className="store-secondary-action" type="button" onClick={() => { setOrderType('takeaway'); document.getElementById('menu')?.scrollIntoView({ block: 'start' }); }}>
-                  <span className="material-symbols-rounded" aria-hidden="true">shopping_bag</span>
-                  Pickup
-                </button>
               </div>
               <dl className="store-proof">
-                <div><dt>30 min</dt><dd>Typical prep</dd></div>
-                <div><dt>UPI</dt><dd>Manual verify</dd></div>
-                <div><dt>COD</dt><dd>Cash accepted</dd></div>
+                <div><dt>30 min</dt><dd>Average delivery</dd></div>
+                <div><dt>4.8 ★</dt><dd>Local favourite</dd></div>
+                <div><dt>100%</dt><dd>Freshly prepared</dd></div>
               </dl>
             </div>
           </section>
@@ -795,14 +995,15 @@ export function CustomerApp({ app }) {
           <section className="store-section store-section-tight" aria-label="Highlights">
             <div className="store-section-head">
               <p>Popular right now</p>
-              <h2>Fresh, fast, and built for home ordering</h2>
+              <h2>The dishes Patna keeps coming back for</h2>
             </div>
             <div className="store-featured-grid">
               {getFeaturedItems().map(item => (
-                <button key={item.id} className="store-featured-item" onClick={() => handleOpenDetails(item)} type="button">
+                <button key={item.id} className="store-featured-item" onClick={() => handleOpenDetails(item)} onContextMenu={(e) => { e.preventDefault(); handleFavoriteItem(item); }} type="button">
                   <img src={item.imageUrl || '/assets/dish-starters.jpg'} alt="" width="640" height="420" loading="lazy" decoding="async" />
                   <span>{item.name}</span>
                   <strong>{formatCurrency(item.price)}</strong>
+                  <small>Long-press/right-click to favourite</small>
                 </button>
               ))}
             </div>
@@ -813,7 +1014,7 @@ export function CustomerApp({ app }) {
             <div className="store-section-head store-menu-head">
               <div>
                 <p>Order online</p>
-                <h2>Choose your favorites</h2>
+                <h2>What are you craving today?</h2>
               </div>
               <div className="store-menu-note">{displayAddress}</div>
             </div>
@@ -865,6 +1066,13 @@ export function CustomerApp({ app }) {
               <p>Orders move from kitchen prep to assignment, out-for-delivery, and delivered.</p>
             </div>
           </section>
+
+          <footer className="customer-footer">
+            <div><strong>THE TASTE</strong><p>Wok-fresh Indo-Chinese comfort food from Kumhrar, Patna.</p></div>
+            <nav aria-label="Customer information"><button type="button" onClick={() => openCustomerPage('about')}>Our story</button><button type="button" onClick={() => openCustomerPage('catering')}>Catering</button><button type="button" onClick={() => openCustomerPage('support')}>Help</button></nav>
+            <small>Freshly prepared. Clearly priced. Made locally.</small>
+          </footer>
+          </>}
 
           {/* Cart floaty */}
           {cartCount > 0 && (
@@ -1125,6 +1333,7 @@ export function CustomerApp({ app }) {
       {state === 'success' && placedOrder && (
         <OrderSuccessTele 
           order={placedOrder}
+          customer={loggedInCustomer}
           onOrderAgain={handleOrderAgain}
         />
       )}

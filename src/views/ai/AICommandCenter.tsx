@@ -126,14 +126,14 @@ export class AICommandCenter {
 
     const badge = TIER_BADGES[tier] || TIER_BADGES.codebase;
 
-    const formatted = text
+    const formatted = this.escapeHtml(text)
       .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
       .replace(/\*(.+?)\*/g, '<em>$1</em>')
       .replace(/\n/g, '<br>');
 
     const chipsHTML = suggestions.length > 0 ? `
       <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;">
-        ${suggestions.map(s => `<button class="ai-chip" style="padding:6px 14px;border-radius:20px;background:rgba(108,92,231,0.08);border:1px solid rgba(108,92,231,0.2);color:#A29BFE;font-size:0.75rem;font-weight:600;cursor:pointer;transition:all 0.2s;font-family:'Inter',sans-serif;">${s}</button>`).join('')}
+        ${suggestions.map(s => `<button class="ai-chip" style="padding:6px 14px;border-radius:20px;background:rgba(108,92,231,0.08);border:1px solid rgba(108,92,231,0.2);color:#A29BFE;font-size:0.75rem;font-weight:600;cursor:pointer;transition:all 0.2s;font-family:'Inter',sans-serif;">${this.escapeHtml(s)}</button>`).join('')}
       </div>
     ` : '';
 

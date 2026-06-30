@@ -49,6 +49,11 @@ function validPinHash(value: unknown) {
   return typeof value === "string" && /^[0-9a-f]{64}$/.test(value);
 }
 
+async function hashPin(pin: string) {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(pin));
+  return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
 function bearerToken(req: Request) {
   const header = req.headers.get("authorization") || "";
   const match = header.match(/^Bearer\s+(.+)$/i);
@@ -152,10 +157,22 @@ Deno.serve(async (req: Request) => {
   // Bypassing requireOwner check for login-by-pin action so unauthenticated PIN users can log in
   if (action === "login-by-pin") {
     try {
-      const pinHash = cleanText((payload as any).pinHash, 64);
-      if (!pinHash || !validPinHash(pinHash)) {
-        return bad("Invalid PIN hash format.");
-      }
+      const pin = cleanText((payload as any).pin, 8);
+      if (!/^\d{4,8}$/.test(pin)) return bad("Invalid PIN format.");
+      const pinHash = await hashPin(pin);
+
+      const forwarded = req.headers.get("x-forwarded-for") || "";
+      const clientIp = req.headers.get("cf-connecting-ip") || forwarded.split(",")[0].trim() || "unknown";
+      const ipDigest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(clientIp));
+      const ipHash = [...new Uint8Array(ipDigest)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+      const { data: allowed, error: rateError } = await serviceClient.rpc("consume_staff_pin_attempt", {
+        target_store_id: storeId,
+        target_ip_hash: ipHash,
+        max_attempts: 8,
+        window_minutes: 15
+      });
+      if (rateError) throw rateError;
+      if (!allowed) return bad("Too many PIN attempts. Try again later.", 429);
 
       const { data: staffMember, error: staffErr } = await serviceClient
         .from("staff")
@@ -178,7 +195,6 @@ Deno.serve(async (req: Request) => {
           cloudUserId: staffMember.auth_user_id,
           name: staffMember.name,
           role: staffMember.role,
-          pinHash: staffMember.pin_hash,
           allowExpress: staffMember.allow_express,
           isActive: staffMember.is_active,
           createdAt: staffMember.created_at,

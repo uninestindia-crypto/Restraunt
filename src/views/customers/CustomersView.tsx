@@ -10,7 +10,7 @@
  */
 
 import { db } from '../../db/database';
-import { formatCurrency, showToast, playSound, vibrateDevice } from '../../utils/helpers';
+import { escapeHtml, formatCurrency, showToast, playSound, vibrateDevice } from '../../utils/helpers';
 
 const TIERS = {
   bronze: { label: 'Bronze', icon: '🥉', color: '#CD7F32', min: 0 },
@@ -157,13 +157,13 @@ export class CustomersView {
       const lastVisit = c.lastVisit ? new Date(c.lastVisit).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : 'Never';
       return `
         <div class="premium-card">
-          <div class="premium-card-avatar" style="background:rgba(255,107,53,0.08);border:1px solid rgba(255,107,53,0.15);color:var(--color-primary);">${(c.name || '?')[0].toUpperCase()}</div>
+          <div class="premium-card-avatar" style="background:rgba(255,107,53,0.08);border:1px solid rgba(255,107,53,0.15);color:var(--color-primary);">${escapeHtml((c.name || '?')[0].toUpperCase())}</div>
           <div class="premium-card-body">
             <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-              <span class="premium-card-title">${c.name || 'Unknown'}</span>
+              <span class="premium-card-title">${escapeHtml(c.name || 'Unknown')}</span>
               <span style="font-size:0.65rem;padding:2px 6px;border-radius:6px;font-weight:700;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.06);color:${tier.color};">${tier.icon} ${tier.label}</span>
             </div>
-            <div style="font-size:0.7rem;color:var(--text-muted);margin-top:3px;">📱 ${c.phone || '—'} · Last: ${lastVisit}</div>
+            <div style="font-size:0.7rem;color:var(--text-muted);margin-top:3px;">📱 ${escapeHtml(c.phone || '—')} · Last: ${escapeHtml(lastVisit)}</div>
           </div>
           <div style="text-align:right;flex-shrink:0;">
             <div style="font-size:var(--text-sm);font-weight:700;color:var(--color-primary);">${formatCurrency(c.totalSpent || 0)}</div>

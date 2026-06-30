@@ -2,13 +2,20 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { getSetting } from '../../../db/database';
 import { generateUPIQR } from '../../../services/upi';
-import { formatCurrency } from '../../../utils/helpers';
+import { fetchLiveOrder, getOrderTrackingState, saveCustomerReview, TRACKING_STEPS } from '../../../services/customerPlatform';
+import { formatCurrency, parseOrderItems, showToast } from '../../../utils/helpers';
 
-export function OrderSuccessTele({ order, onOrderAgain }) {
+const Icon = ({ children }) => <span className="material-symbols-rounded" aria-hidden="true">{children}</span>;
+
+export function OrderSuccessTele({ order, customer, onOrderAgain }) {
   const canvasRef = useRef(null);
+  const [liveOrder, setLiveOrder] = useState(order);
   const [upiId, setUpiId] = useState('Loading...');
   const [upiLink, setUpiLink] = useState('#');
   const [showPayBtn, setShowPayBtn] = useState(false);
+  const [rating, setRating] = useState(5);
+  const [review, setReview] = useState('');
+  const [reviewSaved, setReviewSaved] = useState(Boolean(order.customerRating));
 
   useEffect(() => {
     if ('Notification' in window && Notification.permission === 'default') {
@@ -17,148 +24,139 @@ export function OrderSuccessTele({ order, onOrderAgain }) {
   }, []);
 
   useEffect(() => {
-    if (order && order.paymentMethod === 'upi' && canvasRef.current) {
+    let active = true;
+    const refresh = async () => {
+      const updated = await fetchLiveOrder(liveOrder || order);
+      if (active && updated) setLiveOrder(updated);
+    };
+    refresh();
+    const interval = window.setInterval(refresh, 10000);
+    return () => {
+      active = false;
+      window.clearInterval(interval);
+    };
+  }, [order?.clientOrderId]);
+
+  useEffect(() => {
+    if (liveOrder && liveOrder.paymentMethod === 'upi' && canvasRef.current) {
       (async () => {
         const id = await getSetting('upiId') || 'paytmqr6zfcsx@ptys';
         setUpiId(id);
-        
         try {
           const upiUrl = await generateUPIQR(canvasRef.current, {
-            amount: order.total,
-            orderId: order.orderNumber
+            amount: liveOrder.total,
+            orderId: liveOrder.orderNumber
           });
           setUpiLink(upiUrl);
-          const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-          setShowPayBtn(isMobile);
+          setShowPayBtn(/Android|iPhone|iPad|iPod/i.test(navigator.userAgent));
         } catch (e) {
           console.error('[Telemetry] Failed to render UPI QR:', e);
         }
       })();
     }
-  }, [order, order?.paymentMethod]);
+  }, [liveOrder?.clientOrderId, liveOrder?.paymentMethod, liveOrder?.total]);
 
-  const token = order.displayToken || order.orderNumber.split('-').pop();
-  const deliveryText = order.type === 'delivery'
-    ? 'Your order will be prepared and assigned to our delivery staff.'
-    : order.type === 'takeaway'
-      ? 'Please keep this token ready for pickup.'
-      : 'Your table order has been sent to the kitchen.';
+  const tracking = getOrderTrackingState(liveOrder);
+  const token = liveOrder.displayToken || String(liveOrder.orderNumber || '').split('-').pop();
+  const items = parseOrderItems(liveOrder.items);
+  const supportHref = `https://wa.me/910000000000?text=${encodeURIComponent(`Hi, I need help with order ${liveOrder.orderNumber || token}`)}`;
+  const etaLabel = tracking.etaMinutes ? `${tracking.etaMinutes}-${tracking.etaMinutes + 8} min` : 'Completed';
 
-  // Map order status to progress metrics
-  let percentage = 15;
-  let label = 'Received';
-  let icon = 'receipt';
-
-  const orderStatus = (order.status || 'pending').toLowerCase();
-  const delivStatus = (order.deliveryStatus || 'pending').toLowerCase();
-
-  if (orderStatus === 'confirmed') {
-    percentage = 30;
-    label = 'Confirmed';
-    icon = 'thumb_up';
-  } else if (orderStatus === 'preparing' || orderStatus === 'cooking') {
-    percentage = 60;
-    label = 'Cooking';
-    icon = 'skillet';
-  } else if (orderStatus === 'plated' || orderStatus === 'ready') {
-    percentage = 85;
-    label = 'Plated';
-    icon = 'room_service';
-  } else if (orderStatus === 'dispatched' || delivStatus === 'dispatched' || delivStatus === 'out_for_delivery') {
-    percentage = 92;
-    label = 'En Route';
-    icon = 'local_shipping';
-  } else if (orderStatus === 'completed' || orderStatus === 'served' || delivStatus === 'delivered') {
-    percentage = 100;
-    label = 'Served';
-    icon = 'check_circle';
-  }
-
-  const offset = 251.2 - (percentage / 100) * 251.2;
-
-  // Prep status summary text
-  const prepParts = [];
-  if (order.estimatedPrepTime) prepParts.push(`Prep time: ${order.estimatedPrepTime} min`);
-  prepParts.push(`Kitchen: ${order.status}`);
-  if (order.type === 'delivery') prepParts.push(`Delivery: ${order.deliveryStatus || 'pending'}`);
-  if (order.paymentStatus === 'paid') prepParts.push('Payment verified');
-  const prepStatusText = prepParts.join(' | ');
+  const submitReview = async () => {
+    const result = await saveCustomerReview({ order: liveOrder, rating, comment: review, customer });
+    if (result.saved) {
+      setReviewSaved(true);
+      showToast(result.synced === false ? 'Review saved locally and will sync later.' : 'Thank you for the review!', 'success');
+    } else {
+      showToast('Could not save review yet.', 'warning');
+    }
+  };
 
   return (
     <div className="store-success-shell">
-      <div className="store-success-panel animate-fade-in" style={{ padding: '24px' }}>
-        <div className="aether-telemetry-ring-wrapper">
-          <svg className="aether-telemetry-svg" viewBox="0 0 100 100">
-            <circle cx="50" cy="50" r="40" className="aether-track" />
-            <circle 
-              cx="50" 
-              cy="50" 
-              r="40" 
-              className="aether-fill" 
-              style={{ strokeDashoffset: offset, transition: 'stroke-dashoffset 0.8s ease' }} 
-            />
-          </svg>
-          <div className="aether-telemetry-ring-label">
-            <span className="material-symbols-rounded" style={{ fontSize: '24px', display: 'block', margin: '0 auto 4px' }}>{icon}</span>
-            <strong style={{ fontSize: '1.4rem', fontWeight: 800 }}>{percentage}%</strong>
-            <small style={{ fontSize: '0.62rem', fontWeight: 700, textTransform: 'uppercase', opacity: 0.8, display: 'block' }}>{label}</small>
-          </div>
-        </div>
-        
-        <p className="store-kicker" style={{ marginTop: '16px' }}>Live Order Telemetry</p>
-        <h1 style={{ fontSize: '1.5rem', fontWeight: 800, margin: '8px 0' }}>Thank you, {order.customerName || 'guest'}</h1>
-        <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', margin: '0 0 20px' }}>{deliveryText}</p>
-        
-        <div className="store-token" style={{ marginBottom: '24px' }}>
-          <span>Token</span>
-          <strong>{token}</strong>
-        </div>
-
-        {order.paymentMethod === 'upi' ? (
-          <div className="store-payment-box" style={{ marginBottom: '24px' }}>
-            <div className="store-upi-qr">
-              <canvas ref={canvasRef} id="upi-qr" style={{ display: 'block', margin: '0 auto' }}></canvas>
+      <div className="store-success-panel customer-tracking-panel animate-fade-in">
+        <section className="customer-tracking-hero">
+          <div className="aether-telemetry-ring-wrapper">
+            <svg className="aether-telemetry-svg" viewBox="0 0 100 100">
+              <circle cx="50" cy="50" r="40" className="aether-track" />
+              <circle
+                cx="50"
+                cy="50"
+                r="40"
+                className="aether-fill"
+                style={{ strokeDashoffset: 251.2 - (tracking.progress / 100) * 251.2 }}
+              />
+            </svg>
+            <div className="aether-telemetry-ring-label">
+              <Icon>{tracking.icon}</Icon>
+              <strong>{tracking.progress}%</strong>
+              <small>{tracking.label}</small>
             </div>
-            <strong style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-primary)', display: 'block', marginTop: '12px' }}>{formatCurrency(order.total)}</strong>
-            <span id="upi-id-label" style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>{upiId}</span>
-            
-            {showPayBtn && (
-              <div style={{ marginTop: '12px', width: '100%' }}>
-                <a 
-                  href={upiLink} 
-                  className="btn btn-primary btn-block" 
-                  style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', height: '44px', fontWeight: 700, background: 'linear-gradient(135deg, #10B981 0%, #059669 100%)', border: 'none', boxShadow: '0 4px 15px rgba(16, 185, 129, 0.35)' }}
-                >
-                  <span className="material-symbols-rounded">open_in_new</span>
-                  Pay via UPI App
-                </a>
+          </div>
+
+          <p className="store-kicker">Live order tracking</p>
+          <h1>Thank you, {liveOrder.customerName || 'guest'}</h1>
+          <p>{liveOrder.type === 'delivery' ? 'We will keep this page updated from kitchen prep to doorstep.' : liveOrder.type === 'takeaway' ? 'Keep this token ready for pickup.' : 'Your table order has been sent to the kitchen.'}</p>
+          <div className="store-token"><span>Token</span><strong>{token}</strong></div>
+        </section>
+
+        <section className="customer-tracking-summary" aria-label="Order status summary">
+          <div><small>ETA</small><strong>{etaLabel}</strong></div>
+          <div><small>Payment</small><strong>{liveOrder.paymentStatus || 'unpaid'}</strong></div>
+          <div><small>Delivery</small><strong>{liveOrder.deliveryStatus || 'none'}</strong></div>
+        </section>
+
+        <section className="customer-tracking-timeline" aria-label="Order timeline">
+          {TRACKING_STEPS.map((step, index) => (
+            <div key={step.key} className={`customer-tracking-step ${index <= tracking.activeIndex ? 'is-complete' : ''} ${index === tracking.activeIndex ? 'is-active' : ''}`}>
+              <span><Icon>{step.icon}</Icon></span>
+              <strong>{step.label}</strong>
+            </div>
+          ))}
+        </section>
+
+        <section className="customer-receipt-card">
+          <div className="customer-section-title"><div><small>Receipt</small><h2>{formatCurrency(liveOrder.total || 0)}</h2></div><Icon>receipt_long</Icon></div>
+          <div className="customer-receipt-items">
+            {items.map((item, index) => (
+              <div key={`${item.itemId || item.itemName || index}`}>
+                <span>{item.quantity || 1}x {item.itemName || item.name || 'Menu item'}</span>
+                <strong>{formatCurrency((item.price || 0) * (item.quantity || 1))}</strong>
               </div>
-            )}
-            <p style={{ marginTop: '12px', fontSize: 'var(--text-xs)', color: 'var(--text-secondary)' }}>After paying, staff will verify UPI before marking this order as paid.</p>
+            ))}
           </div>
-        ) : order.paymentMethod === 'card' ? (
-          <div className="store-payment-box cash" style={{ borderColor: '#10B981', background: 'rgba(16, 185, 129, 0.04)', marginBottom: '24px' }}>
-            <span className="material-symbols-rounded" aria-hidden="true" style={{ color: '#10B981', fontSize: '24px' }}>check_circle</span>
-            <strong style={{ color: '#10B981', fontSize: 'var(--text-sm)', display: 'block', marginTop: '4px' }}>Online Payment Verified</strong>
-            <p style={{ fontSize: 'var(--text-xs)' }}>Amount {formatCurrency(order.total)} paid via Credit/Debit card. Transaction Reference: {order.paymentReference}</p>
-          </div>
-        ) : (
-          <div className="store-payment-box cash" style={{ marginBottom: '24px' }}>
-            <span className="material-symbols-rounded" aria-hidden="true" style={{ fontSize: '24px' }}>payments</span>
-            <strong style={{ display: 'block', marginTop: '4px' }}>Cash on {order.type === 'delivery' ? 'Delivery' : 'Pickup'}</strong>
-            <p style={{ fontSize: 'var(--text-xs)' }}>Payment will be collected and marked paid by staff.</p>
-          </div>
+          <div className="customer-receipt-total"><span>Server-validated total</span><strong>{formatCurrency(liveOrder.total || 0)}</strong></div>
+        </section>
+
+        {liveOrder.paymentMethod === 'upi' && liveOrder.paymentStatus !== 'paid' && (
+          <section className="store-payment-box customer-payment-card">
+            <div className="store-upi-qr"><canvas ref={canvasRef} id="upi-qr"></canvas></div>
+            <strong>{formatCurrency(liveOrder.total)}</strong>
+            <span id="upi-id-label">{upiId}</span>
+            {showPayBtn && <a href={upiLink} className="btn btn-primary btn-block">Pay via UPI App</a>}
+            <p>After paying, staff will verify UPI before marking this order paid.</p>
+          </section>
         )}
 
-        <div id="prep-status" className="store-prep-status" style={{ marginBottom: '24px', fontWeight: 600, fontSize: 'var(--text-xs)' }}>
-          {prepStatusText}
+        {tracking.canReview && (
+          <section className="customer-review-card">
+            <div className="customer-section-title"><div><small>Review</small><h2>{reviewSaved ? 'Thanks for rating us' : 'How was your meal?'}</h2></div><Icon>reviews</Icon></div>
+            {!reviewSaved ? (
+              <>
+                <div className="customer-rating-row">
+                  {[1, 2, 3, 4, 5].map(star => <button key={star} type="button" className={star <= rating ? 'is-active' : ''} onClick={() => setRating(star)}>★</button>)}
+                </div>
+                <textarea value={review} onInput={(e) => setReview(e.target.value)} placeholder="Optional note for the restaurant" rows="3" />
+                <button type="button" className="store-primary-action" onClick={submitReview}>Submit review</button>
+              </>
+            ) : <p>Your feedback helps the kitchen keep improving.</p>}
+          </section>
+        )}
+
+        <div className="customer-tracking-actions">
+          <a href={supportHref}><Icon>support_agent</Icon> Get support</a>
+          <button className="btn btn-secondary btn-block btn-lg" id="btn-order-again" onClick={onOrderAgain} type="button">Order Something Else</button>
         </div>
-        <button 
-          className="btn btn-secondary btn-block btn-lg" 
-          id="btn-order-again" 
-          onClick={onOrderAgain}
-          type="button"
-        >Order Something Else</button>
       </div>
     </div>
   );

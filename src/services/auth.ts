@@ -118,12 +118,6 @@ class AuthService {
       .first();
 
     if (!customer) {
-      customer = await db.customers
-        .filter(c => (c.name || '').toLowerCase() === name.toLowerCase())
-        .first();
-    }
-
-    if (!customer) {
       customer = {
         id: Date.now(),
         name,
@@ -136,8 +130,6 @@ class AuthService {
         createdAt: new Date().toISOString()
       };
       await db.customers.put(customer);
-    } else if (!customer.authUserId) {
-      await db.customers.update(customer.id, { authUserId: user.id, isSynced: 0 });
     }
 
     return {
@@ -194,40 +186,8 @@ class AuthService {
       console.error('[AuthService] Error restoring cloud session:', e);
     }
 
-    const savedPinHash = localStorage.getItem('auth_staff_pin');
-    if (savedPinHash && savedPinHash.length === 64) {
-      try {
-        const staffRecord = await db.staff
-          .where('pinHash')
-          .equals(savedPinHash)
-          .and(s => isActiveStaffWithPin(s))
-          .first();
-
-        if (staffRecord) {
-          // Check device authorization for Owner/Manager PIN session restore
-          if (CLOUD_REQUIRED_ROLES.includes(staffRecord.role)) {
-            if (localStorage.getItem(`pin_authorized_${staffRecord.id}`) !== 'true') {
-              console.warn(`[AuthService] Stored PIN session restore blocked for ${staffRecord.role} "${staffRecord.name}": Device not authorized.`);
-              localStorage.removeItem('auth_staff_pin');
-              return null;
-            }
-          }
-
-          this.currentStaff = staffRecord;
-          this.isAuthenticated = true;
-          globalStore.updateState({ activeTerminalStaff: staffRecord });
-          this._startSessionTimer();
-          console.log(`[AuthService] Session restored for "${staffRecord.name}" via saved PIN hash.`);
-          return staffRecord;
-        }
-
-        console.warn('[AuthService] Saved PIN hash no longer matches any active staff. Clearing.');
-        localStorage.removeItem('auth_staff_pin');
-      } catch (e) {
-        console.error('[AuthService] Error restoring PIN session:', e);
-        localStorage.removeItem('auth_staff_pin');
-      }
-    }
+    // PIN sessions are deliberately not restored from browser-controlled storage.
+    localStorage.removeItem('auth_staff_pin');
 
     return null;
   }
@@ -235,7 +195,8 @@ class AuthService {
   async getStaffByPin(pin) {
     if (!pin) return null;
     try {
-      const hashedPin = pin.length === 64 ? pin : await hashPin(pin);
+      if (!/^\d{4,8}$/.test(pin)) return null;
+      const hashedPin = await hashPin(pin);
       const staff = await db.staff
         .where('pinHash')
         .equals(hashedPin)
@@ -263,7 +224,7 @@ class AuthService {
         console.log('[AuthService] Local PIN lookup failed. Attempting online PIN verification...');
         try {
           const { onlineLookupStaffByPin } = await import('./staffAdmin');
-          const result = await onlineLookupStaffByPin(hashedPin);
+          const result = await onlineLookupStaffByPin(pin);
           if (result.success && result.data?.staff) {
             const row = result.data.staff;
             staff = {
@@ -271,7 +232,7 @@ class AuthService {
               cloudUserId: row.cloudUserId,
               name: row.name,
               role: row.role,
-              pinHash: row.pinHash,
+              pinHash: hashedPin,
               allowExpress: row.allowExpress ? 1 : 0,
               isActive: row.isActive ? 1 : 0,
               createdAt: row.createdAt,
@@ -310,7 +271,7 @@ class AuthService {
       this.currentStaff = staff;
       this.isAuthenticated = true;
       globalStore.updateState({ activeTerminalStaff: staff });
-      localStorage.setItem('auth_staff_pin', hashedPin);
+      localStorage.removeItem('auth_staff_pin');
       localStorage.removeItem('auth_failed_attempts');
       localStorage.removeItem('auth_lockout_until');
 

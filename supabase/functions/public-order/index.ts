@@ -147,29 +147,26 @@ Deno.serve(async (req: Request) => {
 
   const { data: existingOrder, error: existingError } = await supabase
     .from("orders")
-    .select("*")
+    .select("client_order_id, order_number, display_token, status, payment_status, delivery_status, grand_total, created_at")
     .eq("store_id", STORE_ID)
     .eq("client_order_id", clientOrderId)
+    .eq("idempotency_key", idempotencyKey)
     .maybeSingle();
 
   if (existingError) return bad(`Idempotency lookup failed: ${existingError.message}`, 500);
   if (existingOrder) return jsonResponse({ order: existingOrder, idempotent: true });
 
   const ipHash = await sha256(`${RATE_LIMIT_SALT}:${getIp(req)}`);
-  const windowStart = new Date(Date.now() - RATE_LIMIT_WINDOW_MINUTES * 60 * 1000).toISOString();
-  const { count, error: rateReadError } = await supabase
-    .from("public_order_rate_limits")
-    .select("id", { count: "exact", head: true })
-    .eq("store_id", STORE_ID)
-    .eq("ip_hash", ipHash)
-    .gte("created_at", windowStart);
-
-  if (rateReadError) return bad(`Rate limit check failed: ${rateReadError.message}`, 500);
-  if ((count || 0) >= MAX_ORDERS_PER_WINDOW) {
+  const { data: rateAllowed, error: rateError } = await supabase.rpc("consume_public_order_attempt", {
+    target_store_id: STORE_ID,
+    target_ip_hash: ipHash,
+    max_attempts: MAX_ORDERS_PER_WINDOW,
+    window_minutes: RATE_LIMIT_WINDOW_MINUTES
+  });
+  if (rateError) return bad(`Rate limit check failed: ${rateError.message}`, 500);
+  if (!rateAllowed) {
     return bad("Too many order attempts. Please wait a few minutes.", 429);
   }
-
-  await supabase.from("public_order_rate_limits").insert({ store_id: STORE_ID, ip_hash: ipHash });
 
   const ids = [...new Set(normalizedItems.map((item) => item.itemId))];
   const { data: menuRows, error: menuError } = await supabase
