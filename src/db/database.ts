@@ -266,7 +266,7 @@ db.version(3).stores({
         // Hash the PIN using native Web Crypto SHA-256
         const encoder = new TextEncoder();
         const data = encoder.encode(s.pin.trim());
-        const cryptoObj = typeof window !== 'undefined' ? (window.crypto || window.msCrypto) : globalThis.crypto;
+        const cryptoObj = typeof window !== 'undefined' ? window.crypto : globalThis.crypto;
         if (!cryptoObj || !cryptoObj.subtle) {
           throw new Error('Web Crypto API (crypto.subtle) is not supported in this environment.');
         }
@@ -319,7 +319,7 @@ db.version(4).stores({
     if (staff.pin && !staff.pinHash) {
       const encoder = new TextEncoder();
       const data = encoder.encode(staff.pin.trim());
-      const cryptoObj = typeof window !== 'undefined' ? (window.crypto || window.msCrypto) : globalThis.crypto;
+      const cryptoObj = typeof window !== 'undefined' ? window.crypto : globalThis.crypto;
       if (!cryptoObj || !cryptoObj.subtle) {
         throw new Error('Web Crypto API (crypto.subtle) is not supported in this environment.');
       }
