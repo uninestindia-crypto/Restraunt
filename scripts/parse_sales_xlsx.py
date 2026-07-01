@@ -77,6 +77,7 @@ def parse_xlsx(path):
         
         vouchers = []
         current_vch = None
+        last_date = "2024-02-01"
         
         for r in sorted(rows.keys()):
             if r < 7:
@@ -99,9 +100,18 @@ def parse_xlsx(path):
                 except ValueError:
                     bill_amt_val = 0.0
                 
+                cleaned_date = None
+                if date_str:
+                    date_str_stripped = str(date_str).strip()
+                    if date_str_stripped:
+                        cleaned_date = format_date(date_str_stripped)
+                
+                if cleaned_date:
+                    last_date = cleaned_date
+                
                 current_vch = {
-                    'vch_no': str(vch_no) if vch_no else "",
-                    'date': format_date(date_str),
+                    'vch_no': str(vch_no).strip() if vch_no else "",
+                    'date': last_date,
                     'payment_method': particulars,
                     'bill_amount': bill_amt_val,
                     'items': []

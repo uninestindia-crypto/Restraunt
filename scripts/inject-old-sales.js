@@ -136,12 +136,31 @@ async function main() {
 
   console.log(`Parsed ${vouchers.length} vouchers successfully.`);
 
+  // 3.5 Fetch starting ID for orders to prevent sequence issues
+  console.log("\nFetching current max order ID...");
+  const { data: maxOrderData, error: maxOrderError } = await supabase
+    .from('orders')
+    .select('id')
+    .order('id', { ascending: false })
+    .limit(1);
+
+  if (maxOrderError) {
+    console.error("Error fetching max order ID:", maxOrderError.message);
+    process.exit(1);
+  }
+
+  const startId = maxOrderData && maxOrderData.length > 0 ? Number(maxOrderData[0].id) + 1 : 1;
+  console.log(`Starting order ID will be: ${startId}`);
+
   // 4. Map vouchers into database order records
   console.log("\nFormatting orders for database insertion...");
   const ordersToInsert = [];
   
+  let orderIndex = 0;
   for (const vch of vouchers) {
     const clientOrderId = crypto.randomUUID();
+    const orderId = startId + orderIndex;
+    orderIndex++;
     
     // Parse payment method
     let paymentMethod = 'cash';
@@ -178,6 +197,7 @@ async function main() {
     const dateStr = vch.date ? `${vch.date}T12:00:00.000Z` : new Date().toISOString();
 
     ordersToInsert.push({
+      id: orderId,
       store_id: storeId,
       client_order_id: clientOrderId,
       idempotency_key: clientOrderId,
@@ -212,6 +232,9 @@ async function main() {
   }
 
   console.log(`Prepared ${ordersToInsert.length} orders for upload.`);
+  if (ordersToInsert.length > 0) {
+    console.log("Sample order format:", JSON.stringify(ordersToInsert[0], null, 2));
+  }
 
   // 5. Insert in batches of 50
   const batchSize = 50;
@@ -222,7 +245,7 @@ async function main() {
     const batch = ordersToInsert.slice(i, i + batchSize);
     const { error } = await supabase
       .from('orders')
-      .upsert(batch, { onConflict: 'order_number' });
+      .insert(batch);
 
     if (error) {
       console.error(`Error uploading batch starting at index ${i}:`, error.message);
