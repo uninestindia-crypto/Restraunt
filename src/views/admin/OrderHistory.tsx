@@ -1,37 +1,71 @@
 // @ts-nocheck
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { db, getOrder, getOrders, getSetting, updateOrderFields, updatePayment } from '../../db/database';
 import { ReceiptBuilder } from '../../services/receipt';
 import { printerService } from '../../services/printer';
 import { sendBillOnWhatsApp } from '../../services/whatsapp';
 import { authService } from '../../services/auth';
-import { escapeHtml, formatCurrency, formatDateTime, parseOrderItems, playSound, showToast, vibrateDevice } from '../../utils/helpers';
+import { formatCurrency, formatDateTime, parseOrderItems, playSound, showToast, vibrateDevice } from '../../utils/helpers';
 
-export class OrderHistory {
-  constructor(app) {
-    this.app = app;
-    this.container = null;
-    this.orders = [];
-    this.filteredOrders = [];
-    this.deliveryStaff = [];
-    this.searchQuery = '';
-  }
+interface OrderItem {
+  id?: number;
+  orderNumber: string;
+  createdAt: string;
+  completedAt?: string;
+  type: 'dinein' | 'takeaway' | 'delivery';
+  total: number;
+  subtotal: number;
+  tax: number;
+  deliveryFee?: number;
+  paymentMethod?: string;
+  paymentStatus?: string;
+  status: string;
+  deliveryStatus?: string;
+  deliveryStaffId?: number;
+  deliveryStaffName?: string;
+  deliveryNotes?: string;
+  customerName?: string;
+  customerPhone?: string;
+  deliveryAddress?: string;
+  deliveryLandmark?: string;
+  paymentReference?: string;
+  paymentVerifiedAt?: string;
+  paymentVerifiedBy?: string;
+}
 
-  async mount(container) {
-    this.container = container;
-    await this.loadData();
-    this.render();
-  }
+export function OrderHistory() {
+  const [orders, setOrders] = useState<OrderItem[]>([]);
+  const [deliveryStaff, setDeliveryStaff] = useState<any[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedOrder, setSelectedOrder] = useState<OrderItem | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  async loadData() {
-    this.orders = await getOrders();
-    this.deliveryStaff = (await db.staff.toArray())
-      .filter(staff => staff.role === 'delivery' && (staff.isActive === 1 || staff.isActive === true));
-    this.applyFilter();
-  }
+  // Delivery assign modal select state
+  const [selectedStaffId, setSelectedStaffId] = useState('');
 
-  applyFilter() {
-    const query = this.searchQuery.toLowerCase().trim();
-    this.filteredOrders = !query ? [...this.orders] : this.orders.filter(order => {
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      const ordersList = await getOrders();
+      const staffList = (await db.staff.toArray())
+        .filter((staff: any) => staff.role === 'delivery' && (staff.isActive === 1 || staff.isActive === true));
+      setOrders(ordersList);
+      setDeliveryStaff(staffList);
+    } catch (err) {
+      console.error('[OrderHistory] Load error:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const filteredOrders = useMemo(() => {
+    const query = searchQuery.toLowerCase().trim();
+    if (!query) return orders;
+    return orders.filter(order => {
       return [
         order.orderNumber,
         order.customerName,
@@ -43,237 +77,89 @@ export class OrderHistory {
         order.deliveryStaffName
       ].some(value => String(value || '').toLowerCase().includes(query));
     });
-  }
+  }, [orders, searchQuery]);
 
-  render() {
-    const rows = this.filteredOrders.map(order => `
-      <tr class="order-row clickable-row" data-id="${order.id}">
-        <td class="txt-primary txt-extrabold" data-label="Token">#${escapeHtml(order.orderNumber.split('-').pop())}</td>
-        <td data-label="Date">${escapeHtml(formatDateTime(order.createdAt))}</td>
-        <td class="txt-primary txt-bold" data-label="Type">${this.typeBadge(order)}</td>
-        <td class="txt-brand txt-extrabold" data-label="Amount">${formatCurrency(order.total)}</td>
-        <td data-label="Payment">${this.paymentBadge(order)}</td>
-        <td data-label="Kitchen">${this.statusBadge(order.status)}</td>
-        <td data-label="Delivery">${this.deliveryBadge(order)}</td>
-        <td class="txt-right" data-label="Receipt">
-          <button class="btn btn-secondary btn-sm print-btn" data-id="${order.id}">
-            <span class="material-symbols-rounded">print</span>
-          </button>
-        </td>
-      </tr>
-    `).join('');
+  // Sync selected order detailed view if list updates
+  const activeOrderDetails = useMemo(() => {
+    if (!selectedOrder) return null;
+    return orders.find(o => o.id === selectedOrder.id) || selectedOrder;
+  }, [orders, selectedOrder]);
 
-    this.container.innerHTML = `
-      <div class="main-area">
-        <div class="header-bar">
-          <div class="header-bar-title">
-            <span class="material-symbols-rounded">receipt_long</span>
-            <h2>Orders & Delivery (${this.filteredOrders.length})</h2>
-          </div>
-          <div class="input-group" style="max-width:360px; margin:0;">
-            <input id="order-search" class="input" value="${escapeHtml(this.searchQuery)}" placeholder="Search order, customer, driver..." style="padding-left:42px;">
-            <span class="material-symbols-rounded" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:20px;color:var(--text-secondary);pointer-events:none;">search</span>
-          </div>
-        </div>
+  const handlePrintReceipt = async (order: OrderItem) => {
+    if (!printerService.isConnected) {
+      showToast('Printer is not connected', 'warning', 4000);
+      return;
+    }
+    try {
+      const settings = {
+        restaurantName: await getSetting('restaurantName') || 'The Taste',
+        restaurantTagline: await getSetting('restaurantTagline') || 'Fast Food & Chinese',
+        restaurantPhone: await getSetting('restaurantPhone') || '',
+        restaurantAddress: await getSetting('restaurantAddress') || '',
+        printerWidth: await getSetting('printerWidth') || '58',
+      };
+      const latest = await getOrder(order.id!) || order;
+      await printerService.print(ReceiptBuilder.orderReceipt(latest, settings));
+      playSound(800, 80);
+      vibrateDevice([30]);
+      showToast('Receipt printed', 'success');
+    } catch (err) {
+      console.error('[OrderHistory] Print failed:', err);
+      showToast('Failed to print receipt', 'error');
+    }
+  };
 
-        <div class="table-container scrollbar-none">
-          <table class="premium-table responsive-table">
-            <thead>
-              <tr>
-                <th>Token</th>
-                <th>Date</th>
-                <th>Type</th>
-                <th>Amount</th>
-                <th>Payment</th>
-                <th>Kitchen</th>
-                <th>Delivery</th>
-                <th class="txt-right">Receipt</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${rows || `<tr><td colspan="8" class="txt-center txt-muted" style="padding:44px;">No matching orders found.</td></tr>`}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    `;
+  const handleWhatsApp = async (order: OrderItem) => {
+    const inputPhone = prompt('Enter customer WhatsApp number:', order.customerPhone || '');
+    if (inputPhone === null) return;
+    await sendBillOnWhatsApp(order, inputPhone);
+    showToast('Opening WhatsApp...', 'success');
+  };
 
-    this.bindEvents();
-  }
-
-  bindEvents() {
-    this.container.querySelector('#order-search')?.addEventListener('input', event => {
-      this.searchQuery = event.target.value;
-      this.applyFilter();
-      this.render();
-      this.container.querySelector('#order-search')?.focus();
-    });
-
-    this.container.querySelectorAll('.order-row').forEach(row => {
-      row.addEventListener('click', () => {
-        const order = this.orders.find(o => o.id === parseInt(row.dataset.id, 10));
-        if (order) this.showOrderDetailModal(order);
-      });
-    });
-
-    this.container.querySelectorAll('.print-btn').forEach(btn => {
-      btn.addEventListener('click', async event => {
-        event.stopPropagation();
-        const order = this.orders.find(o => o.id === parseInt(btn.dataset.id, 10));
-        if (order) await this.printReceipt(order);
-      });
-    });
-  }
-
-  showOrderDetailModal(order) {
-    const items = parseOrderItems(order.items);
-    const staffOptions = this.deliveryStaff.map(staff => `
-      <option value="${staff.id}" ${String(order.deliveryStaffId || '') === String(staff.id) ? 'selected' : ''}>${escapeHtml(staff.name)}${staff.phone ? ` (${escapeHtml(staff.phone)})` : ''}</option>
-    `).join('');
-
-    const wrapper = document.createElement('div');
-    wrapper.id = 'detail-modal-wrapper';
-    wrapper.innerHTML = `
-      <div id="order-detail-overlay" class="modal-overlay">
-        <div class="modal" style="max-width:560px;">
-          <header class="modal-header">
-            <div>
-              <h3 class="txt-primary txt-bold">Order #${escapeHtml(order.orderNumber.split('-').pop())}</h3>
-              <div class="txt-muted txt-medium" style="font-size:var(--text-xs);margin-top:4px;">${escapeHtml(formatDateTime(order.createdAt))}</div>
-            </div>
-            <button class="btn-icon" id="order-detail-close"><span class="material-symbols-rounded">close</span></button>
-          </header>
-
-          <main class="modal-body scrollbar-none flex-column-gap">
-            ${this.detailSection('Items', items.map(item => `
-              <div class="flex-row-between txt-secondary" style="font-size:var(--text-sm);padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.04);">
-                <div><strong class="txt-primary">${item.quantity || 1}x</strong> ${escapeHtml(item.itemName || item.name || 'Item')}${item.notes ? `<div style="font-size:var(--text-xs);color:var(--color-warning);margin-top:2px;">${escapeHtml(item.notes)}</div>` : ''}</div>
-                <strong class="txt-primary">${formatCurrency((item.price || 0) * (item.quantity || 1))}</strong>
-              </div>
-            `).join(''))}
-
-            ${this.detailSection('Bill', `
-              <div class="flex-row-between"><span>Subtotal</span><strong class="txt-primary">${formatCurrency(order.subtotal)}</strong></div>
-              <div class="flex-row-between"><span>Tax</span><strong class="txt-primary">${formatCurrency(order.tax)}</strong></div>
-              ${order.deliveryFee ? `<div class="flex-row-between"><span>Delivery fee</span><strong class="txt-primary">${formatCurrency(order.deliveryFee)}</strong></div>` : ''}
-              <div class="flex-row-between txt-brand txt-extrabold" style="font-size:1.1rem;border-top:1px solid var(--border-glass);padding-top:8px;"><span>Total</span><span>${formatCurrency(order.total)}</span></div>
-            `)}
-
-            ${this.detailSection('Customer', `
-              <div><strong class="txt-primary">Name:</strong> ${escapeHtml(order.customerName || 'Not provided')}</div>
-              <div><strong class="txt-primary">Phone:</strong> ${escapeHtml(order.customerPhone || 'Not provided')}</div>
-              ${order.type === 'delivery' ? `
-                <div><strong class="txt-primary">Address:</strong> ${escapeHtml(order.deliveryAddress || 'Missing')}</div>
-                ${order.deliveryLandmark ? `<div><strong class="txt-primary">Landmark:</strong> ${escapeHtml(order.deliveryLandmark)}</div>` : ''}
-              ` : ''}
-            `)}
-
-            ${this.detailSection('Payment', `
-              <div class="flex-row-between" style="gap:10px;flex-wrap:wrap;">
-                ${this.paymentBadge(order)}
-                <div style="display:flex;gap:8px;flex-wrap:wrap;">
-                  ${order.paymentStatus !== 'paid' ? `
-                    <button class="btn btn-secondary btn-sm" id="btn-verify-upi">Verify UPI</button>
-                    <button class="btn btn-secondary btn-sm" id="btn-collect-cash">Collect Cash</button>
-                  ` : `<span class="badge badge-success">Verified ${escapeHtml(order.paymentVerifiedAt ? formatDateTime(order.paymentVerifiedAt) : '')}</span>`}
-                </div>
-              </div>
-            `)}
-
-            ${order.type === 'delivery' ? this.detailSection('Delivery Dispatch', `
-              <div class="flex-column-gap" style="gap:10px;">
-                <div>${this.deliveryBadge(order)}</div>
-                <select id="delivery-staff-select" class="input">
-                  <option value="">Select delivery staff</option>
-                  ${staffOptions}
-                </select>
-                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(128px,1fr));gap:8px;">
-                  <button class="btn btn-secondary btn-sm" id="btn-assign-delivery">Assign</button>
-                  <button class="btn btn-secondary btn-sm" id="btn-out-delivery">Out for Delivery</button>
-                  <button class="btn btn-primary btn-sm" id="btn-delivered">Delivered</button>
-                  <button class="btn btn-danger btn-sm" id="btn-delivery-failed">Failed</button>
-                </div>
-              </div>
-            `) : ''}
-          </main>
-
-          <footer class="modal-footer" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;">
-            <button class="btn btn-primary btn-sm" id="btn-modal-reprint">Print Receipt</button>
-            <button class="btn btn-secondary btn-sm" id="btn-modal-whatsapp">WhatsApp Bill</button>
-            ${order.status !== 'cancelled' ? `
-              <button class="btn btn-danger btn-sm" id="btn-modal-void" style="background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239,68,68,0.25); color: #FF4D4D;">Void Order</button>
-            ` : ''}
-            <button class="btn btn-secondary btn-sm" id="btn-modal-close-footer">Close</button>
-          </footer>
-        </div>
-      </div>
-    `;
-    document.body.appendChild(wrapper);
-
-    const close = () => wrapper.remove();
-    wrapper.querySelector('#order-detail-close')?.addEventListener('click', close);
-    wrapper.querySelector('#btn-modal-close-footer')?.addEventListener('click', close);
-    wrapper.querySelector('#order-detail-overlay')?.addEventListener('click', event => {
-      if (event.target.id === 'order-detail-overlay') close();
-    });
-    wrapper.querySelector('#btn-modal-reprint')?.addEventListener('click', () => this.printReceipt(order));
-    wrapper.querySelector('#btn-modal-whatsapp')?.addEventListener('click', () => this.sendWhatsApp(order));
-    wrapper.querySelector('#btn-modal-void')?.addEventListener('click', () => this.handleVoidOrder(order, close));
-    wrapper.querySelector('#btn-verify-upi')?.addEventListener('click', () => this.markPaid(order, 'upi', close));
-    wrapper.querySelector('#btn-collect-cash')?.addEventListener('click', () => this.markPaid(order, 'cash', close));
-    wrapper.querySelector('#btn-assign-delivery')?.addEventListener('click', () => this.assignDelivery(order, wrapper, close));
-    wrapper.querySelector('#btn-out-delivery')?.addEventListener('click', () => this.markOutForDelivery(order, close));
-    wrapper.querySelector('#btn-delivered')?.addEventListener('click', () => this.markDelivered(order, close));
-    wrapper.querySelector('#btn-delivery-failed')?.addEventListener('click', () => this.markDeliveryFailed(order, close));
-  }
-
-  async markPaid(order, method, close) {
+  const markPaid = async (order: OrderItem, method: string) => {
     const reference = method === 'upi' ? (prompt('Enter UPI reference/UTR (optional):', order.paymentReference || '') || '') : '';
     const staff = authService.getCurrentStaff();
-    await updatePayment(order.id, method, 'paid', {
+    await updatePayment(order.id!, method, 'paid', {
       paymentReference: reference,
       paymentVerifiedAt: new Date().toISOString(),
       paymentVerifiedBy: staff?.name || 'Staff',
       paymentCollectedAt: new Date().toISOString()
     });
     showToast('Payment marked paid', 'success');
-    close();
-    await this.reload();
-  }
+    loadData();
+  };
 
-  async assignDelivery(order, wrapper, close) {
-    const staffId = wrapper.querySelector('#delivery-staff-select')?.value;
-    if (!staffId) {
+  const assignDelivery = async (order: OrderItem) => {
+    if (!selectedStaffId) {
       showToast('Select delivery staff first', 'warning');
       return;
     }
-    const staff = this.deliveryStaff.find(s => String(s.id) === String(staffId));
-    await updateOrderFields(order.id, {
+    const staff = deliveryStaff.find(s => String(s.id) === String(selectedStaffId));
+    if (!staff) return;
+    await updateOrderFields(order.id!, {
       deliveryStaffId: staff.id,
       deliveryStaffName: staff.name,
       deliveryStatus: 'assigned',
       deliveryAssignedAt: new Date().toISOString()
     });
     showToast(`Assigned to ${staff.name}`, 'success');
-    close();
-    await this.reload();
-  }
+    loadData();
+  };
 
-  async markOutForDelivery(order, close) {
+  const markOutForDelivery = async (order: OrderItem) => {
     if (!order.deliveryStaffId) {
       showToast('Assign delivery staff before dispatch', 'warning');
       return;
     }
-    await updateOrderFields(order.id, {
+    await updateOrderFields(order.id!, {
       deliveryStatus: 'out_for_delivery',
       deliveryOutAt: new Date().toISOString()
     });
     showToast('Order marked out for delivery', 'success');
-    close();
-    await this.reload();
-  }
+    loadData();
+  };
 
-  async markDelivered(order, close) {
+  const markDelivered = async (order: OrderItem) => {
     const updates = {
       deliveryStatus: 'delivered',
       deliveredAt: new Date().toISOString(),
@@ -288,24 +174,22 @@ export class OrderHistory {
         paymentVerifiedBy: authService.getCurrentStaff()?.name || 'Delivery'
       });
     }
-    await updateOrderFields(order.id, updates);
+    await updateOrderFields(order.id!, updates);
     showToast('Delivery completed', 'success');
-    close();
-    await this.reload();
-  }
+    loadData();
+  };
 
-  async markDeliveryFailed(order, close) {
+  const markDeliveryFailed = async (order: OrderItem) => {
     const reason = prompt('Reason for failed delivery:', order.deliveryNotes || '') || '';
-    await updateOrderFields(order.id, {
+    await updateOrderFields(order.id!, {
       deliveryStatus: 'failed',
       deliveryNotes: reason
     });
     showToast('Delivery marked failed', 'warning');
-    close();
-    await this.reload();
-  }
+    loadData();
+  };
 
-  async handleVoidOrder(order, closeDetail) {
+  const handleVoidOrder = async (order: OrderItem) => {
     const staff = authService.getCurrentStaff();
     const role = staff?.role?.toLowerCase() || '';
     const allowCashierVoidVal = await getSetting('allowCashierVoid');
@@ -315,10 +199,9 @@ export class OrderHistory {
 
     if (canVoid) {
       if (confirm('Are you sure you want to void this order? This action will cancel the order and mark it as refunded.')) {
-        await this.executeVoid(order, staff, closeDetail);
+        await executeVoid(order, staff);
       }
     } else {
-      // Prompt for Manager/Owner PIN
       const pin = prompt('Voiding this order requires Manager or Owner authorization.\nPlease enter an authorized PIN:');
       if (!pin) return;
 
@@ -326,18 +209,18 @@ export class OrderHistory {
       const isAuthorized = authStaff && ['owner', 'manager'].includes(authStaff.role?.toLowerCase());
 
       if (isAuthorized) {
-        await this.executeVoid(order, authStaff, closeDetail);
+        await executeVoid(order, authStaff);
       } else {
         playSound(300, 200, 'square');
         vibrateDevice([150]);
         showToast('Unauthorized PIN code', 'error');
       }
     }
-  }
+  };
 
-  async executeVoid(order, authorizedStaff, closeDetail) {
+  const executeVoid = async (order: OrderItem, authorizedStaff: any) => {
     try {
-      await updateOrderFields(order.id, {
+      await updateOrderFields(order.id!, {
         status: 'cancelled',
         paymentStatus: 'refunded',
         completedAt: new Date().toISOString(),
@@ -346,7 +229,6 @@ export class OrderHistory {
         isSynced: 0
       });
 
-      // Log activity
       await db.activityLog.add({
         staffId: authorizedStaff.id,
         action: `voided_order_${order.orderNumber}`,
@@ -355,90 +237,240 @@ export class OrderHistory {
 
       playSound(900, 100);
       showToast(`Order voided by ${authorizedStaff.name}`, 'success');
-      closeDetail();
-      await this.reload();
-    } catch (e) {
+      setSelectedOrder(null);
+      loadData();
+    } catch (e: any) {
       console.error(e);
       showToast('Failed to void order: ' + e.message, 'error');
     }
-  }
+  };
 
-  async reload() {
-    await this.loadData();
-    this.render();
-  }
-
-  async printReceipt(order) {
-    if (!printerService.isConnected) {
-      showToast('Printer is not connected', 'warning', 4000);
-      return;
-    }
-    const settings = {
-      restaurantName: await getSetting('restaurantName') || 'The Taste',
-      restaurantTagline: await getSetting('restaurantTagline') || 'Fast Food & Chinese',
-      restaurantPhone: await getSetting('restaurantPhone') || '',
-      restaurantAddress: await getSetting('restaurantAddress') || '',
-      printerWidth: await getSetting('printerWidth') || '58',
-    };
-    const latest = await getOrder(order.id) || order;
-    await printerService.print(ReceiptBuilder.orderReceipt(latest, settings));
-    playSound(800, 80);
-    vibrateDevice([30]);
-    showToast('Receipt printed', 'success');
-  }
-
-  async sendWhatsApp(order) {
-    const inputPhone = prompt('Enter customer WhatsApp number:', order.customerPhone || '');
-    if (inputPhone === null) return;
-    await sendBillOnWhatsApp(order, inputPhone);
-    showToast('Opening WhatsApp...', 'success');
-  }
-
-  detailSection(title, body) {
-    return `
-      <section class="order-detail-section">
-        <h4>${escapeHtml(title)}</h4>
-        ${body}
-      </section>
-    `;
-  }
-
-  typeBadge(order) {
+  // Badges rendering
+  const renderTypeBadge = (order: OrderItem) => {
     const labels = { dinein: 'Dine-In', takeaway: 'Pickup', delivery: 'Delivery' };
-    return `<span class="badge badge-primary">${labels[order.type] || escapeHtml(order.type || 'Order')}</span>`;
-  }
+    return <span className="badge badge-primary">{labels[order.type] || order.type}</span>;
+  };
 
-  paymentBadge(order) {
+  const renderPaymentBadge = (order: OrderItem) => {
     const paid = order.paymentStatus === 'paid';
     const pending = order.paymentStatus === 'pending';
     const label = `${(order.paymentMethod || 'unpaid').toUpperCase()} / ${(order.paymentStatus || 'unpaid').toUpperCase()}`;
     const cls = paid ? 'badge-success' : pending ? 'badge-warning' : 'badge-danger';
-    return `<span class="badge ${cls}">${escapeHtml(label)}</span>`;
-  }
+    return <span className={`badge ${cls}`}>{label}</span>;
+  };
 
-  statusBadge(status) {
+  const renderStatusBadge = (status: string) => {
     const cls = status === 'completed' || status === 'ready' ? 'badge-success' : status === 'preparing' ? 'badge-warning' : 'badge-danger';
-    return `<span class="badge ${cls}">${escapeHtml(status || 'pending')}</span>`;
-  }
+    return <span className={`badge ${cls}`}>{status || 'pending'}</span>;
+  };
 
-  deliveryBadge(order) {
-    if (order.type !== 'delivery') return '<span style="color:var(--text-muted);font-size:var(--text-xs);">Not delivery</span>';
+  const renderDeliveryBadge = (order: OrderItem) => {
+    if (order.type !== 'delivery') return <span style={{ color: 'var(--text-muted)', fontSize: 'var(--text-xs)' }}>Not delivery</span>;
     const status = order.deliveryStatus || 'pending';
     const cls = status === 'delivered' ? 'badge-success' : status === 'failed' ? 'badge-danger' : 'badge-warning';
     const driver = order.deliveryStaffName ? ` - ${order.deliveryStaffName}` : '';
-    return `<span class="badge ${cls}">${escapeHtml(status.replace(/_/g, ' ') + driver)}</span>`;
+    return <span className={`badge ${cls}`}>{status.replace(/_/g, ' ') + driver}</span>;
+  };
+
+  if (loading) {
+    return (
+      <div className="main-area" style={{ padding: '28px 24px' }}>
+        <div className="skeleton-card" style={{ height: '40px', width: '250px', borderRadius: '8px', marginBottom: '24px' }}></div>
+        <div className="card skeleton-card" style={{ height: '350px', borderRadius: '12px' }}></div>
+      </div>
+    );
   }
 
-  thStyle(extra = '') {
-    return `padding:14px 16px;font-weight:900;${extra}`;
-  }
+  return (
+    <div className="main-area" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      {/* Header bar */}
+      <div className="header-bar" style={{ padding: '10px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div className="header-bar-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span className="material-symbols-rounded" style={{ color: 'var(--color-primary)' }}>receipt_long</span>
+          <h2 style={{ fontSize: 'var(--text-lg)', fontWeight: 800, margin: 0 }}>Orders & Delivery ({filteredOrders.length})</h2>
+        </div>
+        <div className="input-group" style={{ maxWidth: '360px', margin: 0, position: 'relative' }}>
+          <input
+            id="order-search"
+            className="input"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search order, customer, driver..."
+            style={{ paddingLeft: '42px' }}
+          />
+          <span className="material-symbols-rounded" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', fontSize: '20px', color: 'var(--text-secondary)', pointerEvents: 'none' }}>search</span>
+        </div>
+      </div>
 
-  tdStyle(extra = '') {
-    return `padding:14px 16px;font-size:var(--text-sm);color:var(--text-secondary);${extra}`;
-  }
+      {/* Orders Table */}
+      <div className="table-container scrollbar-none" style={{ flex: 1, padding: '0 24px 20px 24px' }}>
+        <table className="premium-table responsive-table">
+          <thead>
+            <tr>
+              <th>Token</th>
+              <th>Date</th>
+              <th>Type</th>
+              <th>Amount</th>
+              <th>Payment</th>
+              <th>Kitchen</th>
+              <th>Delivery</th>
+              <th className="txt-right">Receipt</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filteredOrders.length === 0 ? (
+              <tr>
+                <td colSpan={8} className="txt-center txt-muted" style={{ padding: '44px' }}>No matching orders found.</td>
+              </tr>
+            ) : (
+              filteredOrders.map(order => (
+                <tr key={order.id} className="order-row clickable-row" onClick={() => {
+                  setSelectedOrder(order);
+                  setSelectedStaffId(String(order.deliveryStaffId || ''));
+                }} style={{ cursor: 'pointer' }}>
+                  <td className="txt-primary txt-extrabold" data-label="Token">#{order.orderNumber.split('-').pop()}</td>
+                  <td data-label="Date">{formatDateTime(order.createdAt)}</td>
+                  <td className="txt-primary txt-bold" data-label="Type">{renderTypeBadge(order)}</td>
+                  <td className="txt-brand txt-extrabold" data-label="Amount">{formatCurrency(order.total)}</td>
+                  <td data-label="Payment">{renderPaymentBadge(order)}</td>
+                  <td data-label="Kitchen">{renderStatusBadge(order.status)}</td>
+                  <td data-label="Delivery">{renderDeliveryBadge(order)}</td>
+                  <td className="txt-right" data-label="Receipt">
+                    <button className="btn btn-secondary btn-sm print-btn" onClick={(e) => {
+                      e.stopPropagation();
+                      handlePrintReceipt(order);
+                    }}>
+                      <span className="material-symbols-rounded" style={{ fontSize: '16px' }}>print</span>
+                    </button>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
 
-  unmount() {
-    this.container = null;
-    document.getElementById('detail-modal-wrapper')?.remove();
-  }
+      {/* Order Detail Modal */}
+      {selectedOrder && activeOrderDetails && (
+        <div className="modal-overlay" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => setSelectedOrder(null)}>
+          <div className="modal" style={{ maxWidth: '560px', width: '100%', margin: '20px' }} onClick={(e) => e.stopPropagation()}>
+            <header className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <h3 className="txt-primary txt-bold" style={{ margin: 0 }}>Order #{activeOrderDetails.orderNumber.split('-').pop()}</h3>
+                <div className="txt-muted txt-medium" style={{ fontSize: 'var(--text-xs)', marginTop: '4px' }}>{formatDateTime(activeOrderDetails.createdAt)}</div>
+              </div>
+              <button className="btn-icon" onClick={() => setSelectedOrder(null)}>
+                <span className="material-symbols-rounded">close</span>
+              </button>
+            </header>
+
+            <main className="modal-body scrollbar-none flex-column-gap" style={{ display: 'flex', flexDirection: 'column', gap: '16px', maxHeight: '60vh', overflowY: 'auto', padding: '16px 0' }}>
+              
+              {/* Items Section */}
+              <section className="order-detail-section" style={{ borderBottom: '1px solid var(--border-glass)', paddingBottom: '12px' }}>
+                <h4 style={{ margin: '0 0 8px 0', fontSize: 'var(--text-sm)', color: 'var(--text-secondary)' }}>Items</h4>
+                {parseOrderItems(activeOrderDetails.items).map((item: any, idx: number) => (
+                  <div key={idx} className="flex-row-between txt-secondary" style={{ fontSize: 'var(--text-sm)', padding: '6px 0', borderBottom: '1px solid rgba(255,255,255,0.04)', display: 'flex', justifyContent: 'space-between' }}>
+                    <div>
+                      <strong className="txt-primary">{item.quantity || 1}x</strong> {item.itemName || item.name || 'Item'}
+                      {item.notes && <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-warning)', marginTop: '2px' }}>{item.notes}</div>}
+                    </div>
+                    <strong className="txt-primary">{formatCurrency((item.price || 0) * (item.quantity || 1))}</strong>
+                  </div>
+                ))}
+              </section>
+
+              {/* Bill Summary Section */}
+              <section className="order-detail-section" style={{ borderBottom: '1px solid var(--border-glass)', paddingBottom: '12px' }}>
+                <h4 style={{ margin: '0 0 8px 0', fontSize: 'var(--text-sm)', color: 'var(--text-secondary)' }}>Bill</h4>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: 'var(--text-sm)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Subtotal</span><strong className="txt-primary">{formatCurrency(activeOrderDetails.subtotal)}</strong></div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Tax</span><strong className="txt-primary">{formatCurrency(activeOrderDetails.tax)}</strong></div>
+                  {activeOrderDetails.deliveryFee ? (
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Delivery fee</span><strong className="txt-primary">{formatCurrency(activeOrderDetails.deliveryFee)}</strong></div>
+                  ) : null}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1.1rem', borderTop: '1px solid var(--border-glass)', paddingTop: '8px' }} className="txt-brand txt-extrabold">
+                    <span>Total</span><span>{formatCurrency(activeOrderDetails.total)}</span>
+                  </div>
+                </div>
+              </section>
+
+              {/* Customer Section */}
+              <section className="order-detail-section" style={{ borderBottom: '1px solid var(--border-glass)', paddingBottom: '12px' }}>
+                <h4 style={{ margin: '0 0 8px 0', fontSize: 'var(--text-sm)', color: 'var(--text-secondary)' }}>Customer</h4>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: 'var(--text-sm)' }}>
+                  <div><strong className="txt-primary">Name:</strong> {activeOrderDetails.customerName || 'Not provided'}</div>
+                  <div><strong className="txt-primary">Phone:</strong> {activeOrderDetails.customerPhone || 'Not provided'}</div>
+                  {activeOrderDetails.type === 'delivery' ? (
+                    <>
+                      <div><strong className="txt-primary">Address:</strong> {activeOrderDetails.deliveryAddress || 'Missing'}</div>
+                      {activeOrderDetails.deliveryLandmark ? <div><strong className="txt-primary">Landmark:</strong> {activeOrderDetails.deliveryLandmark}</div> : null}
+                    </>
+                  ) : null}
+                </div>
+              </section>
+
+              {/* Payment Section */}
+              <section className="order-detail-section" style={{ borderBottom: '1px solid var(--border-glass)', paddingBottom: '12px' }}>
+                <h4 style={{ margin: '0 0 8px 0', fontSize: 'var(--text-sm)', color: 'var(--text-secondary)' }}>Payment</h4>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                  {renderPaymentBadge(activeOrderDetails)}
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                    {activeOrderDetails.paymentStatus !== 'paid' ? (
+                      <>
+                        <button className="btn btn-secondary btn-sm" onClick={() => markPaid(activeOrderDetails, 'upi')}>Verify UPI</button>
+                        <button className="btn btn-secondary btn-sm" onClick={() => markPaid(activeOrderDetails, 'cash')}>Collect Cash</button>
+                      </>
+                    ) : (
+                      <span className="badge badge-success">
+                        Verified {activeOrderDetails.paymentVerifiedAt ? formatDateTime(activeOrderDetails.paymentVerifiedAt) : ''}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </section>
+
+              {/* Delivery Dispatch Section */}
+              {activeOrderDetails.type === 'delivery' ? (
+                <section className="order-detail-section" style={{ borderBottom: '1px solid var(--border-glass)', paddingBottom: '12px' }}>
+                  <h4 style={{ margin: '0 0 8px 0', fontSize: 'var(--text-sm)', color: 'var(--text-secondary)' }}>Delivery Dispatch</h4>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    <div>{renderDeliveryBadge(activeOrderDetails)}</div>
+                    <select
+                      id="delivery-staff-select"
+                      className="input"
+                      value={selectedStaffId}
+                      onChange={(e) => setSelectedStaffId(e.target.value)}
+                    >
+                      <option value="">Select delivery staff</option>
+                      {deliveryStaff.map(staff => (
+                        <option key={staff.id} value={staff.id}>
+                          {staff.name}{staff.phone ? ` (${staff.phone})` : ''}
+                        </option>
+                      ))}
+                    </select>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: '8px' }}>
+                      <button className="btn btn-secondary btn-sm" onClick={() => assignDelivery(activeOrderDetails)}>Assign</button>
+                      <button className="btn btn-secondary btn-sm" onClick={() => markOutForDelivery(activeOrderDetails)}>Out for Delivery</button>
+                      <button className="btn btn-primary btn-sm" onClick={() => markDelivered(activeOrderDetails)}>Delivered</button>
+                      <button className="btn btn-danger btn-sm" onClick={() => markDeliveryFailed(activeOrderDetails)}>Failed</button>
+                    </div>
+                  </div>
+                </section>
+              ) : null}
+            </main>
+
+            <footer className="modal-footer" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '8px' }}>
+              <button className="btn btn-primary btn-sm" onClick={() => handlePrintReceipt(activeOrderDetails)}>Print Receipt</button>
+              <button className="btn btn-secondary btn-sm" onClick={() => handleWhatsApp(activeOrderDetails)}>WhatsApp Bill</button>
+              {activeOrderDetails.status !== 'cancelled' ? (
+                <button className="btn btn-danger btn-sm" onClick={() => handleVoidOrder(activeOrderDetails)} style={{ background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239,68,68,0.25)', color: '#FF4D4D' }}>Void Order</button>
+              ) : null}
+              <button className="btn btn-secondary btn-sm" onClick={() => setSelectedOrder(null)}>Close</button>
+            </footer>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
