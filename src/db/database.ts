@@ -266,7 +266,11 @@ db.version(3).stores({
         // Hash the PIN using native Web Crypto SHA-256
         const encoder = new TextEncoder();
         const data = encoder.encode(s.pin.trim());
-        const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+        const cryptoObj = typeof window !== 'undefined' ? (window.crypto || window.msCrypto) : globalThis.crypto;
+        if (!cryptoObj || !cryptoObj.subtle) {
+          throw new Error('Web Crypto API (crypto.subtle) is not supported in this environment.');
+        }
+        const hashBuffer = await cryptoObj.subtle.digest('SHA-256', data);
         const hashArray = Array.from(new Uint8Array(hashBuffer));
         const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
         
@@ -315,7 +319,11 @@ db.version(4).stores({
     if (staff.pin && !staff.pinHash) {
       const encoder = new TextEncoder();
       const data = encoder.encode(staff.pin.trim());
-      const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+      const cryptoObj = typeof window !== 'undefined' ? (window.crypto || window.msCrypto) : globalThis.crypto;
+      if (!cryptoObj || !cryptoObj.subtle) {
+        throw new Error('Web Crypto API (crypto.subtle) is not supported in this environment.');
+      }
+      const hashBuffer = await cryptoObj.subtle.digest('SHA-256', data);
       const hashArray = Array.from(new Uint8Array(hashBuffer));
       const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
       await tx.table('staff').update(staff.id, { pinHash: hashHex, pin: undefined, updatedAt: now });

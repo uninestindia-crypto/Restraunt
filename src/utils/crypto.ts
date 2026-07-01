@@ -20,7 +20,11 @@ export async function hashPin(rawString) {
   try {
     const encoder = new TextEncoder();
     const data = encoder.encode(rawString.trim());
-    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const cryptoObj = typeof window !== 'undefined' ? (window.crypto || window.msCrypto) : globalThis.crypto;
+    if (!cryptoObj || !cryptoObj.subtle) {
+      throw new Error('Web Crypto API (crypto.subtle) is not supported in this environment.');
+    }
+    const hashBuffer = await cryptoObj.subtle.digest('SHA-256', data);
     const hashArray = Array.from(new Uint8Array(hashBuffer));
     const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
     return hashHex;
