@@ -222,7 +222,7 @@ async function main() {
     const batch = ordersToInsert.slice(i, i + batchSize);
     const { error } = await supabase
       .from('orders')
-      .upsert(batch, { onConflict: 'store_id,order_number' });
+      .upsert(batch, { onConflict: 'order_number' });
 
     if (error) {
       console.error(`Error uploading batch starting at index ${i}:`, error.message);
