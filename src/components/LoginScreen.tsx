@@ -275,6 +275,10 @@ export class LoginScreen {
                   <span class="material-symbols-rounded" style="font-size:16px;">android</span>
                   Download Android App (APK)
                 </a>
+                <button id="btn-login-reset-cache" type="button" class="btn btn-secondary btn-sm" style="display:inline-flex; align-items:center; gap:6px; font-size:0.75rem; font-weight:700; color:var(--text-secondary); border-color:var(--border-color); background:transparent; padding:8px 16px; border-radius:8px; width:100%; justify-content:center; cursor:pointer;">
+                  <span class="material-symbols-rounded" style="font-size:16px;">restart_alt</span>
+                  Reset Session & Clear Cache
+                </button>
                 <div style="display:flex; align-items:center; gap:6px; justify-content:center; opacity:0.6;">
                   <span class="footer-dot">◆</span>
                   <span class="footer-powered">Powered by</span>
@@ -1039,6 +1043,33 @@ export class LoginScreen {
         });
       });
     }
+
+    const btnResetCache = document.getElementById('btn-login-reset-cache');
+    btnResetCache?.addEventListener('click', () => {
+      playSound(700, 80);
+      if (confirm('Are you sure you want to clear all local sessions, cached staff roles, and offline databases? This will force a clean reload.')) {
+        localStorage.clear();
+        sessionStorage.clear();
+        // Clear IndexedDB databases
+        try {
+          const req = indexedDB.deleteDatabase('TheTastePOS');
+          req.onsuccess = () => {
+            console.log('IndexedDB deleted successfully');
+            window.location.reload();
+          };
+          req.onerror = () => {
+            console.error('Failed to delete IndexedDB');
+            window.location.reload();
+          };
+          req.onblocked = () => {
+            console.warn('IndexedDB delete blocked');
+            window.location.reload();
+          };
+        } catch (e) {
+          window.location.reload();
+        }
+      }
+    });
   }
 
   updateDots() {

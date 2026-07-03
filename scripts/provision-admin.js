@@ -143,7 +143,7 @@ async function valueOrPrompt(env, key, prompt, options = {}) {
 }
 
 async function requireRuntimeConfig(env, mode) {
-  const supabaseUrl = (env.VITE_SUPABASE_URL || env.SUPABASE_URL || '').trim();
+  const supabaseUrl = (env.NEXT_PUBLIC_SUPABASE_URL || env.VITE_SUPABASE_URL || env.SUPABASE_URL || '').trim();
   const serviceRoleKey = await valueOrPrompt(
     env,
     'SUPABASE_SERVICE_ROLE_KEY',
@@ -156,7 +156,7 @@ async function requireRuntimeConfig(env, mode) {
 
   return {
     supabaseUrl,
-    anonKey: (env.VITE_SUPABASE_ANON_KEY || env.SUPABASE_ANON_KEY || '').trim(),
+    anonKey: (env.NEXT_PUBLIC_SUPABASE_ANON_KEY || env.VITE_SUPABASE_ANON_KEY || env.SUPABASE_ANON_KEY || '').trim(),
     serviceRoleKey,
     storeId: (env.STORE_ID || DEFAULT_STORE_ID).trim(),
     mode
