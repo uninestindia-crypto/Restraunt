@@ -1,5 +1,6 @@
 // @ts-nocheck
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { createRoot } from 'react-dom/client';
 import { db, getOrder, getOrders, getSetting, updateOrderFields, updatePayment } from '../../db/database';
 import { ReceiptBuilder } from '../../services/receipt';
 import { printerService } from '../../services/printer';
@@ -33,7 +34,7 @@ interface OrderItem {
   paymentVerifiedBy?: string;
 }
 
-export function OrderHistory() {
+export function OrderHistoryComponent() {
   const [orders, setOrders] = useState<OrderItem[]>([]);
   const [deliveryStaff, setDeliveryStaff] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -473,4 +474,26 @@ export function OrderHistory() {
       )}
     </div>
   );
+}
+
+export class OrderHistory {
+  constructor(app) {
+    this.app = app;
+    this.container = null;
+    this.root = null;
+  }
+
+  async mount(container) {
+    this.container = container;
+    this.root = createRoot(container);
+    this.root.render(<OrderHistoryComponent />);
+  }
+
+  unmount() {
+    if (this.root) {
+      this.root.unmount();
+      this.root = null;
+    }
+    this.container = null;
+  }
 }

@@ -31,6 +31,7 @@ const CONFIG_KEYS = [
 export function SettingsView() {
   const [config, setConfig] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(true);
+  const [settingsTab, setSettingsTab] = useState<'profile' | 'payments' | 'printer' | 'invoice' | 'cloud' | 'security'>('profile');
   const [activePreviewTab, setActivePreviewTab] = useState<'thermal' | 'invoice'>('thermal');
   const [invoiceHtml, setInvoiceHtml] = useState('');
   const [printerConnected, setPrinterConnected] = useState(printerService.isConnected);
@@ -40,7 +41,6 @@ export function SettingsView() {
   const [newPin, setNewPin] = useState('');
 
   const importFileInputRef = useRef<HTMLInputElement>(null);
-
   const isPrinterSupported = printerService.isSupported();
 
   const loadConfig = async () => {
@@ -533,6 +533,16 @@ export function SettingsView() {
     }
   }, [config, activePreviewTab, loading]);
 
+  const handleTabSelect = (tab: any) => {
+    playSound(700, 60);
+    setSettingsTab(tab);
+    if (tab === 'invoice') {
+      setActivePreviewTab('invoice');
+    } else if (tab === 'printer') {
+      setActivePreviewTab('thermal');
+    }
+  };
+
   const currentStaff = authService.getCurrentStaff();
   const isOwner = currentStaff?.role === 'owner';
 
@@ -549,673 +559,708 @@ export function SettingsView() {
   }
 
   return (
-    <div className="settings-container" style={{ padding: '24px', maxWidth: '1200px', margin: '0 auto', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', alignItems: 'start' }}>
-      
-      {/* LEFT COLUMN: Configuration settings */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+    <div className="settings-container" style={{
+      padding: '24px',
+      maxWidth: '1200px',
+      margin: '0 auto',
+      display: 'grid',
+      gridTemplateColumns: '1.2fr 0.8fr',
+      gap: '24px',
+      alignItems: 'start'
+    }}>
+      <style>{`
+        .settings-sidebar-btn {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          padding: 10px 14px;
+          background: transparent;
+          border: 1px solid transparent;
+          border-radius: 8px;
+          color: var(--text-secondary);
+          font-size: var(--text-xs);
+          font-weight: 700;
+          text-align: left;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+        .settings-sidebar-btn span {
+          font-size: 18px;
+        }
+        .settings-sidebar-btn:hover {
+          background: rgba(255,255,255,0.03);
+          color: var(--text-primary);
+        }
+        .settings-sidebar-btn.active {
+          background: rgba(255, 94, 54, 0.08);
+          border-color: rgba(255, 94, 54, 0.2);
+          color: var(--color-primary);
+        }
+      `}</style>
+
+      {/* LEFT COLUMN: Settings forms inside segmented tabs */}
+      <div style={{ display: 'flex', gap: '20px' }}>
         
-        {/* Bluetooth printer setup */}
-        <div className="settings-card" style={{ background: 'var(--glass-bg)', padding: '24px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
-          <h3 className="settings-card-heading" style={{ margin: '0 0 16px 0', fontSize: 'var(--text-base)', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)' }}>
-            <span className="material-symbols-rounded" style={{ color: 'var(--color-primary)' }}>print</span>
-            Bluetooth Thermal Printer Setup
-          </h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(0,0,0,0.2)', padding: '12px 16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-glass)' }}>
-              <div>
-                <div style={{ fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--text-primary)' }}>Web Bluetooth API Status</div>
-                <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)', marginTop: '2px' }}>
-                  {isPrinterSupported ? 'Supported in this browser (Chrome / Edge / Opera)' : '⚠️ Not supported. Use Google Chrome on Android.'}
+        {/* Left vertical settings sidebar */}
+        <div style={{
+          width: '180px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '6px',
+          flexShrink: 0,
+          background: 'rgba(0,0,0,0.15)',
+          padding: '12px 8px',
+          borderRadius: 'var(--radius-md)',
+          border: '1px solid var(--border-glass)'
+        }}>
+          <button className={`settings-sidebar-btn ${settingsTab === 'profile' ? 'active' : ''}`} onClick={() => handleTabSelect('profile')}>
+            <span className="material-symbols-rounded">storefront</span>Store Details
+          </button>
+          <button className={`settings-sidebar-btn ${settingsTab === 'payments' ? 'active' : ''}`} onClick={() => handleTabSelect('payments')}>
+            <span className="material-symbols-rounded">account_balance_wallet</span>Payments & Tax
+          </button>
+          <button className={`settings-sidebar-btn ${settingsTab === 'printer' ? 'active' : ''}`} onClick={() => handleTabSelect('printer')}>
+            <span className="material-symbols-rounded">print</span>Printer Roll
+          </button>
+          <button className={`settings-sidebar-btn ${settingsTab === 'invoice' ? 'active' : ''}`} onClick={() => handleTabSelect('invoice')}>
+            <span className="material-symbols-rounded">description</span>A4 Designer
+          </button>
+          <button className={`settings-sidebar-btn ${settingsTab === 'cloud' ? 'active' : ''}`} onClick={() => handleTabSelect('cloud')}>
+            <span className="material-symbols-rounded">cloud_sync</span>Cloud & Drive
+          </button>
+          <button className={`settings-sidebar-btn ${settingsTab === 'security' ? 'active' : ''}`} onClick={() => handleTabSelect('security')}>
+            <span className="material-symbols-rounded">security</span>Lock & Backup
+          </button>
+        </div>
+
+        {/* Tab configuration viewport */}
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          
+          {/* PROFILE CONFIG */}
+          {settingsTab === 'profile' && (
+            <div className="settings-card" style={{ background: 'var(--glass-bg)', padding: '24px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
+              <h3 className="settings-card-heading" style={{ margin: '0 0 16px 0', fontSize: 'var(--text-base)', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)' }}>
+                <span className="material-symbols-rounded" style={{ color: 'var(--color-primary)' }}>storefront</span>
+                Restaurant Profile
+              </h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                  <div className="input-group">
+                    <label>Store Name</label>
+                    <input type="text" className="input" value={config.restaurantName} onChange={(e) => handleConfigChange('restaurantName', e.target.value)} placeholder="e.g. The Taste" />
+                  </div>
+                  <div className="input-group">
+                    <label>Tagline / Cuisine</label>
+                    <input type="text" className="input" value={config.restaurantTagline} onChange={(e) => handleConfigChange('restaurantTagline', e.target.value)} placeholder="e.g. Chinese & Fast Food" />
+                  </div>
+                </div>
+
+                <div className="input-group">
+                  <label>Store Address</label>
+                  <input type="text" className="input" value={config.restaurantAddress} onChange={(e) => handleConfigChange('restaurantAddress', e.target.value)} placeholder="e.g. Kumhrar, Sandalpur Road, Patna" />
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                  <div className="input-group">
+                    <label>Store Phone</label>
+                    <input type="tel" className="input" value={config.restaurantPhone} onChange={(e) => handleConfigChange('restaurantPhone', e.target.value)} placeholder="+91 XXXXXXXXXX" />
+                  </div>
+                  <div className="input-group">
+                    <label>Store Email</label>
+                    <input type="email" className="input" value={config.restaurantEmail} onChange={(e) => handleConfigChange('restaurantEmail', e.target.value)} placeholder="hello@thetaste.com" />
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                  <div className="input-group">
+                    <label>Website URL</label>
+                    <input type="url" className="input" value={config.restaurantWebsite} onChange={(e) => handleConfigChange('restaurantWebsite', e.target.value)} placeholder="thetaste.com" />
+                  </div>
+                  <div className="input-group">
+                    <label>Operating Hours</label>
+                    <input type="text" className="input" value={config.operatingHours} onChange={(e) => handleConfigChange('operatingHours', e.target.value)} placeholder="11:00 AM - 11:00 PM" />
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                  <div className="input-group">
+                    <label>GSTIN / Tax ID</label>
+                    <input type="text" className="input" value={config.gstin} onChange={(e) => handleConfigChange('gstin', e.target.value)} placeholder="GSTIN code" />
+                  </div>
+                  <div className="input-group">
+                    <label>FSSAI License No.</label>
+                    <input type="text" className="input" value={config.fssaiNumber} onChange={(e) => handleConfigChange('fssaiNumber', e.target.value)} placeholder="FSSAI number" />
+                  </div>
                 </div>
               </div>
-              <span className={`badge ${isPrinterSupported ? 'badge-success' : 'badge-danger'}`} style={{ textTransform: 'uppercase', fontSize: '10px' }}>
-                {isPrinterSupported ? 'Ready' : 'Not Supported'}
-              </span>
             </div>
+          )}
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(0,0,0,0.2)', padding: '12px 16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-glass)' }}>
-              <div>
-                <div style={{ fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--text-primary)' }}>Printer Connection Status</div>
-                <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)', marginTop: '2px' }}>
-                  {printerConnected ? `Connected (${printerService.device?.name || 'BLE Device'})` : 'No printer connected'}
+          {/* PAYMENTS & TAXES */}
+          {settingsTab === 'payments' && (
+            <div className="settings-card" style={{ background: 'var(--glass-bg)', padding: '24px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
+              <h3 className="settings-card-heading" style={{ margin: '0 0 16px 0', fontSize: 'var(--text-base)', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)' }}>
+                <span className="material-symbols-rounded" style={{ color: 'var(--color-primary)' }}>account_balance_wallet</span>
+                Payments & Tax Setup
+              </h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: '16px' }}>
+                  <div className="input-group">
+                    <label>UPI ID (VPA) for Scanning</label>
+                    <input type="text" className="input" style={{ borderColor: 'rgba(255, 94, 54, 0.3)' }} value={config.upiId} onChange={(e) => handleConfigChange('upiId', e.target.value)} placeholder="merchant@upi" />
+                  </div>
+                  <div className="input-group">
+                    <label>Merchant Name</label>
+                    <input type="text" className="input" value={config.upiName} onChange={(e) => handleConfigChange('upiName', e.target.value)} placeholder="Store Name" />
+                  </div>
+                </div>
+                <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-warning)', marginTop: '-8px', fontWeight: 600 }}>
+                  ⚠️ Critical: Verification of UPI VPA is required. Customers scan and pay directly to this address.
+                </p>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                  <div className="input-group">
+                    <label>Tax Percentage Rate (%)</label>
+                    <input type="number" className="input" value={config.gstPercent} onChange={(e) => handleConfigChange('gstPercent', e.target.value)} placeholder="5" min="0" step="0.5" />
+                  </div>
+                  <div className="input-group">
+                    <label>Order Number Prefix</label>
+                    <input type="text" className="input" value={config.orderNumberPrefix} onChange={(e) => handleConfigChange('orderNumberPrefix', e.target.value)} placeholder="TT" maxLength="4" />
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                  <div className="input-group">
+                    <label>Currency Code</label>
+                    <select className="input" value={config.currencyCode} onChange={(e) => handleConfigChange('currencyCode', e.target.value)} style={{ fontWeight: 700 }}>
+                      <option value="INR">INR (Indian Rupee)</option>
+                      <option value="USD">USD (US Dollar)</option>
+                      <option value="EUR">EUR (Euro)</option>
+                      <option value="GBP">GBP (British Pound)</option>
+                      <option value="AUD">AUD (Australian Dollar)</option>
+                      <option value="CAD">CAD (Canadian Dollar)</option>
+                    </select>
+                  </div>
+                  <div className="input-group">
+                    <label>Currency Symbol</label>
+                    <input type="text" className="input" value={config.currencySymbol} onChange={(e) => handleConfigChange('currencySymbol', e.target.value)} placeholder="₹" style={{ fontWeight: 700 }} />
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                  <div className="input-group">
+                    <label>Tax System Type</label>
+                    <select className="input" value={config.taxType} onChange={(e) => handleConfigChange('taxType', e.target.value)} style={{ fontWeight: 700 }}>
+                      <option value="GST">GST (Goods & Services Tax)</option>
+                      <option value="VAT">VAT (Value Added Tax)</option>
+                      <option value="Sales Tax">Sales Tax</option>
+                      <option value="None">None (Tax-Free)</option>
+                    </select>
+                  </div>
+                  <div className="input-group">
+                    <label>Tax Label on Bill</label>
+                    <input type="text" className="input" value={config.taxLabel} onChange={(e) => handleConfigChange('taxLabel', e.target.value)} placeholder="GST or VAT" style={{ fontWeight: 700 }} />
+                  </div>
                 </div>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <span style={{ fontSize: 'var(--text-xs)', fontWeight: 800, color: printerConnected ? 'var(--color-success)' : 'var(--text-muted)' }}>
-                  {printerConnected ? 'CONNECTED' : 'DISCONNECTED'}
-                </span>
-                <span className={`status-dot ${printerConnected ? 'online' : 'offline'}`} style={{ width: '8px', height: '8px' }}></span>
+            </div>
+          )}
+
+          {/* PRINTER ROLL SETTINGS */}
+          {settingsTab === 'printer' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              <div className="settings-card" style={{ background: 'var(--glass-bg)', padding: '24px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
+                <h3 className="settings-card-heading" style={{ margin: '0 0 16px 0', fontSize: 'var(--text-base)', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)' }}>
+                  <span className="material-symbols-rounded" style={{ color: 'var(--color-primary)' }}>print</span>
+                  Bluetooth Printer setup
+                </h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(0,0,0,0.2)', padding: '12px 16px', borderRadius: '8px', border: '1px solid var(--border-glass)' }}>
+                    <div>
+                      <div style={{ fontSize: 'var(--text-xs)', fontWeight: 700, color: 'var(--text-primary)' }}>Web Bluetooth API Support</div>
+                      <div style={{ fontSize: '10px', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                        {isPrinterSupported ? 'Ready for connection' : '⚠️ Use Chrome on Android / Windows'}
+                      </div>
+                    </div>
+                    <span className={`badge ${isPrinterSupported ? 'badge-success' : 'badge-danger'}`} style={{ fontSize: '9px', fontWeight: 800 }}>
+                      {isPrinterSupported ? 'OK' : 'ERR'}
+                    </span>
+                  </div>
+
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(0,0,0,0.2)', padding: '12px 16px', borderRadius: '8px', border: '1px solid var(--border-glass)' }}>
+                    <div>
+                      <div style={{ fontSize: 'var(--text-xs)', fontWeight: 700, color: 'var(--text-primary)' }}>Connection Status</div>
+                      <div style={{ fontSize: '10px', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                        {printerConnected ? `Connected to ${printerService.device?.name || 'Device'}` : 'Offline'}
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <span className={`status-dot ${printerConnected ? 'online' : 'offline'}`} style={{ width: '8px', height: '8px' }}></span>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '12px' }}>
+                    <button onClick={handleTogglePrinter} disabled={!isPrinterSupported} className={`btn ${printerConnected ? 'btn-danger' : 'btn-primary'}`} style={{ flex: 1, minHeight: '38px', fontSize: 'var(--text-xs)', fontWeight: 700 }}>
+                      {printerConnected ? 'Disconnect' : 'Connect BLE'}
+                    </button>
+                    <button onClick={handlePrintTest} disabled={!printerConnected} className="btn btn-secondary" style={{ flex: 1, minHeight: '38px', fontSize: 'var(--text-xs)', fontWeight: 700 }}>
+                      Print Test
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Advanced Print Roll Settings */}
+              <div className="settings-card" style={{ background: 'var(--glass-bg)', padding: '24px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
+                <h3 className="settings-card-heading" style={{ margin: '0 0 16px 0', fontSize: 'var(--text-base)', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)' }}>
+                  <span className="material-symbols-rounded" style={{ color: 'var(--color-primary)' }}>tune</span>
+                  Thermal Layout & Receipt content
+                </h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: '16px' }}>
+                    <div className="input-group">
+                      <label>Paper Width Roll</label>
+                      <select className="input" value={config.printerWidth} onChange={(e) => handleConfigChange('printerWidth', e.target.value)} style={{ fontWeight: 700 }}>
+                        <option value="58">58mm (32 chars roll)</option>
+                        <option value="76">76mm (42 chars roll)</option>
+                        <option value="80">80mm (48 chars roll)</option>
+                      </select>
+                    </div>
+                    <div className="input-group">
+                      <label>Print Copies</label>
+                      <input type="number" className="input" min="1" max="5" value={config.printCopies} onChange={(e) => handleConfigChange('printCopies', e.target.value)} />
+                    </div>
+                  </div>
+
+                  <div className="input-group">
+                    <label>Print Density / Font Thickness</label>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      {['light', 'normal', 'bold'].map(d => {
+                        const active = config.printDensity === d;
+                        return (
+                          <button
+                            key={d}
+                            onClick={() => handleConfigChange('printDensity', d)}
+                            className={`btn`}
+                            style={{
+                              flex: 1, minHeight: '34px', fontSize: 'var(--text-xs)', fontWeight: active ? 800 : 500,
+                              borderRadius: 'var(--radius-md)', cursor: 'pointer',
+                              border: `1.5px solid ${active ? 'var(--color-primary)' : 'var(--border-glass)'}`,
+                              background: active ? 'rgba(255,94,54,0.1)' : 'rgba(0,0,0,0.2)',
+                              color: active ? 'var(--color-primary)' : 'var(--text-secondary)',
+                              transition: 'all 0.2s'
+                            }}
+                          >
+                            {d.toUpperCase()}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label style={{ marginBottom: '10px', display: 'block', fontSize: 'var(--text-xs)', fontWeight: 700 }}>Include in Receipt</label>
+                    <div style={{ background: 'rgba(0,0,0,0.15)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-glass)', padding: '4px 16px' }}>
+                      {[
+                        { id: 'showLogoOnReceipt', label: 'Show Brand Logo / Header Title' },
+                        { id: 'showAddressOnReceipt', label: 'Print Address Details' },
+                        { id: 'showPhoneOnReceipt', label: 'Print Contact Phone Number' },
+                        { id: 'showGstinOnReceipt', label: 'Print Store GSTIN Number' },
+                        { id: 'showFssaiOnReceipt', label: 'Print Store FSSAI License' },
+                        { id: 'showNotesOnReceipt', label: 'Print Customer Cooking Notes' },
+                        { id: 'showFooterOnReceipt', label: 'Print Receipt Footer message' },
+                        { id: 'autoPrintOnConfirm', label: 'Auto-print instantly on payment confirm' }
+                      ].map(toggle => (
+                        <div key={toggle.id} className="settings-toggle-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                          <span style={{ fontSize: 'var(--text-xs)', fontWeight: 500 }}>{toggle.label}</span>
+                          <label className="settings-toggle-switch" style={{ position: 'relative', display: 'inline-block', width: '38px', height: '22px' }}>
+                            <input
+                              type="checkbox"
+                              checked={config[toggle.id] === 'true' || config[toggle.id] === true}
+                              onChange={(e) => handleConfigChange(toggle.id, e.target.checked ? 'true' : 'false')}
+                              style={{ opacity: 0, width: 0, height: 0 }}
+                            />
+                            <span className="settings-toggle-track" style={{ position: 'absolute', cursor: 'pointer', inset: 0, background: config[toggle.id] === 'true' || config[toggle.id] === true ? 'var(--color-primary)' : 'rgba(255,255,255,0.1)', borderRadius: '34px', transition: '0.2s' }}></span>
+                            <span className="settings-toggle-thumb" style={{ position: 'absolute', height: '16px', width: '16px', left: config[toggle.id] === 'true' || config[toggle.id] === true ? '19px' : '3px', bottom: '3px', background: 'white', borderRadius: '50%', transition: '0.2s' }}></span>
+                          </label>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
+          )}
 
-            <div style={{ display: 'flex', gap: '12px' }}>
-              <button onClick={handleTogglePrinter} disabled={!isPrinterSupported} className={`btn ${printerConnected ? 'btn-danger' : 'btn-primary'}`} style={{ flex: 1, minHeight: '40px', fontSize: 'var(--text-xs)', fontWeight: 700 }}>
-                {printerConnected ? 'Disconnect Printer' : 'Connect BLE Printer'}
-              </button>
-              <button onClick={handlePrintTest} disabled={!printerConnected} className="btn btn-secondary" style={{ flex: 1, minHeight: '40px', fontSize: 'var(--text-xs)', fontWeight: 700 }}>
-                Print Test Page
-              </button>
-            </div>
-          </div>
-        </div>
+          {/* INVOICE A4 DESIGNER */}
+          {settingsTab === 'invoice' && (
+            <div className="settings-card" style={{ background: 'var(--glass-bg)', padding: '24px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
+              <h3 className="settings-card-heading" style={{ margin: '0 0 16px 0', fontSize: 'var(--text-base)', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)' }}>
+                <span className="material-symbols-rounded" style={{ color: 'var(--color-primary)' }}>palette</span>
+                Bill & A4 Invoice Designer
+              </h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                  <div className="input-group">
+                    <label>Invoice Theme Style</label>
+                    <select className="input" value={config.invoiceTemplate} onChange={(e) => handleConfigChange('invoiceTemplate', e.target.value)} style={{ fontWeight: 700 }}>
+                      <option value="minimalist">Minimalist Modern (Airy & Clean)</option>
+                      <option value="luxury">Luxury Gold (Elegant Serif Titles)</option>
+                      <option value="executive">Executive Navy (Corporate Solid Grid)</option>
+                      <option value="chic">Chic Rose (Cafe Peach Aesthetic)</option>
+                    </select>
+                  </div>
+                  <div className="input-group">
+                    <label>Font Family</label>
+                    <select className="input" value={config.invoiceFontFamily} onChange={(e) => handleConfigChange('invoiceFontFamily', e.target.value)} style={{ fontWeight: 700 }}>
+                      <option value="sans-serif">Plus Jakarta Sans / Inter (Modern)</option>
+                      <option value="serif">Georgia / Garamond (Classic Serif)</option>
+                      <option value="slab">Roboto Slab (Solid Executive)</option>
+                      <option value="monospace">JetBrains Mono (Retro Grid)</option>
+                    </select>
+                  </div>
+                </div>
 
-        {/* Restaurant profile setup */}
-        <div className="settings-card" style={{ background: 'var(--glass-bg)', padding: '24px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
-          <h3 className="settings-card-heading" style={{ margin: '0 0 16px 0', fontSize: 'var(--text-base)', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)' }}>
-            <span className="material-symbols-rounded" style={{ color: 'var(--color-primary)' }}>storefront</span>
-            Restaurant Profile & Branding
-          </h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-            <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
-              <div className="input-group" style={{ flex: 1, minWidth: '200px' }}>
-                <label>Restaurant Name</label>
-                <input type="text" className="input" value={config.restaurantName} onChange={(e) => handleConfigChange('restaurantName', e.target.value)} placeholder="e.g. The Taste" />
-              </div>
-              <div className="input-group" style={{ flex: 1, minWidth: '200px' }}>
-                <label>Tagline / Subtitle</label>
-                <input type="text" className="input" value={config.restaurantTagline} onChange={(e) => handleConfigChange('restaurantTagline', e.target.value)} placeholder="e.g. Chinese & Fast Food" />
-              </div>
-            </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: '16px', alignItems: 'flex-end' }}>
+                  <div className="input-group">
+                    <label>Invoice Title Header</label>
+                    <input type="text" className="input" value={config.invoiceTitle} onChange={(e) => handleConfigChange('invoiceTitle', e.target.value)} placeholder="TAX INVOICE" />
+                  </div>
+                  <div className="input-group">
+                    <label>Theme Brand Color</label>
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                      <input
+                        type="color"
+                        value={config.invoicePrimaryColor}
+                        onChange={(e) => handleConfigChange('invoicePrimaryColor', e.target.value)}
+                        style={{ border: '1px solid var(--border-glass)', background: 'none', width: '38px', height: '38px', borderRadius: '8px', cursor: 'pointer', padding: 0 }}
+                      />
+                      <input
+                        type="text"
+                        className="input"
+                        value={config.invoicePrimaryColor}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          if (/^#[0-9A-F]{0,6}$/i.test(val)) handleConfigChange('invoicePrimaryColor', val);
+                        }}
+                        style={{ maxWidth: '80px', textTransform: 'uppercase', textAlign: 'center', fontSize: 'var(--text-xs)', fontWeight: 700 }}
+                      />
+                    </div>
+                  </div>
+                </div>
 
-            <div className="input-group">
-              <label>Store Address</label>
-              <input type="text" className="input" value={config.restaurantAddress} onChange={(e) => handleConfigChange('restaurantAddress', e.target.value)} placeholder="e.g. Counter 4, Sector 5, Kolkata" />
-            </div>
+                <div className="input-group">
+                  <label>Logo URL (Direct HTTP Link)</label>
+                  <input type="url" className="input" value={config.invoiceLogoUrl} onChange={(e) => handleConfigChange('invoiceLogoUrl', e.target.value)} placeholder="https://site.com/logo.png" />
+                </div>
 
-            <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
-              <div className="input-group" style={{ flex: 1, minWidth: '180px' }}>
-                <label>Phone Number</label>
-                <input type="tel" className="input" value={config.restaurantPhone} onChange={(e) => handleConfigChange('restaurantPhone', e.target.value)} placeholder="+91 98765 43210" />
-              </div>
-              <div className="input-group" style={{ flex: 1, minWidth: '180px' }}>
-                <label>Email Address</label>
-                <input type="email" className="input" value={config.restaurantEmail} onChange={(e) => handleConfigChange('restaurantEmail', e.target.value)} placeholder="hello@thetaste.co.in" />
-              </div>
-            </div>
+                <div className="input-group">
+                  <label>Invoice Terms & Conditions</label>
+                  <textarea className="input" value={config.invoiceTerms} onChange={(e) => handleConfigChange('invoiceTerms', e.target.value)} style={{ minHeight: '60px', fontFamily: 'var(--font-sans)', fontSize: 'var(--text-xs)' }} />
+                </div>
 
-            <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
-              <div className="input-group" style={{ flex: 1, minWidth: '180px' }}>
-                <label>Website</label>
-                <input type="url" className="input" value={config.restaurantWebsite} onChange={(e) => handleConfigChange('restaurantWebsite', e.target.value)} placeholder="thetaste.co.in" />
-              </div>
-              <div className="input-group" style={{ flex: 1, minWidth: '180px' }}>
-                <label>Operating Hours</label>
-                <input type="text" className="input" value={config.operatingHours} onChange={(e) => handleConfigChange('operatingHours', e.target.value)} placeholder="10:00 AM - 11:00 PM" />
-              </div>
-            </div>
+                <div className="input-group" style={{ maxWidth: '320px' }}>
+                  <label>Signature Text label</label>
+                  <input type="text" className="input" value={config.invoiceSignatureText} onChange={(e) => handleConfigChange('invoiceSignatureText', e.target.value)} />
+                </div>
 
-            <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
-              <div className="input-group" style={{ flex: 1, minWidth: '180px' }}>
-                <label>GSTIN / Tax ID</label>
-                <input type="text" className="input" value={config.gstin} onChange={(e) => handleConfigChange('gstin', e.target.value)} placeholder="e.g. 22AAAAA0000A1Z5" />
-              </div>
-              <div className="input-group" style={{ flex: 1, minWidth: '180px' }}>
-                <label>FSSAI License No.</label>
-                <input type="text" className="input" value={config.fssaiNumber} onChange={(e) => handleConfigChange('fssaiNumber', e.target.value)} placeholder="12345678901234" />
-              </div>
-            </div>
-
-            <div className="input-group">
-              <label>Receipt Footer Message</label>
-              <input type="text" className="input" value={config.receiptFooter} onChange={(e) => handleConfigChange('receiptFooter', e.target.value)} placeholder="Thank you! Visit again!" />
-            </div>
-          </div>
-        </div>
-
-        {/* Payments and tax setup */}
-        <div className="settings-card" style={{ background: 'var(--glass-bg)', padding: '24px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
-          <h3 className="settings-card-heading" style={{ margin: '0 0 16px 0', fontSize: 'var(--text-base)', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)' }}>
-            <span className="material-symbols-rounded" style={{ color: 'var(--color-primary)' }}>account_balance_wallet</span>
-            Payments & Tax Setup
-          </h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-            <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
-              <div className="input-group" style={{ flex: 1.5, minWidth: '200px' }}>
-                <label>UPI ID (VPA)</label>
-                <input type="text" className="input" style={{ border: '1px solid rgba(255, 94, 54, 0.25)' }} value={config.upiId} onChange={(e) => handleConfigChange('upiId', e.target.value)} placeholder="thetaste@upi" />
-              </div>
-              <div className="input-group" style={{ flex: 1, minWidth: '150px' }}>
-                <label>Merchant Name</label>
-                <input type="text" className="input" value={config.upiName} onChange={(e) => handleConfigChange('upiName', e.target.value)} placeholder="The Taste Store" />
-              </div>
-            </div>
-            <p style={{ fontSize: 'var(--text-xs)', color: '#FF8960', marginTop: '-6px', fontWeight: 500 }}>
-              * Critical: Make sure the UPI VPA is correct. Scanning customers will pay directly to this account.
-            </p>
-
-            <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
-              <div className="input-group" style={{ flex: 1, minWidth: '180px' }}>
-                <label>Tax Rate (%)</label>
-                <input type="number" className="input" value={config.gstPercent} onChange={(e) => handleConfigChange('gstPercent', e.target.value)} placeholder="5" min="0" step="0.5" />
-              </div>
-              <div className="input-group" style={{ flex: 1, minWidth: '180px' }}>
-                <label>Order Number Prefix</label>
-                <input type="text" className="input" value={config.orderNumberPrefix} onChange={(e) => handleConfigChange('orderNumberPrefix', e.target.value)} placeholder="TT" maxLength="4" />
+                <div>
+                  <label style={{ marginBottom: '10px', display: 'block', fontSize: 'var(--text-xs)', fontWeight: 700 }}>Invoice Layout elements</label>
+                  <div style={{ background: 'rgba(0,0,0,0.15)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-glass)', padding: '4px 16px' }}>
+                    {[
+                      { id: 'invoiceShowUpiQr', label: 'Show dynamic scan-to-pay UPI QR block' },
+                      { id: 'invoiceShowGrid', label: 'Draw item grid gridlines' },
+                      { id: 'invoiceShowSignature', label: 'Draw signature authorization line' },
+                      { id: 'invoiceShowWatermark', label: 'Draw subtle branding background watermark' }
+                    ].map(toggle => (
+                      <div key={toggle.id} className="settings-toggle-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                        <span style={{ fontSize: 'var(--text-xs)', fontWeight: 500 }}>{toggle.label}</span>
+                        <label className="settings-toggle-switch" style={{ position: 'relative', display: 'inline-block', width: '38px', height: '22px' }}>
+                          <input
+                            type="checkbox"
+                            checked={config[toggle.id] === 'true' || config[toggle.id] === true}
+                            onChange={(e) => handleConfigChange(toggle.id, e.target.checked ? 'true' : 'false')}
+                            style={{ opacity: 0, width: 0, height: 0 }}
+                          />
+                          <span className="settings-toggle-track" style={{ position: 'absolute', cursor: 'pointer', inset: 0, background: config[toggle.id] === 'true' || config[toggle.id] === true ? 'var(--color-primary)' : 'rgba(255,255,255,0.1)', borderRadius: '34px', transition: '0.2s' }}></span>
+                          <span className="settings-toggle-thumb" style={{ position: 'absolute', height: '16px', width: '16px', left: config[toggle.id] === 'true' || config[toggle.id] === true ? '19px' : '3px', bottom: '3px', background: 'white', borderRadius: '50%', transition: '0.2s' }}></span>
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
             </div>
+          )}
 
-            <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
-              <div className="input-group" style={{ flex: 1, minWidth: '180px' }}>
-                <label>Currency Code</label>
-                <select className="input" value={config.currencyCode} onChange={(e) => handleConfigChange('currencyCode', e.target.value)}>
-                  <option value="INR">INR (Indian Rupee)</option>
-                  <option value="USD">USD (US Dollar)</option>
-                  <option value="EUR">EUR (Euro)</option>
-                  <option value="GBP">GBP (British Pound)</option>
-                  <option value="AUD">AUD (Australian Dollar)</option>
-                  <option value="CAD">CAD (Canadian Dollar)</option>
-                </select>
+          {/* CLOUD SYNC & DRIVE */}
+          {settingsTab === 'cloud' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              
+              {/* Supabase Sync */}
+              <div className="settings-card" style={{ background: 'var(--glass-bg)', padding: '24px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
+                <h3 className="settings-card-heading" style={{ margin: '0 0 16px 0', fontSize: 'var(--text-base)', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)' }}>
+                  <span className="material-symbols-rounded" style={{ color: 'var(--color-primary)' }}>cloud_sync</span>
+                  Supabase DB Sync Integration
+                </h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                  <div className="input-group">
+                    <label>Supabase project URL</label>
+                    <input type="url" className="input" value={config.supabaseUrl} onChange={(e) => handleConfigChange('supabaseUrl', e.target.value)} placeholder="https://project.supabase.co" />
+                  </div>
+                  <div className="input-group">
+                    <label>Anon Client Public key</label>
+                    <input type="password" className="input" value={config.supabaseKey} onChange={(e) => handleConfigChange('supabaseKey', e.target.value)} placeholder="Anon Client Key" />
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                    <div className="input-group">
+                      <label>Cloud staff email</label>
+                      <input type="email" className="input" value={config.supabaseEmail} onChange={(e) => handleConfigChange('supabaseEmail', e.target.value)} placeholder="staff@taste.com" />
+                    </div>
+                    <div className="input-group">
+                      <label>Cloud staff password</label>
+                      <input type="password" className="input" value={supabasePassword} onChange={(e) => setSupabasePassword(e.target.value)} placeholder="Password" />
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '6px' }}>
+                    <button onClick={handleTestCloudSync} disabled={syncTesting} className="btn btn-secondary btn-sm" style={{ flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '4px', height: '34px' }}>
+                      <span className={`material-symbols-rounded ${syncTesting ? 'animate-spin' : ''}`} style={{ fontSize: '16px' }}>sync</span>
+                      Test Conn
+                    </button>
+                    <button onClick={handleCloudSignIn} className="btn btn-primary btn-sm" style={{ flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '4px', height: '34px' }}>
+                      <span className="material-symbols-rounded" style={{ fontSize: '16px' }}>login</span>
+                      Sign In Device
+                    </button>
+                    <button onClick={handleCloudSignOut} className="btn btn-secondary btn-sm" style={{ flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '4px', height: '34px' }}>
+                      <span className="material-symbols-rounded" style={{ fontSize: '16px' }}>logout</span>
+                      Sign Out
+                    </button>
+                  </div>
+                </div>
               </div>
-              <div className="input-group" style={{ flex: 1, minWidth: '180px' }}>
-                <label>Currency Symbol</label>
-                <input type="text" className="input" value={config.currencySymbol} onChange={(e) => handleConfigChange('currencySymbol', e.target.value)} placeholder="₹" />
+
+              {/* Google Drive */}
+              <div className="settings-card" style={{ background: 'var(--glass-bg)', padding: '24px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
+                <h3 className="settings-card-heading" style={{ margin: '0 0 16px 0', fontSize: 'var(--text-base)', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)' }}>
+                  <span className="material-symbols-rounded" style={{ color: 'var(--color-primary)' }}>cloud_upload</span>
+                  Google Drive Report Backups
+                </h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                  <div className="input-group">
+                    <label>OAuth 2.0 Client ID</label>
+                    <input type="text" className="input" value={config.googleClientId} onChange={(e) => handleConfigChange('googleClientId', e.target.value)} placeholder="Client ID string" />
+                  </div>
+
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(0,0,0,0.2)', padding: '12px 16px', borderRadius: '8px', border: '1px solid var(--border-glass)' }}>
+                    <div>
+                      <div style={{ fontSize: 'var(--text-xs)', fontWeight: 700, color: 'var(--text-primary)' }}>OAuth Status</div>
+                      <div style={{ fontSize: '10px', color: 'var(--text-secondary)', marginTop: '2px' }}>{driveConnected ? 'Backup folder active' : 'Drive disconnected'}</div>
+                    </div>
+                    <span style={{ fontSize: 'var(--text-xs)', fontWeight: 800, color: driveConnected ? 'var(--color-success)' : 'var(--text-muted)' }}>
+                      {driveConnected ? 'CONNECTED' : 'OFFLINE'}
+                    </span>
+                  </div>
+
+                  <button onClick={handleToggleDrive} className={`btn ${driveConnected ? 'btn-danger' : 'btn-primary'}`} style={{ minHeight: '36px', fontSize: 'var(--text-xs)', fontWeight: 700, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
+                    <span className="material-symbols-rounded" style={{ fontSize: '16px' }}>backup</span>
+                    {driveConnected ? 'Disconnect' : 'Connect GDrive'}
+                  </button>
+
+                  <div style={{ background: 'rgba(0,0,0,0.15)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-glass)', padding: '4px 16px' }}>
+                    <div className="settings-toggle-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0' }}>
+                      <span style={{ fontSize: 'var(--text-xs)', fontWeight: 500 }}>Auto-upload report backups</span>
+                      <label className="settings-toggle-switch" style={{ position: 'relative', display: 'inline-block', width: '38px', height: '22px' }}>
+                        <input
+                          type="checkbox"
+                          checked={config.autoUploadToDrive === 'true' || config.autoUploadToDrive === true}
+                          onChange={(e) => handleConfigChange('autoUploadToDrive', e.target.checked ? 'true' : 'false')}
+                          style={{ opacity: 0, width: 0, height: 0 }}
+                        />
+                        <span className="settings-toggle-track" style={{ position: 'absolute', cursor: 'pointer', inset: 0, background: config.autoUploadToDrive === 'true' || config.autoUploadToDrive === true ? 'var(--color-primary)' : 'rgba(255,255,255,0.1)', borderRadius: '34px', transition: '0.2s' }}></span>
+                        <span className="settings-toggle-thumb" style={{ position: 'absolute', height: '16px', width: '16px', left: config.autoUploadToDrive === 'true' || config.autoUploadToDrive === true ? '19px' : '3px', bottom: '3px', background: 'white', borderRadius: '50%', transition: '0.2s' }}></span>
+                      </label>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
+          )}
 
-            <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
-              <div className="input-group" style={{ flex: 1, minWidth: '180px' }}>
-                <label>Tax Type</label>
-                <select className="input" value={config.taxType} onChange={(e) => handleConfigChange('taxType', e.target.value)}>
-                  <option value="GST">GST (Goods & Services Tax)</option>
-                  <option value="VAT">VAT (Value Added Tax)</option>
-                  <option value="Sales Tax">Sales Tax</option>
-                  <option value="None">None (Tax-Free)</option>
-                </select>
-              </div>
-              <div className="input-group" style={{ flex: 1, minWidth: '180px' }}>
-                <label>Tax Label on Bill</label>
-                <input type="text" className="input" value={config.taxLabel} onChange={(e) => handleConfigChange('taxLabel', e.target.value)} placeholder="GST or VAT" />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Security master PIN change */}
-        <div className="settings-card" style={{ background: 'var(--glass-bg)', padding: '24px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
-          <h3 className="settings-card-heading" style={{ margin: '0 0 16px 0', fontSize: 'var(--text-base)', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)' }}>
-            <span className="material-symbols-rounded" style={{ color: 'var(--color-primary)' }}>security</span>
-            {isOwner ? 'Security Credentials (Owner)' : 'Security Credentials (Manager)'}
-          </h3>
-          <div className="input-group" style={{ maxWidth: '320px' }}>
-            <label htmlFor="adminPin">{isOwner ? 'Admin Lock PIN' : 'Personal Manager PIN'} (leave blank to keep)</label>
-            <input
-              type="password"
-              id="adminPin"
-              className="input"
-              value={newPin}
-              onChange={(e) => {
-                const val = e.target.value;
-                if (/^[0-9]{0,4}$/.test(val)) setNewPin(val);
-              }}
-              maxLength={4}
-              placeholder="4 digits"
-              style={{
-                background: 'rgba(0,0,0,0.25)', border: '1px solid var(--border-glass)',
-                color: 'var(--text-primary)', letterSpacing: '0.5em', textAlign: 'center',
-                fontWeight: 800, fontSize: '1.25rem', padding: '12px 14px',
-                borderRadius: 'var(--radius-md)', width: '100%', outline: 'none'
-              }}
-            />
-          </div>
-        </div>
-
-        {/* Access permissions */}
-        <div className="settings-card" style={{ background: 'var(--glass-bg)', padding: '24px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
-          <h3 className="settings-card-heading" style={{ margin: '0 0 16px 0', fontSize: 'var(--text-base)', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)' }}>
-            <span className="material-symbols-rounded" style={{ color: 'var(--color-primary)' }}>admin_panel_settings</span>
-            Access & Permissions
-          </h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <div style={{ background: 'rgba(0,0,0,0.15)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-glass)', padding: '6px 16px' }}>
-              {[
-                { id: 'requirePinForOrder', label: 'Require PIN for every order' },
-                { id: 'allowManagerAdmin', label: 'Allow managers to access admin panel' },
-                { id: 'allowCashierVoid', label: 'Allow cashiers to void/refund orders' },
-                { id: 'autoLockTerminal', label: 'Auto-lock terminal after inactivity' }
-              ].map(toggle => (
-                <div key={toggle.id} className="settings-toggle-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-                  <span className="settings-toggle-row-label" style={{ fontSize: 'var(--text-xs)', fontWeight: 500 }}>{toggle.label}</span>
-                  <label className="settings-toggle-switch" style={{ position: 'relative', display: 'inline-block', width: '38px', height: '22px' }}>
+          {/* SECURITY & DATA BACKUPS */}
+          {settingsTab === 'security' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              
+              {/* Security PIN Change & Auto-lock */}
+              <div className="settings-card" style={{ background: 'var(--glass-bg)', padding: '24px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
+                <h3 className="settings-card-heading" style={{ margin: '0 0 16px 0', fontSize: 'var(--text-base)', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)' }}>
+                  <span className="material-symbols-rounded" style={{ color: 'var(--color-primary)' }}>security</span>
+                  Terminal Lock & Session Timeout
+                </h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                  <div className="input-group" style={{ maxWidth: '280px' }}>
+                    <label>Set Lock PIN Code (leave blank to keep)</label>
                     <input
-                      type="checkbox"
-                      className="receipt-toggle"
-                      checked={config[toggle.id] === 'true' || config[toggle.id] === true}
-                      onChange={(e) => handleConfigChange(toggle.id, e.target.checked ? 'true' : 'false')}
-                      style={{ opacity: 0, width: 0, height: 0 }}
+                      type="password"
+                      className="input"
+                      value={newPin}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (/^[0-9]{0,4}$/.test(val)) setNewPin(val);
+                      }}
+                      maxLength={4}
+                      placeholder="4 digits"
+                      style={{
+                        background: 'rgba(0,0,0,0.25)', border: '1px solid var(--border-glass)',
+                        color: 'var(--text-primary)', letterSpacing: '0.5em', textAlign: 'center',
+                        fontWeight: 800, fontSize: '1.2rem', padding: '8px 10px',
+                        borderRadius: '6px', width: '100%', outline: 'none'
+                      }}
                     />
-                    <span className="settings-toggle-track" style={{ position: 'absolute', cursor: 'pointer', inset: 0, background: config[toggle.id] === 'true' || config[toggle.id] === true ? 'var(--color-primary)' : 'rgba(255,255,255,0.1)', borderRadius: '34px', transition: '0.2s' }}></span>
-                    <span className="settings-toggle-thumb" style={{ position: 'absolute', height: '16px', width: '16px', left: config[toggle.id] === 'true' || config[toggle.id] === true ? '19px' : '3px', bottom: '3px', background: 'white', borderRadius: '50%', transition: '0.2s' }}></span>
-                  </label>
+                  </div>
+
+                  <div style={{ background: 'rgba(0,0,0,0.15)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-glass)', padding: '4px 16px' }}>
+                    {[
+                      { id: 'requirePinForOrder', label: 'Require security PIN verification for every POS order checkout' },
+                      { id: 'allowManagerAdmin', label: 'Grant managers full authorization to access Admin Console' },
+                      { id: 'allowCashierVoid', label: 'Grant cashiers privilege to void or refund order records' },
+                      { id: 'autoLockTerminal', label: 'Activate automatic lock during cashier terminal inactivity' }
+                    ].map(toggle => (
+                      <div key={toggle.id} className="settings-toggle-row" style={{ display: 'flex', justifySelf: 'stretch', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                        <span style={{ fontSize: 'var(--text-xs)', fontWeight: 500 }}>{toggle.label}</span>
+                        <label className="settings-toggle-switch" style={{ position: 'relative', display: 'inline-block', width: '38px', height: '22px' }}>
+                          <input
+                            type="checkbox"
+                            checked={config[toggle.id] === 'true' || config[toggle.id] === true}
+                            onChange={(e) => handleConfigChange(toggle.id, e.target.checked ? 'true' : 'false')}
+                            style={{ opacity: 0, width: 0, height: 0 }}
+                          />
+                          <span className="settings-toggle-track" style={{ position: 'absolute', cursor: 'pointer', inset: 0, background: config[toggle.id] === 'true' || config[toggle.id] === true ? 'var(--color-primary)' : 'rgba(255,255,255,0.1)', borderRadius: '34px', transition: '0.2s' }}></span>
+                          <span className="settings-toggle-thumb" style={{ position: 'absolute', height: '16px', width: '16px', left: config[toggle.id] === 'true' || config[toggle.id] === true ? '19px' : '3px', bottom: '3px', background: 'white', borderRadius: '50%', transition: '0.2s' }}></span>
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                    <div className="input-group" style={{ opacity: config.autoLockTerminal === 'true' || config.autoLockTerminal === true ? 1 : 0.4 }}>
+                      <label>Auto-Lock Inactivity Limit</label>
+                      <select className="input" disabled={config.autoLockTerminal !== 'true' && config.autoLockTerminal !== true} value={config.autoLockTimeout} onChange={(e) => handleConfigChange('autoLockTimeout', e.target.value)} style={{ fontWeight: 700 }}>
+                        <option value="5">5 Minutes</option>
+                        <option value="10">10 Minutes</option>
+                        <option value="15">15 Minutes</option>
+                        <option value="30">30 Minutes</option>
+                      </select>
+                    </div>
+
+                    <div className="input-group">
+                      <label>Active Staff session limit</label>
+                      <select className="input" value={config.sessionDuration} onChange={(e) => handleConfigChange('sessionDuration', e.target.value)} style={{ fontWeight: 700 }}>
+                        <option value="4">4 Hours</option>
+                        <option value="8">8 Hours (Standard)</option>
+                        <option value="12">12 Hours</option>
+                        <option value="24">24 Hours</option>
+                      </select>
+                    </div>
+                  </div>
                 </div>
-              ))}
-            </div>
-
-            <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
-              <div className="input-group" style={{ flex: 1, minWidth: '200px', opacity: config.autoLockTerminal === 'true' ? 1 : 0.4 }}>
-                <label>Auto-Lock Inactivity Timeout</label>
-                <select className="input" disabled={config.autoLockTerminal !== 'true'} value={config.autoLockTimeout} onChange={(e) => handleConfigChange('autoLockTimeout', e.target.value)}>
-                  <option value="5">5 Minutes</option>
-                  <option value="10">10 Minutes</option>
-                  <option value="15">15 Minutes</option>
-                  <option value="30">30 Minutes</option>
-                </select>
               </div>
 
-              <div className="input-group" style={{ flex: 1, minWidth: '200px' }}>
-                <label>Active Session Duration</label>
-                <select className="input" value={config.sessionDuration} onChange={(e) => handleConfigChange('sessionDuration', e.target.value)}>
-                  <option value="4">4 Hours</option>
-                  <option value="8">8 Hours (Standard)</option>
-                  <option value="12">12 Hours</option>
-                  <option value="24">24 Hours</option>
-                </select>
+              {/* Data backups */}
+              <div className="settings-card" style={{ background: 'var(--glass-bg)', padding: '24px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
+                <h3 className="settings-card-heading" style={{ margin: '0 0 16px 0', fontSize: 'var(--text-base)', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)' }}>
+                  <span className="material-symbols-rounded" style={{ color: 'var(--color-primary)' }}>backup</span>
+                  Database Backups & CSV ledger exports
+                </h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                  <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)', lineHeight: 1.5, margin: 0 }}>
+                    Execute exports of store details as a JSON config file, or backup transaction logs directly.
+                  </p>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                    <button onClick={handleExportJSON} className="btn btn-secondary btn-sm" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '4px', height: '36px', fontWeight: 700 }}>
+                      <span className="material-symbols-rounded" style={{ fontSize: '16px' }}>download</span>
+                      JSON Config Backup
+                    </button>
+                    <button onClick={handleExportCSV} className="btn btn-secondary btn-sm" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '4px', height: '36px', fontWeight: 700 }}>
+                      <span className="material-symbols-rounded" style={{ fontSize: '16px' }}>table_view</span>
+                      CSV Order Logs (30d)
+                    </button>
+                  </div>
+                  <div>
+                    <input ref={importFileInputRef} type="file" accept=".json" onChange={handleImportRestore} style={{ display: 'none' }} />
+                    <button onClick={() => importFileInputRef.current?.click()} className="btn btn-secondary btn-sm" style={{ width: '100%', height: '36px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '4px', border: '1px solid rgba(245,158,11,0.25)', background: 'rgba(245,158,11,0.04)', color: '#F59E0B', fontWeight: 700 }}>
+                      <span className="material-symbols-rounded" style={{ fontSize: '16px' }}>upload</span>
+                      Restore / Upload JSON Backup file
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
-        </div>
+          )}
 
-        {/* Theme Preferences */}
-        <div className="settings-card" style={{ background: 'var(--glass-bg)', padding: '24px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
-          <h3 className="settings-card-heading" style={{ margin: '0 0 4px 0', fontSize: 'var(--text-base)', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)' }}>
-            <span className="material-symbols-rounded" style={{ color: 'var(--color-primary)' }}>palette</span>
-            Theme Preference
-          </h3>
-          <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)', lineHeight: 1.5, margin: '0 0 16px 0', fontWeight: 500 }}>
-            Select your preferred display theme for the console terminal.
-          </p>
-          <div style={{ display: 'flex', gap: '12px', marginBottom: '20px' }}>
-            {[
-              { id: 'dark', label: 'Dark Mode', icon: 'dark_mode' },
-              { id: 'light', label: 'Light Mode', icon: 'light_mode' },
-              { id: 'system', label: 'System Theme', icon: 'computer' }
-            ].map(theme => {
-              const active = config.app_theme === theme.id;
-              return (
-                <button
-                  key={theme.id}
-                  onClick={() => {
-                    playSound(700, 60);
-                    handleConfigChange('app_theme', theme.id);
-                  }}
-                  className={`btn btn-theme-option ${active ? 'active' : ''}`}
-                  style={{
-                    flex: 1, minHeight: '44px', display: 'inline-flex', alignItems: 'center',
-                    justifyContent: 'center', gap: '8px', borderRadius: 'var(--radius-md)',
-                    border: `1.5px solid ${active ? 'var(--color-primary)' : 'var(--border-glass)'}`,
-                    background: active ? 'rgba(255,94,54,0.12)' : 'rgba(0,0,0,0.15)',
-                    color: active ? 'var(--color-primary)' : 'var(--text-secondary)',
-                    fontWeight: active ? '700' : '500', cursor: 'pointer'
-                  }}
-                >
-                  <span className="material-symbols-rounded" style={{ fontSize: '18px' }}>{theme.icon}</span>
-                  {theme.label}
-                </button>
-              );
-            })}
-          </div>
-          {/* Colors preview */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', padding: '16px', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-glass)', background: 'rgba(0,0,0,0.1)' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'center' }}>
-              <span style={{ fontSize: '0.6rem', color: 'var(--text-muted)', fontWeight: 700 }}>BACKGROUND</span>
-              <div style={{ width: '100%', height: '32px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-glass)', background: config.app_theme === 'light' ? '#F8F9FC' : '#040406', transition: 'background 0.3s' }}></div>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'center' }}>
-              <span style={{ fontSize: '0.6rem', color: 'var(--text-muted)', fontWeight: 700 }}>SURFACE</span>
-              <div style={{ width: '100%', height: '32px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-glass)', background: config.app_theme === 'light' ? '#FFFFFF' : '#0B0B0F', transition: 'background 0.3s' }}></div>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'center' }}>
-              <span style={{ fontSize: '0.6rem', color: 'var(--text-muted)', fontWeight: 700 }}>TEXT COLOR</span>
-              <div style={{ width: '100%', height: '32px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-glass)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', fontWeight: 700, background: config.app_theme === 'light' ? '#F1F3F9' : '#0E0E14', color: config.app_theme === 'light' ? '#0F172A' : '#F9FAFB', transition: 'background 0.3s, color 0.3s' }}>Aa</div>
-            </div>
-          </div>
-        </div>
-
-        {/* Supabase Synchronization setup */}
-        <div className="settings-card" style={{ background: 'var(--glass-bg)', padding: '24px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
-          <h3 className="settings-card-heading" style={{ margin: '0 0 16px 0', fontSize: 'var(--text-base)', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)' }}>
-            <span className="material-symbols-rounded" style={{ color: 'var(--color-primary)' }}>cloud_sync</span>
-            Cloud Synchronization (Supabase)
-          </h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-            <div className="input-group">
-              <label>Supabase Project URL</label>
-              <input type="url" className="input" value={config.supabaseUrl} onChange={(e) => handleConfigChange('supabaseUrl', e.target.value)} placeholder="https://your-project.supabase.co" />
-            </div>
-
-            <div className="input-group">
-              <label>Supabase Anon Key</label>
-              <input type="password" className="input" value={config.supabaseKey} onChange={(e) => handleConfigChange('supabaseKey', e.target.value)} placeholder="eyJhbGciOiJIUzI1NiIs..." />
-            </div>
-
-            <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
-              <div className="input-group" style={{ flex: 1, minWidth: '180px' }}>
-                <label>Staff Cloud Email</label>
-                <input type="email" className="input" value={config.supabaseEmail} onChange={(e) => handleConfigChange('supabaseEmail', e.target.value)} placeholder="owner@example.com" />
-              </div>
-              <div className="input-group" style={{ flex: 1, minWidth: '180px' }}>
-                <label>Staff Cloud Password</label>
-                <input type="password" className="input" value={supabasePassword} onChange={(e) => setSupabasePassword(e.target.value)} placeholder="Enter to sign in device" />
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginTop: '4px' }}>
-              <button onClick={handleTestCloudSync} disabled={syncTesting} className="btn btn-secondary" style={{ flex: 1, minHeight: '40px', fontSize: 'var(--text-xs)', fontWeight: 700, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
-                {syncTesting ? <span className="material-symbols-rounded animate-spin">sync</span> : <span className="material-symbols-rounded" style={{ fontSize: '18px' }}>sync</span>}
-                {syncTesting ? 'Testing...' : 'Test Cloud Connection'}
-              </button>
-              <button onClick={handleCloudSignIn} className="btn btn-primary" style={{ flex: 1, minHeight: '40px', fontSize: 'var(--text-xs)', fontWeight: 700, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
-                <span className="material-symbols-rounded" style={{ fontSize: '18px' }}>login</span>
-                Staff Cloud Sign In
-              </button>
-              <button onClick={handleCloudSignOut} className="btn btn-secondary" style={{ flex: 1, minHeight: '40px', fontSize: 'var(--text-xs)', fontWeight: 700, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
-                <span className="material-symbols-rounded" style={{ fontSize: '18px' }}>logout</span>
-                Sign Out Cloud
-              </button>
-            </div>
-            <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)', lineHeight: 1.5, margin: 0 }}>
-              Staff cloud password is used only for Supabase Auth session creation and is never saved.
-            </p>
-          </div>
-        </div>
-
-        {/* Google Drive setup */}
-        <div className="settings-card" style={{ background: 'var(--glass-bg)', padding: '24px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
-          <h3 className="settings-card-heading" style={{ margin: '0 0 16px 0', fontSize: 'var(--text-base)', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)' }}>
-            <span className="material-symbols-rounded" style={{ color: 'var(--color-primary)' }}>cloud_upload</span>
-            Google Drive Integration
-          </h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-            <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)', lineHeight: 1.5, margin: 0 }}>
-              Backup business reports directly to your Google Drive in an organized folder structure.
-            </p>
-            <div className="input-group">
-              <label>Google Client ID</label>
-              <input type="text" className="input" value={config.googleClientId} onChange={(e) => handleConfigChange('googleClientId', e.target.value)} placeholder="e.g. 1234-abc.apps.googleusercontent.com" />
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(0,0,0,0.2)', padding: '12px 16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-glass)' }}>
-              <div>
-                <div style={{ fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--text-primary)' }}>Drive Connection Status</div>
-                <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)', marginTop: '2px' }}>{driveConnected ? 'Connected to Google Drive' : 'Disconnected'}</div>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <span style={{ fontSize: 'var(--text-xs)', fontWeight: 800, color: driveConnected ? 'var(--color-success)' : 'var(--text-muted)' }}>
-                  {driveConnected ? 'CONNECTED' : 'DISCONNECTED'}
-                </span>
-                <span className={`status-dot ${driveConnected ? 'online' : 'offline'}`} style={{ width: '8px', height: '8px' }}></span>
-              </div>
-            </div>
-
-            <button onClick={handleToggleDrive} className={`btn ${driveConnected ? 'btn-danger' : 'btn-primary'}`} style={{ minHeight: '40px', fontSize: 'var(--text-xs)', fontWeight: 700, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
-              <span className="material-symbols-rounded" style={{ fontSize: '18px' }}>cloud_sync</span>
-              {driveConnected ? 'Disconnect Google Drive' : 'Connect Google Drive'}
-            </button>
-
-            <div style={{ background: 'rgba(0,0,0,0.15)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-glass)', padding: '6px 16px' }}>
-              <div className="settings-toggle-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0' }}>
-                <span className="settings-toggle-row-label" style={{ fontSize: 'var(--text-xs)', fontWeight: 500 }}>Auto-upload Reports to Drive</span>
-                <label className="settings-toggle-switch" style={{ position: 'relative', display: 'inline-block', width: '38px', height: '22px' }}>
-                  <input
-                    type="checkbox"
-                    className="receipt-toggle"
-                    checked={config.autoUploadToDrive === 'true' || config.autoUploadToDrive === true}
-                    onChange={(e) => handleConfigChange('autoUploadToDrive', e.target.checked ? 'true' : 'false')}
-                    style={{ opacity: 0, width: 0, height: 0 }}
-                  />
-                  <span className="settings-toggle-track" style={{ position: 'absolute', cursor: 'pointer', inset: 0, background: config.autoUploadToDrive === 'true' || config.autoUploadToDrive === true ? 'var(--color-primary)' : 'rgba(255,255,255,0.1)', borderRadius: '34px', transition: '0.2s' }}></span>
-                  <span className="settings-toggle-thumb" style={{ position: 'absolute', height: '16px', width: '16px', left: config.autoUploadToDrive === 'true' || config.autoUploadToDrive === true ? '19px' : '3px', bottom: '3px', background: 'white', borderRadius: '50%', transition: '0.2s' }}></span>
-                </label>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Data backups & CSV exports */}
-        <div className="settings-card" style={{ background: 'var(--glass-bg)', padding: '24px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', marginBottom: '10px' }}>
-          <h3 className="settings-card-heading" style={{ margin: '0 0 16px 0', fontSize: 'var(--text-base)', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)' }}>
-            <span className="material-symbols-rounded" style={{ color: 'var(--color-primary)' }}>backup</span>
-            Data Backup & Export
-          </h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-            <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)', lineHeight: 1.5, margin: 0 }}>
-              Export all store configurations as a JSON file, or orders list for custom analysis.
-            </p>
-            <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-              <button onClick={handleExportJSON} className="btn btn-secondary" style={{ flex: 1, minHeight: '40px', fontSize: 'var(--text-xs)', fontWeight: 700, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
-                <span className="material-symbols-rounded" style={{ fontSize: '18px' }}>download</span>
-                Full Backup (JSON)
-              </button>
-              <button onClick={handleExportCSV} className="btn btn-secondary" style={{ flex: 1, minHeight: '40px', fontSize: 'var(--text-xs)', fontWeight: 700, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
-                <span className="material-symbols-rounded" style={{ fontSize: '18px' }}>table_view</span>
-                Orders CSV (30d)
-              </button>
-            </div>
-            <div>
-              <input ref={importFileInputRef} type="file" accept=".json" onChange={handleImportRestore} style={{ display: 'none' }} />
-              <button onClick={() => importFileInputRef.current?.click()} className="btn btn-secondary" style={{ width: '100%', minHeight: '40px', fontSize: 'var(--text-xs)', fontWeight: 700, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px', border: '1px solid rgba(245,158,11,0.25)', background: 'rgba(245,158,11,0.04)', color: '#F59E0B' }}>
-                <span className="material-symbols-rounded" style={{ fontSize: '18px' }}>upload</span>
-                Restore from Backup
-              </button>
-            </div>
-          </div>
-        </div>
-
-      </div>
-
-      {/* RIGHT COLUMN: Live Previews */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', position: 'sticky', top: '10px' }}>
-        
-        {/* Advanced thermal print settings */}
-        <div className="settings-card" style={{ background: 'var(--glass-bg)', padding: '24px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
-          <h3 className="settings-card-heading" style={{ margin: '0 0 16px 0', fontSize: 'var(--text-base)', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)' }}>
-            <span className="material-symbols-rounded" style={{ color: 'var(--color-primary)' }}>tune</span>
-            Advanced Print Configuration
-          </h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-            <div className="input-group">
-              <label>Paper Roll Size</label>
-              <select className="input" value={config.printerWidth} onChange={(e) => handleConfigChange('printerWidth', e.target.value)}>
-                <option value="58">58mm (32 chars) — Standard Thermal</option>
-                <option value="76">76mm (42 chars) — 3-inch Thermal</option>
-                <option value="80">80mm (48 chars) — Wide Thermal</option>
-                <option value="A4">A4 (210mm) — Full Page (browser print)</option>
-              </select>
-            </div>
-
-            <div className="input-group">
-              <label>Print Density</label>
-              <div style={{ display: 'flex', gap: '8px' }}>
-                {['light', 'normal', 'bold'].map(d => {
-                  const active = config.printDensity === d;
+          {/* Theme setting block under Store Details */}
+          {settingsTab === 'profile' && (
+            <div className="settings-card" style={{ background: 'var(--glass-bg)', padding: '24px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
+              <h3 className="settings-card-heading" style={{ margin: '0 0 16px 0', fontSize: 'var(--text-base)', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)' }}>
+                <span className="material-symbols-rounded" style={{ color: 'var(--color-primary)' }}>palette</span>
+                Theme Preference
+              </h3>
+              <div style={{ display: 'flex', gap: '12px' }}>
+                {[
+                  { id: 'dark', label: 'Dark Mode', icon: 'dark_mode' },
+                  { id: 'light', label: 'Light Mode', icon: 'light_mode' },
+                  { id: 'system', label: 'System Theme', icon: 'computer' }
+                ].map(theme => {
+                  const active = config.app_theme === theme.id;
                   return (
                     <button
-                      key={d}
-                      onClick={() => handleConfigChange('printDensity', d)}
-                      className={`btn btn-density-option ${active ? 'active' : ''}`}
+                      key={theme.id}
+                      onClick={() => handleConfigChange('app_theme', theme.id)}
+                      className={`btn`}
                       style={{
-                        flex: 1, minHeight: '38px', fontSize: 'var(--text-xs)', fontWeight: active ? 700 : 500,
-                        borderRadius: 'var(--radius-md)', cursor: 'pointer',
+                        flex: 1, minHeight: '38px', display: 'inline-flex', alignItems: 'center',
+                        justifyContent: 'center', gap: '6px', borderRadius: 'var(--radius-md)',
                         border: `1.5px solid ${active ? 'var(--color-primary)' : 'var(--border-glass)'}`,
-                        background: active ? 'rgba(255,94,54,0.12)' : 'rgba(0,0,0,0.2)',
-                        color: active ? 'var(--color-primary)' : 'var(--text-secondary)'
+                        background: active ? 'rgba(255,94,54,0.1)' : 'rgba(0,0,0,0.2)',
+                        color: active ? 'var(--color-primary)' : 'var(--text-secondary)',
+                        fontWeight: active ? '700' : '500', cursor: 'pointer', transition: 'all 0.2s'
                       }}
                     >
-                      {d}
+                      <span className="material-symbols-rounded" style={{ fontSize: '16px' }}>{theme.icon}</span>
+                      {theme.label}
                     </button>
                   );
                 })}
               </div>
             </div>
-
-            <div className="input-group" style={{ maxWidth: '200px' }}>
-              <label>Copies Per Order</label>
-              <input type="number" className="input" min="1" max="5" value={config.printCopies} onChange={(e) => handleConfigChange('printCopies', e.target.value)} />
-            </div>
-
-            <div>
-              <label style={{ marginBottom: '12px', display: 'block' }}>Receipt Content</label>
-              <div style={{ background: 'rgba(0,0,0,0.15)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-glass)', padding: '6px 16px' }}>
-                {[
-                  { id: 'showLogoOnReceipt', label: 'Show Restaurant Logo / Header' },
-                  { id: 'showAddressOnReceipt', label: 'Show Address on Receipt' },
-                  { id: 'showPhoneOnReceipt', label: 'Show Phone on Receipt' },
-                  { id: 'showGstinOnReceipt', label: 'Show GSTIN on Receipt' },
-                  { id: 'showFssaiOnReceipt', label: 'Show FSSAI on Receipt' },
-                  { id: 'showNotesOnReceipt', label: 'Show Order Notes' },
-                  { id: 'showFooterOnReceipt', label: 'Show Footer Message' },
-                  { id: 'autoPrintOnConfirm', label: 'Auto-print on Order Confirm' }
-                ].map(toggle => (
-                  <div key={toggle.id} className="settings-toggle-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-                    <span className="settings-toggle-row-label" style={{ fontSize: 'var(--text-xs)', fontWeight: 500 }}>{toggle.label}</span>
-                    <label className="settings-toggle-switch" style={{ position: 'relative', display: 'inline-block', width: '38px', height: '22px' }}>
-                      <input
-                        type="checkbox"
-                        className="receipt-toggle"
-                        checked={config[toggle.id] === 'true' || config[toggle.id] === true}
-                        onChange={(e) => handleConfigChange(toggle.id, e.target.checked ? 'true' : 'false')}
-                        style={{ opacity: 0, width: 0, height: 0 }}
-                      />
-                      <span className="settings-toggle-track" style={{ position: 'absolute', cursor: 'pointer', inset: 0, background: config[toggle.id] === 'true' || config[toggle.id] === true ? 'var(--color-primary)' : 'rgba(255,255,255,0.1)', borderRadius: '34px', transition: '0.2s' }}></span>
-                      <span className="settings-toggle-thumb" style={{ position: 'absolute', height: '16px', width: '16px', left: config[toggle.id] === 'true' || config[toggle.id] === true ? '19px' : '3px', bottom: '3px', background: 'white', borderRadius: '50%', transition: '0.2s' }}></span>
-                    </label>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
+          )}
+          
         </div>
+      </div>
 
-        {/* Invoice configuration and template selection */}
-        <div className="settings-card" style={{ background: 'var(--glass-bg)', padding: '24px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
-          <h3 className="settings-card-heading" style={{ margin: '0 0 4px 0', fontSize: 'var(--text-base)', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)' }}>
-            <span className="material-symbols-rounded" style={{ color: 'var(--color-primary)' }}>palette</span>
-            Bill & Invoice Designer
-          </h3>
-          <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)', lineHeight: 1.5, margin: '0 0 16px 0', fontWeight: 500 }}>
-            Customize the look and feel of printed A4 invoices.
-          </p>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-            <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
-              <div className="input-group" style={{ flex: 1, minWidth: '200px' }}>
-                <label>Invoice Template Style</label>
-                <select className="input" value={config.invoiceTemplate} onChange={(e) => handleConfigChange('invoiceTemplate', e.target.value)}>
-                  <option value="minimalist">Modern Minimalist (Sleek & Airy)</option>
-                  <option value="luxury">Luxury Gold / Royal (Elegant Serif)</option>
-                  <option value="executive">Executive Navy / Bold (Corporate Grid)</option>
-                  <option value="chic">Chic Rose / Peach (Aesthetic Cafe)</option>
-                </select>
-              </div>
-
-              <div className="input-group" style={{ flex: 1, minWidth: '200px' }}>
-                <label>Invoice Font Selection</label>
-                <select className="input" value={config.invoiceFontFamily} onChange={(e) => handleConfigChange('invoiceFontFamily', e.target.value)}>
-                  <option value="sans-serif">Inter / Plus Jakarta Sans (Modern)</option>
-                  <option value="serif">EB Garamond / Georgia (Serif)</option>
-                  <option value="slab">Roboto Slab (Executive)</option>
-                  <option value="monospace">JetBrains Mono / Courier (Retro)</option>
-                </select>
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
-              <div className="input-group" style={{ flex: 1.5, minWidth: '200px' }}>
-                <label>Invoice Document Title</label>
-                <input type="text" className="input" value={config.invoiceTitle} onChange={(e) => handleConfigChange('invoiceTitle', e.target.value)} placeholder="e.g. TAX INVOICE" />
-              </div>
-
-              <div className="input-group" style={{ flex: 0.5, minWidth: '150px' }}>
-                <label>Brand Accent Color</label>
-                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                  <input
-                    type="color"
-                    value={config.invoicePrimaryColor}
-                    onChange={(e) => handleConfigChange('invoicePrimaryColor', e.target.value)}
-                    style={{ border: '1px solid var(--border-glass)', background: 'none', width: '42px', height: '42px', borderRadius: 'var(--radius-md)', cursor: 'pointer', padding: 0 }}
-                  />
-                  <input
-                    type="text"
-                    className="input"
-                    value={config.invoicePrimaryColor}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      if (/^#[0-9A-F]{0,6}$/i.test(val)) handleConfigChange('invoicePrimaryColor', val);
-                    }}
-                    placeholder="#FF5E36"
-                    style={{ maxWidth: '90px', textTransform: 'uppercase', textAlign: 'center' }}
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="input-group">
-              <label>Logo Image URL (Optional)</label>
-              <input type="url" className="input" value={config.invoiceLogoUrl} onChange={(e) => handleConfigChange('invoiceLogoUrl', e.target.value)} placeholder="e.g. https://yoursite.com/logo.png" />
-            </div>
-
-            <div className="input-group">
-              <label>Terms & Conditions</label>
-              <textarea className="input" value={config.invoiceTerms} onChange={(e) => handleConfigChange('invoiceTerms', e.target.value)} placeholder="Enter terms of sale..." style={{ minHeight: '80px', fontFamily: 'Inter, sans-serif', resize: 'vertical' }} />
-            </div>
-
-            <div className="input-group" style={{ maxWidth: '320px' }}>
-              <label>Signature Label Text</label>
-              <input type="text" className="input" value={config.invoiceSignatureText} onChange={(e) => handleConfigChange('invoiceSignatureText', e.target.value)} placeholder="Authorized Signatory" />
-            </div>
-
-            <div>
-              <label style={{ marginBottom: '12px', display: 'block' }}>Invoice Layout Elements</label>
-              <div style={{ background: 'rgba(0,0,0,0.15)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-glass)', padding: '6px 16px' }}>
-                {[
-                  { id: 'invoiceShowUpiQr', label: 'Show Dynamic UPI Payment QR Code' },
-                  { id: 'invoiceShowGrid', label: 'Show Grid Lines in Items Table' },
-                  { id: 'invoiceShowSignature', label: 'Show Signature Block' },
-                  { id: 'invoiceShowWatermark', label: 'Show Subtle Watermark' }
-                ].map(toggle => (
-                  <div key={toggle.id} className="settings-toggle-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-                    <span className="settings-toggle-row-label" style={{ fontSize: 'var(--text-xs)', fontWeight: 500 }}>{toggle.label}</span>
-                    <label className="settings-toggle-switch" style={{ position: 'relative', display: 'inline-block', width: '38px', height: '22px' }}>
-                      <input
-                        type="checkbox"
-                        className="receipt-toggle"
-                        checked={config[toggle.id] === 'true' || config[toggle.id] === true}
-                        onChange={(e) => handleConfigChange(toggle.id, e.target.checked ? 'true' : 'false')}
-                        style={{ opacity: 0, width: 0, height: 0 }}
-                      />
-                      <span className="settings-toggle-track" style={{ position: 'absolute', cursor: 'pointer', inset: 0, background: config[toggle.id] === 'true' || config[toggle.id] === true ? 'var(--color-primary)' : 'rgba(255,255,255,0.1)', borderRadius: '34px', transition: '0.2s' }}></span>
-                      <span className="settings-toggle-thumb" style={{ position: 'absolute', height: '16px', width: '16px', left: config[toggle.id] === 'true' || config[toggle.id] === true ? '19px' : '3px', bottom: '3px', background: 'white', borderRadius: '50%', transition: '0.2s' }}></span>
-                    </label>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Dynamic preview block */}
-        <div className="settings-card" style={{ background: 'var(--glass-bg)', padding: '24px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column' }}>
-          <h3 className="settings-card-heading" style={{ margin: '0 0 4px 0', fontSize: 'var(--text-base)', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)' }}>
+      {/* RIGHT COLUMN: Live Document Previews (Receipt or A4 invoice) */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', position: 'sticky', top: '24px' }}>
+        <div className="settings-card" style={{ background: 'var(--glass-bg)', padding: '20px 24px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column' }}>
+          <h3 className="settings-card-heading" style={{ margin: '0 0 16px 0', fontSize: 'var(--text-base)', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)' }}>
             <span className="material-symbols-rounded" style={{ color: 'var(--color-primary)' }}>preview</span>
             Live Document Preview
           </h3>
-          <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)', lineHeight: 1.5, margin: '0 0 16px 0', fontWeight: 500 }}>
-            See how your receipts and invoices look before printing.
-          </p>
 
-          <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', marginBottom: '20px', borderBottom: '1px solid rgba(255,255,255,0.06)', paddingBottom: '14px' }}>
+          <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', marginBottom: '16px', borderBottom: '1px solid var(--border-glass)', paddingBottom: '12px' }}>
             <button
               onClick={() => {
                 playSound(800, 60);
                 setActivePreviewTab('thermal');
               }}
               style={{
-                fontSize: 'var(--text-xs)', fontWeight: 700, padding: '8px 16px', borderRadius: 'var(--radius-md)', cursor: 'pointer',
+                fontSize: '11px', fontWeight: 700, padding: '6px 14px', borderRadius: '6px', cursor: 'pointer', transition: 'all 0.2s',
                 border: `1px solid ${activePreviewTab === 'thermal' ? 'var(--color-primary)' : 'var(--border-glass)'}`,
                 background: activePreviewTab === 'thermal' ? 'rgba(255,94,54,0.1)' : 'rgba(0,0,0,0.2)',
                 color: activePreviewTab === 'thermal' ? 'var(--color-primary)' : 'var(--text-secondary)'
               }}
             >
-              Thermal Receipt (BLE)
+              Thermal Roll
             </button>
             <button
               onClick={() => {
@@ -1223,25 +1268,25 @@ export function SettingsView() {
                 setActivePreviewTab('invoice');
               }}
               style={{
-                fontSize: 'var(--text-xs)', fontWeight: 700, padding: '8px 16px', borderRadius: 'var(--radius-md)', cursor: 'pointer',
+                fontSize: '11px', fontWeight: 700, padding: '6px 14px', borderRadius: '6px', cursor: 'pointer', transition: 'all 0.2s',
                 border: `1px solid ${activePreviewTab === 'invoice' ? 'var(--color-primary)' : 'var(--border-glass)'}`,
                 background: activePreviewTab === 'invoice' ? 'rgba(255,94,54,0.1)' : 'rgba(0,0,0,0.2)',
                 color: activePreviewTab === 'invoice' ? 'var(--color-primary)' : 'var(--text-secondary)'
               }}
             >
-              Standard Invoice (A4)
+              Standard A4 Invoice
             </button>
           </div>
 
-          <div id="receipt-preview-container" style={{ display: 'flex', justifyContent: 'center', padding: '16px 0', overflowX: 'auto' }}>
+          <div id="receipt-preview-container" style={{ display: 'flex', justifyContent: 'center', padding: '10px 0', overflowX: 'auto' }}>
             {activePreviewTab === 'thermal' ? (
               <div
                 className="receipt-preview-paper"
                 style={{
-                  width: config.printerWidth === '58' ? '220px' : config.printerWidth === '76' ? '280px' : config.printerWidth === '80' ? '310px' : '480px',
+                  width: config.printerWidth === '58' ? '200px' : config.printerWidth === '76' ? '250px' : config.printerWidth === '80' ? '280px' : '360px',
                   fontWeight: config.printDensity === 'bold' ? '700' : config.printDensity === 'light' ? '300' : '400',
-                  background: '#FFF', color: '#000', padding: '20px', fontFamily: 'monospace', fontSize: '11px', whiteSpace: 'pre-wrap',
-                  boxShadow: '0 10px 25px rgba(0,0,0,0.3)', borderRadius: 'var(--radius-sm)'
+                  background: '#FFF', color: '#000', padding: '16px', fontFamily: 'monospace', fontSize: '10px', whiteSpace: 'pre-wrap',
+                  boxShadow: '0 10px 25px rgba(0,0,0,0.4)', borderRadius: '4px'
                 }}
               >
                 {thermalPreviewContent}
@@ -1251,29 +1296,28 @@ export function SettingsView() {
                 id="invoice-preview-iframe"
                 srcDoc={invoiceHtml}
                 style={{
-                  width: '100%', maxWidth: '580px', height: '720px', border: '1px solid var(--border-glass)',
-                  borderRadius: 'var(--radius-lg)', background: '#fff', boxShadow: '0 15px 35px rgba(0,0,0,0.4)'
+                  width: '100%', height: '540px', border: '1px solid var(--border-glass)',
+                  borderRadius: '12px', background: '#fff', boxShadow: '0 15px 35px rgba(0,0,0,0.4)'
                 }}
               ></iframe>
             )}
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'center', marginTop: '12px' }}>
-            <button onClick={handlePrintTest} disabled={!printerConnected} className="btn btn-secondary" style={{ fontSize: 'var(--text-xs)', fontWeight: 700, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px', padding: '8px 24px' }}>
-              <span className="material-symbols-rounded" style={{ fontSize: '18px' }}>print</span>
-              Print Sample Receipt
+          <div style={{ display: 'flex', justifyContent: 'center', marginTop: '16px' }}>
+            <button onClick={handlePrintTest} disabled={!printerConnected} className="btn btn-secondary btn-sm" style={{ fontSize: 'var(--text-xs)', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '8px 16px' }}>
+              <span className="material-symbols-rounded" style={{ fontSize: '16px' }}>print</span>
+              Print Sample Bill
             </button>
           </div>
         </div>
 
-        {/* Global Floating Save Configuration Footer */}
-        <div style={{ display: 'flex', gap: '12px', marginTop: '8px', marginBottom: '30px' }}>
-          <button onClick={handleSave} className="btn btn-primary btn-block btn-lg" style={{ flex: 1, minHeight: '48px', fontSize: 'var(--text-sm)', fontWeight: 700, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px', color: '#fff', border: 'none', cursor: 'pointer', borderRadius: 'var(--radius-md)', boxShadow: 'var(--shadow-primary)' }}>
-            <span className="material-symbols-rounded" style={{ fontSize: '20px' }}>save</span>
-            Save All Configurations
-          </button>
-        </div>
-
+        {/* Floating Save All Button */}
+        <button onClick={handleSave} className="btn btn-primary btn-block btn-lg" style={{
+          height: '48px', fontSize: 'var(--text-sm)', fontWeight: 700, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px', color: '#fff', border: 'none', cursor: 'pointer', borderRadius: 'var(--radius-md)', boxShadow: 'var(--shadow-primary)'
+        }}>
+          <span className="material-symbols-rounded" style={{ fontSize: '20px' }}>save</span>
+          Save All Configurations
+        </button>
       </div>
 
     </div>

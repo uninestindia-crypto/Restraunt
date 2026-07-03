@@ -31,7 +31,7 @@ export function Dashboard() {
   const storeState = useGlobalStore();
   const [stats, setStats] = useState<TodayStats | null>(null);
   const [weeklyTrend, setWeeklyTrend] = useState<TrendDay[]>([]);
-  const [topItems, setTopItems] = useState<{ name: string; qty: number }[]>([]);
+  const [topItems, setTopItems] = useState<{ name: string; qty: number; isVeg?: number }[]>([]);
   const [systemHealth, setSystemHealth] = useState<{
     staffCount: number;
     totalMenuItems: number;
@@ -73,7 +73,7 @@ export function Dashboard() {
       }
       setWeeklyTrend(days);
 
-      // Fetch top selling items
+      // Fetch top selling items and look up veg/non-veg status
       const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
       const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1).toISOString();
       const todayOrders = await db.orders.where('createdAt').between(todayStart, todayEnd).toArray();
@@ -95,11 +95,21 @@ export function Dashboard() {
           }
         }
       }
+      
       const sortedItems = Object.entries(itemCounts)
         .sort((a, b) => b[1] - a[1])
-        .slice(0, 5)
-        .map(([name, qty]) => ({ name, qty }));
-      setTopItems(sortedItems);
+        .slice(0, 5);
+
+      const itemsWithVeg = [];
+      for (const [name, qty] of sortedItems) {
+        const menuItem = await db.menuItems.where('name').equals(name).first();
+        itemsWithVeg.push({
+          name,
+          qty,
+          isVeg: menuItem ? menuItem.isVeg : 1
+        });
+      }
+      setTopItems(itemsWithVeg);
 
       // Fetch general system database health counts
       const staffCount = await db.staff.filter((s: any) => s.isActive === true || s.isActive === 1).count();
@@ -116,13 +126,35 @@ export function Dashboard() {
 
   useEffect(() => {
     loadData();
-    // Refresh health data if operator state changes
   }, [storeState.activeTerminalStaff]);
 
   const maxRevenue = useMemo(() => {
     const maxVal = Math.max(...weeklyTrend.map((d) => d.revenue), 0);
     return maxVal > 0 ? maxVal : 1;
   }, [weeklyTrend]);
+
+  // Construct chart elements
+  const chartPoints = useMemo(() => {
+    const width = 800;
+    const height = 180;
+    const paddingX = 40;
+    const paddingY = 20;
+
+    let pointsStr = '';
+    let fillPointsStr = `${paddingX},${height - paddingY} `;
+
+    weeklyTrend.forEach((t, i) => {
+      const x = paddingX + (i / (weeklyTrend.length - 1 || 1)) * (width - 2 * paddingX);
+      const y = height - paddingY - (t.revenue / maxRevenue) * (height - 2 * paddingY);
+      pointsStr += `${x},${y} `;
+      fillPointsStr += `${x},${y} `;
+    });
+    if (weeklyTrend.length > 0) {
+      fillPointsStr += `${width - paddingX},${height - paddingY}`;
+    }
+
+    return { pointsStr, fillPointsStr, width, height, paddingX, paddingY };
+  }, [weeklyTrend, maxRevenue]);
 
   if (loading || !stats) {
     return (
@@ -144,99 +176,178 @@ export function Dashboard() {
 
   return (
     <div style={{ padding: '28px 24px', display: 'flex', flexDirection: 'column', gap: '24px', maxWidth: '1100px', margin: '0 auto', width: '100%' }}>
-      <div style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--text-lg)', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
-        Console Overview
+      <style>{`
+        @keyframes heartbeat {
+          0% { transform: scale(1); opacity: 1; }
+          50% { transform: scale(1.2); opacity: 0.7; }
+          100% { transform: scale(1); opacity: 1; }
+        }
+        .heartbeat-dot {
+          width: 8px;
+          height: 8px;
+          border-radius: 50%;
+          background-color: var(--color-success);
+          animation: heartbeat 2s infinite ease-in-out;
+          display: inline-block;
+          box-shadow: 0 0 8px var(--color-success);
+        }
+        .stats-card-v2 {
+          background: var(--glass-bg);
+          border: 1px solid var(--border-color);
+          border-radius: var(--radius-md);
+          padding: 20px 24px;
+          box-shadow: var(--shadow-sm);
+          transition: all var(--transition-fast);
+          display: flex;
+          flex-direction: column;
+          position: relative;
+          overflow: hidden;
+        }
+        .stats-card-v2:hover {
+          transform: translateY(-2px);
+          box-shadow: var(--shadow-md);
+          border-color: var(--border-active);
+        }
+        .stats-card-v2::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          height: 3px;
+          background: transparent;
+          transition: background var(--transition-fast);
+        }
+        .stats-card-v2.revenue::before { background: linear-gradient(90deg, var(--color-success) 0%, transparent 100%); }
+        .stats-card-v2.orders::before { background: linear-gradient(90deg, var(--color-primary) 0%, transparent 100%); }
+        .stats-card-v2.avgval::before { background: linear-gradient(90deg, var(--color-info) 0%, transparent 100%); }
+      `}</style>
+
+      <div style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--text-lg)', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em', display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <span className="material-symbols-rounded" style={{ color: 'var(--color-primary)' }}>analytics</span>
+        Administrative Control Tower
       </div>
 
       {/* Stats Grid */}
-      <div className="stats-grid" style={{ padding: 0 }}>
-        <div className="stats-card" style={{ transition: 'transform var(--transition-fast)' }}>
-          <div className="stats-card-label">TODAY'S REVENUE</div>
-          <div className="stats-card-value" style={{ color: 'var(--color-success)', filter: 'drop-shadow(0 0 10px rgba(16, 185, 129, 0.25))' }}>
+      <div className="stats-grid" style={{ padding: 0, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '20px' }}>
+        <div className="stats-card-v2 revenue">
+          <div style={{ display: 'flex', justifySelf: 'stretch', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span className="stats-card-label" style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-secondary)', letterSpacing: '0.05em' }}>TODAY'S REVENUE</span>
+            <span className="material-symbols-rounded" style={{ color: 'var(--color-success)', fontSize: '18px' }}>payments</span>
+          </div>
+          <div className="stats-card-value" style={{ color: 'var(--color-success)', filter: 'drop-shadow(0 0 10px rgba(16, 185, 129, 0.2))', fontSize: '1.8rem', fontWeight: 800, marginTop: '8px' }}>
             {formatCurrency(stats.totalRevenue)}
           </div>
         </div>
-        <div className="stats-card">
-          <div className="stats-card-label">COMPLETED ORDERS</div>
-          <div className="stats-card-value" style={{ color: 'var(--color-primary)', filter: 'drop-shadow(0 0 10px rgba(255, 94, 54, 0.25))' }}>
+        
+        <div className="stats-card-v2 orders">
+          <div style={{ display: 'flex', justifySelf: 'stretch', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span className="stats-card-label" style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-secondary)', letterSpacing: '0.05em' }}>COMPLETED ORDERS</span>
+            <span className="material-symbols-rounded" style={{ color: 'var(--color-primary)', fontSize: '18px' }}>receipt_long</span>
+          </div>
+          <div className="stats-card-value" style={{ color: 'var(--color-primary)', filter: 'drop-shadow(0 0 10px rgba(255, 94, 54, 0.2))', fontSize: '1.8rem', fontWeight: 800, marginTop: '8px' }}>
             {stats.totalOrders}
           </div>
         </div>
-        <div className="stats-card">
-          <div className="stats-card-label">AVERAGE BILL VALUE</div>
-          <div className="stats-card-value" style={{ color: 'var(--color-info)', filter: 'drop-shadow(0 0 10px rgba(59, 130, 246, 0.25))' }}>
+
+        <div className="stats-card-v2 avgval">
+          <div style={{ display: 'flex', justifySelf: 'stretch', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span className="stats-card-label" style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-secondary)', letterSpacing: '0.05em' }}>AVERAGE BILL VALUE</span>
+            <span className="material-symbols-rounded" style={{ color: 'var(--color-info)', fontSize: '18px' }}>monitoring</span>
+          </div>
+          <div className="stats-card-value" style={{ color: 'var(--color-info)', filter: 'drop-shadow(0 0 10px rgba(59, 130, 246, 0.2))', fontSize: '1.8rem', fontWeight: 800, marginTop: '8px' }}>
             {formatCurrency(stats.avgOrderValue)}
           </div>
         </div>
       </div>
 
       {/* 7-Day Revenue Trend */}
-      <div className="card" style={{ position: 'relative' }}>
-        <div style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--text-sm)', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '20px', letterSpacing: '-0.01em', display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <span className="material-symbols-rounded" style={{ fontSize: '18px', color: 'var(--color-info)' }}>trending_up</span>
+      <div className="card" style={{ position: 'relative', background: 'var(--glass-bg)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', padding: '24px' }}>
+        <div style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--text-sm)', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '20px', letterSpacing: '-0.01em', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span className="material-symbols-rounded" style={{ fontSize: '20px', color: 'var(--color-info)' }}>trending_up</span>
           7-Day Revenue Trend
         </div>
 
-        {/* Chart Bars */}
-        <div style={{ display: 'flex', alignItems: 'flex-end', gap: '12px', height: '140px', padding: '10px 4px 0 4px', borderBottom: '1px solid var(--border-glass)' }}>
-          {weeklyTrend.map((d, i) => {
-            const heightPercent = Math.max((d.revenue / maxRevenue) * 100, 5);
-            const isToday = i === 6;
-            const isHovered = hoveredBarIndex === i;
+        {/* Custom SVG Bezier chart */}
+        <div style={{ width: '100%', overflow: 'hidden', position: 'relative' }}>
+          <svg viewBox={`0 0 ${chartPoints.width} ${chartPoints.height}`} style={{ width: '100%', height: '180px', display: 'block', overflow: 'visible' }}>
+            <defs>
+              <linearGradient id="areaGradDashboard" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="var(--color-primary)" stopOpacity="0.2"/>
+                <stop offset="100%" stopColor="var(--color-primary)" stopOpacity="0"/>
+              </linearGradient>
+              <linearGradient id="lineGradDashboard" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0%" stopColor="#FF5E36"/>
+                <stop offset="100%" stopColor="#FF8960"/>
+              </linearGradient>
+            </defs>
+            {/* Grid Lines */}
+            <line x1={chartPoints.paddingX} y1={chartPoints.paddingY} x2={chartPoints.width - chartPoints.paddingX} y2={chartPoints.paddingY} stroke="rgba(255,255,255,0.02)" strokeWidth="1" />
+            <line x1={chartPoints.paddingX} y1={(chartPoints.height - 2*chartPoints.paddingY)/2 + chartPoints.paddingY} x2={chartPoints.width - chartPoints.paddingX} y2={(chartPoints.height - 2*chartPoints.paddingY)/2 + chartPoints.paddingY} stroke="rgba(255,255,255,0.02)" strokeWidth="1" />
+            <line x1={chartPoints.paddingX} y1={chartPoints.height - chartPoints.paddingY} x2={chartPoints.width - chartPoints.paddingX} y2={chartPoints.height - chartPoints.paddingY} stroke="rgba(255,255,255,0.06)" strokeWidth="1.5" />
+            
+            {/* Area Fill */}
+            <polygon points={chartPoints.fillPointsStr} fill="url(#areaGradDashboard)" />
+            {/* Trend Line */}
+            <polyline points={chartPoints.pointsStr} fill="none" stroke="url(#lineGradDashboard)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+            
+            {/* Point Interaction Nodes */}
+            {weeklyTrend.map((d, i) => {
+              const x = chartPoints.paddingX + (i / (weeklyTrend.length - 1 || 1)) * (chartPoints.width - 2 * chartPoints.paddingX);
+              const y = chartPoints.height - chartPoints.paddingY - (d.revenue / maxRevenue) * (chartPoints.height - 2 * chartPoints.paddingY);
+              const isToday = i === 6;
+              const isHovered = hoveredBarIndex === i;
 
-            return (
-              <div
-                key={i}
-                style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', cursor: 'pointer', position: 'relative' }}
-                onMouseEnter={() => setHoveredBarIndex(i)}
-                onMouseLeave={() => setHoveredBarIndex(null)}
-              >
-                {/* Floating Tooltip */}
-                {isHovered && (
-                  <div style={{
-                    position: 'absolute',
-                    bottom: `${heightPercent + 15}%`,
-                    background: 'var(--bg-surface)',
-                    border: '1px solid var(--border-active)',
-                    borderRadius: '6px',
-                    padding: '4px 8px',
-                    fontSize: '10px',
-                    fontWeight: 700,
-                    color: 'var(--text-primary)',
-                    boxShadow: 'var(--shadow-md)',
-                    pointerEvents: 'none',
-                    whiteSpace: 'nowrap',
-                    zIndex: 10
-                  }}>
-                    {formatCurrency(d.revenue)}
-                  </div>
-                )}
-                {/* Bar */}
-                <div style={{
-                  width: '100%',
-                  height: `${heightPercent}px`,
-                  background: isToday 
-                    ? 'linear-gradient(180deg, #FF5E36 0%, #FF8960 100%)' 
-                    : (isHovered ? 'rgba(255, 255, 255, 0.12)' : 'rgba(255, 255, 255, 0.06)'),
-                  borderRadius: '6px 6px 0 0',
-                  border: `1px solid ${isToday ? 'rgba(255, 94, 54, 0.4)' : 'var(--border-glass)'}`,
-                  boxShadow: isToday ? '0 0 12px rgba(255, 94, 54, 0.3)' : 'none',
-                  transition: 'all var(--transition-fast)'
-                }} />
-              </div>
-            );
-          })}
+              return (
+                <g key={i}>
+                  <circle
+                    cx={x}
+                    cy={y}
+                    r={isHovered ? 6 : (isToday ? 4.5 : 3.5)}
+                    fill="var(--bg-surface)"
+                    stroke={isToday || isHovered ? "var(--color-primary)" : "rgba(255,255,255,0.3)"}
+                    strokeWidth={isHovered ? 3.5 : 2}
+                    style={{ transition: 'all 0.15s ease', cursor: 'pointer' }}
+                    onMouseEnter={() => setHoveredBarIndex(i)}
+                    onMouseLeave={() => setHoveredBarIndex(null)}
+                  />
+                </g>
+              );
+            })}
+          </svg>
+
+          {/* Dynamic Floating Tooltip */}
+          {hoveredBarIndex !== null && (
+            <div style={{
+              position: 'absolute',
+              left: `${(hoveredBarIndex / (weeklyTrend.length - 1)) * 90 + 5}%`,
+              bottom: `${Math.max((weeklyTrend[hoveredBarIndex].revenue / maxRevenue) * 60 + 30, 40)}px`,
+              background: 'var(--bg-secondary)',
+              border: '1px solid var(--border-active)',
+              borderRadius: '8px',
+              padding: '6px 12px',
+              fontSize: 'var(--text-xs)',
+              fontWeight: 700,
+              color: 'var(--text-primary)',
+              boxShadow: 'var(--shadow-md)',
+              pointerEvents: 'none',
+              transform: 'translateX(-50%)',
+              transition: 'all 0.15s ease',
+              zIndex: 10
+            }}>
+              <div style={{ color: 'var(--text-muted)', fontSize: '9px', marginBottom: '2px' }}>{weeklyTrend[hoveredBarIndex].label}</div>
+              {formatCurrency(weeklyTrend[hoveredBarIndex].revenue)}
+            </div>
+          )}
         </div>
 
         {/* Chart Labels */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '10px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', padding: `0 ${chartPoints.paddingX}px`, marginTop: '12px' }}>
           {weeklyTrend.map((d, i) => (
             <div key={i} style={{
-              flex: 1,
-              textAlign: 'center',
               fontSize: '10px',
               color: i === 6 ? 'var(--color-primary)' : 'var(--text-secondary)',
-              fontWeight: i === 6 ? 700 : 500
+              fontWeight: i === 6 ? 800 : 600
             }}>
               {d.label}
             </div>
@@ -245,14 +356,15 @@ export function Dashboard() {
       </div>
 
       {/* Grid: Top Items & System Health */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px' }}>
+        
         {/* Top Selling Items */}
-        <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          <div style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--text-sm)', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.01em', display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <span className="material-symbols-rounded" style={{ fontSize: '18px', color: 'var(--color-warning)' }}>local_fire_department</span>
+        <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '16px', background: 'var(--glass-bg)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', padding: '24px' }}>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--text-sm)', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.01em', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span className="material-symbols-rounded" style={{ fontSize: '20px', color: 'var(--color-warning)' }}>local_fire_department</span>
             Top Selling Items (Today)
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             {topItems.length === 0 ? (
               <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', fontWeight: 500 }}>No orders recorded yet today.</div>
             ) : (
@@ -260,15 +372,19 @@ export function Dashboard() {
                 const maxQty = topItems[0].qty || 1;
                 const widthPercent = (item.qty / maxQty) * 100;
                 const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `#${i + 1}`;
+                const dietarySymbol = item.isVeg === 1 ? '🟢' : '🔺';
                 return (
-                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <span style={{ fontSize: '0.8rem', width: '24px', textAlign: 'center', flexShrink: 0 }}>{medal}</span>
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <span style={{ fontSize: '0.9rem', width: '28px', textAlign: 'center', flexShrink: 0, fontWeight: 700 }}>{medal}</span>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                        <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-primary)', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.name}</span>
-                        <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', fontWeight: 700, flexShrink: 0, marginLeft: '8px' }}>×{item.qty}</span>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                        <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-primary)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          <span style={{ fontSize: '10px' }}>{dietarySymbol}</span>
+                          {item.name}
+                        </span>
+                        <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-primary)', fontWeight: 800, flexShrink: 0, marginLeft: '8px' }}>×{item.qty}</span>
                       </div>
-                      <div style={{ height: '4px', background: 'rgba(0, 0, 0, 0.2)', borderRadius: 'var(--radius-full)', overflow: 'hidden' }}>
+                      <div style={{ height: '5px', background: 'rgba(0, 0, 0, 0.25)', borderRadius: 'var(--radius-full)', overflow: 'hidden', border: '1px solid var(--border-glass)' }}>
                         <div style={{ height: '100%', width: `${widthPercent}%`, background: 'linear-gradient(90deg, var(--color-warning), #FBBF24)', borderRadius: 'var(--radius-full)', transition: 'width 0.6s ease' }} />
                       </div>
                     </div>
@@ -280,26 +396,29 @@ export function Dashboard() {
         </div>
 
         {/* System Health */}
-        <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          <div style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--text-sm)', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.01em', display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <span className="material-symbols-rounded" style={{ fontSize: '18px', color: 'var(--color-success)' }}>monitor_heart</span>
-            System Health
+        <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '16px', background: 'var(--glass-bg)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', padding: '24px' }}>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--text-sm)', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.01em', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span className="material-symbols-rounded" style={{ fontSize: '20px', color: 'var(--color-success)' }}>monitor_heart</span>
+            System Diagnostics
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
             {[
-              { icon: 'cloud', label: 'Network Status', value: storeState.isOnline ? 'Online' : 'Offline', color: storeState.isOnline ? 'var(--color-success)' : 'var(--color-danger)' },
-              { icon: 'person', label: 'Terminal Operator', value: activeStaff ? `${activeStaff.name} (${activeStaff.role})` : 'None', color: 'var(--color-success)' },
-              { icon: 'groups', label: 'Active Staff', value: `${systemHealth.staffCount} members`, color: 'var(--color-info)' },
-              { icon: 'restaurant_menu', label: 'Menu Items', value: `${systemHealth.totalMenuItems} items`, color: 'var(--color-warning)' },
-              { icon: 'receipt_long', label: 'Total Orders (All Time)', value: `${systemHealth.totalOrders}`, color: 'var(--color-primary)' },
-              { icon: 'palette', label: 'Active Theme', value: themeLabel, color: 'var(--nextgenos-purple)' },
+              { icon: 'cloud', label: 'Network Telemetry', value: storeState.isOnline ? 'Online' : 'Offline', color: storeState.isOnline ? 'var(--color-success)' : 'var(--color-danger)', heartbeat: storeState.isOnline },
+              { icon: 'person', label: 'Console Operator', value: activeStaff ? `${activeStaff.name} (${activeStaff.role})` : 'None', color: 'var(--color-success)' },
+              { icon: 'groups', label: 'Active Staff Members', value: `${systemHealth.staffCount} staff`, color: 'var(--color-info)' },
+              { icon: 'restaurant_menu', label: 'Menu Catalog Items', value: `${systemHealth.totalMenuItems} items`, color: 'var(--color-warning)' },
+              { icon: 'receipt_long', label: 'Total Orders Logged', value: `${systemHealth.totalOrders}`, color: 'var(--color-primary)' },
+              { icon: 'palette', label: 'Terminal UI Theme', value: themeLabel, color: 'var(--nextgenos-purple)' },
             ].map((item, idx) => (
-              <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <span className="material-symbols-rounded" style={{ fontSize: '18px', color: item.color, flexShrink: 0 }}>{item.icon}</span>
+              <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <span className="material-symbols-rounded" style={{ fontSize: '20px', color: item.color, flexShrink: 0 }}>{item.icon}</span>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 500 }}>{item.label}</div>
+                  <div style={{ fontSize: '10px', color: 'var(--text-secondary)', fontWeight: 600 }}>{item.label}</div>
                 </div>
-                <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-primary)', fontWeight: 700 }}>{item.value}</div>
+                <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-primary)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  {item.heartbeat && <span className="heartbeat-dot"></span>}
+                  <span>{item.value}</span>
+                </div>
               </div>
             ))}
           </div>
@@ -307,27 +426,27 @@ export function Dashboard() {
       </div>
 
       {/* Payment Split Breakdown */}
-      <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+      <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '16px', background: 'var(--glass-bg)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', padding: '24px' }}>
         <div style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--text-sm)', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.01em' }}>
           Revenue Split by Method
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
           {Object.keys(stats.paymentBreakdown).length === 0 ? (
             <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', fontWeight: 500 }}>No sales recorded yet today.</div>
           ) : (
             Object.entries(stats.paymentBreakdown).map(([method, data]) => {
-              const label = method === 'upi' ? '📱 UPI (Digital Pay)' : method === 'cash' ? '💵 Cash Pay' : method.toUpperCase();
+              const label = method === 'upi' ? '📱 UPI (Digital Payment)' : method === 'cash' ? '💵 Cash Payment' : method.toUpperCase();
               const pct = stats.totalRevenue > 0 ? (data.total / stats.totalRevenue) * 100 : 0;
               return (
                 <div key={method} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <div style={{ display: 'flex', justifySelf: 'stretch', justifyContent: 'space-between', fontSize: 'var(--text-sm)', fontWeight: 600 }}>
+                  <div style={{ display: 'flex', justifySelf: 'stretch', justifyContent: 'space-between', fontSize: 'var(--text-xs)', fontWeight: 700 }}>
                     <span style={{ color: 'var(--text-secondary)' }}>
-                      {label} <span style={{ color: 'var(--text-muted)', fontSize: '11px', marginLeft: '4px' }}>({data.count} orders)</span>
+                      {label} <span style={{ color: 'var(--text-muted)', fontSize: '10px', marginLeft: '4px', fontWeight: 500 }}>({data.count} orders)</span>
                     </span>
-                    <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{formatCurrency(data.total)}</span>
+                    <span style={{ fontWeight: 800, color: 'var(--text-primary)' }}>{formatCurrency(data.total)}</span>
                   </div>
                   <div style={{ height: '6px', background: 'rgba(0, 0, 0, 0.25)', borderRadius: 'var(--radius-full)', overflow: 'hidden', border: '1px solid var(--border-glass)' }}>
-                    <div style={{ height: '100%', background: 'var(--gradient-primary)', width: `${pct}%`, borderRadius: 'var(--radius-full)', boxShadow: '0 0 10px rgba(255, 94, 54, 0.4)', transition: 'width 0.8s ease' }} />
+                    <div style={{ height: '100%', background: 'var(--gradient-primary)', width: `${pct}%`, borderRadius: 'var(--radius-full)', boxShadow: '0 0 10px rgba(255, 94, 54, 0.3)', transition: 'width 0.8s ease' }} />
                   </div>
                 </div>
               );

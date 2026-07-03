@@ -38,8 +38,8 @@ export function BrandingView() {
     brandBannerBase64: '',
     brandKioskFooter: '',
     brandKioskWelcome: 'Welcome! Order delicious food.',
-    restaurantName: '',
-    restaurantTagline: ''
+    restaurantName: 'The Taste',
+    restaurantTagline: 'Chinese & Fast Food'
   });
   const [loading, setLoading] = useState(true);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -86,7 +86,6 @@ export function BrandingView() {
     loadConfig();
   }, []);
 
-  // Simple QR placeholder renderer
   const drawQRPlaceholder = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -207,6 +206,7 @@ export function BrandingView() {
       'brandSocialInstagram', 'brandSocialFacebook',
       'brandSocialGoogleMaps', 'brandSocialZomato',
       'brandSocialSwiggy', 'brandSocialWhatsApp',
+      'restaurantName', 'restaurantTagline'
     ];
     const colorFields = [
       'brandAccentColor', 'brandSecondaryColor',
@@ -240,256 +240,426 @@ export function BrandingView() {
   }
 
   return (
-    <div className="settings-container" style={{ maxWidth: '900px', margin: '0 auto', padding: '28px 24px' }}>
-      <div style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--text-lg)', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em', marginBottom: '24px', display: 'flex', alignItems: 'center' }}>
-        <span className="material-symbols-rounded" style={{ fontSize: '22px', marginRight: '8px', color: 'var(--color-primary)' }}>palette</span>
-        Storefront Branding
-      </div>
+    <div className="settings-container" style={{
+      maxWidth: '1200px',
+      margin: '0 auto',
+      padding: '28px 24px',
+      display: 'grid',
+      gridTemplateColumns: '1.2fr 0.8fr',
+      gap: '28px',
+      alignItems: 'start'
+    }}>
+      
+      {/* LEFT COLUMN: Controls & Input Forms */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+        <div style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--text-lg)', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span className="material-symbols-rounded" style={{ color: 'var(--color-primary)' }}>palette</span>
+          Storefront Brand Customizer
+        </div>
 
-      {/* Logo Upload */}
-      <div className="settings-card" style={{ background: 'var(--glass-bg)', padding: '24px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', marginBottom: '20px' }}>
-        <h3 className="settings-card-heading" style={{ margin: '0 0 16px 0', fontSize: 'var(--text-base)', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)' }}>
-          <span className="material-symbols-rounded" style={{ color: 'var(--color-primary)' }}>image</span>
-          Restaurant Logo
-        </h3>
-        <div style={{ display: 'flex', gap: '20px', alignItems: 'flex-start', flexWrap: 'wrap' }}>
+        {/* Identity Details */}
+        <div className="settings-card" style={{ background: 'var(--glass-bg)', padding: '24px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
+          <h3 className="settings-card-heading" style={{ margin: '0 0 16px 0', fontSize: 'var(--text-base)', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)' }}>
+            <span className="material-symbols-rounded" style={{ color: 'var(--color-primary)' }}>fingerprint</span>
+            Storefront Identity
+          </h3>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+            <div className="input-group">
+              <label>Restaurant Name</label>
+              <input type="text" className="input" value={config.restaurantName} onChange={(e) => handleInputChange('restaurantName', e.target.value)} placeholder="e.g. The Taste" />
+            </div>
+            <div className="input-group">
+              <label>Tagline / Cuisine</label>
+              <input type="text" className="input" value={config.restaurantTagline} onChange={(e) => handleInputChange('restaurantTagline', e.target.value)} placeholder="e.g. Chinese & Fast Food" />
+            </div>
+          </div>
+        </div>
+
+        {/* Logo Upload */}
+        <div className="settings-card" style={{ background: 'var(--glass-bg)', padding: '24px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
+          <h3 className="settings-card-heading" style={{ margin: '0 0 16px 0', fontSize: 'var(--text-base)', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)' }}>
+            <span className="material-symbols-rounded" style={{ color: 'var(--color-primary)' }}>image</span>
+            Restaurant Brand Logo
+          </h3>
+          <div style={{ display: 'flex', gap: '20px', alignItems: 'center', flexWrap: 'wrap' }}>
+            <div
+              onClick={() => logoInputRef.current?.click()}
+              style={{
+                width: '100px', height: '100px', borderRadius: 'var(--radius-md)',
+                border: '2.5px dashed var(--border-glass)', display: 'flex', alignItems: 'center',
+                justifyContent: 'center', overflow: 'hidden', background: 'rgba(0,0,0,0.2)',
+                cursor: 'pointer', transition: 'all 0.2s ease', flexShrink: 0
+              }}
+              title="Click to upload logo"
+            >
+              {config.brandLogoBase64 ? (
+                <img src={config.brandLogoBase64} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+              ) : (
+                <div style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>
+                  <span className="material-symbols-rounded" style={{ fontSize: '28px' }}>add_photo_alternate</span>
+                  <div style={{ fontSize: '9px', marginTop: '4px', fontWeight: 700 }}>Upload Logo</div>
+                </div>
+              )}
+            </div>
+            <div style={{ flex: 1, minWidth: '200px' }}>
+              <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: '12px', fontWeight: 500 }}>
+                This logo represents your brand on the customer self-ordering portal, receipt bills, and invoice templates.
+                Format: Transparent PNG/SVG, under 1MB.
+              </p>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button onClick={() => logoInputRef.current?.click()} className="btn btn-secondary btn-sm" style={{ fontWeight: 700, fontSize: 'var(--text-xs)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                  <span className="material-symbols-rounded" style={{ fontSize: '16px' }}>upload</span>
+                  Upload
+                </button>
+                {config.brandLogoBase64 && (
+                  <button onClick={() => setConfig(prev => ({ ...prev, brandLogoBase64: '' }))} className="btn btn-secondary btn-sm" style={{ fontWeight: 700, fontSize: 'var(--text-xs)', color: 'var(--color-danger)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                    <span className="material-symbols-rounded" style={{ fontSize: '16px' }}>delete</span>
+                    Remove
+                  </button>
+                )}
+              </div>
+              <input ref={logoInputRef} type="file" onChange={handleLogoUpload} accept="image/png,image/jpeg,image/svg+xml,image/webp" style={{ display: 'none' }} />
+            </div>
+          </div>
+        </div>
+
+        {/* Brand Colors */}
+        <div className="settings-card" style={{ background: 'var(--glass-bg)', padding: '24px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
+          <h3 className="settings-card-heading" style={{ margin: '0 0 16px 0', fontSize: 'var(--text-base)', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)' }}>
+            <span className="material-symbols-rounded" style={{ color: 'var(--color-primary)' }}>colorize</span>
+            Kiosk Interface Colors
+          </h3>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px' }}>
+            {[
+              { id: 'brandAccentColor', label: 'Primary Accent Theme' },
+              { id: 'brandSecondaryColor', label: 'Secondary UI Accent' },
+              { id: 'brandBgGradientStart', label: 'Kiosk Background Start' },
+              { id: 'brandBgGradientEnd', label: 'Kiosk Background End' }
+            ].map(picker => (
+              <div key={picker.id} className="input-group">
+                <label style={{ fontSize: 'var(--text-xs)', fontWeight: 700 }}>{picker.label}</label>
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                  <input
+                    type="color"
+                    id={picker.id}
+                    value={config[picker.id]}
+                    onChange={(e) => handleColorChange(picker.id as any, e.target.value)}
+                    style={{
+                      border: '1px solid var(--border-glass)', background: 'none',
+                      width: '38px', height: '38px', borderRadius: '8px',
+                      cursor: 'pointer', padding: 0
+                    }}
+                  />
+                  <input
+                    type="text"
+                    className="input"
+                    value={config[picker.id]}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (/^#[0-9A-F]{0,6}$/i.test(val)) {
+                        handleColorChange(picker.id as any, val);
+                      }
+                    }}
+                    placeholder={config[picker.id]}
+                    style={{ textTransform: 'uppercase', textAlign: 'center', fontSize: 'var(--text-xs)', fontWeight: 700 }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Welcome Messages */}
+        <div className="settings-card" style={{ background: 'var(--glass-bg)', padding: '24px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
+          <h3 className="settings-card-heading" style={{ margin: '0 0 16px 0', fontSize: 'var(--text-base)', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)' }}>
+            <span className="material-symbols-rounded" style={{ color: 'var(--color-primary)' }}>chat_bubble</span>
+            Kiosk Custom Messages
+          </h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            <div className="input-group">
+              <label>Welcome Banner Text</label>
+              <input type="text" className="input" value={config.brandKioskWelcome} onChange={(e) => handleInputChange('brandKioskWelcome', e.target.value)} placeholder="Welcome! Browse our menu." />
+            </div>
+            <div className="input-group">
+              <label>kiosk Footer Text</label>
+              <input type="text" className="input" value={config.brandKioskFooter} onChange={(e) => handleInputChange('brandKioskFooter', e.target.value)} placeholder="© 2026 Your Restaurant. All rights reserved." />
+            </div>
+          </div>
+        </div>
+
+        {/* Promotional Carousel Banner */}
+        <div className="settings-card" style={{ background: 'var(--glass-bg)', padding: '24px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
+          <h3 className="settings-card-heading" style={{ margin: '0 0 4px 0', fontSize: 'var(--text-base)', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)' }}>
+            <span className="material-symbols-rounded" style={{ color: 'var(--color-primary)' }}>campaign</span>
+            kiosk Advertising Banner
+          </h3>
+          <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)', lineHeight: 1.5, margin: '8px 0 16px 0', fontWeight: 500 }}>
+            Upload a high-fidelity banner image representing special offers. Recommended size: 1200×400px.
+          </p>
+          
           <div
-            onClick={() => logoInputRef.current?.click()}
+            onClick={() => bannerInputRef.current?.click()}
             style={{
-              width: '120px', height: '120px', borderRadius: 'var(--radius-lg)',
-              border: '2px dashed var(--border-glass)', display: 'flex', alignItems: 'center',
-              justifyContent: 'center', overflow: 'hidden', background: 'var(--bg-card)',
-              cursor: 'pointer', transition: 'all 0.25s ease', flexShrink: 0
+              width: '100%', height: '140px', borderRadius: 'var(--radius-md)',
+              border: '2.5px dashed var(--border-glass)', display: 'flex', alignItems: 'center',
+              justifyContent: 'center', overflow: 'hidden', background: 'rgba(0,0,0,0.2)',
+              cursor: 'pointer', transition: 'all 0.25s ease'
             }}
-            title="Click to upload logo"
+            title="Click to upload banner"
           >
-            {config.brandLogoBase64 ? (
-              <img src={config.brandLogoBase64} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+            {config.brandBannerBase64 ? (
+              <img src={config.brandBannerBase64} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
             ) : (
-              <div style={{ textAlign: 'center', color: 'var(--text-muted)' }}>
-                <span className="material-symbols-rounded" style={{ fontSize: '32px' }}>add_photo_alternate</span>
-                <div style={{ fontSize: '0.65rem', marginTop: '4px', fontWeight: 600 }}>Upload Logo</div>
+              <div style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>
+                <span className="material-symbols-rounded" style={{ fontSize: '32px' }}>campaign</span>
+                <div style={{ fontSize: '10px', marginTop: '4px', fontWeight: 700 }}>Click to upload promo banner</div>
               </div>
             )}
           </div>
-          <div style={{ flex: 1, minWidth: '200px' }}>
-            <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: '12px', fontWeight: 500 }}>
-              Upload your restaurant logo. It will appear on the customer-facing kiosk, receipts (if enabled), and invoices.
-              Recommended: 512×512px PNG or SVG with transparent background.
-            </p>
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <button onClick={() => logoInputRef.current?.click()} className="btn btn-secondary btn-sm" style={{ fontFamily: 'var(--font-sans)', fontWeight: 700, fontSize: 'var(--text-xs)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <span className="material-symbols-rounded" style={{ fontSize: '16px' }}>upload</span>
-                Choose File
+          
+          <div style={{ display: 'flex', gap: '8px', marginTop: '14px' }}>
+            <button onClick={() => bannerInputRef.current?.click()} className="btn btn-secondary btn-sm" style={{ fontWeight: 700, fontSize: 'var(--text-xs)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+              <span className="material-symbols-rounded" style={{ fontSize: '16px' }}>upload</span>
+              Upload Banner
+            </button>
+            {config.brandBannerBase64 && (
+              <button onClick={() => setConfig(prev => ({ ...prev, brandBannerBase64: '' }))} className="btn btn-secondary btn-sm" style={{ fontWeight: 700, fontSize: 'var(--text-xs)', color: 'var(--color-danger)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                <span className="material-symbols-rounded" style={{ fontSize: '16px' }}>delete</span>
+                Remove
               </button>
-              {config.brandLogoBase64 && (
-                <button onClick={() => setConfig(prev => ({ ...prev, brandLogoBase64: '' }))} className="btn btn-secondary btn-sm" style={{ fontFamily: 'var(--font-sans)', fontWeight: 700, fontSize: 'var(--text-xs)', color: 'var(--color-danger)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                  <span className="material-symbols-rounded" style={{ fontSize: '16px' }}>delete</span>
-                  Remove
-                </button>
-              )}
-            </div>
-            <input ref={logoInputRef} type="file" onChange={handleLogoUpload} accept="image/png,image/jpeg,image/svg+xml,image/webp" style={{ display: 'none' }} />
+            )}
           </div>
+          <input ref={bannerInputRef} type="file" onChange={handleBannerUpload} accept="image/png,image/jpeg,image/webp" style={{ display: 'none' }} />
         </div>
-      </div>
 
-      {/* Brand Colors */}
-      <div className="settings-card" style={{ background: 'var(--glass-bg)', padding: '24px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', marginBottom: '20px' }}>
-        <h3 className="settings-card-heading" style={{ margin: '0 0 4px 0', fontSize: 'var(--text-base)', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)' }}>
-          <span className="material-symbols-rounded" style={{ color: 'var(--color-primary)' }}>colorize</span>
-          Brand Colors
-        </h3>
-        <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)', lineHeight: 1.5, margin: '0 0 16px 0', fontWeight: 500 }}>
-          These colors are applied to the customer-facing kiosk/ordering page.
-        </p>
-        <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
-          {[
-            { id: 'brandAccentColor', label: 'Primary Accent' },
-            { id: 'brandSecondaryColor', label: 'Secondary Accent' },
-            { id: 'brandBgGradientStart', label: 'Background Start' },
-            { id: 'brandBgGradientEnd', label: 'Background End' }
-          ].map(picker => (
-            <div key={picker.id} className="input-group" style={{ flex: 1, minWidth: '160px' }}>
-              <label htmlFor={picker.id}>{picker.label}</label>
-              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                <input
-                  type="color"
-                  id={picker.id}
-                  value={config[picker.id]}
-                  onChange={(e) => handleColorChange(picker.id as any, e.target.value)}
-                  style={{
-                    border: '1px solid var(--border-glass)', background: 'none',
-                    width: '42px', height: '42px', borderRadius: 'var(--radius-md)',
-                    cursor: 'pointer', padding: 0
-                  }}
-                />
-                <input
-                  type="text"
-                  className="input"
-                  value={config[picker.id]}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    if (/^#[0-9A-F]{0,6}$/i.test(val)) {
-                      handleColorChange(picker.id as any, val);
-                    }
-                  }}
-                  placeholder={config[picker.id]}
-                  style={{ maxWidth: '100px', textTransform: 'uppercase', textAlign: 'center' }}
-                />
+        {/* Social Channels */}
+        <div className="settings-card" style={{ background: 'var(--glass-bg)', padding: '24px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
+          <h3 className="settings-card-heading" style={{ margin: '0 0 16px 0', fontSize: 'var(--text-base)', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)' }}>
+            <span className="material-symbols-rounded" style={{ color: 'var(--color-primary)' }}>share</span>
+            Social Media Integrations
+          </h3>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
+            {[
+              { id: 'brandSocialInstagram', label: 'Instagram Link', placeholder: 'https://instagram.com/page' },
+              { id: 'brandSocialFacebook', label: 'Facebook Link', placeholder: 'https://facebook.com/page' },
+              { id: 'brandSocialGoogleMaps', label: 'Google Maps Link', placeholder: 'https://maps.google.com/...' },
+              { id: 'brandSocialZomato', label: 'Zomato Store Link', placeholder: 'https://zomato.com/...' },
+              { id: 'brandSocialSwiggy', label: 'Swiggy Store Link', placeholder: 'https://swiggy.com/...' },
+              { id: 'brandSocialWhatsApp', label: 'WhatsApp Number Link', placeholder: 'https://wa.me/91...' }
+            ].map(field => (
+              <div key={field.id} className="input-group">
+                <label style={{ fontSize: 'var(--text-xs)', fontWeight: 700 }}>{field.label}</label>
+                <input type="url" className="input" value={config[field.id]} onChange={(e) => handleInputChange(field.id as any, e.target.value)} placeholder={field.placeholder} />
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
-        {/* Color Preview */}
-        <div style={{ marginTop: '16px', padding: '20px', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-glass)', overflow: 'hidden', position: 'relative' }}>
-          <div style={{
-            position: 'absolute', inset: 0,
-            background: `linear-gradient(135deg, ${config.brandBgGradientStart}, ${config.brandBgGradientEnd})`,
-            zIndex: 0
-          }}></div>
-          <div style={{ position: 'relative', zIndex: 1, textAlign: 'center' }}>
-            <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 'var(--text-lg)', color: config.brandAccentColor, letterSpacing: '-0.02em' }}>
-              {config.restaurantName || 'Your Restaurant'}
+
+        {/* QR station */}
+        <div className="settings-card" style={{ background: 'var(--glass-bg)', padding: '24px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
+          <h3 className="settings-card-heading" style={{ margin: '0 0 16px 0', fontSize: 'var(--text-base)', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)' }}>
+            <span className="material-symbols-rounded" style={{ color: 'var(--color-primary)' }}>qr_code_2</span>
+            Table Kiosk QR Code
+          </h3>
+          <div style={{ display: 'flex', gap: '20px', alignItems: 'center', flexWrap: 'wrap' }}>
+            <div style={{ background: '#FFF', padding: '8px', borderRadius: '10px', display: 'flex', justifyContent: 'center', alignItems: 'center', border: '1px solid var(--border-glass)' }}>
+              <canvas ref={canvasRef} width="110" height="110"></canvas>
             </div>
-            <div style={{ fontSize: 'var(--text-xs)', color: config.brandSecondaryColor, fontWeight: 600, marginTop: '4px' }}>
-              {config.restaurantTagline || 'Your Tagline'}
+            <div style={{ flex: 1, minWidth: '200px' }}>
+              <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: '10px', fontWeight: 500 }}>
+                Scan to access: <br />
+                <code style={{ color: 'var(--color-primary)', fontWeight: 700, fontSize: '10px' }}>{window.location.origin}/#/self-order</code>
+              </p>
+              <button onClick={handleQRDownload} className="btn btn-secondary btn-sm" style={{ fontWeight: 700, fontSize: 'var(--text-xs)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                <span className="material-symbols-rounded" style={{ fontSize: '16px' }}>download</span>
+                Download QR Code
+              </button>
             </div>
           </div>
         </div>
-      </div>
 
-      {/* Kiosk Display Text */}
-      <div className="settings-card" style={{ background: 'var(--glass-bg)', padding: '24px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', marginBottom: '20px' }}>
-        <h3 className="settings-card-heading" style={{ margin: '0 0 16px 0', fontSize: 'var(--text-base)', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)' }}>
-          <span className="material-symbols-rounded" style={{ color: 'var(--color-primary)' }}>storefront</span>
-          Kiosk Display Text
-        </h3>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-          <div className="input-group">
-            <label htmlFor="brandKioskWelcome">Welcome Message</label>
-            <input type="text" id="brandKioskWelcome" className="input" value={config.brandKioskWelcome} onChange={(e) => handleInputChange('brandKioskWelcome', e.target.value)} placeholder="Welcome! Browse our menu." />
-          </div>
-          <div className="input-group">
-            <label htmlFor="brandKioskFooter">Kiosk Footer Text</label>
-            <input type="text" id="brandKioskFooter" className="input" value={config.brandKioskFooter} onChange={(e) => handleInputChange('brandKioskFooter', e.target.value)} placeholder="© 2026 Your Restaurant. All rights reserved." />
-          </div>
-        </div>
-      </div>
-
-      {/* Promotional Banner */}
-      <div className="settings-card" style={{ background: 'var(--glass-bg)', padding: '24px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', marginBottom: '20px' }}>
-        <h3 className="settings-card-heading" style={{ margin: '0 0 4px 0', fontSize: 'var(--text-base)', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)' }}>
-          <span className="material-symbols-rounded" style={{ color: 'var(--color-primary)' }}>campaign</span>
-          Promotional Banner
-        </h3>
-        <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)', lineHeight: 1.5, margin: '0 0 16px 0', fontWeight: 500 }}>
-          Upload a hero banner image for the customer kiosk. Recommended: 1200×400px.
-        </p>
-        <div
-          onClick={() => bannerInputRef.current?.click()}
-          style={{
-            width: '100%', minHeight: '120px', borderRadius: 'var(--radius-lg)',
-            border: '2px dashed var(--border-glass)', display: 'flex', alignItems: 'center',
-            justifyContent: 'center', overflow: 'hidden', background: 'var(--bg-card)',
-            cursor: 'pointer', transition: 'all 0.25s ease'
-          }}
-          title="Click to upload banner"
-        >
-          {config.brandBannerBase64 ? (
-            <img src={config.brandBannerBase64} style={{ width: '100%', height: 'auto', maxHeight: '300px', objectFit: 'cover' }} />
-          ) : (
-            <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '24px' }}>
-              <span className="material-symbols-rounded" style={{ fontSize: '36px' }}>panorama</span>
-              <div style={{ fontSize: '0.7rem', marginTop: '6px', fontWeight: 600 }}>Click to upload promotional banner</div>
-            </div>
-          )}
-        </div>
-        <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
-          <button onClick={() => bannerInputRef.current?.click()} className="btn btn-secondary btn-sm" style={{ fontFamily: 'var(--font-sans)', fontWeight: 700, fontSize: 'var(--text-xs)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-            <span className="material-symbols-rounded" style={{ fontSize: '16px' }}>upload</span>
-            Upload Banner
-          </button>
-          {config.brandBannerBase64 && (
-            <button onClick={() => setConfig(prev => ({ ...prev, brandBannerBase64: '' }))} className="btn btn-secondary btn-sm" style={{ fontFamily: 'var(--font-sans)', fontWeight: 700, fontSize: 'var(--text-xs)', color: 'var(--color-danger)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <span className="material-symbols-rounded" style={{ fontSize: '16px' }}>delete</span>
-              Remove
-            </button>
-          )}
-        </div>
-        <input ref={bannerInputRef} type="file" onChange={handleBannerUpload} accept="image/png,image/jpeg,image/webp" style={{ display: 'none' }} />
-      </div>
-
-      {/* Social Media Links */}
-      <div className="settings-card" style={{ background: 'var(--glass-bg)', padding: '24px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', marginBottom: '20px' }}>
-        <h3 className="settings-card-heading" style={{ margin: '0 0 16px 0', fontSize: 'var(--text-base)', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)' }}>
-          <span className="material-symbols-rounded" style={{ color: 'var(--color-primary)' }}>share</span>
-          Social Media & Platform Links
-        </h3>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-          {[
-            { id: 'brandSocialInstagram', label: 'Instagram', placeholder: 'https://instagram.com/yourpage', emoji: '📸' },
-            { id: 'brandSocialFacebook', label: 'Facebook', placeholder: 'https://facebook.com/yourpage', emoji: '📘' },
-            { id: 'brandSocialGoogleMaps', label: 'Google Maps', placeholder: 'https://maps.google.com/...', emoji: '📍' },
-            { id: 'brandSocialZomato', label: 'Zomato', placeholder: 'https://zomato.com/...', emoji: '🍽️' },
-            { id: 'brandSocialSwiggy', label: 'Swiggy', placeholder: 'https://swiggy.com/...', emoji: '🛵' },
-            { id: 'brandSocialWhatsApp', label: 'WhatsApp', placeholder: 'https://wa.me/91XXXXXXXXXX', emoji: '💬' }
-          ].map(field => (
-            <div key={field.id} className="input-group" style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-              <span style={{ fontSize: '1.2rem', flexShrink: 0, width: '28px', textAlign: 'center' }}>{field.emoji}</span>
-              <div style={{ flex: 1 }}>
-                <label htmlFor={field.id} style={{ fontSize: 'var(--text-xs)', fontWeight: 600 }}>{field.label}</label>
-                <input type="url" id={field.id} className="input" value={config[field.id]} onChange={(e) => handleInputChange(field.id as any, e.target.value)} placeholder={field.placeholder} />
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* QR Code Download */}
-      <div className="settings-card" style={{ background: 'var(--glass-bg)', padding: '24px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', marginBottom: '20px' }}>
-        <h3 className="settings-card-heading" style={{ margin: '0 0 4px 0', fontSize: 'var(--text-base)', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)' }}>
-          <span className="material-symbols-rounded" style={{ color: 'var(--color-primary)' }}>qr_code_2</span>
-          Self-Order QR Code
-        </h3>
-        <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)', lineHeight: 1.5, margin: '0 0 16px 0', fontWeight: 500 }}>
-          Download a printable QR code that customers can scan to open your online ordering page.
-        </p>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '20px', flexWrap: 'wrap' }}>
-          <div id="branding-qr-preview" style={{
-            width: '160px', height: '160px', background: 'white', borderRadius: 'var(--radius-lg)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            border: '1px solid var(--border-glass)', padding: '12px'
-          }}>
-            <canvas ref={canvasRef} width="136" height="136"></canvas>
-          </div>
-          <div style={{ flex: 1, minWidth: '200px' }}>
-            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: '12px', fontWeight: 500 }}>
-              The QR code links to:<br />
-              <code style={{ fontSize: '0.7rem', color: 'var(--color-primary)', fontWeight: 700 }}>
-                {window.location.origin}/#/self-order
-              </code>
-            </div>
-            <button onClick={handleQRDownload} className="btn btn-primary btn-sm" style={{ fontFamily: 'var(--font-sans)', fontWeight: 700, fontSize: 'var(--text-xs)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <span className="material-symbols-rounded" style={{ fontSize: '16px' }}>download</span>
-              Download QR Code (PNG)
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Save Button */}
-      <div style={{ marginTop: '8px', marginBottom: '30px' }}>
+        {/* Global Save Button */}
         <button onClick={handleSave} className="btn btn-primary btn-block btn-lg" style={{
-          fontFamily: 'var(--font-sans)',
           fontWeight: 700, fontSize: 'var(--text-sm)', height: '48px',
-          boxShadow: 'var(--shadow-primary)',
-          display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+          boxShadow: 'var(--shadow-primary)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
           width: '100%', border: 'none', cursor: 'pointer', borderRadius: 'var(--radius-md)', color: '#fff'
         }}>
           <span className="material-symbols-rounded" style={{ fontSize: '20px' }}>save</span>
-          Save Branding Settings
+          Save Brand Configuration
         </button>
+      </div>
+
+      {/* RIGHT COLUMN: Interactive Live Simulated Kiosk Mockup */}
+      <div style={{ position: 'sticky', top: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <div style={{ fontFamily: 'var(--font-display)', fontSize: '10px', fontWeight: 800, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.08em', paddingLeft: '4px' }}>
+          Live Storefront Simulator
+        </div>
+
+        <div style={{
+          width: '100%',
+          borderRadius: '24px',
+          background: '#040406',
+          border: '12px solid #1e1e24',
+          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.6)',
+          overflow: 'hidden',
+          display: 'flex',
+          flexDirection: 'column',
+          aspectRatio: '9 / 14',
+          position: 'relative'
+        }}>
+          
+          {/* Mock Kiosk Header Bar */}
+          <div style={{
+            height: '4px',
+            background: '#040406',
+            width: '100%',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            position: 'absolute',
+            top: 0,
+            zIndex: 10
+          }}>
+            <div style={{ width: '40px', height: '2px', background: '#333', borderRadius: '10px' }} />
+          </div>
+
+          {/* Kiosk Storefront Screen Area */}
+          <div style={{
+            flex: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            background: `linear-gradient(135deg, ${config.brandBgGradientStart || '#040406'}, ${config.brandBgGradientEnd || '#0B0B0F'})`,
+            padding: '16px 12px',
+            color: '#fff',
+            overflow: 'hidden',
+            fontFamily: 'var(--font-sans)',
+            marginTop: '4px'
+          }}>
+            
+            {/* Header Branding */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                {config.brandLogoBase64 ? (
+                  <img src={config.brandLogoBase64} style={{ width: '22px', height: '22px', borderRadius: '4px', objectFit: 'contain' }} />
+                ) : (
+                  <span className="material-symbols-rounded" style={{ fontSize: '18px', color: config.brandAccentColor }}>restaurant</span>
+                )}
+                <span style={{ fontSize: '12px', fontWeight: 800, fontFamily: 'var(--font-display)', letterSpacing: '-0.02em' }}>
+                  {config.restaurantName || 'The Taste'}
+                </span>
+              </div>
+              <span style={{
+                fontSize: '7px',
+                background: 'rgba(255,255,255,0.06)',
+                border: '1px solid rgba(255,255,255,0.1)',
+                padding: '2px 6px',
+                borderRadius: '10px',
+                fontWeight: 700
+              }}>TABLE 5</span>
+            </div>
+
+            {/* Welcome message banner */}
+            <div style={{ margin: '4px 0 12px 0' }}>
+              <div style={{ fontSize: '14px', fontWeight: 800, fontFamily: 'var(--font-display)', color: config.brandAccentColor, lineHeight: 1.2 }}>
+                {config.brandKioskWelcome || 'Welcome!'}
+              </div>
+              <div style={{ fontSize: '9px', color: config.brandSecondaryColor || '#FF8960', fontWeight: 600, marginTop: '2px' }}>
+                {config.restaurantTagline || 'Order Fresh Chinese & Fast Food'}
+              </div>
+            </div>
+
+            {/* Promotional Carousel Ad */}
+            <div style={{
+              height: '76px',
+              borderRadius: '8px',
+              overflow: 'hidden',
+              position: 'relative',
+              background: 'rgba(255,255,255,0.02)',
+              border: '1px solid rgba(255,255,255,0.04)',
+              marginBottom: '14px'
+            }}>
+              {config.brandBannerBase64 ? (
+                <img src={config.brandBannerBase64} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', height: '100%', gap: '4px', opacity: 0.5 }}>
+                  <span className="material-symbols-rounded" style={{ fontSize: '20px' }}>campaign</span>
+                  <span style={{ fontSize: '8px', fontWeight: 700 }}>Featured Ad Spot</span>
+                </div>
+              )}
+            </div>
+
+            {/* Category tabs */}
+            <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', marginBottom: '14px' }} className="scrollbar-none">
+              {['All Items', '🍜 Momos', '🌶️ Starters', '🍜 Noodles'].map((cat, idx) => {
+                const active = idx === 0;
+                return (
+                  <span key={cat} style={{
+                    fontSize: '8px',
+                    fontWeight: 700,
+                    padding: '4px 10px',
+                    borderRadius: '6px',
+                    whiteSpace: 'nowrap',
+                    background: active ? config.brandAccentColor : 'rgba(255,255,255,0.03)',
+                    color: active ? '#fff' : '#94A3B8',
+                    border: active ? 'none' : '1px solid rgba(255,255,255,0.04)'
+                  }}>{cat}</span>
+                );
+              })}
+            </div>
+
+            {/* Dishes list items */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', flex: 1, overflowY: 'auto' }} className="scrollbar-none">
+              {[
+                { name: 'Veg Schezwan Noodles', price: '₹140', desc: 'Spicy stir-fried noodles with szechuan sauce' },
+                { name: 'Steam Chicken Momos', price: '₹120', desc: 'Juicy steamed chicken dumplings with spicy red dip' }
+              ].map(dish => (
+                <div key={dish.name} style={{
+                  display: 'flex',
+                  gap: '8px',
+                  padding: '8px',
+                  borderRadius: '8px',
+                  background: 'rgba(255, 255, 255, 0.02)',
+                  border: '1px solid rgba(255,255,255,0.04)'
+                }}>
+                  <div style={{ width: '40px', height: '40px', borderRadius: '6px', background: 'rgba(255,255,255,0.05)', flexShrink: 0 }} />
+                  <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: '9px', fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: '#F9FAFB' }}>{dish.name}</span>
+                      <span style={{ fontSize: '8px', fontWeight: 800, color: config.brandSecondaryColor }}>{dish.price}</span>
+                    </div>
+                    <span style={{ fontSize: '7px', color: '#94A3B8', marginTop: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{dish.desc}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Social channels display */}
+            <div style={{
+              display: 'flex',
+              justifyContent: 'center',
+              gap: '12px',
+              paddingTop: '8px',
+              borderTop: '1px solid rgba(255,255,255,0.05)',
+              marginTop: '12px'
+            }}>
+              {config.brandSocialInstagram && <span style={{ fontSize: '10px' }}>📸</span>}
+              {config.brandSocialFacebook && <span style={{ fontSize: '10px' }}>📘</span>}
+              {config.brandSocialWhatsApp && <span style={{ fontSize: '10px' }}>💬</span>}
+              {config.brandSocialGoogleMaps && <span style={{ fontSize: '10px' }}>📍</span>}
+            </div>
+
+            {/* Kiosk Footer */}
+            <div style={{
+              textAlign: 'center',
+              fontSize: '6px',
+              color: '#575765',
+              marginTop: '6px',
+              fontWeight: 600
+            }}>
+              {config.brandKioskFooter || 'Powered by NextGenOS'}
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

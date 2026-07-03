@@ -11,12 +11,10 @@ import { globalStore } from '../../store/Store';
 // Views
 import { Dashboard, useGlobalStore } from './Dashboard';
 import { MenuManager } from './MenuManager';
-import { OrderHistory } from './OrderHistory';
+import { OrderHistoryComponent } from './OrderHistory';
 import { SettingsView } from './Settings';
 import { BrandingView } from './BrandingView';
 import { AnalyticsView } from './AnalyticsView';
-
-
 
 /**
  * StaffManager - Decoupled React component replacing direct DOM queries of legacy view.
@@ -26,8 +24,8 @@ function StaffManager() {
   const [owners, setOwners] = useState<any[]>([]);
 
   const ROLES = {
-    owner: { label: 'Owner', color: '#FF6B35', icon: 'shield_person' },
-    manager: { label: 'Manager', color: '#6C5CE7', icon: 'manage_accounts' },
+    owner: { label: 'Owner', color: '#FF5E36', icon: 'shield_person' },
+    manager: { label: 'Manager', color: '#8B5CF6', icon: 'manage_accounts' },
     cashier: { label: 'Cashier', color: '#10B981', icon: 'point_of_sale' },
     kitchen: { label: 'Kitchen', color: '#F59E0B', icon: 'restaurant' },
     waiter: { label: 'Waiter', color: '#3B82F6', icon: 'room_service' },
@@ -62,7 +60,7 @@ function StaffManager() {
     if (currentRole === 'owner' && newRole !== 'owner') {
       if (owners.length <= 1) {
         showToast('Cannot demote the last active owner', 'error');
-        fetchStaff(); // reset select element visual state
+        fetchStaff();
         return;
       }
     }
@@ -96,82 +94,129 @@ function StaffManager() {
   };
 
   return (
-    <div style={{ padding: '28px 24px', display: 'flex', flexDirection: 'column', gap: '24px', maxWidth: '1100px', margin: '0 auto', width: '100%' }}>
+    <div style={{ padding: '28px 24px', display: 'flex', flexDirection: 'column', gap: '28px', maxWidth: '1100px', margin: '0 auto', width: '100%' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--text-lg)', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
-          <span className="material-symbols-rounded" style={{ fontSize: '22px', verticalAlign: 'middle', marginRight: '8px', color: 'var(--color-primary)' }}>groups</span>
+        <div style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--text-lg)', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em', display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <span className="material-symbols-rounded" style={{ fontSize: '24px', color: 'var(--color-primary)', filter: 'drop-shadow(0 0 8px var(--color-primary))' }}>groups</span>
           Staff & Role Management
         </div>
       </div>
 
       {/* Staff Cards Grid */}
-      <div className="content-grid">
+      <div className="content-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px' }}>
         {staffList.map((s) => {
           const role = ROLES[s.role] || ROLES.cashier;
           const isDeletable = !(s.role === 'owner' && owners.length <= 1);
           return (
-            <div key={s.id} className="premium-card" style={{ position: 'relative', display: 'flex', gap: '16px', padding: '16px', alignItems: 'center' }}>
-              <div className="premium-card-avatar" style={{
-                background: `rgba(${s.role === 'owner' ? '255,107,53' : '108,92,231'}, 0.1)`,
+            <div key={s.id} className="premium-card" style={{
+              position: 'relative',
+              display: 'flex',
+              gap: '16px',
+              padding: '20px',
+              alignItems: 'center',
+              background: 'var(--glass-bg)',
+              borderRadius: 'var(--radius-md)',
+              border: '1px solid var(--border-color)',
+              boxShadow: 'var(--shadow-sm)',
+              transition: 'all 0.25s ease'
+            }}>
+              <div style={{
+                background: `${role.color}15`,
                 color: role.color,
-                width: '40px',
-                height: '40px',
-                borderRadius: '50%',
+                width: '48px',
+                height: '48px',
+                borderRadius: '12px',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                fontWeight: 700,
-                fontSize: '1rem',
-                flexShrink: 0
+                fontWeight: 800,
+                fontSize: '1.2rem',
+                flexShrink: 0,
+                border: `1px solid ${role.color}33`,
+                boxShadow: `0 0 10px ${role.color}18`
               }}>
                 {(s.name || '?')[0].toUpperCase()}
               </div>
-              <div className="premium-card-body" style={{ flex: 1, minWidth: 0 }}>
-                <span className="premium-card-title" style={{ fontSize: 'var(--text-base)', fontWeight: 700, color: 'var(--text-primary)' }}>{s.name || 'Unknown'}</span>
-                <div style={{ display: 'flex', gap: '6px', alignItems: 'center', marginTop: '4px', flexWrap: 'wrap' }}>
-                  <span style={{ fontSize: '0.55rem', color: s.isActive ? 'var(--color-success)' : 'var(--color-danger)', fontWeight: 700 }}>
-                    {s.isActive ? '● Active' : '● Inactive'}
+              
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <span style={{ fontSize: 'var(--text-base)', fontWeight: 700, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.name || 'Unknown'}</span>
+                  <span style={{
+                    fontSize: '10px',
+                    color: s.isActive ? 'var(--color-success)' : 'var(--color-danger)',
+                    background: s.isActive ? 'rgba(16, 185, 129, 0.08)' : 'rgba(239, 68, 68, 0.08)',
+                    border: `1px solid ${s.isActive ? 'rgba(16,185,129,0.2)' : 'rgba(239,68,68,0.2)'}`,
+                    padding: '2px 8px',
+                    borderRadius: '4px',
+                    fontWeight: 700
+                  }}>
+                    {s.isActive ? 'Active' : 'Inactive'}
                   </span>
                 </div>
-                {/* Inline Role Selector */}
-                <div style={{ marginTop: '8px', display: 'flex', gap: '6px', alignItems: 'center' }}>
+                
+                {/* Inline Role Selector & Actions */}
+                <div style={{ marginTop: '12px', display: 'flex', gap: '8px', alignItems: 'center' }}>
                   <select
-                    className="input staff-role-select"
+                    className="input"
                     value={s.role}
                     onChange={(e) => handleRoleChange(s.id, e.target.value, s.role, s.name, s.pinHash)}
                     style={{
-                      fontSize: '0.65rem',
-                      padding: '4px 8px',
-                      height: '28px',
-                      minHeight: '28px',
+                      fontSize: 'var(--text-xs)',
+                      padding: '4px 10px',
+                      height: '30px',
+                      minHeight: '30px',
                       borderRadius: '6px',
                       fontWeight: 700,
-                      maxWidth: '130px',
+                      flex: 1,
                       color: role.color,
                       borderColor: `${role.color}33`,
-                      background: 'var(--bg-input)'
+                      background: 'rgba(0,0,0,0.2)'
                     }}
                   >
                     {Object.entries(ROLES).map(([key, r]) => (
-                      <option key={key} value={key} style={{ background: 'var(--bg-surface)', color: 'var(--text-primary)' }}>{r.label}</option>
+                      <option key={key} value={key} style={{ background: 'var(--bg-secondary)', color: 'var(--text-primary)' }}>{r.label}</option>
                     ))}
                   </select>
+                  
                   <button
-                    className="btn-icon staff-toggle-active-btn"
                     onClick={() => handleToggleActive(s.id, s.isActive)}
-                    title={s.isActive ? 'Deactivate' : 'Activate'}
-                    style={{ color: s.isActive ? 'var(--color-warning)' : 'var(--color-success)', background: 'transparent', border: 'none', cursor: 'pointer' }}
+                    title={s.isActive ? 'Deactivate Member' : 'Activate Member'}
+                    style={{
+                      width: '30px',
+                      height: '30px',
+                      borderRadius: '6px',
+                      background: 'rgba(255,255,255,0.03)',
+                      border: '1px solid var(--border-glass)',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: s.isActive ? 'var(--color-warning)' : 'var(--color-success)',
+                      transition: 'all 0.2s'
+                    }}
                   >
-                    <span className="material-symbols-rounded" style={{ fontSize: '16px' }}>{s.isActive ? 'person_off' : 'person'}</span>
+                    <span className="material-symbols-rounded" style={{ fontSize: '18px' }}>{s.isActive ? 'person_off' : 'person'}</span>
                   </button>
+                  
                   {isDeletable && (
                     <button
-                      className="btn-icon staff-delete-btn"
                       onClick={() => handleDelete(s.id, s.name)}
-                      style={{ color: 'var(--color-danger)', background: 'transparent', border: 'none', cursor: 'pointer' }}
-                      title="Remove"
+                      title="Remove Staff"
+                      style={{
+                        width: '30px',
+                        height: '30px',
+                        borderRadius: '6px',
+                        background: 'rgba(239, 68, 68, 0.05)',
+                        border: '1px solid rgba(239, 68, 68, 0.15)',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: 'var(--color-danger)',
+                        transition: 'all 0.2s'
+                      }}
                     >
-                      <span className="material-symbols-rounded" style={{ fontSize: '16px' }}>delete</span>
+                      <span className="material-symbols-rounded" style={{ fontSize: '18px' }}>delete</span>
                     </button>
                   )}
                 </div>
@@ -182,17 +227,17 @@ function StaffManager() {
       </div>
 
       {/* Access Matrix */}
-      <div className="card" style={{ overflowX: 'auto', padding: '20px' }}>
-        <div style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--text-sm)', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '16px', letterSpacing: '-0.01em', display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <span className="material-symbols-rounded" style={{ fontSize: '18px', color: 'var(--color-info)' }}>security</span>
+      <div className="card" style={{ padding: '24px', background: 'var(--glass-bg)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', boxShadow: 'var(--shadow-sm)', overflowX: 'auto' }}>
+        <div style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--text-sm)', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '18px', letterSpacing: '-0.01em', display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <span className="material-symbols-rounded" style={{ fontSize: '20px', color: 'var(--color-info)' }}>security</span>
           Role Access Matrix
         </div>
-        <table style={{ width: '100%', fontSize: '0.65rem', borderCollapse: 'collapse' }}>
+        <table style={{ width: '100%', fontSize: 'var(--text-xs)', borderCollapse: 'collapse' }}>
           <thead>
             <tr>
-              <th style={{ textAlign: 'left', padding: '8px', color: 'var(--text-secondary)', fontWeight: 700, borderBottom: '1px solid var(--border-glass)' }}>Module</th>
+              <th style={{ textAlign: 'left', padding: '12px 8px', color: 'var(--text-secondary)', fontWeight: 700, borderBottom: '2.5px solid var(--border-active)' }}>Module</th>
               {Object.keys(ROLES).map((r) => (
-                <th key={r} style={{ textAlign: 'center', padding: '8px', color: ROLES[r].color, fontWeight: 700, borderBottom: '1px solid var(--border-glass)' }}>
+                <th key={r} style={{ textAlign: 'center', padding: '12px 8px', color: ROLES[r].color, fontWeight: 700, borderBottom: '2.5px solid var(--border-active)' }}>
                   {ROLES[r].label}
                 </th>
               ))}
@@ -200,14 +245,19 @@ function StaffManager() {
           </thead>
           <tbody>
             {routes.map((route) => (
-              <tr key={route.name}>
-                <td style={{ padding: '6px 8px', color: 'var(--text-primary)', fontWeight: 600, borderBottom: '1px solid var(--border-glass)' }}>{route.name}</td>
+              <tr key={route.name} style={{ borderBottom: '1px solid var(--border-glass)' }}>
+                <td style={{ padding: '10px 8px', color: 'var(--text-primary)', fontWeight: 600 }}>{route.name}</td>
                 {Object.keys(ROLES).map((r) => (
-                  <td key={r} style={{ textAlign: 'center', padding: '6px 8px', borderBottom: '1px solid var(--border-glass)' }}>
+                  <td key={r} style={{ textAlign: 'center', padding: '10px 8px' }}>
                     {route.roles.includes(r) ? (
-                      <span style={{ color: 'var(--color-success)', fontSize: '14px', fontWeight: 'bold' }}>✓</span>
+                      <span style={{
+                        color: 'var(--color-success)',
+                        fontSize: '16px',
+                        fontWeight: 'bold',
+                        filter: 'drop-shadow(0 0 4px rgba(16,185,129,0.35))'
+                      }}>✓</span>
                     ) : (
-                      <span style={{ color: 'var(--text-muted)', opacity: 0.3 }}>—</span>
+                      <span style={{ color: 'var(--text-muted)', opacity: 0.25 }}>—</span>
                     )}
                   </td>
                 ))}
@@ -344,42 +394,81 @@ function AdminConsoleShell({ app }) {
 
   if (!isAuthenticated) {
     return (
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '80vh', maxWidth: '380px', margin: '0 auto', padding: '20px' }}>
-        <div className="card" style={{ width: '100%', textAlign: 'center', padding: '40px 32px' }}>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '80vh', maxWidth: '420px', margin: '0 auto', padding: '20px' }}>
+        <style>{`
+          @keyframes shield-pulse {
+            0% { box-shadow: 0 0 10px rgba(255, 94, 54, 0.1); }
+            50% { box-shadow: 0 0 25px rgba(255, 94, 54, 0.4); }
+            100% { box-shadow: 0 0 10px rgba(255, 94, 54, 0.1); }
+          }
+          .num-key {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border-glass);
+            border-radius: 12px;
+            color: var(--text-primary);
+            font-size: 1.25rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.15s ease;
+          }
+          .num-key:hover {
+            background: rgba(255, 255, 255, 0.06);
+            border-color: var(--border-active);
+            transform: scale(1.02);
+          }
+          .num-key:active {
+            background: rgba(255, 255, 255, 0.1);
+            transform: scale(0.97);
+          }
+          .pin-dot {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+          }
+        `}</style>
+        
+        <div className="card" style={{
+          width: '100%',
+          textAlign: 'center',
+          padding: '40px 32px',
+          background: 'var(--glass-bg)',
+          border: '1px solid var(--border-color)',
+          borderRadius: 'var(--radius-lg)',
+          boxShadow: 'var(--shadow-md)',
+          backdropFilter: 'blur(30px)'
+        }}>
           <div style={{
-            width: '56px',
-            height: '56px',
-            borderRadius: '50%',
-            background: 'rgba(255, 94, 54, 0.08)',
+            width: '64px',
+            height: '64px',
+            borderRadius: '16px',
+            background: 'rgba(255, 94, 54, 0.06)',
             display: 'inline-flex',
             alignItems: 'center',
             justifyContent: 'center',
-            marginBottom: '20px',
-            border: '1px solid rgba(255, 94, 54, 0.2)',
-            boxShadow: '0 0 20px rgba(255, 94, 54, 0.2)',
+            marginBottom: '24px',
+            border: '1px solid rgba(255, 94, 54, 0.25)',
+            animation: 'shield-pulse 3s infinite',
           }}>
-            <span className="material-symbols-rounded" style={{ fontSize: '28px', color: 'var(--color-primary)', filter: 'drop-shadow(0 0 6px var(--color-primary))' }}>lock</span>
+            <span className="material-symbols-rounded" style={{ fontSize: '32px', color: 'var(--color-primary)', filter: 'drop-shadow(0 0 6px var(--color-primary))' }}>shield</span>
           </div>
 
-          <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--text-lg)', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '6px', letterSpacing: '-0.02em' }}>Terminal Access</h2>
-          <p style={{ color: 'var(--text-secondary)', fontSize: 'var(--text-xs)', marginBottom: '28px', fontWeight: 500 }}>Enter your 4-digit master PIN code to unlock console</p>
+          <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--text-lg)', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '8px', letterSpacing: '-0.02em' }}>Terminal Lock</h2>
+          <p style={{ color: 'var(--text-secondary)', fontSize: 'var(--text-xs)', marginBottom: '32px', fontWeight: 500, lineHeight: 1.4 }}>Enter your 4-digit security PIN to unlock the administrative console</p>
 
           {/* PIN Dots */}
-          <div style={{ display: 'flex', justifyContent: 'center', gap: '20px', marginBottom: '36px' }}>
+          <div style={{ display: 'flex', justifyContent: 'center', gap: '20px', marginBottom: '40px' }}>
             {[0, 1, 2, 3].map((idx) => {
               const active = idx < pinInput.length;
               return (
                 <span
                   key={idx}
+                  className="pin-dot"
                   style={{
-                    width: '12px',
-                    height: '12px',
-                    borderRadius: '50%',
                     border: `2px solid ${active ? 'var(--color-primary)' : 'rgba(255,255,255,0.15)'}`,
                     background: active ? 'var(--color-primary)' : 'transparent',
-                    transform: active ? 'scale(1.2)' : 'scale(1)',
-                    boxShadow: active ? '0 0 10px rgba(255, 94, 54, 0.6)' : 'none',
-                    transition: 'all var(--transition-fast)',
+                    transform: active ? 'scale(1.25)' : 'scale(1)',
+                    boxShadow: active ? '0 0 12px rgba(255, 94, 54, 0.6)' : 'none',
                   }}
                 />
               );
@@ -387,14 +476,14 @@ function AdminConsoleShell({ app }) {
           </div>
 
           {/* Numpad */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '14px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px' }}>
             {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map((val) => (
-              <button key={val} className="btn btn-secondary num-key" onClick={() => handlePinKey(val)} style={{ height: '52px' }}>{val}</button>
+              <button key={val} className="num-key" onClick={() => handlePinKey(val)} style={{ height: '54px' }}>{val}</button>
             ))}
-            <button className="btn btn-danger num-key" onClick={() => handlePinKey('clear')} style={{ height: '52px', background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239,68,68,0.25)', color: '#FF4D4D' }}>C</button>
-            <button className="btn btn-secondary num-key" onClick={() => handlePinKey('0')} style={{ height: '52px' }}>0</button>
-            <button className="btn btn-secondary num-key" onClick={() => handlePinKey('backspace')} style={{ height: '52px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <span className="material-symbols-rounded" style={{ fontSize: '18px', color: 'var(--text-secondary)' }}>backspace</span>
+            <button className="num-key" onClick={() => handlePinKey('clear')} style={{ height: '54px', background: 'rgba(239, 68, 68, 0.05)', border: '1px solid rgba(239,68,68,0.2)', color: '#FF4D4D' }}>C</button>
+            <button className="num-key" onClick={() => handlePinKey('0')} style={{ height: '54px' }}>0</button>
+            <button className="num-key" onClick={() => handlePinKey('backspace')} style={{ height: '54px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <span className="material-symbols-rounded" style={{ fontSize: '20px', color: 'var(--text-secondary)' }}>backspace</span>
             </button>
           </div>
         </div>
@@ -405,10 +494,29 @@ function AdminConsoleShell({ app }) {
   const activeStaff = storeState.activeTerminalStaff;
 
   return (
-    <div className="main-area" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+    <div className="main-area" style={{ display: 'flex', flexDirection: 'column', height: '100%', background: 'radial-gradient(circle at bottom left, rgba(255, 94, 54, 0.04) 0%, transparent 60%)' }}>
+      
       {/* Header Tabs */}
-      <div className="header-bar" style={{ padding: '10px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px' }}>
-        <div className="tab-container scrollbar-none" style={{ padding: 0, borderBottom: 'none', overflowX: 'auto', flex: 1, marginRight: '12px', display: 'flex', gap: '4px' }}>
+      <div className="header-bar" style={{
+        padding: '12px 24px',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        gap: '16px',
+        background: 'rgba(11, 11, 15, 0.5)',
+        backdropFilter: 'blur(16px)',
+        borderBottom: '1px solid var(--border-glass)'
+      }}>
+        
+        <div className="tab-container scrollbar-none" style={{
+          padding: 0,
+          borderBottom: 'none',
+          overflowX: 'auto',
+          flex: 1,
+          marginRight: '12px',
+          display: 'flex',
+          gap: '6px'
+        }}>
           {[
             { id: 'dashboard', label: 'Dashboard', icon: 'dashboard' },
             { id: 'analytics', label: 'Analytics', icon: 'analytics' },
@@ -430,27 +538,36 @@ function AdminConsoleShell({ app }) {
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
-                  background: isActive ? 'var(--glass-bg-hover)' : 'transparent',
+                  background: isActive ? 'rgba(255, 94, 54, 0.06)' : 'transparent',
                   color: isActive ? 'var(--color-primary)' : 'var(--text-secondary)',
-                  border: 'none',
+                  border: isActive ? '1px solid rgba(255, 94, 54, 0.2)' : '1px solid transparent',
                   padding: '8px 16px',
-                  borderRadius: 'var(--radius-sm)',
+                  borderRadius: 'var(--radius-md)',
                   cursor: 'pointer',
-                  fontWeight: 600,
-                  fontSize: 'var(--text-sm)',
-                  transition: 'all var(--transition-fast)'
+                  fontWeight: 700,
+                  fontSize: 'var(--text-xs)',
+                  transition: 'all 0.2s',
+                  boxShadow: isActive ? '0 0 10px rgba(255, 94, 54, 0.05)' : 'none'
                 }}
               >
-                <span className="material-symbols-rounded" style={{ fontSize: '18px', marginRight: '4px' }}>{tab.icon}</span>
+                <span className="material-symbols-rounded" style={{ fontSize: '18px', marginRight: '6px' }}>{tab.icon}</span>
                 {tab.label}
               </button>
             );
           })}
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
-          {/* Theme Segmented Control */}
-          <div className="admin-theme-switcher" style={{ display: 'flex', gap: '2px', background: 'rgba(0,0,0,0.15)', borderRadius: 'var(--radius-md)', padding: '3px', border: '1px solid var(--border-glass)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexShrink: 0 }}>
+          
+          {/* Theme Switcher */}
+          <div className="admin-theme-switcher" style={{
+            display: 'flex',
+            gap: '2px',
+            background: 'rgba(0,0,0,0.2)',
+            borderRadius: 'var(--radius-md)',
+            padding: '2px',
+            border: '1px solid var(--border-glass)'
+          }}>
             {[
               { id: 'dark', icon: 'dark_mode', title: 'Dark Theme' },
               { id: 'light', icon: 'light_mode', title: 'Light Theme' },
@@ -463,16 +580,17 @@ function AdminConsoleShell({ app }) {
                   onClick={() => handleThemeChange(t.id)}
                   title={t.title}
                   style={{
-                    padding: '4px 8px',
-                    borderRadius: '8px',
+                    padding: '6px 10px',
+                    borderRadius: '6px',
                     border: 'none',
                     cursor: 'pointer',
-                    background: active ? 'var(--color-primary)' : 'transparent',
+                    background: active ? 'var(--gradient-primary)' : 'transparent',
                     color: active ? '#fff' : 'var(--text-muted)',
                     transition: 'all 0.2s ease',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
+                    boxShadow: active ? 'var(--shadow-primary)' : 'none'
                   }}
                 >
                   <span className="material-symbols-rounded" style={{ fontSize: '14px' }}>{t.icon}</span>
@@ -481,12 +599,34 @@ function AdminConsoleShell({ app }) {
             })}
           </div>
 
-          <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)', fontWeight: 600, marginRight: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <span className="material-symbols-rounded" style={{ fontSize: '14px', color: 'var(--color-success)', filter: 'drop-shadow(0 0 4px rgba(16,185,129,0.4))' }}>check_circle</span>
+          <span style={{
+            fontSize: 'var(--text-xs)',
+            color: 'var(--text-primary)',
+            fontWeight: 700,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            background: 'rgba(16, 185, 129, 0.05)',
+            border: '1px solid rgba(16, 185, 129, 0.2)',
+            padding: '4px 10px',
+            borderRadius: '6px',
+            boxShadow: '0 0 10px rgba(16, 185, 129, 0.05)'
+          }}>
+            <span className="material-symbols-rounded" style={{ fontSize: '16px', color: 'var(--color-success)', filter: 'drop-shadow(0 0 4px rgba(16,185,129,0.4))' }}>check_circle</span>
             <span>{activeStaff ? activeStaff.name : 'Unknown Staff'}</span>
           </span>
 
-          <button onClick={handleLogout} className="btn btn-secondary btn-sm" style={{ background: 'rgba(239, 68, 68, 0.04)', borderColor: 'rgba(239, 68, 68, 0.15)', color: '#FF4D4D', display: 'flex', alignItems: 'center', gap: '4px' }}>
+          <button onClick={handleLogout} className="btn btn-secondary btn-sm" style={{
+            background: 'rgba(239, 68, 68, 0.05)',
+            borderColor: 'rgba(239, 68, 68, 0.15)',
+            color: '#FF4D4D',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            fontWeight: 700,
+            fontSize: 'var(--text-xs)',
+            padding: '8px 12px'
+          }}>
             <span className="material-symbols-rounded" style={{ fontSize: '16px' }}>lock</span>
             Lock Terminal
           </button>
@@ -498,7 +638,7 @@ function AdminConsoleShell({ app }) {
         {activeTab === 'dashboard' && <Dashboard />}
         {activeTab === 'analytics' && <AnalyticsView />}
         {activeTab === 'menu' && <MenuManager />}
-        {activeTab === 'orders' && <OrderHistory />}
+        {activeTab === 'orders' && <OrderHistoryComponent />}
         {activeTab === 'branding' && <BrandingView />}
         {activeTab === 'staff' && <StaffManager />}
         {activeTab === 'settings' && <SettingsView />}
