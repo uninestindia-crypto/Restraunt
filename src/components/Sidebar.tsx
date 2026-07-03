@@ -83,8 +83,12 @@ export class Sidebar {
       // Hide group if no items are visible
       if (visibleItems.length === 0) return '';
 
+      // Custom display behavior (e.g., hide Operations group when viewing the Developer Console)
+      const isDevConsole = this.activeHash === '#/developer';
+      const displayStyle = (group.label === 'Operations' && isDevConsole) ? 'display: none;' : '';
+
       return `
-        <div class="sidebar-group">
+        <div class="sidebar-group" data-group-label="${group.label}" style="${displayStyle}">
           <div class="sidebar-group-label">${group.label}</div>
           ${visibleItems.map(item => `
             <div class="sidebar-item ${this.activeHash === item.hash ? 'active' : ''}" data-route="${item.hash}" title="${item.label}">
@@ -182,6 +186,16 @@ export class Sidebar {
       const isActive = item.dataset.route === hash;
       item.classList.toggle('active', isActive);
     });
+
+    // Hide/show Operations group based on whether we are on the developer console
+    const operationsGroup = this.container.querySelector('.sidebar-group[data-group-label="Operations"]');
+    if (operationsGroup) {
+      if (hash === '#/developer') {
+        operationsGroup.style.display = 'none';
+      } else {
+        operationsGroup.style.display = '';
+      }
+    }
   }
 
   toggleMobile(show) {
