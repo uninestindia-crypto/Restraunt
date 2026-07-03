@@ -385,6 +385,13 @@ class App {
       // Start router
       router.start();
 
+      if (staff.role === 'developer') {
+        const currentRoute = router.getCurrentRoute();
+        if (!currentRoute || currentRoute === '#/self-order' || currentRoute === '#/pos') {
+          router.navigate('#/developer');
+        }
+      }
+
       // Start inactivity auto-lock checker
       this.startInactivityTimer();
 
@@ -641,27 +648,27 @@ class App {
     router.register('#/pos', async () => {
       const { PosView } = await import('./views/pos/PosView');
       return new PosView(this);
-    }, ['owner', 'manager', 'cashier', 'waiter']);
+    }, ['developer', 'owner', 'manager', 'cashier', 'waiter']);
 
     router.register('#/kitchen', async () => {
       const { KitchenView } = await import('./views/kitchen/KitchenView');
       return new KitchenView(this);
-    }, ['owner', 'manager', 'cashier', 'kitchen']);
+    }, ['developer', 'owner', 'manager', 'cashier', 'kitchen']);
 
     router.register('#/pos-kitchen', async () => {
       const { ExpressView } = await import('./views/express/ExpressView');
       return new ExpressView(this);
-    }, ['owner', 'manager', 'cashier', 'waiter', 'kitchen']);
+    }, ['developer', 'owner', 'manager', 'cashier', 'waiter', 'kitchen']);
 
     router.register('#/tables', async () => {
       const { TablesView } = await import('./views/tables/TablesView');
       return new TablesView(this);
-    }, ['owner', 'manager', 'cashier', 'waiter', 'kitchen']);
+    }, ['developer', 'owner', 'manager', 'cashier', 'waiter', 'kitchen']);
 
     router.register('#/channels', async () => {
       const { ChannelHub } = await import('./views/channels/ChannelHub');
       return new ChannelHub(this);
-    }, ['owner', 'manager', 'cashier']);
+    }, ['developer', 'owner', 'manager', 'cashier']);
 
     router.register('#/self-order', async () => {
       const { CustomerView } = await import('./views/customer/CustomerView');
@@ -677,12 +684,12 @@ class App {
     router.register('#/inventory', async () => {
       const { InventoryView } = await import('./views/inventory/InventoryView');
       return new InventoryView(this);
-    }, ['owner', 'manager']);
+    }, ['developer', 'owner', 'manager']);
 
     router.register('#/customers', async () => {
       const { CustomersView } = await import('./views/customers/CustomersView');
       return new CustomersView(this);
-    }, ['owner', 'manager', 'cashier', 'waiter']);
+    }, ['developer', 'owner', 'manager', 'cashier', 'waiter']);
 
     router.register('#/staff', async () => {
       const { StaffView } = await import('./views/staff/StaffView');
@@ -699,7 +706,7 @@ class App {
     router.register('#/orders', async () => {
       const { OrderHistory } = await import('./views/admin/OrderHistory');
       return new OrderHistory(this);
-    }, ['owner', 'manager', 'cashier', 'delivery']);
+    }, ['developer', 'owner', 'manager', 'cashier', 'delivery']);
 
     router.register('#/admin', async () => {
       const { AdminView } = await import('./views/admin/AdminView');
@@ -709,7 +716,7 @@ class App {
     router.register('#/help', async () => {
       const { HelpView } = await import('./views/admin/HelpView');
       return new HelpView(this);
-    }, ['owner', 'manager', 'cashier', 'waiter', 'kitchen', 'delivery']);
+    }, ['developer', 'owner', 'manager', 'cashier', 'waiter', 'kitchen', 'delivery']);
 
     // ── Developer ──
     router.register('#/developer', async () => {

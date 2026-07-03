@@ -102,7 +102,9 @@ export class Router {
           this.navigate('#/orders');
         } else if (staffRole === 'customer') {
           this.navigate('#/self-order');
-        } else if (['developer', 'owner', 'manager', 'cashier'].includes(staffRole)) {
+        } else if (staffRole === 'developer') {
+          this.navigate('#/developer');
+        } else if (['owner', 'manager', 'cashier'].includes(staffRole)) {
           this.navigate('#/pos');
         } else {
           this.navigate('#/self-order');
@@ -112,9 +114,9 @@ export class Router {
 
       // Explicit administrative access check for Express Panel
       if (path === '#/pos-kitchen') {
-        const isOwner = staffRole === 'owner';
+        const isOwnerOrDev = staffRole === 'owner' || staffRole === 'developer';
         const hasExpressAccess = currentStaff?.allowExpress === 1 || currentStaff?.allowExpress === true;
-        if (!isOwner && !hasExpressAccess) {
+        if (!isOwnerOrDev && !hasExpressAccess) {
           console.warn(`[Router] Access to "#/pos-kitchen" denied: Express Panel permission not granted for "${currentStaff?.name}".`);
           const { showToast } = await import('./utils/helpers');
           showToast('Access denied: Express Panel permission not granted by administrator', 'error');

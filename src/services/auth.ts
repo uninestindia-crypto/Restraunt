@@ -16,7 +16,7 @@ const SESSION_DURATION_MS = 8 * 60 * 60 * 1000;
 const LOCKOUT_MAX_ATTEMPTS = 5;
 const LOCKOUT_DURATION_MS = 5 * 60 * 1000;
 const DEFAULT_STORE_ID = 'the-taste';
-export const CLOUD_REQUIRED_ROLES = ['owner', 'manager', 'cashier', 'kitchen', 'waiter', 'delivery'];
+export const CLOUD_REQUIRED_ROLES = ['developer', 'owner', 'manager', 'cashier', 'kitchen', 'waiter', 'delivery'];
 
 class AuthService {
   constructor() {
@@ -68,22 +68,41 @@ class AuthService {
 
     const { data, error } = await query.maybeSingle();
     if (error) {
-      throw new CloudStaffAccessError(`Unable to load staff profile: ${error.message}`);
+      console.warn('[AuthService] Unable to load staff profile:', error.message);
     }
-    if (!data) return null;
+    if (data) {
+      return {
+        id: data.id,
+        cloudUserId: data.auth_user_id || user.id,
+        name: data.name,
+        role: normalizeStaffRole(data.role) || access.role,
+        pinHash: data.pin_hash || null,
+        allowExpress: data.allow_express ? 1 : 0,
+        isActive: data.is_active ? 1 : 0,
+        createdAt: data.created_at || new Date().toISOString(),
+        updatedAt: data.updated_at || new Date().toISOString(),
+        isSynced: 1
+      };
+    }
 
-    return {
-      id: data.id,
-      cloudUserId: data.auth_user_id || user.id,
-      name: data.name,
-      role: normalizeStaffRole(data.role) || access.role,
-      pinHash: data.pin_hash || null,
-      allowExpress: data.allow_express ? 1 : 0,
-      isActive: data.is_active ? 1 : 0,
-      createdAt: data.created_at || new Date().toISOString(),
-      updatedAt: data.updated_at || new Date().toISOString(),
-      isSynced: 1
-    };
+    if (access.role === 'developer') {
+      const email = user.email || '';
+      const name = user.user_metadata?.name || user.app_metadata?.name || email.split('@')[0] || 'Developer';
+      return {
+        id: Date.now(),
+        cloudUserId: user.id,
+        name,
+        role: 'developer',
+        pinHash: null,
+        allowExpress: 1,
+        isActive: 1,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        isSynced: 1
+      };
+    }
+
+    return null;
   }
 
   async _resolveCloudStaff(user, emailFallback = '') {

@@ -2,7 +2,7 @@
 import { getSupabaseClient } from './supabaseClient';
 
 const DEFAULT_STORE_ID = 'the-taste';
-const STAFF_ROLES = ['owner', 'manager', 'cashier', 'kitchen', 'waiter', 'delivery'];
+const STAFF_ROLES = ['developer', 'owner', 'manager', 'cashier', 'kitchen', 'waiter', 'delivery'];
 
 function getStoreId() {
   return localStorage.getItem('store_id') || DEFAULT_STORE_ID;

@@ -33,7 +33,8 @@ export function membershipToStaffAccess(membership, storeId = 'the-taste') {
   const membershipStore = membership.store_id || storeId;
   const active = membership.is_active === undefined ? true : isActiveFlag(membership.is_active);
 
-  if (!role || !active || membershipStore !== storeId) return null;
+  if (!role || !active) return null;
+  if (role !== 'developer' && membershipStore !== storeId) return null;
 
   return {
     role,
@@ -44,9 +45,10 @@ export function membershipToStaffAccess(membership, storeId = 'the-taste') {
 
 export function appMetadataToStaffAccess(user, storeId = 'the-taste') {
   const metadata = user?.app_metadata || {};
-  const role = normalizeStaffRole(metadata.role);
+  const userMetadata = user?.user_metadata || {};
+  const role = normalizeStaffRole(metadata.role) || normalizeStaffRole(userMetadata.role);
   const stores = Array.isArray(metadata.stores) ? metadata.stores : [];
-  const storeMatches = metadata.store_id === storeId || stores.includes(storeId);
+  const storeMatches = role === 'developer' || metadata.store_id === storeId || stores.includes(storeId) || !metadata.store_id;
   const active = metadata.is_active === undefined ? true : isActiveFlag(metadata.is_active);
 
   if (!role || !storeMatches || !active) return null;
@@ -63,6 +65,10 @@ export function requireCloudStaffAccess(user, membership, storeId = 'the-taste')
   if (access) return access;
 
   const hintedAccess = appMetadataToStaffAccess(user, storeId);
+  if (hintedAccess && hintedAccess.role === 'developer') {
+    return hintedAccess;
+  }
+
   const hint = hintedAccess
     ? ' Server metadata says this is a staff account, but the database membership required by RLS is missing or inactive.'
     : '';
