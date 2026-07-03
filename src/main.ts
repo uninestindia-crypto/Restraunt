@@ -161,12 +161,44 @@ class App {
         console.warn('[App] Failed to cache database settings in localStorage:', dbErr);
       }
 
-      const initialHash = window.location.hash || '#/self-order';
+      const portal = process.env.NEXT_PUBLIC_APP_PORTAL || 'all';
+
+      if (portal === 'customer') {
+        window.location.hash = '#/self-order';
+        await seedDatabase({ publicOnly: true });
+        this.hideLoadingScreen();
+        printConsoleSignature();
+        injectBuildGlobal();
+
+        router.onAuthRequired = () => {
+          this.initialized = false;
+          router.navigate('#/self-order');
+        };
+
+        window.addEventListener('auth-session-expired', () => {
+          if (router.currentView && typeof router.currentView.unmount === 'function') {
+            router.currentView.unmount();
+          }
+          this.initialized = false;
+          router.navigate('#/self-order');
+        });
+
+        this.startPublicRoute();
+        return;
+      }
+
+      const defaultFallback = portal === 'pos' ? '#/pos' : '#/self-order';
+      let initialHash = window.location.hash || defaultFallback;
+      if (portal === 'pos' && (initialHash === '#/self-order' || !window.location.hash)) {
+        window.location.hash = '#/pos';
+        initialHash = '#/pos';
+      }
+
       const initialPath = initialHash.split('?')[0];
-      const isPublicEntry = initialPath === '#/self-order';
+      const isPublicEntry = portal === 'pos' ? false : (initialPath === '#/self-order');
 
       if (!window.location.hash) {
-        window.location.hash = '#/self-order';
+        window.location.hash = defaultFallback;
       }
 
       // Public customers only need catalog data. Staff/admin demo data is seeded on staff entry.
@@ -178,9 +210,6 @@ class App {
       // NextGenOS boot signature
       printConsoleSignature();
       injectBuildGlobal();
-
-      // Inject interactive portal switcher widget
-      // this.injectSandboxWidget();
 
       // Setup router auth handler
       router.onAuthRequired = async () => {

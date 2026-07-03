@@ -24,6 +24,13 @@ export class Router {
    * @param {Array<string>} [allowedRoles] - Optional roles allowed to access this route
    */
   register(hash, viewFactory, allowedRoles = null) {
+    const portal = process.env.NEXT_PUBLIC_APP_PORTAL || 'all';
+    if (portal === 'customer' && hash !== '#/self-order') {
+      return this;
+    }
+    if (portal === 'pos' && hash === '#/self-order') {
+      return this;
+    }
     this.routes[hash] = { viewFactory, allowedRoles };
     return this;
   }
@@ -50,7 +57,9 @@ export class Router {
     // Trigger non-blocking version check in background on route change
     checkForUpdateAndGate().catch(err => console.debug('[Router] Version check error:', err));
 
-    const fullHash = window.location.hash || '#/self-order';
+    const portal = process.env.NEXT_PUBLIC_APP_PORTAL || 'all';
+    const defaultFallback = portal === 'pos' ? '#/pos' : '#/self-order';
+    const fullHash = window.location.hash || defaultFallback;
     const path = fullHash.split('?')[0];
 
     // Don't re-render same view
@@ -59,8 +68,7 @@ export class Router {
     // Check if route exists
     const routeConfig = this.routes[path];
     if (!routeConfig) {
-      // Fallback to the public customer ordering entry.
-      this.navigate('#/self-order');
+      this.navigate(defaultFallback);
       return;
     }
 

@@ -508,12 +508,12 @@ export function CustomerApp({ app }) {
       overlay.id = 'login-overlay';
       document.body.appendChild(overlay);
     }
-    const { LoginScreen } = await import('../../../components/LoginScreen');
-    const login = new LoginScreen(async (staff) => {
+    const { CustomerLoginScreen } = await import('../../../components/CustomerLoginScreen');
+    const login = new CustomerLoginScreen(async (staff) => {
       overlay?.remove();
       // Re-fetch login state
       await loadData();
-    }, { mode: 'customer' });
+    });
     login.render(overlay);
   };
 

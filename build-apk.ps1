@@ -27,8 +27,8 @@ $env:ANDROID_SDK_ROOT = $sdkPath
 
 # 2. Compile Web Assets & Sync with Capacitor
 Write-Host "⚡ Compiling web assets for production..."
-$env:PATH = "C:\Program Files\nodejs;$env:PATH"
-& "C:\Program Files\nodejs\npm.cmd" run build
+$env:NEXT_PUBLIC_APP_PORTAL = "pos"
+& "C:\Program Files\nodejs\npm.cmd" run build:pos
 
 Write-Host "🔄 Syncing Capacitor web assets to Android project..."
 & cmd.exe /c "npx cap sync"

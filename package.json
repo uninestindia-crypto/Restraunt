@@ -5,7 +5,11 @@
   "type": "module",
   "scripts": {
     "dev": "next dev",
+    "dev:customer": "cross-env NEXT_PUBLIC_APP_PORTAL=customer next dev",
+    "dev:pos": "cross-env NEXT_PUBLIC_APP_PORTAL=pos next dev",
     "build": "next build",
+    "build:customer": "cross-env NEXT_PUBLIC_APP_PORTAL=customer next build",
+    "build:pos": "cross-env NEXT_PUBLIC_APP_PORTAL=pos next build",
     "start": "next start",
     "preview": "npx serve dist",
     "test": "tsx --test tests/**/*.test.ts",
@@ -33,6 +37,7 @@
     "@types/node": "^26.0.1",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
+    "cross-env": "^10.1.0",
     "lighthouse": "^13.3.0",
     "tsx": "^4.22.4",
     "typescript": "^6.0.3"
