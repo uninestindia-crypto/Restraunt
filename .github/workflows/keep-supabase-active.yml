@@ -13,9 +13,9 @@ jobs:
     steps:
       - name: Ping Supabase REST API
         run: |
-          STATUS_CODE=$(curl -s -o /dev/null -w "%{http_code}" -X GET "${{ secrets.SUPABASE_URL }}/rest/v1/menu_categories?select=id&limit=1" \
-            -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
-            -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}")
+          STATUS_CODE=$(curl -s -o /dev/null -w "%{http_code}" -X GET "https://scxfkjtrrfgpusyigntx.supabase.co/rest/v1/menu_categories?select=id&limit=1" \
+            -H "apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNjeGZranRycmZncHVzeWlnbnR4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkyNzAxMjQsImV4cCI6MjA5NDg0NjEyNH0.tvhYcGjxeSjqY6DuMAdMBjHPtP2mKd40u-btKvxongY" \
+            -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNjeGZranRycmZncHVzeWlnbnR4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkyNzAxMjQsImV4cCI6MjA5NDg0NjEyNH0.tvhYcGjxeSjqY6DuMAdMBjHPtP2mKd40u-btKvxongY")
           
           echo "Supabase API Ping Response Status Code: $STATUS_CODE"
           
