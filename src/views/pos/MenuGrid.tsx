@@ -111,14 +111,31 @@ export class MenuGrid {
     `;
   }
 
+  getMenuItemImage(item) {
+    if (item.imageUrl) return item.imageUrl;
+    const cat = this.categories.find(c => c.id === item.categoryId);
+    const catName = cat ? cat.name.toLowerCase() : '';
+    const defaultImgMap = {
+      momos: '/assets/dish-momos.jpg',
+      starters: '/assets/dish-starters.jpg',
+      noodles: '/assets/dish-noodles.jpg',
+      rice: '/assets/dish-rice.jpg',
+      'main course': '/assets/dish-main.jpg',
+      burgers: '/assets/dish-burgers.jpg',
+      sides: '/assets/dish-sides.jpg',
+      beverages: '/assets/dish-beverages.jpg',
+      desserts: '/assets/dish-desserts.jpg'
+    };
+    return defaultImgMap[catName] || '/assets/dish-starters.jpg';
+  }
+
   renderMenuItem(item) {
     const vegBadge = item.isVeg
       ? '<span class="badge-veg" title="Vegetarian"></span>'
       : '<span class="badge-nonveg" title="Non-Vegetarian"></span>';
 
-    const imageContent = item.imageUrl
-      ? `<img src="${item.imageUrl}" alt="${item.name}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"><span class="fallback-emoji" style="display:none; width:100%; height:100%; align-items:center; justify-content:center;">${item.icon || this.getCategoryIcon(item.categoryId)}</span>`
-      : `${item.icon || this.getCategoryIcon(item.categoryId)}`;
+    const resolvedImage = this.getMenuItemImage(item);
+    const imageContent = `<img src="${resolvedImage}" alt="${item.name}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"><span class="fallback-emoji" style="display:none; width:100%; height:100%; align-items:center; justify-content:center;">${item.icon || this.getCategoryIcon(item.categoryId)}</span>`;
 
     return `
       <div class="menu-item ${!item.isAvailable ? 'sold-out' : ''}" 

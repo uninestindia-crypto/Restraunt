@@ -124,6 +124,12 @@ export class PosView {
     const bar = document.getElementById('mobile-cart-toggle');
     if (!bar) return;
 
+    // Only show the floating bar on mobile viewports where cart sidebar is hidden
+    if (window.innerWidth > 768) {
+      bar.classList.remove('show');
+      return;
+    }
+
     const count = this.cart.reduce((sum, item) => sum + item.quantity, 0);
     const subtotal = this.cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
     
@@ -324,7 +330,7 @@ export class PosView {
         const results = await deductInventoryForOrder(items);
         const lowItems = results.filter(r => r.belowThreshold);
         if (lowItems.length > 0) {
-          showToast(`⚠️ Low stock: ${lowItems.map(i => i.itemName).join(', ')}`, 'warning', 5000);
+          showToast(`Low stock: ${lowItems.map(i => i.itemName).join(', ')}`, 'warning', 5000);
         }
       } catch (e) { console.error('Inventory deduction failed:', e); }
 

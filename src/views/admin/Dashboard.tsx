@@ -194,33 +194,43 @@ export function Dashboard() {
         .stats-card-v2 {
           background: var(--glass-bg);
           border: 1px solid var(--border-color);
+          border-left: 4px solid transparent;
           border-radius: var(--radius-md);
-          padding: 20px 24px;
+          padding: 22px 24px;
           box-shadow: var(--shadow-sm);
-          transition: all var(--transition-fast);
+          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
           display: flex;
           flex-direction: column;
           position: relative;
           overflow: hidden;
+          backdrop-filter: blur(20px);
         }
         .stats-card-v2:hover {
-          transform: translateY(-2px);
+          transform: translateY(-4px) scale(1.01);
           box-shadow: var(--shadow-md);
           border-color: var(--border-active);
         }
-        .stats-card-v2::before {
-          content: '';
-          position: absolute;
-          top: 0;
-          left: 0;
-          right: 0;
-          height: 3px;
-          background: transparent;
-          transition: background var(--transition-fast);
+        .stats-card-v2.revenue {
+          border-left-color: var(--color-success);
+          background: linear-gradient(135deg, rgba(16, 185, 129, 0.04) 0%, transparent 100%),
+                      repeating-linear-gradient(45deg, rgba(16, 185, 129, 0.01) 0px, rgba(16, 185, 129, 0.01) 1px, transparent 1px, transparent 8px),
+                      var(--bg-surface);
+          box-shadow: 0 4px 20px rgba(16, 185, 129, 0.03);
         }
-        .stats-card-v2.revenue::before { background: linear-gradient(90deg, var(--color-success) 0%, transparent 100%); }
-        .stats-card-v2.orders::before { background: linear-gradient(90deg, var(--color-primary) 0%, transparent 100%); }
-        .stats-card-v2.avgval::before { background: linear-gradient(90deg, var(--color-info) 0%, transparent 100%); }
+        .stats-card-v2.orders {
+          border-left-color: var(--color-primary);
+          background: linear-gradient(135deg, rgba(255, 94, 54, 0.04) 0%, transparent 100%),
+                      repeating-linear-gradient(45deg, rgba(255, 94, 54, 0.01) 0px, rgba(255, 94, 54, 0.01) 1px, transparent 1px, transparent 8px),
+                      var(--bg-surface);
+          box-shadow: 0 4px 20px rgba(255, 94, 54, 0.03);
+        }
+        .stats-card-v2.avgval {
+          border-left-color: var(--color-info);
+          background: linear-gradient(135deg, rgba(59, 130, 246, 0.04) 0%, transparent 100%),
+                      repeating-linear-gradient(45deg, rgba(59, 130, 246, 0.01) 0px, rgba(59, 130, 246, 0.01) 1px, transparent 1px, transparent 8px),
+                      var(--bg-surface);
+          box-shadow: 0 4px 20px rgba(59, 130, 246, 0.03);
+        }
       `}</style>
 
       <div style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--text-lg)', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em', display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -233,7 +243,9 @@ export function Dashboard() {
         <div className="stats-card-v2 revenue">
           <div style={{ display: 'flex', justifySelf: 'stretch', justifyContent: 'space-between', alignItems: 'center' }}>
             <span className="stats-card-label" style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-secondary)', letterSpacing: '0.05em' }}>TODAY'S REVENUE</span>
-            <span className="material-symbols-rounded" style={{ color: 'var(--color-success)', fontSize: '18px' }}>payments</span>
+            <div style={{ width: '38px', height: '38px', borderRadius: '50%', background: 'rgba(16, 185, 129, 0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <span className="material-symbols-rounded" style={{ color: 'var(--color-success)', fontSize: '18px' }}>payments</span>
+            </div>
           </div>
           <div className="stats-card-value" style={{ color: 'var(--color-success)', filter: 'drop-shadow(0 0 10px rgba(16, 185, 129, 0.2))', fontSize: '1.8rem', fontWeight: 800, marginTop: '8px' }}>
             {formatCurrency(stats.totalRevenue)}
@@ -243,7 +255,9 @@ export function Dashboard() {
         <div className="stats-card-v2 orders">
           <div style={{ display: 'flex', justifySelf: 'stretch', justifyContent: 'space-between', alignItems: 'center' }}>
             <span className="stats-card-label" style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-secondary)', letterSpacing: '0.05em' }}>COMPLETED ORDERS</span>
-            <span className="material-symbols-rounded" style={{ color: 'var(--color-primary)', fontSize: '18px' }}>receipt_long</span>
+            <div style={{ width: '38px', height: '38px', borderRadius: '50%', background: 'rgba(255, 94, 54, 0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <span className="material-symbols-rounded" style={{ color: 'var(--color-primary)', fontSize: '18px' }}>receipt_long</span>
+            </div>
           </div>
           <div className="stats-card-value" style={{ color: 'var(--color-primary)', filter: 'drop-shadow(0 0 10px rgba(255, 94, 54, 0.2))', fontSize: '1.8rem', fontWeight: 800, marginTop: '8px' }}>
             {stats.totalOrders}
@@ -253,7 +267,9 @@ export function Dashboard() {
         <div className="stats-card-v2 avgval">
           <div style={{ display: 'flex', justifySelf: 'stretch', justifyContent: 'space-between', alignItems: 'center' }}>
             <span className="stats-card-label" style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-secondary)', letterSpacing: '0.05em' }}>AVERAGE BILL VALUE</span>
-            <span className="material-symbols-rounded" style={{ color: 'var(--color-info)', fontSize: '18px' }}>monitoring</span>
+            <div style={{ width: '38px', height: '38px', borderRadius: '50%', background: 'rgba(59, 130, 246, 0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <span className="material-symbols-rounded" style={{ color: 'var(--color-info)', fontSize: '18px' }}>monitoring</span>
+            </div>
           </div>
           <div className="stats-card-value" style={{ color: 'var(--color-info)', filter: 'drop-shadow(0 0 10px rgba(59, 130, 246, 0.2))', fontSize: '1.8rem', fontWeight: 800, marginTop: '8px' }}>
             {formatCurrency(stats.avgOrderValue)}
@@ -262,7 +278,14 @@ export function Dashboard() {
       </div>
 
       {/* 7-Day Revenue Trend */}
-      <div className="card" style={{ position: 'relative', background: 'var(--glass-bg)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', padding: '24px' }}>
+      <div className="card" style={{
+        position: 'relative',
+        background: 'linear-gradient(180deg, rgba(255, 94, 54, 0.01) 0%, transparent 100%), var(--glass-bg)',
+        border: '1px solid var(--border-color)',
+        borderRadius: 'var(--radius-md)',
+        padding: '24px',
+        boxShadow: 'var(--shadow-sm)'
+      }}>
         <div style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--text-sm)', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '20px', letterSpacing: '-0.01em', display: 'flex', alignItems: 'center', gap: '8px' }}>
           <span className="material-symbols-rounded" style={{ fontSize: '20px', color: 'var(--color-info)' }}>trending_up</span>
           7-Day Revenue Trend
@@ -273,23 +296,27 @@ export function Dashboard() {
           <svg viewBox={`0 0 ${chartPoints.width} ${chartPoints.height}`} style={{ width: '100%', height: '180px', display: 'block', overflow: 'visible' }}>
             <defs>
               <linearGradient id="areaGradDashboard" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="var(--color-primary)" stopOpacity="0.2"/>
+                <stop offset="0%" stopColor="var(--color-primary)" stopOpacity="0.3"/>
                 <stop offset="100%" stopColor="var(--color-primary)" stopOpacity="0"/>
               </linearGradient>
               <linearGradient id="lineGradDashboard" x1="0" y1="0" x2="1" y2="0">
                 <stop offset="0%" stopColor="#FF5E36"/>
                 <stop offset="100%" stopColor="#FF8960"/>
               </linearGradient>
+              <filter id="glowDashboard" x="-20%" y="-20%" width="140%" height="140%">
+                <feGaussianBlur stdDeviation="3" result="blur" />
+                <feComposite in="SourceGraphic" in2="blur" operator="over" />
+              </filter>
             </defs>
             {/* Grid Lines */}
-            <line x1={chartPoints.paddingX} y1={chartPoints.paddingY} x2={chartPoints.width - chartPoints.paddingX} y2={chartPoints.paddingY} stroke="rgba(255,255,255,0.02)" strokeWidth="1" />
-            <line x1={chartPoints.paddingX} y1={(chartPoints.height - 2*chartPoints.paddingY)/2 + chartPoints.paddingY} x2={chartPoints.width - chartPoints.paddingX} y2={(chartPoints.height - 2*chartPoints.paddingY)/2 + chartPoints.paddingY} stroke="rgba(255,255,255,0.02)" strokeWidth="1" />
-            <line x1={chartPoints.paddingX} y1={chartPoints.height - chartPoints.paddingY} x2={chartPoints.width - chartPoints.paddingX} y2={chartPoints.height - chartPoints.paddingY} stroke="rgba(255,255,255,0.06)" strokeWidth="1.5" />
+            <line x1={chartPoints.paddingX} y1={chartPoints.paddingY} x2={chartPoints.width - chartPoints.paddingX} y2={chartPoints.paddingY} stroke="var(--border-color)" strokeWidth="1" />
+            <line x1={chartPoints.paddingX} y1={(chartPoints.height - 2*chartPoints.paddingY)/2 + chartPoints.paddingY} x2={chartPoints.width - chartPoints.paddingX} y2={(chartPoints.height - 2*chartPoints.paddingY)/2 + chartPoints.paddingY} stroke="var(--border-color)" strokeWidth="1" />
+            <line x1={chartPoints.paddingX} y1={chartPoints.height - chartPoints.paddingY} x2={chartPoints.width - chartPoints.paddingX} y2={chartPoints.height - chartPoints.paddingY} stroke="var(--border-active)" strokeWidth="1.5" />
             
             {/* Area Fill */}
             <polygon points={chartPoints.fillPointsStr} fill="url(#areaGradDashboard)" />
             {/* Trend Line */}
-            <polyline points={chartPoints.pointsStr} fill="none" stroke="url(#lineGradDashboard)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+            <polyline points={chartPoints.pointsStr} fill="none" stroke="url(#lineGradDashboard)" strokeWidth="3" filter="url(#glowDashboard)" strokeLinecap="round" strokeLinejoin="round" />
             
             {/* Point Interaction Nodes */}
             {weeklyTrend.map((d, i) => {
@@ -305,7 +332,7 @@ export function Dashboard() {
                     cy={y}
                     r={isHovered ? 6 : (isToday ? 4.5 : 3.5)}
                     fill="var(--bg-surface)"
-                    stroke={isToday || isHovered ? "var(--color-primary)" : "rgba(255,255,255,0.3)"}
+                    stroke={isToday || isHovered ? "var(--color-primary)" : "var(--border-active)"}
                     strokeWidth={isHovered ? 3.5 : 2}
                     style={{ transition: 'all 0.15s ease', cursor: 'pointer' }}
                     onMouseEnter={() => setHoveredBarIndex(i)}
@@ -359,7 +386,7 @@ export function Dashboard() {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px' }}>
         
         {/* Top Selling Items */}
-        <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '16px', background: 'var(--glass-bg)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', padding: '24px' }}>
+        <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '16px', background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.02) 0%, var(--glass-bg) 100%)', border: '1px solid var(--border-color)', borderLeft: '4px solid var(--color-warning)', borderRadius: 'var(--radius-md)', padding: '24px', boxShadow: 'var(--shadow-sm)' }}>
           <div style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--text-sm)', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.01em', display: 'flex', alignItems: 'center', gap: '8px' }}>
             <span className="material-symbols-rounded" style={{ fontSize: '20px', color: 'var(--color-warning)' }}>local_fire_department</span>
             Top Selling Items (Today)
@@ -384,7 +411,7 @@ export function Dashboard() {
                         </span>
                         <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-primary)', fontWeight: 800, flexShrink: 0, marginLeft: '8px' }}>×{item.qty}</span>
                       </div>
-                      <div style={{ height: '5px', background: 'rgba(0, 0, 0, 0.25)', borderRadius: 'var(--radius-full)', overflow: 'hidden', border: '1px solid var(--border-glass)' }}>
+                      <div style={{ height: '5px', background: 'var(--bg-secondary)', borderRadius: 'var(--radius-full)', overflow: 'hidden', border: '1px solid var(--border-glass)' }}>
                         <div style={{ height: '100%', width: `${widthPercent}%`, background: 'linear-gradient(90deg, var(--color-warning), #FBBF24)', borderRadius: 'var(--radius-full)', transition: 'width 0.6s ease' }} />
                       </div>
                     </div>
@@ -396,7 +423,7 @@ export function Dashboard() {
         </div>
 
         {/* System Health */}
-        <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '16px', background: 'var(--glass-bg)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', padding: '24px' }}>
+        <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '16px', background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.02) 0%, var(--glass-bg) 100%)', border: '1px solid var(--border-color)', borderLeft: '4px solid var(--color-success)', borderRadius: 'var(--radius-md)', padding: '24px', boxShadow: 'var(--shadow-sm)' }}>
           <div style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--text-sm)', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.01em', display: 'flex', alignItems: 'center', gap: '8px' }}>
             <span className="material-symbols-rounded" style={{ fontSize: '20px', color: 'var(--color-success)' }}>monitor_heart</span>
             System Diagnostics
@@ -426,7 +453,7 @@ export function Dashboard() {
       </div>
 
       {/* Payment Split Breakdown */}
-      <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '16px', background: 'var(--glass-bg)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', padding: '24px' }}>
+      <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '16px', background: 'linear-gradient(135deg, rgba(255, 94, 54, 0.02) 0%, var(--glass-bg) 100%)', border: '1px solid var(--border-color)', borderLeft: '4px solid var(--color-primary)', borderRadius: 'var(--radius-md)', padding: '24px', boxShadow: 'var(--shadow-sm)' }}>
         <div style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--text-sm)', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.01em' }}>
           Revenue Split by Method
         </div>
@@ -445,7 +472,7 @@ export function Dashboard() {
                     </span>
                     <span style={{ fontWeight: 800, color: 'var(--text-primary)' }}>{formatCurrency(data.total)}</span>
                   </div>
-                  <div style={{ height: '6px', background: 'rgba(0, 0, 0, 0.25)', borderRadius: 'var(--radius-full)', overflow: 'hidden', border: '1px solid var(--border-glass)' }}>
+                  <div style={{ height: '6px', background: 'var(--bg-secondary)', borderRadius: 'var(--radius-full)', overflow: 'hidden', border: '1px solid var(--border-glass)' }}>
                     <div style={{ height: '100%', background: 'var(--gradient-primary)', width: `${pct}%`, borderRadius: 'var(--radius-full)', boxShadow: '0 0 10px rgba(255, 94, 54, 0.3)', transition: 'width 0.8s ease' }} />
                   </div>
                 </div>

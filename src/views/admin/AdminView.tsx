@@ -170,7 +170,7 @@ function StaffManager() {
                       flex: 1,
                       color: role.color,
                       borderColor: `${role.color}33`,
-                      background: 'rgba(0,0,0,0.2)'
+                      background: 'var(--bg-secondary)'
                     }}
                   >
                     {Object.entries(ROLES).map(([key, r]) => (
@@ -402,23 +402,24 @@ function AdminConsoleShell({ app }) {
             100% { box-shadow: 0 0 10px rgba(255, 94, 54, 0.1); }
           }
           .num-key {
-            background: rgba(255, 255, 255, 0.03);
-            border: 1px solid var(--border-glass);
-            border-radius: 12px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
             color: var(--text-primary);
             font-size: 1.25rem;
             font-weight: 700;
             cursor: pointer;
             transition: all 0.15s ease;
+            box-shadow: var(--shadow-sm);
           }
           .num-key:hover {
-            background: rgba(255, 255, 255, 0.06);
+            background: var(--bg-card-hover);
             border-color: var(--border-active);
-            transform: scale(1.02);
+            transform: scale(1.03);
           }
           .num-key:active {
-            background: rgba(255, 255, 255, 0.1);
-            transform: scale(0.97);
+            background: var(--border-color);
+            transform: scale(0.96);
           }
           .pin-dot {
             width: 14px;
@@ -480,7 +481,7 @@ function AdminConsoleShell({ app }) {
             {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map((val) => (
               <button key={val} className="num-key" onClick={() => handlePinKey(val)} style={{ height: '54px' }}>{val}</button>
             ))}
-            <button className="num-key" onClick={() => handlePinKey('clear')} style={{ height: '54px', background: 'rgba(239, 68, 68, 0.05)', border: '1px solid rgba(239,68,68,0.2)', color: '#FF4D4D' }}>C</button>
+            <button className="num-key" onClick={() => handlePinKey('clear')} style={{ height: '54px', background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239,68,68,0.2)', color: 'var(--color-danger)' }}>C</button>
             <button className="num-key" onClick={() => handlePinKey('0')} style={{ height: '54px' }}>0</button>
             <button className="num-key" onClick={() => handlePinKey('backspace')} style={{ height: '54px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <span className="material-symbols-rounded" style={{ fontSize: '20px', color: 'var(--text-secondary)' }}>backspace</span>
@@ -498,14 +499,14 @@ function AdminConsoleShell({ app }) {
       
       {/* Header Tabs */}
       <div className="header-bar" style={{
-        padding: '12px 24px',
+        padding: '16px 24px',
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
         gap: '16px',
-        background: 'rgba(11, 11, 15, 0.5)',
-        backdropFilter: 'blur(16px)',
-        borderBottom: '1px solid var(--border-glass)'
+        background: 'var(--bg-surface)',
+        borderBottom: '1px solid var(--border-color)',
+        boxShadow: 'var(--shadow-sm)'
       }}>
         
         <div className="tab-container scrollbar-none" style={{
@@ -515,7 +516,7 @@ function AdminConsoleShell({ app }) {
           flex: 1,
           marginRight: '12px',
           display: 'flex',
-          gap: '6px'
+          gap: '10px'
         }}>
           {[
             { id: 'dashboard', label: 'Dashboard', icon: 'dashboard' },
@@ -538,19 +539,20 @@ function AdminConsoleShell({ app }) {
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
-                  background: isActive ? 'rgba(255, 94, 54, 0.06)' : 'transparent',
-                  color: isActive ? 'var(--color-primary)' : 'var(--text-secondary)',
-                  border: isActive ? '1px solid rgba(255, 94, 54, 0.2)' : '1px solid transparent',
-                  padding: '8px 16px',
+                  background: isActive ? 'var(--gradient-primary)' : 'var(--bg-surface)',
+                  color: isActive ? '#ffffff' : 'var(--text-primary)',
+                  border: isActive ? '1px solid transparent' : '1px solid var(--border-color)',
+                  padding: '10px 20px',
                   borderRadius: 'var(--radius-md)',
                   cursor: 'pointer',
                   fontWeight: 700,
                   fontSize: 'var(--text-xs)',
-                  transition: 'all 0.2s',
-                  boxShadow: isActive ? '0 0 10px rgba(255, 94, 54, 0.05)' : 'none'
+                  transition: 'all 0.2s ease',
+                  boxShadow: isActive ? 'var(--shadow-primary)' : 'var(--shadow-sm)',
+                  transform: isActive ? 'scale(1.02)' : 'none',
                 }}
               >
-                <span className="material-symbols-rounded" style={{ fontSize: '18px', marginRight: '6px' }}>{tab.icon}</span>
+                <span className="material-symbols-rounded" style={{ fontSize: '18px', marginRight: '6px', color: isActive ? '#ffffff' : 'var(--text-secondary)' }}>{tab.icon}</span>
                 {tab.label}
               </button>
             );
@@ -558,75 +560,33 @@ function AdminConsoleShell({ app }) {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexShrink: 0 }}>
-          
-          {/* Theme Switcher */}
-          <div className="admin-theme-switcher" style={{
-            display: 'flex',
-            gap: '2px',
-            background: 'rgba(0,0,0,0.2)',
+          <button onClick={handleLogout} className="btn" style={{
+            background: 'rgba(239, 68, 68, 0.08)',
+            border: '1px solid rgba(239, 68, 68, 0.2)',
             borderRadius: 'var(--radius-md)',
-            padding: '2px',
-            border: '1px solid var(--border-glass)'
-          }}>
-            {[
-              { id: 'dark', icon: 'dark_mode', title: 'Dark Theme' },
-              { id: 'light', icon: 'light_mode', title: 'Light Theme' },
-              { id: 'system', icon: 'computer', title: 'System Theme' },
-            ].map((t) => {
-              const active = theme === t.id;
-              return (
-                <button
-                  key={t.id}
-                  onClick={() => handleThemeChange(t.id)}
-                  title={t.title}
-                  style={{
-                    padding: '6px 10px',
-                    borderRadius: '6px',
-                    border: 'none',
-                    cursor: 'pointer',
-                    background: active ? 'var(--gradient-primary)' : 'transparent',
-                    color: active ? '#fff' : 'var(--text-muted)',
-                    transition: 'all 0.2s ease',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    boxShadow: active ? 'var(--shadow-primary)' : 'none'
-                  }}
-                >
-                  <span className="material-symbols-rounded" style={{ fontSize: '14px' }}>{t.icon}</span>
-                </button>
-              );
-            })}
-          </div>
-
-          <span style={{
-            fontSize: 'var(--text-xs)',
-            color: 'var(--text-primary)',
-            fontWeight: 700,
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px',
-            background: 'rgba(16, 185, 129, 0.05)',
-            border: '1px solid rgba(16, 185, 129, 0.2)',
-            padding: '4px 10px',
-            borderRadius: '6px',
-            boxShadow: '0 0 10px rgba(16, 185, 129, 0.05)'
-          }}>
-            <span className="material-symbols-rounded" style={{ fontSize: '16px', color: 'var(--color-success)', filter: 'drop-shadow(0 0 4px rgba(16,185,129,0.4))' }}>check_circle</span>
-            <span>{activeStaff ? activeStaff.name : 'Unknown Staff'}</span>
-          </span>
-
-          <button onClick={handleLogout} className="btn btn-secondary btn-sm" style={{
-            background: 'rgba(239, 68, 68, 0.05)',
-            borderColor: 'rgba(239, 68, 68, 0.15)',
-            color: '#FF4D4D',
+            color: 'var(--color-danger)',
             display: 'flex',
             alignItems: 'center',
             gap: '6px',
             fontWeight: 700,
             fontSize: 'var(--text-xs)',
-            padding: '8px 12px'
-          }}>
+            padding: '10px 16px',
+            cursor: 'pointer',
+            transition: 'all 0.2s ease',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = 'var(--color-danger)';
+            e.currentTarget.style.color = '#ffffff';
+            e.currentTarget.style.borderColor = 'transparent';
+            e.currentTarget.style.boxShadow = '0 0 12px rgba(239, 68, 68, 0.25)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = 'rgba(239, 68, 68, 0.08)';
+            e.currentTarget.style.color = 'var(--color-danger)';
+            e.currentTarget.style.borderColor = 'rgba(239, 68, 68, 0.2)';
+            e.currentTarget.style.boxShadow = 'none';
+          }}
+          >
             <span className="material-symbols-rounded" style={{ fontSize: '16px' }}>lock</span>
             Lock Terminal
           </button>

@@ -273,6 +273,10 @@ export function AnalyticsView() {
           cursor: pointer;
           transition: all 0.2s;
         }
+        .btn-range-v2:hover:not(.active) {
+          background: var(--bg-card-hover);
+          color: var(--text-primary);
+        }
         .btn-range-v2.active {
           background: var(--gradient-primary);
           color: #fff;
@@ -281,33 +285,50 @@ export function AnalyticsView() {
         .stats-card-v3 {
           background: var(--glass-bg);
           border: 1px solid var(--border-color);
+          border-left: 4px solid transparent;
           border-radius: var(--radius-md);
-          padding: 20px;
+          padding: 22px 20px;
           box-shadow: var(--shadow-sm);
-          transition: all var(--transition-fast);
+          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
           display: flex;
           flex-direction: column;
           position: relative;
           overflow: hidden;
+          backdrop-filter: blur(20px);
         }
         .stats-card-v3:hover {
-          transform: translateY(-2px);
+          transform: translateY(-4px) scale(1.01);
           box-shadow: var(--shadow-md);
           border-color: var(--border-active);
         }
-        .stats-card-v3::before {
-          content: '';
-          position: absolute;
-          top: 0;
-          left: 0;
-          right: 0;
-          height: 3px;
-          background: transparent;
+        .stats-card-v3.revenue {
+          border-left-color: var(--color-success);
+          background: linear-gradient(135deg, rgba(16, 185, 129, 0.04) 0%, transparent 100%),
+                      repeating-linear-gradient(45deg, rgba(16, 185, 129, 0.01) 0px, rgba(16, 185, 129, 0.01) 1px, transparent 1px, transparent 8px),
+                      var(--bg-surface);
+          box-shadow: 0 4px 20px rgba(16, 185, 129, 0.03);
         }
-        .stats-card-v3.revenue::before { background: var(--color-success); }
-        .stats-card-v3.orders::before { background: var(--color-primary); }
-        .stats-card-v3.avgval::before { background: var(--color-info); }
-        .stats-card-v3.loyalty::before { background: var(--color-warning); }
+        .stats-card-v3.orders {
+          border-left-color: var(--color-primary);
+          background: linear-gradient(135deg, rgba(255, 94, 54, 0.04) 0%, transparent 100%),
+                      repeating-linear-gradient(45deg, rgba(255, 94, 54, 0.01) 0px, rgba(255, 94, 54, 0.01) 1px, transparent 1px, transparent 8px),
+                      var(--bg-surface);
+          box-shadow: 0 4px 20px rgba(255, 94, 54, 0.03);
+        }
+        .stats-card-v3.avgval {
+          border-left-color: var(--color-info);
+          background: linear-gradient(135deg, rgba(59, 130, 246, 0.04) 0%, transparent 100%),
+                      repeating-linear-gradient(45deg, rgba(59, 130, 246, 0.01) 0px, rgba(59, 130, 246, 0.01) 1px, transparent 1px, transparent 8px),
+                      var(--bg-surface);
+          box-shadow: 0 4px 20px rgba(59, 130, 246, 0.03);
+        }
+        .stats-card-v3.loyalty {
+          border-left-color: var(--color-warning);
+          background: linear-gradient(135deg, rgba(245, 158, 11, 0.04) 0%, transparent 100%),
+                      repeating-linear-gradient(45deg, rgba(245, 158, 11, 0.01) 0px, rgba(245, 158, 11, 0.01) 1px, transparent 1px, transparent 8px),
+                      var(--bg-surface);
+          box-shadow: 0 4px 20px rgba(245, 158, 11, 0.03);
+        }
 
         .audit-item-v2 {
           padding: 12px 16px;
@@ -321,16 +342,16 @@ export function AnalyticsView() {
           transition: background 0.2s;
         }
         .audit-item-v2:hover {
-          background: rgba(255,255,255,0.02);
+          background: var(--bg-card-hover);
         }
         .pre-details {
-          background: rgba(0,0,0,0.3);
-          border: 1px solid var(--border-glass);
+          background: var(--bg-secondary);
+          border: 1px solid var(--border-color);
           border-radius: 8px;
           padding: 12px;
           font-family: 'JetBrains Mono', Courier, monospace;
           font-size: 10px;
-          color: #A7F3D0;
+          color: var(--text-primary);
           white-space: pre-wrap;
           overflow-x: auto;
           margin-top: 8px;
@@ -348,7 +369,7 @@ export function AnalyticsView() {
         </div>
         
         {/* Time Range Selector */}
-        <div style={{ display: 'flex', gap: '4px', background: 'rgba(0,0,0,0.2)', borderRadius: 'var(--radius-md)', padding: '4px', border: '1px solid var(--border-glass)' }}>
+        <div style={{ display: 'flex', gap: '4px', background: 'var(--bg-secondary)', borderRadius: 'var(--radius-md)', padding: '4px', border: '1px solid var(--border-color)' }}>
           {(['today', '7days', '30days'] as const).map(range => (
             <button
               key={range}
@@ -419,7 +440,13 @@ export function AnalyticsView() {
         </div>
 
         {/* Trend Chart */}
-        <div className="card" style={{ padding: '24px 20px', background: 'var(--glass-bg)', border: '1px solid var(--border-color)', boxShadow: 'var(--shadow-sm)', borderRadius: 'var(--radius-md)' }}>
+        <div className="card" style={{
+          padding: '24px 20px',
+          background: 'linear-gradient(180deg, rgba(255, 94, 54, 0.01) 0%, transparent 100%), var(--glass-bg)',
+          border: '1px solid var(--border-color)',
+          boxShadow: 'var(--shadow-sm)',
+          borderRadius: 'var(--radius-md)'
+        }}>
           <div style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--text-sm)', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <span style={{ display: 'inline-block', width: '8px', height: '8px', background: 'var(--color-primary)', borderRadius: '50%', boxShadow: '0 0 8px var(--color-primary)' }}></span>
@@ -438,16 +465,20 @@ export function AnalyticsView() {
                   <stop offset="0%" stopColor="#FF5E36"/>
                   <stop offset="100%" stopColor="#FF8960"/>
                 </linearGradient>
+                <filter id="glowAnalytics" x="-20%" y="-20%" width="140%" height="140%">
+                  <feGaussianBlur stdDeviation="3" result="blur" />
+                  <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                </filter>
               </defs>
               {/* Grid Lines */}
-              <line x1={trendData.paddingX} y1={trendData.paddingY} x2={trendData.width - trendData.paddingX} y2={trendData.paddingY} stroke="rgba(255,255,255,0.02)" strokeWidth="1" />
-              <line x1={trendData.paddingX} y1={(trendData.height - 2*trendData.paddingY)/2 + trendData.paddingY} x2={trendData.width - trendData.paddingX} y2={(trendData.height - 2*trendData.paddingY)/2 + trendData.paddingY} stroke="rgba(255,255,255,0.02)" strokeWidth="1" />
-              <line x1={trendData.paddingX} y1={trendData.height - trendData.paddingY} x2={trendData.width - trendData.paddingX} y2={trendData.height - trendData.paddingY} stroke="rgba(255,255,255,0.06)" strokeWidth="1.5" />
+              <line x1={trendData.paddingX} y1={trendData.paddingY} x2={trendData.width - trendData.paddingX} y2={trendData.paddingY} stroke="var(--border-color)" strokeWidth="1" />
+              <line x1={trendData.paddingX} y1={(trendData.height - 2*trendData.paddingY)/2 + trendData.paddingY} x2={trendData.width - trendData.paddingX} y2={(trendData.height - 2*trendData.paddingY)/2 + trendData.paddingY} stroke="var(--border-color)" strokeWidth="1" />
+              <line x1={trendData.paddingX} y1={trendData.height - trendData.paddingY} x2={trendData.width - trendData.paddingX} y2={trendData.height - trendData.paddingY} stroke="var(--border-active)" strokeWidth="1.5" />
               
               {/* Area Fill */}
               <polygon points={trendData.fillPointsStr} fill="url(#areaGradAnalytics)" />
               {/* Trend Line */}
-              <polyline points={trendData.pointsStr} fill="none" stroke="url(#lineGradAnalytics)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+              <polyline points={trendData.pointsStr} fill="none" stroke="url(#lineGradAnalytics)" strokeWidth="3" filter="url(#glowAnalytics)" strokeLinecap="round" strokeLinejoin="round" />
               
               {/* Point Dots */}
               {stats.dailyTrend.map((t, i) => {
@@ -474,7 +505,7 @@ export function AnalyticsView() {
           
           {/* Splits */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-            <div className="card" style={{ padding: '24px', background: 'var(--glass-bg)', border: '1px solid var(--border-color)', boxShadow: 'var(--shadow-sm)', borderRadius: 'var(--radius-md)' }}>
+            <div className="card" style={{ padding: '24px', background: 'linear-gradient(135deg, rgba(255, 94, 54, 0.02) 0%, var(--glass-bg) 100%)', border: '1px solid var(--border-color)', borderLeft: '4px solid var(--color-primary)', boxShadow: 'var(--shadow-sm)', borderRadius: 'var(--radius-md)' }}>
               <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--text-sm)', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '18px' }}>Revenue Split by Mode</h3>
               {Object.keys(stats.paymentSplit).length === 0 ? (
                 <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', fontWeight: 500 }}>No transactions recorded.</p>
@@ -488,7 +519,7 @@ export function AnalyticsView() {
                         <span style={{ color: 'var(--text-secondary)' }}>{name}</span>
                         <span style={{ color: 'var(--text-primary)' }}>{formatCurrency(val)}</span>
                       </div>
-                      <div style={{ height: '6px', background: 'rgba(0,0,0,0.25)', borderRadius: '4px', overflow: 'hidden', border: '1px solid var(--border-glass)' }}>
+                      <div style={{ height: '6px', background: 'var(--bg-secondary)', borderRadius: '4px', overflow: 'hidden', border: '1px solid var(--border-glass)' }}>
                         <div style={{ height: '100%', background: 'var(--gradient-primary)', width: `${pct}%`, borderRadius: '4px' }}></div>
                       </div>
                     </div>
@@ -497,7 +528,7 @@ export function AnalyticsView() {
               )}
             </div>
 
-            <div className="card" style={{ padding: '24px', background: 'var(--glass-bg)', border: '1px solid var(--border-color)', boxShadow: 'var(--shadow-sm)', borderRadius: 'var(--radius-md)' }}>
+            <div className="card" style={{ padding: '24px', background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.02) 0%, var(--glass-bg) 100%)', border: '1px solid var(--border-color)', borderLeft: '4px solid var(--color-info)', boxShadow: 'var(--shadow-sm)', borderRadius: 'var(--radius-md)' }}>
               <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--text-sm)', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '16px' }}>Operational Order Types</h3>
               {Object.keys(stats.typeSplit).length === 0 ? (
                 <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', fontWeight: 500 }}>No orders placed.</p>
@@ -522,12 +553,12 @@ export function AnalyticsView() {
           </div>
 
           {/* Ledger Audits */}
-          <div className="card" style={{ padding: '24px', display: 'flex', flexDirection: 'column', height: '430px', background: 'var(--glass-bg)', border: '1px solid var(--border-color)', boxShadow: 'var(--shadow-sm)', borderRadius: 'var(--radius-md)' }}>
+          <div className="card" style={{ padding: '24px', display: 'flex', flexDirection: 'column', height: '430px', background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.02) 0%, var(--glass-bg) 100%)', border: '1px solid var(--border-color)', borderLeft: '4px solid var(--color-success)', boxShadow: 'var(--shadow-sm)', borderRadius: 'var(--radius-md)' }}>
             <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--text-sm)', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span>Cloud Ledger Audit Trails</span>
               <span style={{ fontSize: '9px', padding: '2px 8px', background: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16,185,129,0.2)', color: 'var(--color-success)', borderRadius: '4px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Sync Logs</span>
             </h3>
-            <div style={{ flex: 1, overflowY: 'auto', border: '1px solid var(--border-glass)', borderRadius: '8px', background: 'rgba(0,0,0,0.2)' }} className="scrollbar-none">
+            <div style={{ flex: 1, overflowY: 'auto', border: '1px solid var(--border-glass)', borderRadius: '8px', background: 'var(--bg-secondary)' }} className="scrollbar-none">
               {stats.recentAudits.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)', fontSize: 'var(--text-xs)' }}>No audit actions logged.</div>
               ) : (

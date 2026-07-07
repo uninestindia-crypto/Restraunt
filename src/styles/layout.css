@@ -162,6 +162,10 @@
   overflow: hidden;
 }
 
+.mobile-cart-toggle-bar {
+  display: none;
+}
+
 .pos-menu {
   flex: 1;
   display: flex;
@@ -497,14 +501,14 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 12px 8px;
+  padding: 12px 10px;
   border-radius: var(--radius-md);
-  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.25s ease;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .cart-item:hover {
-  background: rgba(255, 255, 255, 0.03);
-  transform: scale(1.01);
+  background: var(--bg-secondary);
+  transform: translateX(4px);
 }
 
 .cart-item + .cart-item {
@@ -598,9 +602,11 @@
 /* ── Cart Summary ── */
 
 .cart-summary {
-  padding: 16px 20px;
-  background: var(--bg-card);
+  padding: 20px 24px;
+  background: var(--bg-secondary);
   border-top: 1px solid var(--border-color);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  box-shadow: 0 -4px 15px rgba(0, 0, 0, 0.015);
   flex-shrink: 0;
 }
 
@@ -771,18 +777,29 @@
 @media (max-width: 768px) {
   .pos-layout {
     flex-direction: column;
+    position: relative;
+    overflow: hidden;
   }
 
   .pos-cart {
-    width: 100%;
-    min-width: 100%;
-    max-height: 55vh;
-    border-left: none;
-    border-top: 1px solid var(--border-color);
+    position: fixed !important;
+    top: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100% !important;
+    min-width: 100% !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    z-index: 2000 !important;
+    transform: translateX(100%);
+    transition: transform 0.35s cubic-bezier(0.32, 0.94, 0.6, 1);
+    border-left: none !important;
+    border-top: none !important;
   }
 
   .pos-menu {
-    min-height: 45vh;
+    width: 100% !important;
+    height: 100% !important;
   }
 
   .menu-grid {
@@ -810,6 +827,14 @@
 @media (min-width: 769px) {
   .bottom-nav {
     display: none;
+  }
+
+  .mobile-cart-toggle-bar {
+    display: none !important;
+  }
+
+  .cart-mobile-back {
+    display: none !important;
   }
 
   .menu-grid {
@@ -1008,19 +1033,24 @@
   }
   .pos-cart {
     position: fixed;
-    top: 60px;
+    top: 0 !important;
     right: 0;
     bottom: 0;
     width: 100% !important;
     min-width: 100% !important;
-    height: calc(100vh - 120px) !important;
-    max-height: calc(100vh - 120px) !important;
-    z-index: 1000;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    z-index: 2000 !important;
     transform: translateX(100%);
-    transition: transform var(--transition-normal);
+    transition: transform 0.35s cubic-bezier(0.32, 0.94, 0.6, 1);
     background: var(--bg-surface) !important;
     border-left: none !important;
-    box-shadow: -10px 0 30px rgba(0, 0, 0, 0.5) !important;
+    box-shadow: -10px 0 40px rgba(0, 0, 0, 0.15) !important;
+  }
+  
+  .pos-cart .cart-header {
+    padding-top: calc(16px + env(safe-area-inset-top, 0px)) !important;
+    height: auto !important;
   }
   
   /* Slide-in cart transition when active */
@@ -1171,4 +1201,168 @@
     display: none !important;
   }
 }
+
+/* ── Light Mode Overrides for POS ──────────────── */
+:root[data-theme="light"] .pos-cart {
+  background: #FFFFFF !important;
+  border-left: 1px solid var(--border-color) !important;
+  box-shadow: -4px 0 16px rgba(15, 23, 42, 0.02) !important;
+}
+
+:root[data-theme="light"] .order-type-btn {
+  background: var(--bg-secondary) !important;
+  border: 1px solid var(--border-color) !important;
+  color: var(--text-secondary) !important;
+}
+
+:root[data-theme="light"] .order-type-btn:hover {
+  border-color: var(--border-active) !important;
+  color: var(--text-primary) !important;
+  background: var(--bg-card-hover) !important;
+}
+
+:root[data-theme="light"] .order-type-btn.active {
+  border-color: var(--color-primary) !important;
+  color: var(--color-primary) !important;
+  background: rgba(255, 94, 54, 0.08) !important;
+}
+
+:root[data-theme="light"] .cart-item:hover {
+  background: var(--bg-secondary) !important;
+}
+
+:root[data-theme="light"] .cart-summary {
+  background: var(--bg-secondary) !important;
+  border-top: 1px solid var(--border-color) !important;
+}
+
+:root[data-theme="light"] .cart-empty .material-symbols-rounded {
+  color: var(--color-primary) !important;
+  opacity: 0.15 !important;
+}
+
+:root[data-theme="light"] .tab {
+  background: #FFFFFF !important;
+  border: 1px solid var(--border-color) !important;
+  color: var(--text-secondary) !important;
+}
+
+:root[data-theme="light"] .tab:hover {
+  background: var(--bg-secondary) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border-active) !important;
+}
+
+:root[data-theme="light"] .tab.active {
+  background: var(--gradient-primary) !important;
+  color: #FFFFFF !important;
+  border-color: transparent !important;
+  box-shadow: 0 4px 12px rgba(255, 94, 54, 0.25) !important;
+}
+
+:root[data-theme="light"] .stepper {
+  background: var(--bg-secondary) !important;
+  border: 1px solid var(--border-color) !important;
+}
+
+:root[data-theme="light"] .stepper button {
+  background: #FFFFFF !important;
+  border: 1px solid var(--border-color) !important;
+  box-shadow: var(--shadow-sm) !important;
+  color: var(--color-primary) !important;
+}
+
+:root[data-theme="light"] .stepper button:hover {
+  background: rgba(255, 94, 54, 0.1) !important;
+}
+
+:root[data-theme="light"] .mobile-cart-toggle-bar {
+  background: rgba(255, 255, 255, 0.98) !important;
+  border-color: var(--color-primary) !important;
+  box-shadow: 0 10px 30px rgba(255, 94, 54, 0.18) !important;
+}
+
+:root[data-theme="light"] .mobile-cart-toggle-bar #mobile-cart-count {
+  color: var(--text-primary) !important;
+}
+
+@media (prefers-color-scheme: light) {
+  :root[data-theme="system"] .pos-cart {
+    background: #FFFFFF !important;
+    border-left: 1px solid var(--border-color) !important;
+    box-shadow: -4px 0 16px rgba(15, 23, 42, 0.02) !important;
+  }
+  :root[data-theme="system"] .order-type-btn {
+    background: var(--bg-secondary) !important;
+    border: 1px solid var(--border-color) !important;
+    color: var(--text-secondary) !important;
+  }
+  :root[data-theme="system"] .order-type-btn:hover {
+    border-color: var(--border-active) !important;
+    color: var(--text-primary) !important;
+    background: var(--bg-card-hover) !important;
+  }
+  :root[data-theme="system"] .order-type-btn.active {
+    border-color: var(--color-primary) !important;
+    color: var(--color-primary) !important;
+    background: rgba(255, 94, 54, 0.08) !important;
+  }
+  :root[data-theme="system"] .cart-item:hover {
+    background: var(--bg-secondary) !important;
+  }
+  :root[data-theme="system"] .cart-summary {
+    background: var(--bg-secondary) !important;
+    border-top: 1px solid var(--border-color) !important;
+  }
+  :root[data-theme="system"] .cart-empty .material-symbols-rounded {
+    color: var(--color-primary) !important;
+    opacity: 0.15 !important;
+  }
+  :root[data-theme="system"] .tab {
+    background: #FFFFFF !important;
+    border: 1px solid var(--border-color) !important;
+    color: var(--text-secondary) !important;
+  }
+  :root[data-theme="system"] .tab:hover {
+    background: var(--bg-secondary) !important;
+    color: var(--text-primary) !important;
+    border-color: var(--border-active) !important;
+  }
+  :root[data-theme="system"] .tab.active {
+    background: var(--gradient-primary) !important;
+    color: #FFFFFF !important;
+    border-color: transparent !important;
+    box-shadow: 0 4px 12px rgba(255, 94, 54, 0.25) !important;
+  }
+  :root[data-theme="system"] .stepper {
+    background: var(--bg-secondary) !important;
+    border: 1px solid var(--border-color) !important;
+  }
+  :root[data-theme="system"] .stepper button {
+    background: #FFFFFF !important;
+    border: 1px solid var(--border-color) !important;
+    box-shadow: var(--shadow-sm) !important;
+    color: var(--color-primary) !important;
+  }
+  :root[data-theme="system"] .stepper button:hover {
+    background: rgba(255, 94, 54, 0.1) !important;
+  }
+  :root[data-theme="system"] .mobile-cart-toggle-bar {
+    background: rgba(255, 255, 255, 0.98) !important;
+    border-color: var(--color-primary) !important;
+    box-shadow: 0 10px 30px rgba(255, 94, 54, 0.18) !important;
+  }
+  :root[data-theme="system"] .mobile-cart-toggle-bar #mobile-cart-count {
+    color: var(--text-primary) !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .stepper button {
+    width: 36px !important;
+    height: 36px !important;
+  }
+}
+
+
 
