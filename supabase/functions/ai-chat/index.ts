@@ -147,6 +147,61 @@ Deno.serve(async (req: Request) => {
       content: String(m.content || "").slice(0, 4000),
     }));
 
+    // ── Vector Search & RAG Retrieval Phase ──
+    let queryEmbedding: number[] | null = null;
+    if (Array.isArray(payload.context?.queryEmbedding)) {
+      queryEmbedding = payload.context.queryEmbedding;
+    } else if (payload.context?.query && typeof (globalThis as any).Supabase !== "undefined" && (globalThis as any).Supabase.ai) {
+      try {
+        const session = new (globalThis as any).Supabase.ai.Session('gte-small');
+        const lastUserMessage = String(payload.context.query || "");
+        if (lastUserMessage) {
+          const response = await session.run(lastUserMessage, {
+            mean_pool: true,
+            normalize: true,
+          });
+          queryEmbedding = Array.from(response);
+        }
+      } catch (e) {
+        console.warn("[ai-chat] Local Edge Function embedding generation failed:", e);
+      }
+    }
+
+    let retrievedContext = "";
+    if (queryEmbedding) {
+      try {
+        const { data: documents, error: dbErr } = await serviceClient.rpc("match_documents", {
+          query_embedding: queryEmbedding,
+          match_threshold: 0.50,
+          match_count: 4,
+          filter_store_id: membership.store_id || "the-taste"
+        });
+
+        if (dbErr) {
+          console.error("[ai-chat] Error matching documents:", dbErr);
+        } else if (Array.isArray(documents) && documents.length > 0) {
+          retrievedContext = documents
+            .map((doc: any) => `[Source: ${doc.metadata?.source || "Document"}] ${doc.content}`)
+            .join("\n\n");
+          console.log(`[ai-chat] Retrieved ${documents.length} matching document(s) for RAG.`);
+        }
+      } catch (err) {
+        console.error("[ai-chat] Document retrieval RPC failed:", err);
+      }
+    }
+
+    if (retrievedContext) {
+      const sysMsg = sanitizedMessages.find(m => m.role === "system");
+      if (sysMsg) {
+        sysMsg.content += `\n\n--- ADDITIONAL RETRIEVED CONTEXT (RAG) ---\n${retrievedContext}\n-------------------------------------------\nUse the retrieved context above to answer the user's question, citing the source where appropriate.`;
+      } else {
+        sanitizedMessages.unshift({
+          role: "system",
+          content: `You are a helpful restaurant assistant. Use the following context to help answer the user's question:\n\n${retrievedContext}`
+        });
+      }
+    }
+
     const model = payload.model || DEFAULT_GROQ_MODEL;
 
     try {

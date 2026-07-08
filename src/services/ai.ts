@@ -102,7 +102,7 @@ class AIService {
 
   // ── Main Query Processor (3-Tier Router) ──
 
-  async processQuery(query) {
+  async processQuery(query, queryEmbedding = null) {
     await this.loadConfig();
 
     try {
@@ -118,7 +118,7 @@ class AIService {
         const aiEnabled = await getSetting('enableAIChat');
         if (this.isGroqAvailable && aiEnabled !== 'false') {
           try {
-            return await this.queryGroq(query, intent);
+            return await this.queryGroq(query, intent, queryEmbedding);
           } catch (err) {
             console.warn('[AI] Groq call failed, falling back to local:', err.message);
           }
@@ -154,14 +154,16 @@ class AIService {
 
   // ── Cloud AI Callers ──
 
-  async queryGroq(query, intent) {
+  // ── Cloud AI Callers ──
+
+  async queryGroq(query, intent, queryEmbedding = null) {
     const groqApiKey = this._groqKeyCache;
     const model = await getSetting('groqModel') || 'llama-3.3-70b-versatile';
 
     // Gather business context
     const context = await this.gatherBusinessContext();
 
-    const systemPrompt = `You are an AI assistant for "${context.restaurantName || 'The Taste'}" restaurant. 
+    let systemPrompt = `You are an AI assistant for "${context.restaurantName || 'The Taste'}" restaurant. 
 You help restaurant staff with business insights, analytics, and operational questions.
 Respond concisely in markdown. Use bold, emojis, and bullet points for readability.
 Currency: ${context.currency}. Today: ${new Date().toLocaleDateString()}.
@@ -175,6 +177,52 @@ Current business data:
     this.conversationHistory.push({ role: 'user', content: query });
     if (this.conversationHistory.length > 10) {
       this.conversationHistory = this.conversationHistory.slice(-8);
+    }
+
+    // Try online secure Cloud RAG proxy first if authenticated
+    try {
+      const { getCloudSession } = await import('./supabaseClient');
+      const session = await getCloudSession();
+      if (session) {
+        console.log('[AI] Cloud session active, routing through secure Edge RAG function...');
+        const response = await this.queryCloudAIChat(query, [
+          { role: 'system', content: systemPrompt },
+          ...this.conversationHistory
+        ], intent, queryEmbedding);
+        return response;
+      }
+    } catch (err) {
+      console.warn('[AI] Secure Cloud RAG call failed, falling back to direct Groq:', err.message);
+    }
+
+    // Offline / Local direct API call using local key
+    let localRetrievedContext = '';
+    if (queryEmbedding && db.localEmbeddings) {
+      try {
+        const allLocal = await db.localEmbeddings.toArray();
+        if (allLocal.length > 0) {
+          const matched = allLocal.map(doc => ({
+            ...doc,
+            similarity: this.cosineSimilarity(queryEmbedding, doc.vector)
+          }))
+          .filter(doc => doc.similarity > 0.50)
+          .sort((a, b) => b.similarity - a.similarity)
+          .slice(0, 3);
+
+          if (matched.length > 0) {
+            localRetrievedContext = matched
+              .map(doc => `[Source: ${doc.source || 'Local Document'}] ${doc.content}`)
+              .join('\n\n');
+            console.log(`[AI] Offline Local RAG: retrieved ${matched.length} document(s).`);
+          }
+        }
+      } catch (err) {
+        console.warn('[AI] Offline Local RAG retrieval failed:', err);
+      }
+    }
+
+    if (localRetrievedContext) {
+      systemPrompt += `\n\n--- OFFLINE RETRIEVED CONTEXT (RAG) ---\n${localRetrievedContext}\n---------------------------------------\nAnswer the user's question using the retrieved context above, citing the source where appropriate.`;
     }
 
     const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
@@ -240,6 +288,51 @@ Current business data:
     return this.formatResponse('text', content, data,
       ['📊 Summary', '🔍 Detect Anomalies', '📈 Forecast'], 'lightning'
     );
+  }
+
+  async queryCloudAIChat(query, messages, intent, queryEmbedding = null) {
+    const { getSupabaseClient } = await import('./supabaseClient');
+    const client = await getSupabaseClient({ persistSession: true });
+    if (!client) throw new Error('Supabase client not available');
+
+    const context = await this.gatherBusinessContext();
+    const payload = {
+      tier: 'groq',
+      messages,
+      context: {
+        query,
+        queryEmbedding,
+        restaurantName: context.restaurantName,
+        currency: context.currency,
+      }
+    };
+
+    const { data, error } = await client.functions.invoke('ai-chat', {
+      body: payload
+    });
+
+    if (error) throw error;
+    if (!data || !data.ok) throw new Error(data?.error || 'AI cloud function returned success: false');
+
+    // Sync local conversation history with assistant response
+    this.conversationHistory.push({ role: 'assistant', content: data.content });
+
+    return this.formatResponse('text', data.content, null,
+      ['📊 Today\'s Summary', '🏆 Best Sellers', '📈 Forecast Tomorrow'], 'groq'
+    );
+  }
+
+  cosineSimilarity(a, b) {
+    if (!a || !b || a.length !== b.length) return 0;
+    let dot = 0;
+    let normA = 0;
+    let normB = 0;
+    for (let i = 0; i < a.length; i++) {
+      dot += a[i] * b[i];
+      normA += a[i] * a[i];
+      normB += b[i] * b[i];
+    }
+    return normA && normB ? dot / (Math.sqrt(normA) * Math.sqrt(normB)) : 0;
   }
 
   // ── Business Context Gatherer ──

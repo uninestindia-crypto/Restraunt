@@ -569,6 +569,53 @@ BEGIN
       END IF;
     END IF;
   END LOOP;
+
+-- ── Cloud Inventory Auto-Deduction Trigger ──
+CREATE OR REPLACE FUNCTION deduct_inventory_on_order()
+RETURNS TRIGGER AS $$
+DECLARE
+  order_item RECORD;
+  recipe_ingredient RECORD;
+  recipe_rec RECORD;
+  inv_match_id BIGINT;
+  deduct_qty NUMERIC;
+BEGIN
+  -- Process each item in the order
+  FOR order_item IN 
+    SELECT * FROM jsonb_to_recordset(NEW.items) AS x(itemId BIGINT, itemName TEXT, quantity INT)
+  LOOP
+    -- Look for a recipe on the server
+    SELECT * INTO recipe_rec FROM recipes WHERE menu_item_id = order_item.itemId LIMIT 1;
+    
+    IF recipe_rec.id IS NOT NULL THEN
+      -- Loop through recipe ingredients
+      FOR recipe_ingredient IN 
+        SELECT * FROM jsonb_to_recordset(recipe_rec.ingredients) AS y(inventoryId BIGINT, quantity NUMERIC)
+      LOOP
+        deduct_qty := COALESCE(recipe_ingredient.quantity, 0) * COALESCE(order_item.quantity, 1);
+        UPDATE inventory 
+        SET quantity = GREATEST(0, quantity - deduct_qty),
+            updated_at = NOW()
+        WHERE id = recipe_ingredient.inventoryId AND store_id = NEW.store_id;
+      END LOOP;
+    ELSE
+      -- Fallback: Fuzzy name match against inventory table
+      SELECT id INTO inv_match_id 
+      FROM inventory 
+      WHERE store_id = NEW.store_id 
+        AND (LOWER(TRIM(name)) = LOWER(TRIM(order_item.itemName)) 
+             OR LOWER(TRIM(name)) LIKE '%' || LOWER(TRIM(order_item.itemName)) || '%'
+             OR LOWER(TRIM(order_item.itemName)) LIKE '%' || LOWER(TRIM(name)) || '%')
+      LIMIT 1;
+      
+      IF inv_match_id IS NOT NULL THEN
+        UPDATE inventory 
+        SET quantity = GREATEST(0, quantity - COALESCE(order_item.quantity, 1)),
+            updated_at = NOW()
+        WHERE id = inv_match_id AND store_id = NEW.store_id;
+      END IF;
+    END IF;
+  END LOOP;
   
   RETURN NEW;
 END;
@@ -579,3 +626,57 @@ CREATE TRIGGER trg_deduct_inventory_on_order
   AFTER INSERT ON orders
   FOR EACH ROW
   EXECUTE FUNCTION deduct_inventory_on_order();
+
+-- ── pgvector & document_embeddings RAG Schema ──
+CREATE EXTENSION IF NOT EXISTS vector;
+
+CREATE TABLE IF NOT EXISTS document_embeddings (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  store_id TEXT NOT NULL DEFAULT 'the-taste',
+  content TEXT NOT NULL,
+  metadata JSONB DEFAULT '{}'::jsonb,
+  embedding vector(384) NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_document_embeddings_hnsw 
+  ON document_embeddings USING hnsw (embedding vector_cosine_ops);
+
+CREATE OR REPLACE FUNCTION match_documents (
+  query_embedding vector(384),
+  match_threshold float,
+  match_count int,
+  filter_store_id text
+)
+RETURNS TABLE (
+  id uuid,
+  content text,
+  metadata jsonb,
+  similarity float
+)
+LANGUAGE plpgsql STABLE
+AS $$
+BEGIN
+  RETURN QUERY
+  SELECT
+    document_embeddings.id,
+    document_embeddings.content,
+    document_embeddings.metadata,
+    1 - (document_embeddings.embedding <=> query_embedding) AS similarity
+  FROM document_embeddings
+  WHERE document_embeddings.store_id = filter_store_id
+    AND 1 - (document_embeddings.embedding <=> query_embedding) > match_threshold
+  ORDER BY document_embeddings.embedding <=> query_embedding
+  LIMIT match_count;
+END;
+$$;
+
+ALTER TABLE document_embeddings ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "staff access document_embeddings" ON document_embeddings;
+CREATE POLICY "staff access document_embeddings" ON document_embeddings
+  FOR ALL TO authenticated
+  USING (EXISTS (SELECT 1 FROM staff_memberships sm WHERE sm.store_id = document_embeddings.store_id AND sm.auth_user_id = (SELECT auth.uid()) AND sm.is_active = TRUE))
+  WITH CHECK (EXISTS (SELECT 1 FROM staff_memberships sm WHERE sm.store_id = document_embeddings.store_id AND sm.auth_user_id = (SELECT auth.uid()) AND sm.is_active = TRUE));
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON document_embeddings TO authenticated;

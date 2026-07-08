@@ -193,6 +193,15 @@ export interface AIConversation {
   isSynced?: number;
 }
 
+export interface LocalEmbedding {
+  id?: number;
+  content: string;
+  source: string; // 'recipes' | 'faq' | 'suppliers' | 'menu'
+  metadata?: any;
+  vector: number[];
+  isSynced?: number;
+}
+
 export class RestaurantDatabase extends Dexie {
   menuCategories!: Dexie.Table<MenuCategory, number>;
   menuItems!: Dexie.Table<MenuItem, number>;
@@ -207,6 +216,7 @@ export class RestaurantDatabase extends Dexie {
   reservations!: Dexie.Table<Reservation, number>;
   activityLog!: Dexie.Table<ActivityLogEntry, number>;
   aiConversations!: Dexie.Table<AIConversation, number>;
+  localEmbeddings!: Dexie.Table<LocalEmbedding, number>;
 
   constructor() {
     super('TheTastePOS');
@@ -383,6 +393,25 @@ db.version(6).stores({
   aiConversations: '++id, createdAt, title',
 }).upgrade(async (tx) => {
   // Safe migration
+});
+
+// Schema v7: Local RAG Vector Embedding Support
+db.version(7).stores({
+  menuCategories: '++id, name, sortOrder, isActive, updatedAt',
+  menuItems: '++id, categoryId, [categoryId+isAvailable], name, price, isAvailable, isVeg, sortOrder, imageUrl, updatedAt',
+  orders: '++id, clientOrderId, idempotencyKey, orderNumber, displayToken, type, status, paymentMethod, paymentStatus, createdAt, completedAt, customerId, staffId, tableId, channel, source, deliveryStatus, deliveryStaffId, updatedAt, syncStatus, validationStatus',
+  settings: 'key',
+  customers: '++id, phone, name, authUserId, totalSpent, visitCount, loyaltyPoints, tier, lastVisit, createdAt',
+  staff: '++id, name, role, pinHash, cloudUserId, isActive, createdAt',
+  shifts: '++id, staffId, date, clockIn, clockOut',
+  inventory: '++id, name, unit, quantity, minThreshold, categoryTag',
+  suppliers: '++id, name, phone, category',
+  recipes: '++id, menuItemId',
+  tables: '++id, number, status, floorSection',
+  reservations: '++id, tableId, customerId, date, time, status',
+  activityLog: '++id, staffId, action, timestamp',
+  aiConversations: '++id, createdAt, title',
+  localEmbeddings: '++id, source',
 });
 
 
