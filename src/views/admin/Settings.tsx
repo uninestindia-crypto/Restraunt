@@ -588,7 +588,7 @@ export function SettingsView() {
           font-size: 18px;
         }
         .settings-sidebar-btn:hover {
-          background: rgba(255,255,255,0.03);
+          background: var(--bg-card-hover);
           color: var(--text-primary);
         }
         .settings-sidebar-btn.active {
@@ -608,7 +608,7 @@ export function SettingsView() {
           flexDirection: 'column',
           gap: '6px',
           flexShrink: 0,
-          background: 'rgba(0,0,0,0.15)',
+          background: 'var(--bg-primary)',
           padding: '12px 8px',
           borderRadius: 'var(--radius-md)',
           border: '1px solid var(--border-glass)'
@@ -775,7 +775,7 @@ export function SettingsView() {
                   Bluetooth Printer setup
                 </h3>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(0,0,0,0.2)', padding: '12px 16px', borderRadius: '8px', border: '1px solid var(--border-glass)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-primary)', padding: '12px 16px', borderRadius: '8px', border: '1px solid var(--border-glass)' }}>
                     <div>
                       <div style={{ fontSize: 'var(--text-xs)', fontWeight: 700, color: 'var(--text-primary)' }}>Web Bluetooth API Support</div>
                       <div style={{ fontSize: '10px', color: 'var(--text-secondary)', marginTop: '2px' }}>
@@ -787,7 +787,7 @@ export function SettingsView() {
                     </span>
                   </div>
 
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(0,0,0,0.2)', padding: '12px 16px', borderRadius: '8px', border: '1px solid var(--border-glass)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-primary)', padding: '12px 16px', borderRadius: '8px', border: '1px solid var(--border-glass)' }}>
                     <div>
                       <div style={{ fontSize: 'var(--text-xs)', fontWeight: 700, color: 'var(--text-primary)' }}>Connection Status</div>
                       <div style={{ fontSize: '10px', color: 'var(--text-secondary)', marginTop: '2px' }}>
@@ -846,7 +846,7 @@ export function SettingsView() {
                               flex: 1, minHeight: '34px', fontSize: 'var(--text-xs)', fontWeight: active ? 800 : 500,
                               borderRadius: 'var(--radius-md)', cursor: 'pointer',
                               border: `1.5px solid ${active ? 'var(--color-primary)' : 'var(--border-glass)'}`,
-                              background: active ? 'rgba(255,94,54,0.1)' : 'rgba(0,0,0,0.2)',
+                              background: active ? 'var(--color-primary-glow)' : 'var(--bg-primary)',
                               color: active ? 'var(--color-primary)' : 'var(--text-secondary)',
                               transition: 'all 0.2s'
                             }}
@@ -860,7 +860,7 @@ export function SettingsView() {
 
                   <div>
                     <label style={{ marginBottom: '10px', display: 'block', fontSize: 'var(--text-xs)', fontWeight: 700 }}>Include in Receipt</label>
-                    <div style={{ background: 'rgba(0,0,0,0.15)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-glass)', padding: '4px 16px' }}>
+                    <div style={{ background: 'var(--bg-primary)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-glass)', padding: '4px 16px' }}>
                       {[
                         { id: 'showLogoOnReceipt', label: 'Show Brand Logo / Header Title' },
                         { id: 'showAddressOnReceipt', label: 'Print Address Details' },
@@ -880,7 +880,7 @@ export function SettingsView() {
                               onChange={(e) => handleConfigChange(toggle.id, e.target.checked ? 'true' : 'false')}
                               style={{ opacity: 0, width: 0, height: 0 }}
                             />
-                            <span className="settings-toggle-track" style={{ position: 'absolute', cursor: 'pointer', inset: 0, background: config[toggle.id] === 'true' || config[toggle.id] === true ? 'var(--color-primary)' : 'rgba(255,255,255,0.1)', borderRadius: '34px', transition: '0.2s' }}></span>
+                            <span className="settings-toggle-track" style={{ position: 'absolute', cursor: 'pointer', inset: 0, background: config[toggle.id] === 'true' || config[toggle.id] === true ? 'var(--color-primary)' : 'var(--border-active)', borderRadius: '34px', transition: '0.2s' }}></span>
                             <span className="settings-toggle-thumb" style={{ position: 'absolute', height: '16px', width: '16px', left: config[toggle.id] === 'true' || config[toggle.id] === true ? '19px' : '3px', bottom: '3px', background: 'white', borderRadius: '50%', transition: '0.2s' }}></span>
                           </label>
                         </div>
@@ -966,7 +966,7 @@ export function SettingsView() {
 
                 <div>
                   <label style={{ marginBottom: '10px', display: 'block', fontSize: 'var(--text-xs)', fontWeight: 700 }}>Invoice Layout elements</label>
-                  <div style={{ background: 'rgba(0,0,0,0.15)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-glass)', padding: '4px 16px' }}>
+                  <div style={{ background: 'var(--bg-primary)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-glass)', padding: '4px 16px' }}>
                     {[
                       { id: 'invoiceShowUpiQr', label: 'Show dynamic scan-to-pay UPI QR block' },
                       { id: 'invoiceShowGrid', label: 'Draw item grid gridlines' },
@@ -982,7 +982,7 @@ export function SettingsView() {
                             onChange={(e) => handleConfigChange(toggle.id, e.target.checked ? 'true' : 'false')}
                             style={{ opacity: 0, width: 0, height: 0 }}
                           />
-                          <span className="settings-toggle-track" style={{ position: 'absolute', cursor: 'pointer', inset: 0, background: config[toggle.id] === 'true' || config[toggle.id] === true ? 'var(--color-primary)' : 'rgba(255,255,255,0.1)', borderRadius: '34px', transition: '0.2s' }}></span>
+                          <span className="settings-toggle-track" style={{ position: 'absolute', cursor: 'pointer', inset: 0, background: config[toggle.id] === 'true' || config[toggle.id] === true ? 'var(--color-primary)' : 'var(--border-active)', borderRadius: '34px', transition: '0.2s' }}></span>
                           <span className="settings-toggle-thumb" style={{ position: 'absolute', height: '16px', width: '16px', left: config[toggle.id] === 'true' || config[toggle.id] === true ? '19px' : '3px', bottom: '3px', background: 'white', borderRadius: '50%', transition: '0.2s' }}></span>
                         </label>
                       </div>
@@ -1053,7 +1053,7 @@ export function SettingsView() {
                     <input type="text" className="input" value={config.googleClientId} onChange={(e) => handleConfigChange('googleClientId', e.target.value)} placeholder="Client ID string" />
                   </div>
 
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(0,0,0,0.2)', padding: '12px 16px', borderRadius: '8px', border: '1px solid var(--border-glass)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-primary)', padding: '12px 16px', borderRadius: '8px', border: '1px solid var(--border-glass)' }}>
                     <div>
                       <div style={{ fontSize: 'var(--text-xs)', fontWeight: 700, color: 'var(--text-primary)' }}>OAuth Status</div>
                       <div style={{ fontSize: '10px', color: 'var(--text-secondary)', marginTop: '2px' }}>{driveConnected ? 'Backup folder active' : 'Drive disconnected'}</div>
@@ -1068,7 +1068,7 @@ export function SettingsView() {
                     {driveConnected ? 'Disconnect' : 'Connect GDrive'}
                   </button>
 
-                  <div style={{ background: 'rgba(0,0,0,0.15)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-glass)', padding: '4px 16px' }}>
+                  <div style={{ background: 'var(--bg-primary)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-glass)', padding: '4px 16px' }}>
                     <div className="settings-toggle-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0' }}>
                       <span style={{ fontSize: 'var(--text-xs)', fontWeight: 500 }}>Auto-upload report backups</span>
                       <label className="settings-toggle-switch" style={{ position: 'relative', display: 'inline-block', width: '38px', height: '22px' }}>
@@ -1078,7 +1078,7 @@ export function SettingsView() {
                           onChange={(e) => handleConfigChange('autoUploadToDrive', e.target.checked ? 'true' : 'false')}
                           style={{ opacity: 0, width: 0, height: 0 }}
                         />
-                        <span className="settings-toggle-track" style={{ position: 'absolute', cursor: 'pointer', inset: 0, background: config.autoUploadToDrive === 'true' || config.autoUploadToDrive === true ? 'var(--color-primary)' : 'rgba(255,255,255,0.1)', borderRadius: '34px', transition: '0.2s' }}></span>
+                        <span className="settings-toggle-track" style={{ position: 'absolute', cursor: 'pointer', inset: 0, background: config.autoUploadToDrive === 'true' || config.autoUploadToDrive === true ? 'var(--color-primary)' : 'var(--border-active)', borderRadius: '34px', transition: '0.2s' }}></span>
                         <span className="settings-toggle-thumb" style={{ position: 'absolute', height: '16px', width: '16px', left: config.autoUploadToDrive === 'true' || config.autoUploadToDrive === true ? '19px' : '3px', bottom: '3px', background: 'white', borderRadius: '50%', transition: '0.2s' }}></span>
                       </label>
                     </div>
@@ -1112,7 +1112,7 @@ export function SettingsView() {
                       maxLength={4}
                       placeholder="4 digits"
                       style={{
-                        background: 'rgba(0,0,0,0.25)', border: '1px solid var(--border-glass)',
+                        background: 'var(--bg-primary)', border: '1px solid var(--border-glass)',
                         color: 'var(--text-primary)', letterSpacing: '0.5em', textAlign: 'center',
                         fontWeight: 800, fontSize: '1.2rem', padding: '8px 10px',
                         borderRadius: '6px', width: '100%', outline: 'none'
@@ -1120,7 +1120,7 @@ export function SettingsView() {
                     />
                   </div>
 
-                  <div style={{ background: 'rgba(0,0,0,0.15)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-glass)', padding: '4px 16px' }}>
+                  <div style={{ background: 'var(--bg-primary)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-glass)', padding: '4px 16px' }}>
                     {[
                       { id: 'requirePinForOrder', label: 'Require security PIN verification for every POS order checkout' },
                       { id: 'allowManagerAdmin', label: 'Grant managers full authorization to access Admin Console' },
@@ -1136,7 +1136,7 @@ export function SettingsView() {
                             onChange={(e) => handleConfigChange(toggle.id, e.target.checked ? 'true' : 'false')}
                             style={{ opacity: 0, width: 0, height: 0 }}
                           />
-                          <span className="settings-toggle-track" style={{ position: 'absolute', cursor: 'pointer', inset: 0, background: config[toggle.id] === 'true' || config[toggle.id] === true ? 'var(--color-primary)' : 'rgba(255,255,255,0.1)', borderRadius: '34px', transition: '0.2s' }}></span>
+                          <span className="settings-toggle-track" style={{ position: 'absolute', cursor: 'pointer', inset: 0, background: config[toggle.id] === 'true' || config[toggle.id] === true ? 'var(--color-primary)' : 'var(--border-active)', borderRadius: '34px', transition: '0.2s' }}></span>
                           <span className="settings-toggle-thumb" style={{ position: 'absolute', height: '16px', width: '16px', left: config[toggle.id] === 'true' || config[toggle.id] === true ? '19px' : '3px', bottom: '3px', background: 'white', borderRadius: '50%', transition: '0.2s' }}></span>
                         </label>
                       </div>
@@ -1222,7 +1222,7 @@ export function SettingsView() {
                         flex: 1, minHeight: '38px', display: 'inline-flex', alignItems: 'center',
                         justifyContent: 'center', gap: '6px', borderRadius: 'var(--radius-md)',
                         border: `1.5px solid ${active ? 'var(--color-primary)' : 'var(--border-glass)'}`,
-                        background: active ? 'rgba(255,94,54,0.1)' : 'rgba(0,0,0,0.2)',
+                        background: active ? 'var(--color-primary-glow)' : 'var(--bg-primary)',
                         color: active ? 'var(--color-primary)' : 'var(--text-secondary)',
                         fontWeight: active ? '700' : '500', cursor: 'pointer', transition: 'all 0.2s'
                       }}
@@ -1256,7 +1256,7 @@ export function SettingsView() {
               style={{
                 fontSize: '11px', fontWeight: 700, padding: '6px 14px', borderRadius: '6px', cursor: 'pointer', transition: 'all 0.2s',
                 border: `1px solid ${activePreviewTab === 'thermal' ? 'var(--color-primary)' : 'var(--border-glass)'}`,
-                background: activePreviewTab === 'thermal' ? 'rgba(255,94,54,0.1)' : 'rgba(0,0,0,0.2)',
+                background: activePreviewTab === 'thermal' ? 'var(--color-primary-glow)' : 'var(--bg-primary)',
                 color: activePreviewTab === 'thermal' ? 'var(--color-primary)' : 'var(--text-secondary)'
               }}
             >
@@ -1270,7 +1270,7 @@ export function SettingsView() {
               style={{
                 fontSize: '11px', fontWeight: 700, padding: '6px 14px', borderRadius: '6px', cursor: 'pointer', transition: 'all 0.2s',
                 border: `1px solid ${activePreviewTab === 'invoice' ? 'var(--color-primary)' : 'var(--border-glass)'}`,
-                background: activePreviewTab === 'invoice' ? 'rgba(255,94,54,0.1)' : 'rgba(0,0,0,0.2)',
+                background: activePreviewTab === 'invoice' ? 'var(--color-primary-glow)' : 'var(--bg-primary)',
                 color: activePreviewTab === 'invoice' ? 'var(--color-primary)' : 'var(--text-secondary)'
               }}
             >
