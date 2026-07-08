@@ -80,15 +80,17 @@ export async function seedDatabase(options = {}) {
   await db.transaction('rw', ...seedStores, async () => {
     // ── Categories ──────────────────────────────────────────────
     const categories = [
-      { name: 'Momos', icon: '🥟', sortOrder: 1, isActive: 1, isSynced: 0 },
-      { name: 'Starters', icon: '🥢', sortOrder: 2, isActive: 1, isSynced: 0 },
-      { name: 'Noodles', icon: '🍜', sortOrder: 3, isActive: 1, isSynced: 0 },
-      { name: 'Rice', icon: '🍚', sortOrder: 4, isActive: 1, isSynced: 0 },
-      { name: 'Main Course', icon: '🍛', sortOrder: 5, isActive: 1, isSynced: 0 },
-      { name: 'Burgers', icon: '🍔', sortOrder: 6, isActive: 1, isSynced: 0 },
-      { name: 'Sides', icon: '🍟', sortOrder: 7, isActive: 1, isSynced: 0 },
-      { name: 'Beverages', icon: '🥤', sortOrder: 8, isActive: 1, isSynced: 0 },
-      { name: 'Desserts', icon: '🍨', sortOrder: 9, isActive: 1, isSynced: 0 },
+      { name: 'Fries', icon: '🍟', sortOrder: 1, isActive: 1, isSynced: 0 },
+      { name: 'Roll / Wrap', icon: '🌯', sortOrder: 2, isActive: 1, isSynced: 0 },
+      { name: 'Fried Rice', icon: '🍚', sortOrder: 3, isActive: 1, isSynced: 0 },
+      { name: 'Noodles', icon: '🍜', sortOrder: 4, isActive: 1, isSynced: 0 },
+      { name: 'Biryani', icon: '🍲', sortOrder: 5, isActive: 1, isSynced: 0 },
+      { name: 'Soup', icon: '🥣', sortOrder: 6, isActive: 1, isSynced: 0 },
+      { name: 'Veg Chinese', icon: '🥦', sortOrder: 7, isActive: 1, isSynced: 0 },
+      { name: 'Non-Veg Chinese', icon: '🍗', sortOrder: 8, isActive: 1, isSynced: 0 },
+      { name: 'Veg Burger', icon: '🍔', sortOrder: 9, isActive: 1, isSynced: 0 },
+      { name: 'Egg Burger', icon: '🥚', sortOrder: 10, isActive: 1, isSynced: 0 },
+      { name: 'Chicken Burger', icon: '🍔', sortOrder: 11, isActive: 1, isSynced: 0 },
     ];
 
     const categoryIds = await db.menuCategories.bulkAdd(categories, { allKeys: true });
@@ -116,80 +118,107 @@ export async function seedDatabase(options = {}) {
       });
     };
 
-    // Momos
-    addItem('Momos', 'Steamed Veg Momos', 80, true);
-    addItem('Momos', 'Fried Veg Momos', 100, true);
-    addItem('Momos', 'Steamed Chicken Momos', 120, false);
-    addItem('Momos', 'Fried Chicken Momos', 140, false);
-    addItem('Momos', 'Paneer Momos', 120, true);
-    addItem('Momos', 'Tandoori Momos (Chicken)', 150, false);
-    addItem('Momos', 'Afghani Momos', 160, false);
-    addItem('Momos', 'Kurkure Momos', 130, true);
+    // Fries
+    addItem('Fries', 'French Fries', 80, true);
+    addItem('Fries', 'Masala Fries', 90, true);
+    addItem('Fries', 'Chicken Crispy', 120, false);
 
-    // Starters
-    addItem('Starters', 'Veg Spring Rolls (4pc)', 120, true);
-    addItem('Starters', 'Chilli Paneer Dry', 160, true);
-    addItem('Starters', 'Honey Chilli Potato', 140, true);
-    addItem('Starters', 'Crispy Corn', 120, true);
-    addItem('Starters', 'Manchurian Dry', 140, true);
-    addItem('Starters', 'Chicken 65', 180, false);
-    addItem('Starters', 'Chilli Chicken Dry', 180, false);
-    addItem('Starters', 'Dragon Chicken', 200, false);
+    // Roll / Wrap
+    addItem('Roll / Wrap', 'Veg Roll', 65, true);
+    addItem('Roll / Wrap', 'Egg Roll', 70, false);
+    addItem('Roll / Wrap', 'Double Egg Roll', 80, false);
+    addItem('Roll / Wrap', 'Paneer Roll', 100, true);
+    addItem('Roll / Wrap', 'Paneer Cheese Roll', 110, true);
+    addItem('Roll / Wrap', 'Paneer Schezwan Roll', 110, true);
+    addItem('Roll / Wrap', 'Chicken Roll', 100, false);
+    addItem('Roll / Wrap', 'Chicken Cheese Roll', 110, false);
+    addItem('Roll / Wrap', 'Combi Chicken Roll', 120, false);
+
+    // Fried Rice
+    addItem('Fried Rice', 'Veg Fried Rice (Half)', 80, true);
+    addItem('Fried Rice', 'Veg Fried Rice (Full)', 130, true);
+    addItem('Fried Rice', 'Veg Schezwan Fried Rice (Half)', 90, true);
+    addItem('Fried Rice', 'Veg Schezwan Fried Rice (Full)', 150, true);
+    addItem('Fried Rice', 'Paneer Fried Rice (Half)', 100, true);
+    addItem('Fried Rice', 'Paneer Fried Rice (Full)', 170, true);
+    addItem('Fried Rice', 'Paneer Schezwan Fried Rice (Half)', 110, true);
+    addItem('Fried Rice', 'Paneer Schezwan Fried Rice (Full)', 190, true);
+    addItem('Fried Rice', 'Egg Fried Rice (Half)', 90, false);
+    addItem('Fried Rice', 'Egg Fried Rice (Full)', 150, false);
+    addItem('Fried Rice', 'Egg Schezwan Fried Rice (Half)', 100, false);
+    addItem('Fried Rice', 'Egg Schezwan Fried Rice (Full)', 170, false);
+    addItem('Fried Rice', 'Chicken Fried Rice (Half)', 100, false);
+    addItem('Fried Rice', 'Chicken Fried Rice (Full)', 170, false);
+    addItem('Fried Rice', 'Chicken Schezwan Fried Rice (Half)', 100, false);
+    addItem('Fried Rice', 'Chicken Schezwan Fried Rice (Full)', 190, false);
 
     // Noodles
-    addItem('Noodles', 'Veg Hakka Noodles', 120, true);
-    addItem('Noodles', 'Chicken Hakka Noodles', 160, false);
-    addItem('Noodles', 'Veg Schezwan Noodles', 140, true);
-    addItem('Noodles', 'Chow Mein', 100, true);
-    addItem('Noodles', 'Singapore Noodles', 150, true);
-    addItem('Noodles', 'Triple Schezwan Noodles', 180, true);
+    addItem('Noodles', 'Veg Noodles (Half)', 80, true);
+    addItem('Noodles', 'Veg Noodles (Full)', 130, true);
+    addItem('Noodles', 'Veg Schezwan Noodles (Half)', 90, true);
+    addItem('Noodles', 'Veg Schezwan Noodles (Full)', 150, true);
+    addItem('Noodles', 'Paneer Noodles (Half)', 100, true);
+    addItem('Noodles', 'Paneer Noodles (Full)', 170, true);
+    addItem('Noodles', 'Paneer Schezwan Noodles (Half)', 110, true);
+    addItem('Noodles', 'Paneer Schezwan Noodles (Full)', 190, true);
+    addItem('Noodles', 'Egg Noodles (Half)', 90, false);
+    addItem('Noodles', 'Egg Noodles (Full)', 150, false);
+    addItem('Noodles', 'Egg Schezwan Noodles (Half)', 100, false);
+    addItem('Noodles', 'Egg Schezwan Noodles (Full)', 170, false);
+    addItem('Noodles', 'Chicken Noodles (Half)', 100, false);
+    addItem('Noodles', 'Chicken Noodles (Full)', 170, false);
+    addItem('Noodles', 'Chicken Schezwan Noodles (Half)', 110, false);
+    addItem('Noodles', 'Chicken Schezwan Noodles (Full)', 190, false);
 
-    // Rice
-    addItem('Rice', 'Veg Fried Rice', 120, true);
-    addItem('Rice', 'Chicken Fried Rice', 160, false);
-    addItem('Rice', 'Schezwan Fried Rice', 140, true);
-    addItem('Rice', 'Triple Schezwan Rice', 170, true);
-    addItem('Rice', 'Egg Fried Rice', 130, false);
+    // Biryani
+    addItem('Biryani', 'Biryani (Half)', 100, false);
+    addItem('Biryani', 'Biryani (Full)', 160, false);
 
-    // Main Course
-    addItem('Main Course', 'Manchurian Gravy', 160, true);
-    addItem('Main Course', 'Chilli Paneer Gravy', 180, true);
-    addItem('Main Course', 'Sweet Corn Soup', 100, true);
-    addItem('Main Course', 'Hot & Sour Soup', 100, true);
-    addItem('Main Course', 'Manchow Soup', 120, true);
-    addItem('Main Course', 'Chicken Manchow Soup', 140, false);
+    // Soup
+    addItem('Soup', 'Veg Hot And Sour Soup (Half)', 60, true);
+    addItem('Soup', 'Veg Hot And Sour Soup (Full)', 90, true);
+    addItem('Soup', 'Veg Manchow Soup (Half)', 70, true);
+    addItem('Soup', 'Veg Manchow Soup (Full)', 110, true);
+    addItem('Soup', 'Chicken Clear Soup (Half)', 70, false);
+    addItem('Soup', 'Chicken Clear Soup (Full)', 110, false);
+    addItem('Soup', 'Chicken Hot And Sour Soup (Half)', 70, false);
+    addItem('Soup', 'Chicken Hot And Sour Soup (Full)', 110, false);
+    addItem('Soup', 'Chicken Manchow Soup (Half)', 80, false);
+    addItem('Soup', 'Chicken Manchow Soup (Full)', 120, false);
+    addItem('Soup', 'Chicken Noodle Soup (Half)', 70, false);
+    addItem('Soup', 'Chicken Noodle Soup (Full)', 120, false);
 
-    // Burgers
-    addItem('Burgers', 'Classic Veg Burger', 80, true);
-    addItem('Burgers', 'Aloo Tikki Burger', 90, true);
-    addItem('Burgers', 'Paneer Burger', 110, true);
-    addItem('Burgers', 'Chicken Burger', 120, false);
-    addItem('Burgers', 'Chicken Zinger', 150, false);
-    addItem('Burgers', 'Paneer Wrap', 100, true);
-    addItem('Burgers', 'Chicken Wrap', 130, false);
+    // Veg Chinese
+    addItem('Veg Chinese', 'Veg Manchurian', 149, true);
+    addItem('Veg Chinese', 'Veg 65', 159, true);
+    addItem('Veg Chinese', 'Paneer Chilli', 200, true);
+    addItem('Veg Chinese', 'Paneer Manchurian', 175, true);
+    addItem('Veg Chinese', 'Mushroom Chilli', 250, true);
+    addItem('Veg Chinese', 'Baby Corn Chilli', 240, true);
 
-    // Sides
-    addItem('Sides', 'French Fries', 80, true);
-    addItem('Sides', 'Peri Peri Fries', 100, true);
-    addItem('Sides', 'Loaded Cheese Fries', 140, true);
-    addItem('Sides', 'Garlic Bread (4pc)', 100, true);
-    addItem('Sides', 'Cheese Garlic Bread', 130, true);
+    // Non-Veg Chinese
+    addItem('Non-Veg Chinese', 'Chicken Manchurian', 179, false);
+    addItem('Non-Veg Chinese', 'Chicken Shezwan', 189, false);
+    addItem('Non-Veg Chinese', 'Bone Chilli', 200, false);
+    addItem('Non-Veg Chinese', 'Chicken Lollipop', 300, false);
+    addItem('Non-Veg Chinese', 'Chicken Chilli', 220, false);
+    addItem('Non-Veg Chinese', 'Chicken 65', 240, false);
+    addItem('Non-Veg Chinese', 'Chicken Boneless', 170, false);
 
-    // Beverages
-    addItem('Beverages', 'Cold Coffee', 80, true);
-    addItem('Beverages', 'Lemon Iced Tea', 60, true);
-    addItem('Beverages', 'Mango Shake', 90, true);
-    addItem('Beverages', 'Oreo Shake', 100, true);
-    addItem('Beverages', 'Coca Cola (300ml)', 40, true);
-    addItem('Beverages', 'Sprite (300ml)', 40, true);
-    addItem('Beverages', 'Thumbs Up (300ml)', 40, true);
-    addItem('Beverages', 'Water Bottle', 20, true);
-    addItem('Beverages', 'Masala Chai', 20, true);
+    // Veg Burger
+    addItem('Veg Burger', 'Veg Burger', 70, true);
+    addItem('Veg Burger', 'Veg Cheese Burger', 90, true);
+    addItem('Veg Burger', 'Veg Double Cheese Burger', 110, true);
 
-    // Desserts
-    addItem('Desserts', 'Brownie with Ice Cream', 120, true);
-    addItem('Desserts', 'Gulab Jamun (2pc)', 60, true);
-    addItem('Desserts', 'Chocolate Lava Cake', 150, true);
+    // Egg Burger
+    addItem('Egg Burger', 'Egg Burger', 50, false);
+    addItem('Egg Burger', 'Egg Cheese Burger', 70, false);
+    addItem('Egg Burger', 'Egg Double Cheese Burger', 90, false);
+
+    // Chicken Burger
+    addItem('Chicken Burger', 'Chicken Burger', 80, false);
+    addItem('Chicken Burger', 'Chicken Cheese Burger', 100, false);
+    addItem('Chicken Burger', 'Chicken Double Cheese Burger', 120, false);
 
     await db.menuItems.bulkAdd(menuItems);
 
