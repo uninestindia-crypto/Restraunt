@@ -228,7 +228,7 @@ export class KitchenView {
     // Refresh button listener
     document.getElementById('btn-refresh-kds').addEventListener('click', () => {
       playSound(700, 80);
-      this.loadOrders();
+      this.loadOrders(true);
       showToast('KDS Refreshed', 'info');
     });
   }
@@ -354,10 +354,10 @@ export class KitchenView {
     });
   }
 
-  async loadOrders() {
+  async loadOrders(forceRefresh = false) {
     try {
       // Get all active kitchen orders
-      const allOrders = await getOrders();
+      const allOrders = await getOrders(null, forceRefresh);
       
       // Filter out completed ones, keep only confirmed, preparing, and ready
       this.orders = allOrders.filter(o => 

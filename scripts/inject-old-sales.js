@@ -257,6 +257,13 @@ async function main() {
   }
 
   console.log(`\nImport process finished! Successfully imported ${successCount} out of ${ordersToInsert.length} orders.`);
+  
+  if (successCount > 0) {
+    console.log('\n\x1b[33m⚠️  IMPORTANT POST-IMPORT STEP REQUIRED:\x1b[0m');
+    console.log('\x1b[33mSince rows were inserted with explicit IDs, the Postgres database auto-increment identity sequence is now lagging.\x1b[0m');
+    console.log('\x1b[33mPlease execute the following SQL query in the Supabase SQL Editor to resync the sequence:\x1b[0m');
+    console.log('\n    SELECT setval(pg_get_serial_sequence(\'public.orders\', \'id\'), COALESCE(MAX(id), 1)) FROM public.orders;\n');
+  }
 }
 
 main().catch(error => {

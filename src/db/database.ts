@@ -711,8 +711,8 @@ export async function createOrder(orderData: any, options: any = {}) {
  * @param {string} [status] - Optional status filter
  * @returns {Promise<Array>} Orders
  */
-export async function getOrders(status) {
-  if (navigator.onLine) {
+export async function getOrders(status, forceRefresh = false) {
+  if (forceRefresh && navigator.onLine) {
     try {
       const { getSupabaseClient } = await import('../services/supabaseClient');
       const supabase = await getSupabaseClient({ persistSession: true });

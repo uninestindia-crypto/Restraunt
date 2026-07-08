@@ -76,7 +76,7 @@ export class ExpressView {
 
   async loadKitchenOrders() {
     try {
-      const allOrders = await getOrders();
+      const allOrders = await getOrders(null, false);
       
       // Filter out completed ones, keep only confirmed, preparing, and ready
       const nextActiveOrders = allOrders.filter(o => 
@@ -1545,9 +1545,20 @@ export class ExpressView {
     const mobileBadge = document.getElementById('mobile-kds-badge');
     if (!kdsFeed) return;
 
-    let filtered = [...this.activeOrders].sort((a, b) => 
-      new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-    );
+    const statusPriority = {
+      'preparing': 1,
+      'confirmed': 2,
+      'ready': 3
+    };
+
+    let filtered = [...this.activeOrders].sort((a, b) => {
+      const priorityA = statusPriority[a.status] || 99;
+      const priorityB = statusPriority[b.status] || 99;
+      if (priorityA !== priorityB) {
+        return priorityA - priorityB;
+      }
+      return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+    });
 
     if (this.kdsFilter !== 'all') {
       const matchStatus = this.kdsFilter === 'new' ? 'confirmed' : this.kdsFilter;
