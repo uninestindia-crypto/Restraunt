@@ -54,6 +54,19 @@ export class Router {
    * Handle route change
    */
   async handleRoute() {
+    // Auto-routing based on query parameter (to bypass native WebView hash stripping)
+    const urlParams = new URLSearchParams(window.location.search);
+    const queryPortal = urlParams.get('portal');
+    if (queryPortal && !window.location.hash) {
+      if (queryPortal === 'pos') {
+        window.location.hash = '#/pos';
+        return;
+      } else if (queryPortal === 'customer') {
+        window.location.hash = '#/self-order';
+        return;
+      }
+    }
+
     // Trigger non-blocking version check in background on route change
     checkForUpdateAndGate().catch(err => console.debug('[Router] Version check error:', err));
 

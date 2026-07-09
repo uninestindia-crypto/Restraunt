@@ -151,6 +151,10 @@ export class CustomerLoginScreen {
               </div>
 
               <div class="login-footer" style="flex-direction:column; gap:10px; padding-top:14px; border-top:1px solid var(--border-color); margin-top:24px;">
+                <a href="https://scxfkjtrrfgpusyigntx.supabase.co/storage/v1/object/public/apks/TheTasteCustomer.apk" download class="btn btn-secondary btn-sm" style="display:inline-flex; align-items:center; gap:6px; font-size:0.75rem; font-weight:700; color:#FF6B35; border-color:rgba(255, 107, 53, 0.2); background:rgba(255, 107, 53, 0.04); text-decoration:none; padding:8px 16px; border-radius:8px; width:100%; justify-content:center;">
+                  <span class="material-symbols-rounded" style="font-size:16px;">android</span>
+                  Download Customer App (APK)
+                </a>
                 <div style="display:flex; align-items:center; gap:6px; justify-content:center; opacity:0.6;">
                   <span class="footer-dot">◆</span>
                   <span class="footer-powered">Powered by</span>
