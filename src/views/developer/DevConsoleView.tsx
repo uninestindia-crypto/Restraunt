@@ -181,15 +181,23 @@ export class DevConsoleView {
     const swStatus = navigator.serviceWorker?.controller ? 'Active' : 'None';
     const onlineStatus = navigator.onLine ? '🟢 Online' : '🔴 Offline';
 
+    const supabaseUrl = (await getSetting('supabaseUrl')) || process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+    const supabaseKey = (await getSetting('supabaseKey')) || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+    const currencyCode = (await getSetting('currencyCode')) || 'INR';
+    const currencySymbol = (await getSetting('currencySymbol')) || '₹';
+    const taxType = (await getSetting('taxType')) || 'gst';
+    const theme = (await getSetting('app_theme')) || localStorage.getItem('app_theme') || 'system';
+    const storeId = localStorage.getItem('store_id') || 'the-taste';
+
     el.innerHTML = `
       <div class="dev-card">
         <h3><span class="material-symbols-rounded" style="font-size:18px;color:#10B981;">info</span> Application</h3>
         <div class="dev-row"><span class="dev-key">App Version</span><span class="dev-val">2.0.0</span></div>
         <div class="dev-row"><span class="dev-key">Platform</span><span class="dev-val">NextGenOS Restaurant OS</span></div>
-        <div class="dev-row"><span class="dev-key">Store ID</span><span class="dev-val">${localStorage.getItem('app_store_id') || 'the-taste'}</span></div>
+        <div class="dev-row"><span class="dev-key">Store ID</span><span class="dev-val">${storeId}</span></div>
         <div class="dev-row"><span class="dev-key">Network</span><span class="dev-val">${onlineStatus}</span></div>
         <div class="dev-row"><span class="dev-key">Service Worker</span><span class="dev-val">${swStatus}</span></div>
-        <div class="dev-row"><span class="dev-key">Theme</span><span class="dev-val">${localStorage.getItem('app_theme') || 'system'}</span></div>
+        <div class="dev-row"><span class="dev-key">Theme</span><span class="dev-val">${theme}</span></div>
       </div>
 
       <div class="dev-card">
@@ -205,10 +213,10 @@ export class DevConsoleView {
 
       <div class="dev-card">
         <h3><span class="material-symbols-rounded" style="font-size:18px;color:#F59E0B;">cloud</span> Cloud Connection</h3>
-        <div class="dev-row"><span class="dev-key">Supabase URL</span><span class="dev-val">${localStorage.getItem('supabase_url') ? '✅ Configured' : '❌ Not set'}</span></div>
-        <div class="dev-row"><span class="dev-key">Supabase Key</span><span class="dev-val">${localStorage.getItem('supabase_anon_key') ? '✅ Configured' : '❌ Not set'}</span></div>
-        <div class="dev-row"><span class="dev-key">Currency</span><span class="dev-val">${localStorage.getItem('app_currency_code') || 'INR'} (${localStorage.getItem('app_currency_symbol') || '₹'})</span></div>
-        <div class="dev-row"><span class="dev-key">Tax Type</span><span class="dev-val">${localStorage.getItem('app_tax_type') || 'gst'}</span></div>
+        <div class="dev-row"><span class="dev-key">Supabase URL</span><span class="dev-val">${supabaseUrl ? '✅ Configured' : '❌ Not set'}</span></div>
+        <div class="dev-row"><span class="dev-key">Supabase Key</span><span class="dev-val">${supabaseKey ? '✅ Configured' : '❌ Not set'}</span></div>
+        <div class="dev-row"><span class="dev-key">Currency</span><span class="dev-val">${currencyCode} (${currencySymbol})</span></div>
+        <div class="dev-row"><span class="dev-key">Tax Type</span><span class="dev-val">${taxType}</span></div>
       </div>
     `;
   }
