@@ -257,7 +257,36 @@ class OrderNotificationService {
   /**
    * Show a system browser notification.
    */
-  showSystemNotification(title: string, body: string) {
+  async showSystemNotification(title: string, body: string) {
+    const isCapacitor = typeof window !== 'undefined' && (window as any).Capacitor && (window as any).Capacitor.isNativePlatform();
+    
+    if (isCapacitor) {
+      try {
+        const { LocalNotifications } = await import('@capacitor/local-notifications');
+        const permission = await LocalNotifications.checkPermissions();
+        
+        if (permission.display !== 'granted') {
+          const req = await LocalNotifications.requestPermissions();
+          if (req.display !== 'granted') return;
+        }
+
+        await LocalNotifications.schedule({
+          notifications: [
+            {
+              title,
+              body,
+              id: Math.floor(Math.random() * 100000) + 1,
+              schedule: { at: new Date(Date.now() + 50) },
+              smallIcon: 'ic_launcher_round',
+            }
+          ]
+        });
+      } catch (e) {
+        console.error('[OrderNotif] Native local notification failed:', e);
+      }
+      return;
+    }
+
     if (!('Notification' in window)) return;
 
     if (Notification.permission === 'granted') {
@@ -346,6 +375,19 @@ class OrderNotificationService {
    * Request notification permission proactively.
    */
   async requestNotificationPermission(): Promise<string> {
+    const isCapacitor = typeof window !== 'undefined' && (window as any).Capacitor && (window as any).Capacitor.isNativePlatform();
+    
+    if (isCapacitor) {
+      try {
+        const { LocalNotifications } = await import('@capacitor/local-notifications');
+        const req = await LocalNotifications.requestPermissions();
+        return req.display;
+      } catch (e) {
+        console.error('[OrderNotif] Failed to request native permission:', e);
+        return 'denied';
+      }
+    }
+
     if (!('Notification' in window)) return 'unsupported';
     const result = await Notification.requestPermission();
     return result;
