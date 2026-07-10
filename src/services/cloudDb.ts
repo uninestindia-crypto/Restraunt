@@ -309,6 +309,15 @@ export async function fullPull(options: any = {}) {
     if (!staffErr && staff?.length > 0) {
       const localStaff = staff.map(mapStaffToLocal);
       await db.transaction('rw', db.staff, async () => {
+        const localStaffList = await db.staff.toArray();
+        const incomingIds = new Set(localStaff.map(s => s.id));
+
+        for (const local of localStaffList) {
+          if (!incomingIds.has(local.id)) {
+            await db.staff.delete(local.id);
+          }
+        }
+
         for (const s of localStaff) {
           let existing = null;
           if (s.cloudUserId) {
