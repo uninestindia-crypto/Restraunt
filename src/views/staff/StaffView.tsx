@@ -390,31 +390,31 @@ export class StaffView {
           const canManageThis = !isOwnerOrDev || isDeveloper;
           const isDeletable = canManageThis && !(s.role === 'owner' && owners.length <= 1);
           const hasExpress = s.allowExpress === 1 || s.allowExpress === true || s.role === 'owner';
-          const expressBadge = hasExpress ? `<span style="font-size:0.6rem;padding:2px 8px;border-radius:6px;font-weight:700;color:var(--nextgenos-purple);background:var(--nextgenos-purple-bg);border:1px solid var(--nextgenos-purple-border);margin-left:4px;">Express Panel</span>` : '';
+          const expressBadge = hasExpress ? `<span style="font-size:0.6rem;padding:2px 8px;border-radius:6px;font-weight:700;color:var(--nextgenos-purple);background:var(--nextgenos-purple-bg);border:1px solid var(--nextgenos-purple-border);">Express Panel</span>` : '';
           return `
-            <div class="premium-card">
+            <div class="premium-card" style="position:relative; padding-right:120px;">
               <div class="premium-card-avatar" style="background:rgba(${s.role === 'owner' ? '255,107,53' : '108,92,231'},0.1); color:${role.color};">
                 ${escapeHtml((s.name || '?')[0].toUpperCase())}
               </div>
               <div class="premium-card-body">
                 <span class="premium-card-title">${escapeHtml(s.name)}</span>
-                <div style="display:flex;gap:6px;align-items:center;margin-top:4px;">
+                <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:6px;">
                   <span style="font-size:0.6rem;padding:2px 8px;border-radius:6px;font-weight:700;color:${role.color};background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.06);">${role.label}</span>
                   ${expressBadge}
-                  ${s.cloudUserId ? `<span style="font-size:0.6rem;padding:2px 8px;border-radius:6px;font-weight:700;color:var(--color-success);background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.15);margin-left:4px;"><span class="material-symbols-rounded" style="font-size:10px;vertical-align:middle;">verified</span> Cloud</span>` : ''}
+                  ${s.cloudUserId ? `<span style="font-size:0.6rem;padding:2px 8px;border-radius:6px;font-weight:700;color:var(--color-success);background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.15);"><span class="material-symbols-rounded" style="font-size:10px;vertical-align:middle;">verified</span> Cloud</span>` : ''}
                   <span style="font-size:0.6rem;color:${s.isActive ? 'var(--color-success)' : 'var(--color-error)'};font-weight:700;">${s.isActive ? '● Active' : '● Inactive'}</span>
                 </div>
               </div>
-              <div style="display:flex;align-items:center;gap:4px;">
-                <div style="font-size:0.7rem;color:var(--text-muted);font-weight:600;letter-spacing:0.2em;margin-right:8px;">****</div>
+              <div style="position:absolute;right:16px;top:50%;transform:translateY(-50%);display:flex;align-items:center;gap:6px;">
+                <div style="font-size:0.65rem;color:var(--text-muted);font-weight:600;letter-spacing:0.15em;background:rgba(255,255,255,0.03);padding:3px 6px;border-radius:4px;border:1px solid rgba(255,255,255,0.05);white-space:nowrap;">PIN: ****</div>
                 ${canManageThis ? `
-                <button class="btn-icon edit-staff-btn" data-id="${s.id}">
-                  <span class="material-symbols-rounded" style="font-size:18px;">edit</span>
+                <button class="btn-icon edit-staff-btn" data-id="${s.id}" style="width:30px;height:30px;min-width:30px;border-radius:6px;">
+                  <span class="material-symbols-rounded" style="font-size:16px;">edit</span>
                 </button>
                 ` : ''}
                 ${isDeletable ? `
-                  <button class="btn-icon delete-staff-btn" data-id="${s.id}" style="color:var(--color-danger);">
-                    <span class="material-symbols-rounded" style="font-size:18px;">delete</span>
+                  <button class="btn-icon delete-staff-btn" data-id="${s.id}" style="color:var(--color-danger);width:30px;height:30px;min-width:30px;border-radius:6px;">
+                    <span class="material-symbols-rounded" style="font-size:16px;">delete</span>
                   </button>
                 ` : ''}
               </div>
