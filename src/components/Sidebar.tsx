@@ -16,7 +16,7 @@ const NAV_GROUPS = [
     label: 'Operations',
     items: [
       { hash: '#/pos', icon: 'point_of_sale', label: 'POS', roles: ['developer', 'owner', 'manager', 'cashier', 'waiter'] },
-      { hash: '#/pos-kitchen', icon: 'bolt', label: 'Express Panel', roles: ['developer', 'owner', 'manager', 'cashier', 'waiter', 'kitchen'] },
+      { hash: '#/pos-kitchen', icon: 'bolt', label: 'Express Panel', roles: ['developer', 'owner', 'manager', 'cashier', 'waiter', 'kitchen', 'temporary_staff'] },
       { hash: '#/kitchen', icon: 'restaurant', label: 'Kitchen', roles: ['developer', 'owner', 'manager', 'cashier', 'kitchen'] },
       { hash: '#/tables', icon: 'table_bar', label: 'Tables', roles: ['developer', 'owner', 'manager', 'cashier', 'waiter', 'kitchen'] },
       { hash: '#/channels', icon: 'hub', label: 'Channels', roles: ['developer', 'owner', 'manager', 'cashier'] },
@@ -42,7 +42,7 @@ const NAV_GROUPS = [
     items: [
       { hash: '#/orders', icon: 'receipt_long', label: 'Orders', roles: ['developer', 'owner', 'manager', 'cashier', 'delivery'] },
       { hash: '#/admin', icon: 'admin_panel_settings', label: 'Admin', roles: ['developer', 'owner', 'manager'] },
-      { hash: '#/help', icon: 'help', label: 'Help Center', roles: ['developer', 'owner', 'manager', 'cashier', 'waiter', 'kitchen', 'delivery'] },
+      { hash: '#/help', icon: 'help', label: 'Help Center', roles: ['developer', 'owner', 'manager', 'cashier', 'waiter', 'kitchen', 'delivery', 'temporary_staff'] },
     ],
   },
   {
@@ -73,8 +73,9 @@ export class Sidebar {
         // Custom Express Panel permission check
         if (item.hash === '#/pos-kitchen') {
           const isDeveloperOrOwner = staffRole === 'developer' || staffRole === 'owner';
+          const isTempStaff = staffRole === 'temporary_staff';
           const hasExpressAccess = currentStaff?.allowExpress === 1 || currentStaff?.allowExpress === true;
-          return isDeveloperOrOwner || hasExpressAccess;
+          return isDeveloperOrOwner || isTempStaff || hasExpressAccess;
         }
 
         return true;

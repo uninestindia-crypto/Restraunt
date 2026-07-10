@@ -237,7 +237,7 @@ function mapRecipeToLocal(row) {
  * @returns {Promise<{success: boolean, tables: Object}>}
  */
 export async function fullPull(options: any = {}) {
-  const { publicOnly = false } = options;
+  const { publicOnly = false, role = '' } = options;
   const client = await getClient();
   if (!client) {
     console.warn('[CloudDB] Cannot perform full pull: Supabase unavailable.');
@@ -246,9 +246,10 @@ export async function fullPull(options: any = {}) {
 
   const storeId = getStoreId();
   const results: any = {};
+  const isTempStaff = role === 'temporary_staff';
 
   try {
-    console.log(`[CloudDB] Starting full pull from cloud (store: ${storeId})...`);
+    console.log(`[CloudDB] Starting full pull from cloud (store: ${storeId}, role: ${role})...`);
 
     // 1. Categories (always needed)
     const { data: categories, error: catErr } = await client
@@ -330,13 +331,19 @@ export async function fullPull(options: any = {}) {
       console.log(`[CloudDB] Hydrated ${localStaff.length} staff members from cloud.`);
     }
 
-    // 4. Orders (last 500 to avoid huge pulls)
-    const { data: orders, error: orderErr } = await client
+    // 4. Orders (for temporary staff, only pull active kitchen orders; else last 500)
+    let orderQuery = client
       .from('orders')
       .select('*')
-      .eq('store_id', storeId)
-      .order('created_at', { ascending: false })
-      .limit(500);
+      .eq('store_id', storeId);
+
+    if (isTempStaff) {
+      orderQuery = orderQuery.in('status', ['confirmed', 'preparing', 'ready']);
+    } else {
+      orderQuery = orderQuery.order('created_at', { ascending: false }).limit(500);
+    }
+
+    const { data: orders, error: orderErr } = await orderQuery;
     if (!orderErr && orders?.length > 0) {
       const localOrders = orders.map(mapOrderToLocal);
       await db.transaction('rw', db.orders, async () => {
@@ -372,107 +379,109 @@ export async function fullPull(options: any = {}) {
       results.tables = localTables.length;
     }
 
-    // 6. Inventory
-    const { data: inventory, error: invErr } = await client
-      .from('inventory')
-      .select('*')
-      .eq('store_id', storeId);
-    if (!invErr && inventory?.length > 0) {
-      const localInv = inventory.map(mapInventoryToLocal);
-      await db.transaction('rw', db.inventory, async () => {
-        for (const inv of localInv) {
-          const existing = await db.inventory.where('name').equals(inv.name).first();
-          if (existing) {
-            inv.id = existing.id;
+    if (!isTempStaff) {
+      // 6. Inventory
+      const { data: inventory, error: invErr } = await client
+        .from('inventory')
+        .select('*')
+        .eq('store_id', storeId);
+      if (!invErr && inventory?.length > 0) {
+        const localInv = inventory.map(mapInventoryToLocal);
+        await db.transaction('rw', db.inventory, async () => {
+          for (const inv of localInv) {
+            const existing = await db.inventory.where('name').equals(inv.name).first();
+            if (existing) {
+              inv.id = existing.id;
+            }
+            await db.inventory.put(inv);
           }
-          await db.inventory.put(inv);
-        }
-      });
-      results.inventory = localInv.length;
-    }
+        });
+        results.inventory = localInv.length;
+      }
 
-    // 7. Suppliers
-    const { data: suppliers, error: supErr } = await client
-      .from('suppliers')
-      .select('*')
-      .eq('store_id', storeId);
-    if (!supErr && suppliers?.length > 0) {
-      const localSups = suppliers.map(mapSupplierToLocal);
-      await db.transaction('rw', db.suppliers, async () => {
-        for (const sup of localSups) {
-          const existing = await db.suppliers.where('name').equals(sup.name).first();
-          if (existing) {
-            sup.id = existing.id;
+      // 7. Suppliers
+      const { data: suppliers, error: supErr } = await client
+        .from('suppliers')
+        .select('*')
+        .eq('store_id', storeId);
+      if (!supErr && suppliers?.length > 0) {
+        const localSups = suppliers.map(mapSupplierToLocal);
+        await db.transaction('rw', db.suppliers, async () => {
+          for (const sup of localSups) {
+            const existing = await db.suppliers.where('name').equals(sup.name).first();
+            if (existing) {
+              sup.id = existing.id;
+            }
+            await db.suppliers.put(sup);
           }
-          await db.suppliers.put(sup);
-        }
-      });
-      results.suppliers = localSups.length;
-    }
+        });
+        results.suppliers = localSups.length;
+      }
 
-    // 8. Customers
-    const { data: customers, error: custErr } = await client
-      .from('customers')
-      .select('*')
-      .eq('store_id', storeId);
-    if (!custErr && customers?.length > 0) {
-      const localCusts = customers.map(mapCustomerToLocal);
-      await db.transaction('rw', db.customers, async () => {
-        for (const cust of localCusts) {
-          const existing = await db.customers.where('phone').equals(cust.phone).first();
-          if (existing) {
-            cust.id = existing.id;
+      // 8. Customers
+      const { data: customers, error: custErr } = await client
+        .from('customers')
+        .select('*')
+        .eq('store_id', storeId);
+      if (!custErr && customers?.length > 0) {
+        const localCusts = customers.map(mapCustomerToLocal);
+        await db.transaction('rw', db.customers, async () => {
+          for (const cust of localCusts) {
+            const existing = await db.customers.where('phone').equals(cust.phone).first();
+            if (existing) {
+              cust.id = existing.id;
+            }
+            await db.customers.put(cust);
           }
-          await db.customers.put(cust);
-        }
-      });
-      results.customers = localCusts.length;
-    }
+        });
+        results.customers = localCusts.length;
+      }
 
-    // 9. Shifts
-    const { data: shifts, error: shiftErr } = await client
-      .from('shifts')
-      .select('*')
-      .eq('store_id', storeId);
-    if (!shiftErr && shifts?.length > 0) {
-      const localShifts = shifts.map(mapShiftToLocal);
-      await db.transaction('rw', db.shifts, async () => {
-        for (const shift of localShifts) {
-          const existing = await db.shifts
-            .where('date')
-            .equals(shift.date)
-            .and(s => s.staffId === shift.staffId)
-            .first();
-          if (existing) {
-            shift.id = existing.id;
+      // 9. Shifts
+      const { data: shifts, error: shiftErr } = await client
+        .from('shifts')
+        .select('*')
+        .eq('store_id', storeId);
+      if (!shiftErr && shifts?.length > 0) {
+        const localShifts = shifts.map(mapShiftToLocal);
+        await db.transaction('rw', db.shifts, async () => {
+          for (const shift of localShifts) {
+            const existing = await db.shifts
+              .where('date')
+              .equals(shift.date)
+              .and(s => s.staffId === shift.staffId)
+              .first();
+            if (existing) {
+              shift.id = existing.id;
+            }
+            await db.shifts.put(shift);
           }
-          await db.shifts.put(shift);
-        }
-      });
-      results.shifts = localShifts.length;
-    }
+        });
+        results.shifts = localShifts.length;
+      }
 
-    // 10. Recipes
-    const { data: recipes, error: recipeErr } = await client
-      .from('recipes')
-      .select('*')
-      .eq('store_id', storeId);
-    if (!recipeErr && recipes?.length > 0) {
-      const localRecipes = recipes.map(mapRecipeToLocal);
-      await db.transaction('rw', db.recipes, async () => {
-        for (const recipe of localRecipes) {
-          const existing = await db.recipes
-            .where('menuItemId')
-            .equals(recipe.menuItemId)
-            .first();
-          if (existing) {
-            recipe.id = existing.id;
+      // 10. Recipes
+      const { data: recipes, error: recipeErr } = await client
+        .from('recipes')
+        .select('*')
+        .eq('store_id', storeId);
+      if (!recipeErr && recipes?.length > 0) {
+        const localRecipes = recipes.map(mapRecipeToLocal);
+        await db.transaction('rw', db.recipes, async () => {
+          for (const recipe of localRecipes) {
+            const existing = await db.recipes
+              .where('menuItemId')
+              .equals(recipe.menuItemId)
+              .first();
+            if (existing) {
+              recipe.id = existing.id;
+            }
+            await db.recipes.put(recipe);
           }
-          await db.recipes.put(recipe);
-        }
-      });
-      results.recipes = localRecipes.length;
-      console.log(`[CloudDB] Hydrated ${localRecipes.length} recipes from cloud.`);
+        });
+        results.recipes = localRecipes.length;
+        console.log(`[CloudDB] Hydrated ${localRecipes.length} recipes from cloud.`);
+      }
     }
 
     console.log('[CloudDB] ✅ Full pull complete. Results:', results);

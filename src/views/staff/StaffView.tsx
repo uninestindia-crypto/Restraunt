@@ -17,7 +17,7 @@ import { lookupAuthUser } from '../../services/staffAdmin';
 import { authService } from '../../services/auth';
 
 // Roles that require a verified Supabase Auth account (operational backend access)
-const CLOUD_REQUIRED_ROLES = ['owner', 'manager', 'cashier', 'kitchen', 'waiter', 'delivery'];
+const CLOUD_REQUIRED_ROLES = ['owner', 'manager', 'cashier', 'kitchen', 'waiter', 'delivery', 'temporary_staff'];
 
 const ROLES = {
   developer: { label: 'Developer', color: '#8B5CF6' },
@@ -27,6 +27,7 @@ const ROLES = {
   kitchen: { label: 'Kitchen', color: '#F59E0B' },
   waiter: { label: 'Waiter', color: '#3B82F6' },
   delivery: { label: 'Delivery', color: '#06B6D4' },
+  temporary_staff: { label: 'Temporary Staff', color: '#E11D48' },
 };
 
 export class StaffView {
@@ -82,6 +83,7 @@ export class StaffView {
                 <option value="kitchen">Kitchen Staff</option>
                 <option value="waiter">Waiter</option>
                 <option value="delivery">Delivery Staff</option>
+                <option value="temporary_staff">Temporary Staff</option>
                 <option value="manager">Manager</option>
                 ${isDeveloper ? '<option value="owner">Owner</option>' : ''}
               </select>

@@ -16,7 +16,7 @@ const SESSION_DURATION_MS = 8 * 60 * 60 * 1000;
 const LOCKOUT_MAX_ATTEMPTS = 5;
 const LOCKOUT_DURATION_MS = 5 * 60 * 1000;
 const DEFAULT_STORE_ID = 'the-taste';
-export const CLOUD_REQUIRED_ROLES = ['developer', 'owner', 'manager', 'cashier', 'kitchen', 'waiter', 'delivery'];
+export const CLOUD_REQUIRED_ROLES = ['developer', 'owner', 'manager', 'cashier', 'kitchen', 'waiter', 'delivery', 'temporary_staff'];
 
 class AuthService {
   constructor() {
@@ -161,10 +161,10 @@ class AuthService {
     };
   }
 
-  async _hydrateStaffCloudData() {
+  async _hydrateStaffCloudData(role = '') {
     try {
       const { fullPull } = await import('./cloudDb');
-      const result = await fullPull({ publicOnly: false });
+      const result = await fullPull({ publicOnly: false, role });
       return result?.success === true;
     } catch (error) {
       console.warn('[AuthService] Cloud hydration after staff login failed:', error);
@@ -330,7 +330,7 @@ class AuthService {
       if (!user) return null;
 
       let staff = await this._resolveCloudStaff(user, email);
-      await this._hydrateStaffCloudData();
+      await this._hydrateStaffCloudData(staff.role);
 
       const hydratedStaff = await db.staff.get(staff.id);
       if (hydratedStaff && isActiveFlag(hydratedStaff.isActive)) {

@@ -1,5 +1,5 @@
 // @ts-nocheck
-export const STAFF_ROLES = ['developer', 'owner', 'manager', 'cashier', 'kitchen', 'waiter', 'delivery'];
+export const STAFF_ROLES = ['developer', 'owner', 'manager', 'cashier', 'kitchen', 'waiter', 'delivery', 'temporary_staff'];
 
 export class CloudStaffAccessError extends Error {
   constructor(message = 'This cloud account is not linked to an active staff profile.') {

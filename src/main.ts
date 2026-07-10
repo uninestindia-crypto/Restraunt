@@ -419,6 +419,8 @@ class App {
         if (!currentRoute || currentRoute === '#/self-order' || currentRoute === '#/pos') {
           router.navigate('#/developer');
         }
+      } else if (staff.role === 'temporary_staff') {
+        router.navigate('#/pos-kitchen');
       }
 
       // Start inactivity auto-lock checker
@@ -687,7 +689,7 @@ class App {
     router.register('#/pos-kitchen', async () => {
       const { ExpressView } = await import('./views/express/ExpressView');
       return new ExpressView(this);
-    }, ['developer', 'owner', 'manager', 'cashier', 'waiter', 'kitchen']);
+    }, ['developer', 'owner', 'manager', 'cashier', 'waiter', 'kitchen', 'temporary_staff']);
 
     router.register('#/tables', async () => {
       const { TablesView } = await import('./views/tables/TablesView');
@@ -745,7 +747,7 @@ class App {
     router.register('#/help', async () => {
       const { HelpView } = await import('./views/admin/HelpView');
       return new HelpView(this);
-    }, ['developer', 'owner', 'manager', 'cashier', 'waiter', 'kitchen', 'delivery']);
+    }, ['developer', 'owner', 'manager', 'cashier', 'waiter', 'kitchen', 'delivery', 'temporary_staff']);
 
     // ── Developer ──
     router.register('#/developer', async () => {
