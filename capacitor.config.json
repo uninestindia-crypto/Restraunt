@@ -1,8 +1,14 @@
-{
-  "appId": "com.thetaste.pos",
-  "appName": "TheTaste",
-  "webDir": "dist",
-  "server": {
-    "cleartext": true
-  }
+﻿{
+    "appId":  "com.thetaste.pos",
+    "webDir":  "dist",
+    "appName":  "TheTaste POS",
+    "server":  {
+                   "cleartext":  true,
+                   "url":  "https://restraunt-d646-nine.vercel.app/?portal=pos",
+                   "allowNavigation":  [
+                                           "restraunt-d646-nine.vercel.app",
+                                           "*.supabase.co",
+                                           "*.supabase.in"
+                                       ]
+               }
 }
