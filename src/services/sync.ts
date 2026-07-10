@@ -550,6 +550,20 @@ class SyncService {
       return;
     }
 
+    // Verify that we have an active cloud staff session
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData || !sessionData.session) {
+        console.warn('[Sync] No active cloud session. Sync connection aborted.');
+        this.triggerStatusChange('unconfigured');
+        return;
+      }
+    } catch (sessionErr) {
+      console.error('[Sync] Error checking cloud session:', sessionErr);
+      this.triggerStatusChange('error');
+      return;
+    }
+
     try {
       // Perform a lightweight health check query with backoff retries
       await retryWithBackoff(async () => {

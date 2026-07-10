@@ -1061,6 +1061,17 @@ export class LoginScreen {
         playSound(900, 100);
         vibrateDevice([40, 20, 40]);
         showToast(`Welcome, ${staff.name}!`, 'success');
+        
+        // Check if cloud session is active for POS sync
+        import('../services/supabaseClient').then(async ({ getCloudSession }) => {
+          const session = await getCloudSession();
+          if (!session) {
+            setTimeout(() => {
+              showToast('Local login success, but cloud session is offline. Sign in under Settings to sync menu.', 'warning');
+            }, 1000);
+          }
+        }).catch(err => console.warn('Could not check cloud session:', err));
+
         this.destroy();
         if (this.onLoginSuccess) this.onLoginSuccess(staff);
       } else {

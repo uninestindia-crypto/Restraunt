@@ -256,7 +256,9 @@ export async function fullPull(options: any = {}) {
       .from('menu_categories')
       .select('*')
       .eq('store_id', storeId);
-    if (!catErr && categories?.length > 0) {
+    if (catErr) {
+      console.error('[CloudDB] Failed to fetch menu categories from cloud:', catErr.message || catErr);
+    } else if (categories?.length > 0) {
       const localCats = categories.map(mapCategoryToLocal);
       await db.transaction('rw', db.menuCategories, async () => {
         await db.menuCategories.clear();
@@ -271,7 +273,9 @@ export async function fullPull(options: any = {}) {
       .from('menu_items')
       .select('*')
       .eq('store_id', storeId);
-    if (!itemErr && items?.length > 0) {
+    if (itemErr) {
+      console.error('[CloudDB] Failed to fetch menu items from cloud:', itemErr.message || itemErr);
+    } else if (items?.length > 0) {
       const localItems = items.map(mapItemToLocal);
       await db.transaction('rw', db.menuItems, async () => {
         await db.menuItems.clear();
@@ -288,7 +292,9 @@ export async function fullPull(options: any = {}) {
         .from('tables')
         .select('*')
         .eq('store_id', storeId);
-      if (!tblErr && tables?.length > 0) {
+      if (tblErr) {
+        console.error('[CloudDB] Failed to fetch tables from cloud (publicOnly):', tblErr.message || tblErr);
+      } else if (tables?.length > 0) {
         const localTables = tables.map(mapTableToLocal);
         const tableStore = db.table('tables');
         await db.transaction('rw', tableStore, async () => {
@@ -306,7 +312,9 @@ export async function fullPull(options: any = {}) {
       .from('staff')
       .select('*')
       .eq('store_id', storeId);
-    if (!staffErr && staff?.length > 0) {
+    if (staffErr) {
+      console.error('[CloudDB] Failed to fetch staff from cloud:', staffErr.message || staffErr);
+    } else if (staff?.length > 0) {
       const localStaff = staff.map(mapStaffToLocal);
       await db.transaction('rw', db.staff, async () => {
         const localStaffList = await db.staff.toArray();
@@ -353,7 +361,9 @@ export async function fullPull(options: any = {}) {
     }
 
     const { data: orders, error: orderErr } = await orderQuery;
-    if (!orderErr && orders?.length > 0) {
+    if (orderErr) {
+      console.error('[CloudDB] Failed to fetch orders from cloud:', orderErr.message || orderErr);
+    } else if (orders?.length > 0) {
       const localOrders = orders.map(mapOrderToLocal);
       await db.transaction('rw', db.orders, async () => {
         for (const order of localOrders) {
@@ -373,7 +383,9 @@ export async function fullPull(options: any = {}) {
       .from('tables')
       .select('*')
       .eq('store_id', storeId);
-    if (!tblErr && tables?.length > 0) {
+    if (tblErr) {
+      console.error('[CloudDB] Failed to fetch tables from cloud:', tblErr.message || tblErr);
+    } else if (tables?.length > 0) {
       const localTables = tables.map(mapTableToLocal);
       const tableStore = db.table('tables');
       await db.transaction('rw', tableStore, async () => {
@@ -394,7 +406,9 @@ export async function fullPull(options: any = {}) {
         .from('inventory')
         .select('*')
         .eq('store_id', storeId);
-      if (!invErr && inventory?.length > 0) {
+      if (invErr) {
+        console.error('[CloudDB] Failed to fetch inventory from cloud:', invErr.message || invErr);
+      } else if (inventory?.length > 0) {
         const localInv = inventory.map(mapInventoryToLocal);
         await db.transaction('rw', db.inventory, async () => {
           for (const inv of localInv) {
@@ -413,7 +427,9 @@ export async function fullPull(options: any = {}) {
         .from('suppliers')
         .select('*')
         .eq('store_id', storeId);
-      if (!supErr && suppliers?.length > 0) {
+      if (supErr) {
+        console.error('[CloudDB] Failed to fetch suppliers from cloud:', supErr.message || supErr);
+      } else if (suppliers?.length > 0) {
         const localSups = suppliers.map(mapSupplierToLocal);
         await db.transaction('rw', db.suppliers, async () => {
           for (const sup of localSups) {
@@ -432,7 +448,9 @@ export async function fullPull(options: any = {}) {
         .from('customers')
         .select('*')
         .eq('store_id', storeId);
-      if (!custErr && customers?.length > 0) {
+      if (custErr) {
+        console.error('[CloudDB] Failed to fetch customers from cloud:', custErr.message || custErr);
+      } else if (customers?.length > 0) {
         const localCusts = customers.map(mapCustomerToLocal);
         await db.transaction('rw', db.customers, async () => {
           for (const cust of localCusts) {
@@ -451,7 +469,9 @@ export async function fullPull(options: any = {}) {
         .from('shifts')
         .select('*')
         .eq('store_id', storeId);
-      if (!shiftErr && shifts?.length > 0) {
+      if (shiftErr) {
+        console.error('[CloudDB] Failed to fetch shifts from cloud:', shiftErr.message || shiftErr);
+      } else if (shifts?.length > 0) {
         const localShifts = shifts.map(mapShiftToLocal);
         await db.transaction('rw', db.shifts, async () => {
           for (const shift of localShifts) {
@@ -474,7 +494,9 @@ export async function fullPull(options: any = {}) {
         .from('recipes')
         .select('*')
         .eq('store_id', storeId);
-      if (!recipeErr && recipes?.length > 0) {
+      if (recipeErr) {
+        console.error('[CloudDB] Failed to fetch recipes from cloud:', recipeErr.message || recipeErr);
+      } else if (recipeErr && recipes?.length > 0) {
         const localRecipes = recipes.map(mapRecipeToLocal);
         await db.transaction('rw', db.recipes, async () => {
           for (const recipe of localRecipes) {
