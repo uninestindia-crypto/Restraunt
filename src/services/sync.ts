@@ -6,6 +6,7 @@ import { getSupabaseClient, resetSupabaseClient, testSupabaseMenuRead } from './
 import { submitPublicOrder } from './publicOrders';
 import { setStaffActiveViaAdminFunction, syncStaffViaAdminFunction } from './staffAdmin';
 import { showToast } from '../utils/helpers';
+import { orderNotificationService } from './orderNotification';
 
 const DEFAULT_STORE_ID = 'the-taste';
 
@@ -1174,6 +1175,20 @@ class SyncService {
       window.dispatchEvent(new CustomEvent('sync-data-changed', {
         detail: { storeName, eventType: payload.eventType, oldId: payload.old?.id, newObj: payload.new }
       }));
+
+      // Fire audible notification for newly confirmed orders arriving via realtime
+      if (storeName === 'orders' && payload.eventType === 'INSERT') {
+        const incomingOrder = payload.new;
+        if (incomingOrder && (incomingOrder.status === 'confirmed' || incomingOrder.status === 'pending')) {
+          orderNotificationService.alertNewOrder({
+            orderNumber: incomingOrder.order_number || incomingOrder.orderNumber,
+            items: incomingOrder.items,
+            tableNumber: incomingOrder.table_number || incomingOrder.tableNumber,
+            channel: incomingOrder.channel,
+            source: incomingOrder.source,
+          });
+        }
+      }
 
     } catch (e) {
       console.error(`[Sync db] Failed to apply remote database change to local ${storeName}:`, e);

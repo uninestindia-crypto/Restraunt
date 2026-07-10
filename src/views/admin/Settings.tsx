@@ -2,6 +2,8 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { db, getSetting, setSetting } from '../../db/database';
 import { escapeHtml, showToast, playSound, vibrateDevice } from '../../utils/helpers';
+import { orderNotificationService, RINGTONE_OPTIONS, ORDER_ALERT_SETTINGS } from '../../services/orderNotification';
+import type { RingtoneId } from '../../services/orderNotification';
 import { printerService } from '../../services/printer';
 import { ReceiptBuilder } from '../../services/receipt';
 import { exportAllData, exportOrdersCSV, importData } from '../../utils/dataExport';
@@ -31,7 +33,7 @@ const CONFIG_KEYS = [
 export function SettingsView() {
   const [config, setConfig] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(true);
-  const [settingsTab, setSettingsTab] = useState<'profile' | 'payments' | 'printer' | 'invoice' | 'cloud' | 'security'>('profile');
+  const [settingsTab, setSettingsTab] = useState<'profile' | 'payments' | 'printer' | 'invoice' | 'cloud' | 'security' | 'notifications'>('profile');
   const [activePreviewTab, setActivePreviewTab] = useState<'thermal' | 'invoice'>('thermal');
   const [invoiceHtml, setInvoiceHtml] = useState('');
   const [printerConnected, setPrinterConnected] = useState(printerService.isConnected);
@@ -40,8 +42,37 @@ export function SettingsView() {
   const [supabasePassword, setSupabasePassword] = useState('');
   const [newPin, setNewPin] = useState('');
 
+  // Notification alert settings state
+  const [alertEnabled, setAlertEnabled] = useState(true);
+  const [alertRingtone, setAlertRingtone] = useState<RingtoneId>('kitchen_chime');
+  const [alertVolume, setAlertVolume] = useState(80);
+  const [alertDuration, setAlertDuration] = useState(6);
+  const [alertSystemNotif, setAlertSystemNotif] = useState(true);
+  const [alertVibration, setAlertVibration] = useState(true);
+  const [alertRemoteOnly, setAlertRemoteOnly] = useState(false);
+  const [notifPermission, setNotifPermission] = useState<string>('default');
+
   const importFileInputRef = useRef<HTMLInputElement>(null);
   const isPrinterSupported = printerService.isSupported();
+
+  // Load notification settings on mount
+  useEffect(() => {
+    (async () => {
+      const s = await orderNotificationService.getSettings();
+      setAlertEnabled(s.enabled);
+      setAlertRingtone(s.ringtone);
+      setAlertVolume(s.volume);
+      setAlertDuration(s.duration);
+      setAlertSystemNotif(s.systemNotif);
+      setAlertVibration(s.vibration);
+      setAlertRemoteOnly(s.filterRemoteOnly);
+      if ('Notification' in window) setNotifPermission(Notification.permission);
+    })();
+  }, []);
+
+  const saveAlertSetting = async (key: string, value: any) => {
+    await setSetting(key, value);
+  };
 
   const loadConfig = async () => {
     try {
@@ -630,6 +661,9 @@ export function SettingsView() {
           </button>
           <button className={`settings-sidebar-btn ${settingsTab === 'security' ? 'active' : ''}`} onClick={() => handleTabSelect('security')}>
             <span className="material-symbols-rounded">security</span>Lock & Backup
+          </button>
+          <button className={`settings-sidebar-btn ${settingsTab === 'notifications' ? 'active' : ''}`} onClick={() => handleTabSelect('notifications')}>
+            <span className="material-symbols-rounded">notifications_active</span>Order Alerts
           </button>
         </div>
 
@@ -1233,6 +1267,207 @@ export function SettingsView() {
                   );
                 })}
               </div>
+            </div>
+          )}
+
+          {/* NOTIFICATIONS & ALERTS */}
+          {settingsTab === 'notifications' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+
+              {/* Alert Toggle */}
+              <div className="settings-card" style={{ background: 'var(--glass-bg)', padding: '24px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
+                <h3 className="settings-card-heading" style={{ margin: '0 0 16px 0', fontSize: 'var(--text-base)', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)' }}>
+                  <span className="material-symbols-rounded" style={{ color: 'var(--color-primary)' }}>notifications_active</span>
+                  New Order Alerts
+                </h3>
+                <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', margin: '0 0 16px 0' }}>
+                  Configure how the POS and Kitchen screens alert you when a new order arrives.
+                </p>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+
+                  {/* Enable toggle */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', borderRadius: 'var(--radius-md)', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-glass)' }}>
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: 'var(--text-sm)', color: 'var(--text-primary)' }}>Enable order alerts</div>
+                      <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', marginTop: '2px' }}>Play ringtone, vibrate and show notifications for new orders</div>
+                    </div>
+                    <label className="switch-toggle">
+                      <input type="checkbox" checked={alertEnabled} onChange={(e) => { setAlertEnabled(e.target.checked); saveAlertSetting(ORDER_ALERT_SETTINGS.enabled, e.target.checked); }} />
+                      <span className="switch-slider" />
+                    </label>
+                  </div>
+
+                  {/* Ringtone selector */}
+                  <div style={{ padding: '12px 16px', borderRadius: 'var(--radius-md)', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-glass)' }}>
+                    <div style={{ fontWeight: 700, fontSize: 'var(--text-sm)', color: 'var(--text-primary)', marginBottom: '8px' }}>Alert Ringtone</div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                      {RINGTONE_OPTIONS.map((r) => {
+                        const active = alertRingtone === r.id;
+                        return (
+                          <button
+                            key={r.id}
+                            onClick={() => {
+                              setAlertRingtone(r.id);
+                              saveAlertSetting(ORDER_ALERT_SETTINGS.ringtone, r.id);
+                              orderNotificationService.preview(r.id, alertVolume);
+                            }}
+                            style={{
+                              display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '8px 14px',
+                              borderRadius: 'var(--radius-md)', cursor: 'pointer', transition: 'all 0.2s',
+                              fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: active ? 700 : 500,
+                              fontSize: 'var(--text-xs)',
+                              border: `1.5px solid ${active ? 'var(--color-primary)' : 'var(--border-glass)'}`,
+                              background: active ? 'var(--color-primary-glow)' : 'var(--bg-primary)',
+                              color: active ? 'var(--color-primary)' : 'var(--text-secondary)',
+                              boxShadow: active ? '0 0 12px rgba(255, 94, 54, 0.15)' : 'none'
+                            }}
+                          >
+                            <span className="material-symbols-rounded" style={{ fontSize: '16px' }}>{r.icon}</span>
+                            {r.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <button
+                      onClick={() => orderNotificationService.preview(alertRingtone, alertVolume)}
+                      style={{
+                        marginTop: '10px', display: 'inline-flex', alignItems: 'center', gap: '4px',
+                        padding: '6px 12px', borderRadius: 'var(--radius-sm)', cursor: 'pointer',
+                        background: 'transparent', border: '1px solid var(--border-glass)',
+                        color: 'var(--text-secondary)', fontSize: '11px', fontWeight: 600, transition: 'all 0.2s'
+                      }}
+                    >
+                      <span className="material-symbols-rounded" style={{ fontSize: '14px' }}>play_arrow</span>
+                      Preview
+                    </button>
+                  </div>
+
+                  {/* Volume slider */}
+                  <div style={{ padding: '12px 16px', borderRadius: 'var(--radius-md)', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-glass)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                      <div style={{ fontWeight: 700, fontSize: 'var(--text-sm)', color: 'var(--text-primary)' }}>Alert Volume</div>
+                      <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-primary)', fontWeight: 700 }}>{alertVolume}%</span>
+                    </div>
+                    <input
+                      type="range" min="10" max="100" step="5" value={alertVolume}
+                      onChange={(e) => { const v = Number(e.target.value); setAlertVolume(v); saveAlertSetting(ORDER_ALERT_SETTINGS.volume, v); }}
+                      style={{ width: '100%', accentColor: 'var(--color-primary)' }}
+                    />
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: 'var(--text-muted)', marginTop: '4px' }}>
+                      <span>Quiet</span><span>Loud</span>
+                    </div>
+                  </div>
+
+                  {/* Duration slider */}
+                  <div style={{ padding: '12px 16px', borderRadius: 'var(--radius-md)', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-glass)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                      <div style={{ fontWeight: 700, fontSize: 'var(--text-sm)', color: 'var(--text-primary)' }}>Alert Duration</div>
+                      <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-primary)', fontWeight: 700 }}>{alertDuration}s</span>
+                    </div>
+                    <input
+                      type="range" min="3" max="15" step="1" value={alertDuration}
+                      onChange={(e) => { const d = Number(e.target.value); setAlertDuration(d); saveAlertSetting(ORDER_ALERT_SETTINGS.duration, d); }}
+                      style={{ width: '100%', accentColor: 'var(--color-primary)' }}
+                    />
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: 'var(--text-muted)', marginTop: '4px' }}>
+                      <span>3 sec</span><span>15 sec</span>
+                    </div>
+                  </div>
+
+                  {/* System notification toggle */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', borderRadius: 'var(--radius-md)', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-glass)' }}>
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: 'var(--text-sm)', color: 'var(--text-primary)' }}>System Notifications</div>
+                      <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', marginTop: '2px' }}>
+                        Show a system-level popup notification (works even when app is in background)
+                        {notifPermission !== 'granted' && (
+                          <button
+                            onClick={async () => {
+                              const r = await orderNotificationService.requestNotificationPermission();
+                              setNotifPermission(r);
+                              showToast(r === 'granted' ? 'Notification permission granted!' : 'Permission denied. Enable in browser settings.', r === 'granted' ? 'success' : 'warning');
+                            }}
+                            style={{ marginLeft: '8px', padding: '2px 8px', fontSize: '10px', fontWeight: 700, borderRadius: '4px', border: '1px solid var(--color-primary)', background: 'var(--color-primary-glow)', color: 'var(--color-primary)', cursor: 'pointer' }}
+                          >
+                            Grant Permission
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                    <label className="switch-toggle">
+                      <input type="checkbox" checked={alertSystemNotif} onChange={(e) => { setAlertSystemNotif(e.target.checked); saveAlertSetting(ORDER_ALERT_SETTINGS.systemNotif, e.target.checked); }} />
+                      <span className="switch-slider" />
+                    </label>
+                  </div>
+
+                  {/* Vibration toggle */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', borderRadius: 'var(--radius-md)', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-glass)' }}>
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: 'var(--text-sm)', color: 'var(--text-primary)' }}>Vibration</div>
+                      <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', marginTop: '2px' }}>Vibrate the device when a new order arrives (mobile/tablet only)</div>
+                    </div>
+                    <label className="switch-toggle">
+                      <input type="checkbox" checked={alertVibration} onChange={(e) => { setAlertVibration(e.target.checked); saveAlertSetting(ORDER_ALERT_SETTINGS.vibration, e.target.checked); }} />
+                      <span className="switch-slider" />
+                    </label>
+                  </div>
+
+                  {/* Remote-only filter toggle */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', borderRadius: 'var(--radius-md)', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-glass)' }}>
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: 'var(--text-sm)', color: 'var(--text-primary)' }}>Alert only for remote orders</div>
+                      <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', marginTop: '2px' }}>Only trigger alerts for QR scan and online orders — skip POS counter orders placed by staff</div>
+                    </div>
+                    <label className="switch-toggle">
+                      <input type="checkbox" checked={alertRemoteOnly} onChange={(e) => { setAlertRemoteOnly(e.target.checked); saveAlertSetting(ORDER_ALERT_SETTINGS.filterRemoteOnly, e.target.checked); }} />
+                      <span className="switch-slider" />
+                    </label>
+                  </div>
+
+                  {/* Test alert button */}
+                  <button
+                    onClick={() => {
+                      orderNotificationService.alertNewOrder({
+                        orderNumber: 'TEST-001',
+                        items: [{ name: 'Test Item', qty: 1 }],
+                        tableNumber: '5',
+                        channel: 'qr',
+                      });
+                      showToast('Test alert triggered!', 'info');
+                    }}
+                    className="btn btn-primary"
+                    style={{
+                      width: '100%', padding: '12px', fontWeight: 700, fontSize: 'var(--text-sm)',
+                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                      borderRadius: 'var(--radius-md)', border: 'none', cursor: 'pointer',
+                      background: 'var(--color-primary)', color: '#fff',
+                      boxShadow: '0 4px 15px rgba(255, 94, 54, 0.3)'
+                    }}
+                  >
+                    <span className="material-symbols-rounded" style={{ fontSize: '18px' }}>campaign</span>
+                    Test Full Alert
+                  </button>
+
+                  {/* Stop alert button */}
+                  {orderNotificationService.isPlaying && (
+                    <button
+                      onClick={() => { orderNotificationService.stop(); showToast('Alert stopped', 'info'); }}
+                      className="btn btn-secondary"
+                      style={{
+                        width: '100%', padding: '10px', fontWeight: 700, fontSize: 'var(--text-xs)',
+                        display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+                        borderRadius: 'var(--radius-md)', border: '1px solid var(--border-glass)', cursor: 'pointer',
+                        background: 'rgba(255,255,255,0.02)', color: 'var(--text-secondary)'
+                      }}
+                    >
+                      <span className="material-symbols-rounded" style={{ fontSize: '16px' }}>stop_circle</span>
+                      Stop Alert
+                    </button>
+                  )}
+                </div>
+              </div>
+
             </div>
           )}
           

@@ -41,7 +41,7 @@ class PrinterService {
     if (isCapacitor) {
       try {
         const client = await getBleClient();
-        await client.initialize();
+        await client.initialize({ androidNeverForLocation: true });
 
         const uuids = [
           '000018f0-0000-1000-8000-00805f9b34fb',
