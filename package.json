@@ -18,7 +18,8 @@
     "launch:verify": "npm run test && npm run build && npm audit --omit=dev",
     "staff:manage": "node scripts/manage-staff.js",
     "cloud:admin": "node scripts/provision-admin.js",
-    "document:ingest": "node scripts/ingest-documents.js"
+    "document:ingest": "node scripts/ingest-documents.js",
+    "prepare": "git config core.hooksPath .githooks"
   },
   "dependencies": {
     "@capacitor-community/bluetooth-le": "^8.2.0",
