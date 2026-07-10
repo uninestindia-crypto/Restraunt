@@ -6,7 +6,7 @@ android {
     buildToolsVersion = "34.0.0"
     def releaseKeystorePath = System.getenv("THE_TASTE_KEYSTORE")
     defaultConfig {
-        applicationId "com.thetaste.customer"
+        applicationId "com.thetaste.pos"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1

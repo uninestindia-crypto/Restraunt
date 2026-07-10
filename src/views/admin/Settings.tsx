@@ -51,6 +51,7 @@ export function SettingsView() {
   const [alertVibration, setAlertVibration] = useState(true);
   const [alertRemoteOnly, setAlertRemoteOnly] = useState(false);
   const [notifPermission, setNotifPermission] = useState<string>('default');
+  const [permissionError, setPermissionError] = useState(false);
 
   const importFileInputRef = useRef<HTMLInputElement>(null);
   const isPrinterSupported = printerService.isSupported();
@@ -172,12 +173,18 @@ export function SettingsView() {
       }
     } else {
       try {
+        setPermissionError(false);
         showToast('Connecting to Bluetooth printer...', 'info');
         await printerService.connect();
         showToast('Printer connected successfully!', 'success');
       } catch (e: any) {
         if (e.name !== 'NotFoundError') {
-          showToast('Bluetooth error: ' + e.message, 'error');
+          if (e.message && (e.message.includes('Permission denied') || e.message.includes('permission denied') || e.message.includes('Permission'))) {
+            setPermissionError(true);
+            showToast('Permission denied. Please allow "Nearby Devices" or "Bluetooth" permission in App settings.', 'error', 7000);
+          } else {
+            showToast('Bluetooth error: ' + e.message, 'error');
+          }
         }
       }
     }
@@ -841,6 +848,30 @@ export function SettingsView() {
                       Print Test
                     </button>
                   </div>
+
+                  {permissionError && (
+                    <div style={{ marginTop: '12px', padding: '12px', borderRadius: '8px', background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.2)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <div style={{ fontSize: '11px', color: 'var(--color-danger)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <span className="material-symbols-rounded" style={{ fontSize: '14px' }}>error</span>
+                        Bluetooth Permission Blocked
+                      </div>
+                      <div style={{ fontSize: '10px', color: 'var(--text-secondary)', lineHeight: '1.4' }}>
+                        To connect, please go to your phone/tablet's <strong>App Settings</strong> and enable the <strong>Nearby Devices</strong> (or Bluetooth) permission for this app.
+                      </div>
+                      {typeof window !== 'undefined' && (window as any).Capacitor && (window as any).Capacitor.isNativePlatform() && (
+                        <button 
+                          onClick={async () => {
+                            playSound(700, 60);
+                            await printerService.openAppSettings();
+                          }}
+                          className="btn btn-secondary btn-sm" 
+                          style={{ alignSelf: 'flex-start', minHeight: '30px', fontSize: '10px', padding: '4px 12px', border: '1px solid var(--border-glass)' }}
+                        >
+                          Open App Settings
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
 

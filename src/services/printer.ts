@@ -250,6 +250,21 @@ class PrinterService {
     const isCapacitor = window.Capacitor && window.Capacitor.isNativePlatform();
     return !!(isCapacitor || navigator.bluetooth);
   }
+
+  /**
+   * Open native Android/iOS App settings for permission management.
+   */
+  async openAppSettings() {
+    const isCapacitor = typeof window !== 'undefined' && window.Capacitor && window.Capacitor.isNativePlatform();
+    if (isCapacitor) {
+      try {
+        const client = await getBleClient();
+        await client.openAppSettings();
+      } catch (e) {
+        console.error('Failed to open app settings:', e);
+      }
+    }
+  }
 }
 
 /** Singleton printer service instance. */

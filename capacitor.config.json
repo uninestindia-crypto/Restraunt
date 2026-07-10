@@ -1,14 +1,8 @@
-﻿{
-    "appId":  "com.thetaste.customer",
-    "webDir":  "dist",
-    "appName":  "TheTaste Customer",
-    "server":  {
-                   "cleartext":  true,
-                   "url":  "https://restraunt-two.vercel.app/?portal=customer",
-                   "allowNavigation":  [
-                                           "restraunt-two.vercel.app",
-                                           "*.supabase.co",
-                                           "*.supabase.in"
-                                       ]
-               }
+{
+  "appId": "com.thetaste.pos",
+  "appName": "TheTaste",
+  "webDir": "dist",
+  "server": {
+    "cleartext": true
+  }
 }
