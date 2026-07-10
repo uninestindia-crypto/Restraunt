@@ -438,7 +438,7 @@ BEGIN
   
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 DROP TRIGGER IF EXISTS trg_audit_order_changes ON orders;
 CREATE TRIGGER trg_audit_order_changes
@@ -619,7 +619,7 @@ BEGIN
   
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 DROP TRIGGER IF EXISTS trg_deduct_inventory_on_order ON orders;
 CREATE TRIGGER trg_deduct_inventory_on_order
