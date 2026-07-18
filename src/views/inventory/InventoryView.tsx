@@ -182,8 +182,10 @@ export class InventoryView {
       content.innerHTML = items.length === 0 ?
         '<div class="empty-state"><span class="material-symbols-rounded">inventory_2</span><p>No inventory items yet. Add items to track stock.</p></div>' :
         `<div class="content-grid">${items.map(item => {
-          const max = item.maxCapacity || 100;
-          const pct = Math.min(100, (item.quantity / max) * 100);
+          const quantity = Number(item.quantity) || 0;
+          const max = Math.max(1, Number(item.maxCapacity) || 100);
+          const minThreshold = Number(item.minThreshold) || 0;
+          const pct = Math.max(0, Math.min(100, (quantity / max) * 100));
           const barColor = pct > 50 ? 'var(--color-success)' : pct > 20 ? 'var(--color-warning)' : 'var(--color-danger)';
           const status = pct > 50 ? '✅' : pct > 20 ? '⚠️' : '🔴';
           return `
@@ -193,12 +195,12 @@ export class InventoryView {
                   <span style="font-size:var(--text-sm);font-weight:700;color:var(--text-primary);">${escapeHtml(item.name)}</span>
                   <span style="font-size:0.65rem;color:var(--text-muted);margin-left:8px;">${escapeHtml(item.unit)}</span>
                 </div>
-                <div style="font-size:var(--text-sm);font-weight:800;color:${barColor};">${status} ${item.quantity} / ${max}</div>
+                <div style="font-size:var(--text-sm);font-weight:800;color:${barColor};">${status} ${quantity} / ${max}</div>
               </div>
               <div style="height:8px;background:rgba(0,0,0,0.3);border-radius:99px;overflow:hidden;">
                 <div style="height:100%;width:${pct}%;background:${barColor};border-radius:99px;transition:width 0.5s ease;"></div>
               </div>
-              <div style="font-size:0.6rem;color:var(--text-muted);margin-top:6px;">Min threshold: ${item.minThreshold || 0} ${escapeHtml(item.unit)}</div>
+              <div style="font-size:0.6rem;color:var(--text-muted);margin-top:6px;">Min threshold: ${minThreshold} ${escapeHtml(item.unit)}</div>
             </div>`;
         }).join('')}</div>`;
     } else {

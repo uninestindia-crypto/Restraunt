@@ -41,15 +41,14 @@ async function main() {
 
   // 2. Upload both APK files
   const apks = [
-    { localPath: 'TheTastePOS.apk', storagePath: 'TheTastePOS.apk' },
-    { localPath: 'TheTasteCustomer.apk', storagePath: 'TheTasteCustomer.apk' }
+    { localPath: 'artifacts/android/TheTastePOS-release.apk', storagePath: 'TheTastePOS-release.apk' },
+    { localPath: 'artifacts/android/TheTasteCustomer-release.apk', storagePath: 'TheTasteCustomer-release.apk' }
   ];
 
   for (const apk of apks) {
     const localFullPath = path.resolve(process.cwd(), apk.localPath);
     if (!fs.existsSync(localFullPath)) {
-      console.warn(`Warning: Local file not found at ${localFullPath}. Skipping.`);
-      continue;
+      throw new Error(`Required signed release artifact not found at ${localFullPath}.`);
     }
 
     console.log(`Uploading ${apk.localPath} to bucket '${bucketName}' (overwriting if exists)...`);
@@ -67,6 +66,16 @@ async function main() {
       throw error;
     }
     console.log(`Successfully uploaded ${apk.localPath}!`);
+
+    const checksumPath = `${localFullPath}.sha256`;
+    if (!fs.existsSync(checksumPath)) throw new Error(`Missing checksum file ${checksumPath}.`);
+    const { error: checksumError } = await supabase.storage
+      .from(bucketName)
+      .upload(`${apk.storagePath}.sha256`, fs.readFileSync(checksumPath), {
+        contentType: 'text/plain',
+        upsert: true
+      });
+    if (checksumError) throw checksumError;
   }
 
   console.log('All APK uploads completed successfully!');

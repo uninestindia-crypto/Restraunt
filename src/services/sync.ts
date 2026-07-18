@@ -195,7 +195,6 @@ function mapStaffToRemote(staff: any) {
     auth_user_id: staff.cloudUserId || null,
     name: staff.name,
     role: staff.role,
-    pin_hash: staff.pinHash,
     allow_express: staff.allowExpress === 1 || staff.allowExpress === true,
     is_active: staff.isActive === 1 || staff.isActive === true,
     created_at: staff.createdAt || new Date().toISOString(),
@@ -209,7 +208,6 @@ function mapStaffToLocal(row: any) {
     cloudUserId: row.auth_user_id || null,
     name: row.name,
     role: row.role,
-    pinHash: row.pin_hash,
     allowExpress: row.allow_express ? 1 : 0,
     isActive: row.is_active ? 1 : 0,
     createdAt: row.created_at,
@@ -347,13 +345,7 @@ export function mapCustomerToRemote(cust) {
     auth_user_id: cust.authUserId || null,
     name: cust.name,
     phone: cust.phone,
-    birthday: cust.birthday || null,
-    total_spent: parseFloat(cust.totalSpent) || 0.00,
-    visit_count: parseInt(cust.visitCount) || 0,
-    loyalty_points: parseInt(cust.loyaltyPoints) || 0,
-    tier: cust.tier || 'bronze',
-    last_visit: cust.lastVisit || null,
-    created_at: cust.createdAt || new Date().toISOString()
+    birthday: cust.birthday || null
   };
 }
 
@@ -1891,20 +1883,8 @@ class SyncService {
       }, 50);
     });
 
-    db.customers.hook('deleting', (primKey, obj, transaction) => {
-      setTimeout(async () => {
-        if (this.isSyncingFromServer || !this.isConnected || !supabase) return;
-        try {
-          await retryWithBackoff(async () => {
-            const { error } = await supabase.from('customers').delete().eq('id', primKey);
-            if (error) throw error;
-          }, { maxRetries: 3 });
-          console.log(`[Sync cache] Deleted customer ${primKey} from cloud.`);
-        } catch (e) {
-          console.error(`[Sync net] Failed to delete customer ${primKey} from cloud after retries:`, e);
-        }
-      }, 50);
-    });
+    // Customer deletion is local-cache-only. Financial records are retained in
+    // the cloud and can only be anonymized through an audited server workflow.
 
     // Recipes hooks
     db.recipes.hook('creating', (primKey, obj, transaction) => {

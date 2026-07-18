@@ -10,7 +10,7 @@
  */
 
 import { analyticsService } from '../../services/analytics';
-import { formatCurrency, showToast, playSound } from '../../utils/helpers';
+import { formatCurrency, showToast, playSound, escapeHtml } from '../../utils/helpers';
 
 export class AnalyticsDashboard {
   constructor(app) {
@@ -223,9 +223,8 @@ export class AnalyticsDashboard {
             showToast(`${filename} downloaded!`, 'success');
             
             // Check Google Drive connection and auto-upload toggle
-            const gdriveToken = localStorage.getItem('gdrive_access_token');
-            const gdriveExpires = localStorage.getItem('gdrive_token_expires');
-            const isDriveConnected = gdriveToken && gdriveExpires && Date.now() < parseInt(gdriveExpires);
+            const driveUpload = await import('../../services/driveUpload');
+            const isDriveConnected = driveUpload.isDriveConnected();
             
             const { getSetting } = await import('../../db/database');
             const autoUpload = (await getSetting('autoUploadToDrive')) === 'true';
@@ -237,8 +236,7 @@ export class AnalyticsDashboard {
               }
               
               try {
-                const { uploadToDrive } = await import('../../services/driveUpload');
-                const uploadResult = await uploadToDrive(blob, filename);
+                const uploadResult = await driveUpload.uploadToDrive(blob, filename);
                 if (uploadResult.success) {
                   showToast('Backup successfully uploaded to Google Drive! ☁️', 'success');
                   if (statusEl) {
@@ -249,7 +247,7 @@ export class AnalyticsDashboard {
                 console.error('[DriveUpload] Failed to auto-upload report:', uploadErr);
                 showToast('Google Drive backup failed: ' + uploadErr.message, 'warning');
                 if (statusEl) {
-                  statusEl.innerHTML = `❌ Google Drive upload failed: ${uploadErr.message}`;
+                  statusEl.textContent = `Google Drive upload failed: ${uploadErr.message}`;
                 }
               }
             } else if (isDriveConnected) {
@@ -384,7 +382,7 @@ export class AnalyticsDashboard {
       <div style="display:flex;align-items:center;gap:10px;padding:8px 0;${i < items.length - 1 ? 'border-bottom:1px solid var(--border-glass);' : ''}">
         <span style="font-size:1rem;width:24px;text-align:center;">${medals[i] || `<span style="font-size:0.75rem;color:var(--text-muted);font-weight:700;">${i + 1}</span>`}</span>
         <div style="flex:1;min-width:0;">
-          <div style="font-size:var(--text-sm);color:var(--text-primary);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${item.name}</div>
+          <div style="font-size:var(--text-sm);color:var(--text-primary);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(item.name)}</div>
         </div>
         <div style="text-align:right;flex-shrink:0;">
           <div style="font-size:var(--text-xs);color:var(--color-primary);font-weight:700;">${item.qty} sold</div>
@@ -404,7 +402,7 @@ export class AnalyticsDashboard {
       return `
         <div>
           <div style="display:flex;justify-content:space-between;font-size:var(--text-sm);font-weight:600;margin-bottom:6px;">
-            <span style="color:var(--text-secondary);">${icon} ${method.toUpperCase()} <span style="color:var(--text-muted);font-size:0.7rem;">(${data.count})</span></span>
+            <span style="color:var(--text-secondary);">${icon} ${escapeHtml(String(method).toUpperCase())} <span style="color:var(--text-muted);font-size:0.7rem;">(${data.count})</span></span>
             <span style="color:var(--text-primary);font-weight:700;">${formatCurrency(data.total)}</span>
           </div>
           <div style="height:6px;background:rgba(0,0,0,0.25);border-radius:99px;overflow:hidden;">
@@ -426,7 +424,7 @@ export class AnalyticsDashboard {
       return `
         <div>
           <div style="display:flex;justify-content:space-between;font-size:var(--text-sm);font-weight:600;margin-bottom:6px;">
-            <span style="color:var(--text-secondary);">${icons[type] || '📦'} ${type.charAt(0).toUpperCase() + type.slice(1)}</span>
+            <span style="color:var(--text-secondary);">${icons[type] || '📦'} ${escapeHtml(type.charAt(0).toUpperCase() + type.slice(1))}</span>
             <span style="color:var(--text-primary);font-weight:700;">${data.count} (${pct}%)</span>
           </div>
           <div style="height:6px;background:rgba(0,0,0,0.25);border-radius:99px;overflow:hidden;">

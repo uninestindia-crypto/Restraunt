@@ -101,6 +101,7 @@ export function MenuItem({ item, categories, cart, onOpenDetails }) {
               className="btn btn-primary btn-add store-add-btn" 
               onClick={() => globalStore.addToCart(item, 1)} 
               type="button"
+              aria-label={`Add ${item.name} to cart`}
             >
               <span className="material-symbols-rounded" aria-hidden="true">add</span>
               Add

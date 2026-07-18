@@ -116,11 +116,9 @@ export interface Staff {
   id?: number;
   name: string;
   role: string;
-  pinHash: string;
   cloudUserId?: string;
   isActive: number | boolean;
   createdAt: string;
-  pin?: string;
   allowExpress?: number | boolean;
   isSynced?: number;
 }
@@ -258,7 +256,7 @@ db.version(3).stores({
   orders: '++id, orderNumber, type, status, paymentMethod, paymentStatus, createdAt, completedAt, customerId, staffId, tableId, channel',
   settings: 'key',
   customers: '++id, phone, name, totalSpent, visitCount, loyaltyPoints, tier, lastVisit, createdAt',
-  staff: '++id, name, role, pinHash, isActive, createdAt',
+  staff: '++id, name, role, isActive, createdAt',
   shifts: '++id, staffId, date, clockIn, clockOut',
   inventory: '++id, name, unit, quantity, minThreshold, categoryTag',
   suppliers: '++id, name, phone, category',
@@ -268,30 +266,12 @@ db.version(3).stores({
   activityLog: '++id, staffId, action, timestamp',
   aiConversations: '++id, createdAt, title',
 }).upgrade(async (tx) => {
-  try {
-    const staffTable = tx.table('staff');
-    const staffMembers = await staffTable.toArray();
-    for (const s of staffMembers) {
-      if (s.pin && s.pin.length !== 64) {
-        // Hash the PIN using native Web Crypto SHA-256
-        const encoder = new TextEncoder();
-        const data = encoder.encode(s.pin.trim());
-        const cryptoObj = typeof window !== 'undefined' ? window.crypto : globalThis.crypto;
-        if (!cryptoObj || !cryptoObj.subtle) {
-          throw new Error('Web Crypto API (crypto.subtle) is not supported in this environment.');
-        }
-        const hashBuffer = await cryptoObj.subtle.digest('SHA-256', data);
-        const hashArray = Array.from(new Uint8Array(hashBuffer));
-        const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-        
-        s.pinHash = hashHex;
-        delete s.pin;
-        await staffTable.put(s);
-      }
-    }
-    console.log('[Database] Dexie schema upgraded to version 3 successfully. Plain-text PINs migrated to SHA-256.');
-  } catch (error) {
-    console.error('[Database] Failed to migrate staff PINs in version 3 upgrade:', error);
+  const staffTable = tx.table('staff');
+  const staffMembers = await staffTable.toArray();
+  for (const staff of staffMembers) {
+    delete staff.pin;
+    delete staff.pinHash;
+    await staffTable.put(staff);
   }
 });
 
@@ -302,7 +282,7 @@ db.version(4).stores({
   orders: '++id, orderNumber, type, status, paymentMethod, paymentStatus, createdAt, completedAt, customerId, staffId, tableId, channel, source, deliveryStatus, deliveryStaffId, updatedAt, syncStatus',
   settings: 'key',
   customers: '++id, phone, name, totalSpent, visitCount, loyaltyPoints, tier, lastVisit, createdAt',
-  staff: '++id, name, role, pinHash, isActive, createdAt',
+  staff: '++id, name, role, isActive, createdAt',
   shifts: '++id, staffId, date, clockIn, clockOut',
   inventory: '++id, name, unit, quantity, minThreshold, categoryTag',
   suppliers: '++id, name, phone, category',
@@ -324,21 +304,6 @@ db.version(4).stores({
     });
   }
 
-  const staffMembers = await tx.table('staff').toArray();
-  for (const staff of staffMembers) {
-    if (staff.pin && !staff.pinHash) {
-      const encoder = new TextEncoder();
-      const data = encoder.encode(staff.pin.trim());
-      const cryptoObj = typeof window !== 'undefined' ? window.crypto : globalThis.crypto;
-      if (!cryptoObj || !cryptoObj.subtle) {
-        throw new Error('Web Crypto API (crypto.subtle) is not supported in this environment.');
-      }
-      const hashBuffer = await cryptoObj.subtle.digest('SHA-256', data);
-      const hashArray = Array.from(new Uint8Array(hashBuffer));
-      const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-      await tx.table('staff').update(staff.id, { pinHash: hashHex, pin: undefined, updatedAt: now });
-    }
-  }
 });
 
 // Schema v5: production launch order identity, idempotency, server validation, and sync diagnostics.
@@ -348,7 +313,7 @@ db.version(5).stores({
   orders: '++id, clientOrderId, idempotencyKey, orderNumber, displayToken, type, status, paymentMethod, paymentStatus, createdAt, completedAt, customerId, staffId, tableId, channel, source, deliveryStatus, deliveryStaffId, updatedAt, syncStatus, validationStatus',
   settings: 'key',
   customers: '++id, phone, name, totalSpent, visitCount, loyaltyPoints, tier, lastVisit, createdAt',
-  staff: '++id, name, role, pinHash, cloudUserId, isActive, createdAt',
+  staff: '++id, name, role, cloudUserId, isActive, createdAt',
   shifts: '++id, staffId, date, clockIn, clockOut',
   inventory: '++id, name, unit, quantity, minThreshold, categoryTag',
   suppliers: '++id, name, phone, category',
@@ -382,7 +347,7 @@ db.version(6).stores({
   orders: '++id, clientOrderId, idempotencyKey, orderNumber, displayToken, type, status, paymentMethod, paymentStatus, createdAt, completedAt, customerId, staffId, tableId, channel, source, deliveryStatus, deliveryStaffId, updatedAt, syncStatus, validationStatus',
   settings: 'key',
   customers: '++id, phone, name, authUserId, totalSpent, visitCount, loyaltyPoints, tier, lastVisit, createdAt',
-  staff: '++id, name, role, pinHash, cloudUserId, isActive, createdAt',
+  staff: '++id, name, role, cloudUserId, isActive, createdAt',
   shifts: '++id, staffId, date, clockIn, clockOut',
   inventory: '++id, name, unit, quantity, minThreshold, categoryTag',
   suppliers: '++id, name, phone, category',
@@ -402,7 +367,7 @@ db.version(7).stores({
   orders: '++id, clientOrderId, idempotencyKey, orderNumber, displayToken, type, status, paymentMethod, paymentStatus, createdAt, completedAt, customerId, staffId, tableId, channel, source, deliveryStatus, deliveryStaffId, updatedAt, syncStatus, validationStatus',
   settings: 'key',
   customers: '++id, phone, name, authUserId, totalSpent, visitCount, loyaltyPoints, tier, lastVisit, createdAt',
-  staff: '++id, name, role, pinHash, cloudUserId, isActive, createdAt',
+  staff: '++id, name, role, cloudUserId, isActive, createdAt',
   shifts: '++id, staffId, date, clockIn, clockOut',
   inventory: '++id, name, unit, quantity, minThreshold, categoryTag',
   suppliers: '++id, name, phone, category',
@@ -412,6 +377,33 @@ db.version(7).stores({
   activityLog: '++id, staffId, action, timestamp',
   aiConversations: '++id, createdAt, title',
   localEmbeddings: '++id, source',
+});
+
+// Schema v8: retire all local staff credentials. Staff authorization is cloud-only.
+db.version(8).stores({
+  menuCategories: '++id, name, sortOrder, isActive, updatedAt',
+  menuItems: '++id, categoryId, [categoryId+isAvailable], name, price, isAvailable, isVeg, sortOrder, imageUrl, updatedAt',
+  orders: '++id, clientOrderId, idempotencyKey, orderNumber, displayToken, type, status, paymentMethod, paymentStatus, createdAt, completedAt, customerId, staffId, tableId, channel, source, deliveryStatus, deliveryStaffId, updatedAt, syncStatus, validationStatus',
+  settings: 'key',
+  customers: '++id, phone, name, authUserId, totalSpent, visitCount, loyaltyPoints, tier, lastVisit, createdAt',
+  staff: '++id, name, role, cloudUserId, isActive, createdAt',
+  shifts: '++id, staffId, date, clockIn, clockOut',
+  inventory: '++id, name, unit, quantity, minThreshold, categoryTag',
+  suppliers: '++id, name, phone, category',
+  recipes: '++id, menuItemId',
+  tables: '++id, number, status, floorSection',
+  reservations: '++id, tableId, customerId, date, time, status',
+  activityLog: '++id, staffId, action, timestamp',
+  aiConversations: '++id, createdAt, title',
+  localEmbeddings: '++id, source',
+}).upgrade(async (tx) => {
+  const staffMembers = await tx.table('staff').toArray();
+  for (const staff of staffMembers) {
+    delete staff.pin;
+    delete staff.pinHash;
+    await tx.table('staff').put(staff);
+  }
+  await tx.table('settings').bulkDelete(['adminPin', 'adminPinHash', 'requirePinForOrder']);
 });
 
 

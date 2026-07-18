@@ -47,6 +47,7 @@ Thumbs.db
 .env
 .env.*
 !.env.example
+!.env.admin.example
 
 # Secrets and Credentials
 *.pem
@@ -69,5 +70,6 @@ android-sdk/
 
 # Compiled Android packages
 *.apk
+artifacts/android/
 
 

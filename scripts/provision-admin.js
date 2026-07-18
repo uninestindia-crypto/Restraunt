@@ -1,5 +1,4 @@
 import { createClient } from '@supabase/supabase-js';
-import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
 import readline from 'readline';
@@ -120,7 +119,7 @@ export const DEFAULT_MENU_ITEMS = [
 
 export function loadEnv() {
   const vars = { ...process.env };
-  for (const filename of ['.env', '.env.deploy']) {
+  for (const filename of ['.env', '.env.admin.local', '.env.deploy']) {
     const filePath = path.resolve(process.cwd(), filename);
     if (!fs.existsSync(filePath)) continue;
 
@@ -135,15 +134,6 @@ export function loadEnv() {
     }
   }
   return vars;
-}
-
-export function hashPin(pin) {
-  return crypto.createHash('sha256').update(String(pin || '').trim()).digest('hex');
-}
-
-export function isWeakPin(pin) {
-  const value = String(pin || '');
-  return value === '1234' || /^(.)\1{3}$/.test(value) || '0123456789'.includes(value) || '9876543210'.includes(value);
 }
 
 function createServiceClient(url, serviceRoleKey) {
@@ -192,7 +182,13 @@ async function requireRuntimeConfig(env, mode) {
 
   return {
     supabaseUrl,
-    anonKey: (env.NEXT_PUBLIC_SUPABASE_ANON_KEY || env.VITE_SUPABASE_ANON_KEY || env.SUPABASE_ANON_KEY || '').trim(),
+    anonKey: (
+      env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+      || env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+      || env.VITE_SUPABASE_ANON_KEY
+      || env.SUPABASE_ANON_KEY
+      || ''
+    ).trim(),
     serviceRoleKey,
     storeId: (env.STORE_ID || DEFAULT_STORE_ID).trim(),
     mode
@@ -225,14 +221,11 @@ async function getNextBigIntId(client, tableName) {
 export async function repairAdmin({ client, config, admin }) {
   const email = admin.email;
   const password = admin.password;
-  const pin = admin.pin;
   const role = admin.role || 'owner';
   const name = admin.name || email.split('@')[0] || (role === 'developer' ? 'Developer' : 'Owner');
 
   if (!PROVISIONABLE_ROLES.includes(role)) throw new Error(`Role "${role}" cannot be provisioned via this script. Use: ${PROVISIONABLE_ROLES.join(', ')}`);
-  if (!email || !password || !pin) throw new Error('ADMIN_EMAIL, ADMIN_PASSWORD, and ADMIN_PIN are required.');
-  if (!/^\d{4}$/.test(pin)) throw new Error('ADMIN_PIN must be exactly 4 digits.');
-  if (isWeakPin(pin)) throw new Error('ADMIN_PIN is too weak. Choose a private non-sequential PIN.');
+  if (!email || !password) throw new Error('ADMIN_EMAIL and ADMIN_PASSWORD are required.');
 
   let user = await findUserByEmail(client, email);
   if (user) {
@@ -256,7 +249,6 @@ export async function repairAdmin({ client, config, admin }) {
     user = data.user;
   }
 
-  const pinHash = hashPin(pin);
   const { data: existingStaff, error: existingStaffError } = await client
     .from('staff')
     .select('id')
@@ -273,7 +265,6 @@ export async function repairAdmin({ client, config, admin }) {
     auth_user_id: user.id,
     name,
     role,
-    pin_hash: pinHash,
     allow_express: true,
     is_active: true,
     updated_at: now
@@ -428,8 +419,7 @@ async function collectAdminInput(env, { requirePassword = false } = {}) {
   const password = requirePassword
     ? await valueOrPrompt(env, 'ADMIN_PASSWORD', 'Admin cloud password: ', { secret: true })
     : (env.ADMIN_PASSWORD || '');
-  const pin = env.ADMIN_PIN || (requirePassword ? await ask('Admin local PIN: ', { secret: true }) : '');
-  return { email, password, pin, name };
+  return { email, password, name };
 }
 
 async function main() {

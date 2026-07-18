@@ -3,7 +3,7 @@
  * CheckoutSuccessModal — Visual Monospaced Receipt + Print Fallbacks + WhatsApp Bill Share
  */
 
-import { formatCurrency, showToast, playSound, vibrateDevice, escapeHtml } from '../../utils/helpers';
+import { formatCurrency, showToast, playSound, vibrateDevice, escapeHtml, parseOrderItems, safeCurrencySymbol } from '../../utils/helpers';
 import { sendBillOnWhatsApp } from '../../services/whatsapp';
 import { printerService } from '../../services/printer';
 import { ReceiptBuilder } from '../../services/receipt';
@@ -40,18 +40,22 @@ export class CheckoutSuccessModal {
   }
 
   async renderModal() {
-    const items = typeof this.order.items === 'string' ? JSON.parse(this.order.items) : (this.order.items || []);
-    const subtotal = this.order.subtotal || 0;
-    const tax = this.order.tax || 0;
-    const total = this.order.total || 0;
-    const orderNum = this.order.orderNumber.split('-').pop();
-    const currencySymbol = localStorage.getItem('app_currency_symbol') || '₹';
-    const taxLabel = localStorage.getItem('app_tax_label') || 'GST';
+    const items = parseOrderItems(this.order.items);
+    const subtotal = Number(this.order.subtotal) || 0;
+    const tax = Number(this.order.tax) || 0;
+    const total = Number(this.order.total) || 0;
+    const orderNum = String(this.order.orderNumber || '').split('-').pop() || '—';
+    const currencySymbol = safeCurrencySymbol(localStorage.getItem('app_currency_symbol'), '₹');
+    const taxLabel = escapeHtml(localStorage.getItem('app_tax_label') || 'GST');
+    const orderType = escapeHtml(String(this.order.type || 'takeaway').toUpperCase());
+    const paymentMethod = escapeHtml(String(this.order.paymentMethod || 'cash').toUpperCase());
+    const paymentStatus = escapeHtml(String(this.order.paymentStatus || 'paid').toUpperCase());
+    const orderDate = escapeHtml(new Date(this.order.createdAt).toLocaleString('en-IN'));
 
     const itemsHtml = items.map(item => {
       const name = item.itemName || item.name || 'Item';
-      const qty = item.quantity || item.qty || 1;
-      const price = item.price || 0;
+      const qty = Math.max(1, Number(item.quantity || item.qty) || 1);
+      const price = Number(item.price) || 0;
       const rowText = `${name} x${qty}`;
       const priceText = `${currencySymbol}${(price * qty).toFixed(2)}`;
       
@@ -77,10 +81,10 @@ export class CheckoutSuccessModal {
         ${gstin ? `<div class="receipt-line" style="font-size:9px;">GSTIN: ${escapeHtml(gstin)}</div>` : ''}
         <div class="receipt-divider">--------------------------------</div>
         <div class="flex-row-between">
-          <span>ORDER #${escapeHtml(this.order.orderNumber.split('-').pop())}</span>
-          <span class="txt-bold">${(this.order.type || 'takeaway').toUpperCase()}</span>
+          <span>ORDER #${escapeHtml(orderNum)}</span>
+          <span class="txt-bold">${orderType}</span>
         </div>
-        <div style="font-size:9px; opacity:0.8; margin-top:2px;">Date: ${new Date(this.order.createdAt).toLocaleString('en-IN')}</div>
+        <div style="font-size:9px; opacity:0.8; margin-top:2px;">Date: ${orderDate}</div>
         <div class="receipt-divider">--------------------------------</div>
         <div class="flex-row-between txt-bold">
           <span>ITEM</span>
@@ -106,7 +110,7 @@ export class CheckoutSuccessModal {
         </div>
         <div class="receipt-divider">================================</div>
         <div class="receipt-line receipt-line-bold" style="font-size:10px;">
-          PAYMENT: ${(this.order.paymentMethod || 'cash').toUpperCase()} (${(this.order.paymentStatus || 'paid').toUpperCase()})
+          PAYMENT: ${paymentMethod} (${paymentStatus})
         </div>
         ${this.order.customerPhone ? `<div class="receipt-line-left txt-bold" style="font-size:9px; margin-top:8px;">Cust: ${escapeHtml(this.order.customerName || 'Walk-in')} (${escapeHtml(this.order.customerPhone)})</div>` : ''}
         <div class="receipt-line" style="margin-top:12px; font-style:italic;">Thank you! Visit again! 🙏</div>
@@ -249,6 +253,7 @@ export class CheckoutSuccessModal {
       showToast('Popup blocker active! Please allow popups to print.', 'warning');
       return;
     }
+    printWindow.opener = null;
 
     // Write a loading message while settings and QR codes are generated
     printWindow.document.write(`
@@ -339,7 +344,7 @@ export class CheckoutSuccessModal {
           <body style="font-family: system-ui; text-align: center; padding: 40px; color: #ef4444;">
             <h3>Error generating invoice</h3>
             <p>${escapeHtml(error.message)}</p>
-            <button onclick="window.close()">Close Window</button>
+            <p>You may close this window.</p>
           </body>
         </html>
       `);

@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { escapeHtml } from '../utils/helpers';
+import { escapeHtml, parseOrderItems, safeCurrencySymbol, safeImageUrl } from '../utils/helpers';
 
 export class InvoiceGenerator {
   /**
@@ -12,18 +12,21 @@ export class InvoiceGenerator {
    * @returns {string} Fully styled HTML string
    */
   static generateInvoiceHTML(order, settings, upiQrDataUrl = '') {
-    const items = typeof order.items === 'string' ? JSON.parse(order.items) : (order.items || []);
-    const subtotal = order.subtotal || 0;
-    const tax = order.tax || 0;
-    const total = order.total || 0;
-    const orderNum = order.orderNumber || '0000';
-    const displayToken = orderNum.split('-').pop();
+    const items = parseOrderItems(order.items);
+    const subtotal = Number(order.subtotal) || 0;
+    const tax = Number(order.tax) || 0;
+    const total = Number(order.total) || 0;
+    const orderNum = String(order.orderNumber || '0000');
 
     // Load custom settings with defaults
-    const template = settings.invoiceTemplate || 'minimalist';
-    const primaryColor = settings.invoicePrimaryColor || '#FF5E36';
+    const template = ['minimalist', 'luxury', 'executive', 'chic'].includes(settings.invoiceTemplate)
+      ? settings.invoiceTemplate
+      : 'minimalist';
+    const primaryColor = /^#[0-9a-f]{6}$/i.test(String(settings.invoicePrimaryColor || ''))
+      ? String(settings.invoicePrimaryColor)
+      : '#FF5E36';
     const fontFamily = settings.invoiceFontFamily || 'sans-serif';
-    const logoUrl = settings.invoiceLogoUrl || '';
+    const logoUrl = safeImageUrl(settings.invoiceLogoUrl || '');
     const title = settings.invoiceTitle || 'TAX INVOICE';
     const terms = settings.invoiceTerms || '1. Goods once sold cannot be returned.\n2. Please check bill before leaving.';
     const showSignature = settings.invoiceShowSignature === 'true' || settings.invoiceShowSignature === true;
@@ -31,6 +34,12 @@ export class InvoiceGenerator {
     const showGrid = settings.invoiceShowGrid !== 'false' && settings.invoiceShowGrid !== false;
     const showWatermark = settings.invoiceShowWatermark === 'true' || settings.invoiceShowWatermark === true;
     const showUpiQr = (settings.invoiceShowUpiQr === 'true' || settings.invoiceShowUpiQr === true) && upiQrDataUrl;
+    const safeUpiQrDataUrl = /^data:image\/png;base64,[A-Za-z0-9+/=]+$/.test(String(upiQrDataUrl || ''))
+      ? String(upiQrDataUrl)
+      : '';
+    const watermarkText = String(settings.restaurantName || 'PAID')
+      .replace(/[^A-Za-z0-9 .&-]/g, '')
+      .slice(0, 60) || 'PAID';
 
     // Font configurations
     let fontImports = '';
@@ -204,13 +213,13 @@ export class InvoiceGenerator {
       `;
     }
 
-    const currencySymbol = settings.currencySymbol || '₹';
+    const currencySymbol = safeCurrencySymbol(settings.currencySymbol, '₹');
 
     // Build invoice items table rows
     const rowsHtml = items.map((item, idx) => {
       const name = item.itemName || item.name || 'Item';
-      const qty = item.quantity || item.qty || 1;
-      const price = item.price || 0;
+      const qty = Math.max(1, Number(item.quantity || item.qty) || 1);
+      const price = Number(item.price) || 0;
       const rowTotal = price * qty;
       return `
         <tr>
@@ -231,7 +240,7 @@ export class InvoiceGenerator {
       <html>
         <head>
           <meta charset="utf-8">
-          <title>${escapeHtml(title)} #${orderNum}</title>
+          <title>${escapeHtml(title)} #${escapeHtml(orderNum)}</title>
           <link rel="preconnect" href="https://fonts.googleapis.com">
           <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
           ${fontImports}
@@ -263,7 +272,7 @@ export class InvoiceGenerator {
             /* Watermark design */
             ${showWatermark ? `
             .invoice-container::before {
-              content: "${escapeHtml(settings.restaurantName || 'PAID')}";
+              content: "${watermarkText}";
               position: absolute;
               top: 50%;
               left: 50%;
@@ -390,7 +399,7 @@ export class InvoiceGenerator {
               <!-- Top Branding Header -->
               <div class="row" style="align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 24px; margin-bottom: 30px;">
                 <div style="display: flex; align-items: center; gap: 16px;">
-                  ${logoUrl ? `<img src="${escapeHtml(logoUrl)}" style="max-height: 60px; max-width: 160px; object-fit: contain;" />` : ''}
+                  ${logoUrl ? `<img src="${logoUrl}" alt="Restaurant logo" style="max-height: 60px; max-width: 160px; object-fit: contain;" />` : ''}
                   <div>
                     <h2 class="header-title" style="margin: 0; font-size: 24px; font-weight: 800; color: #0f172a;">
                       ${escapeHtml(settings.restaurantName || 'THE TASTE')}
@@ -403,7 +412,7 @@ export class InvoiceGenerator {
                     ${escapeHtml(title)}
                   </span>
                   <span style="font-size: 12px; color: #64748b; font-weight: bold; background: #f1f5f9; padding: 4px 8px; border-radius: 4px;">
-                    Order #${orderNum}
+                    Order #${escapeHtml(orderNum)}
                   </span>
                 </div>
               </div>
@@ -437,11 +446,11 @@ export class InvoiceGenerator {
                     <strong>Time:</strong> ${new Date(order.createdAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
                   </div>
                   <div style="font-size: 12px; color: #475569; margin-bottom: 6px;">
-                    <strong>Type:</strong> <span style="text-transform: capitalize; font-weight: 600;">${order.type || 'takeaway'}</span>
+                    <strong>Type:</strong> <span style="text-transform: capitalize; font-weight: 600;">${escapeHtml(order.type || 'takeaway')}</span>
                   </div>
                   <div>
                     <span class="badge-status">
-                      ${(order.paymentStatus || 'unpaid').toUpperCase()}
+                      ${escapeHtml(String(order.paymentStatus || 'unpaid').toUpperCase())}
                     </span>
                   </div>
                 </div>
@@ -467,10 +476,10 @@ export class InvoiceGenerator {
               <div class="row" style="margin-top: 30px; align-items: flex-start;">
                 <!-- Left side: Terms & Conditions and/or UPI QR -->
                 <div style="flex: 1.2; padding-right: 30px;">
-                  ${showUpiQr ? `
+                  ${showUpiQr && safeUpiQrDataUrl ? `
                     <div style="display: flex; gap: 16px; margin-bottom: 20px; align-items: center; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; background: #fff;">
                       <div class="upi-qr-box" style="border: none; padding: 0;">
-                        <img class="upi-qr-image" src="${upiQrDataUrl}" alt="UPI QR Code" />
+                        <img class="upi-qr-image" src="${safeUpiQrDataUrl}" alt="UPI QR Code" />
                       </div>
                       <div>
                         <div style="font-size: 12px; font-weight: 700; color: #1e293b;">Scan to Pay Instantly</div>

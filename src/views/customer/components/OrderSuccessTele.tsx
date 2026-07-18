@@ -7,7 +7,7 @@ import { formatCurrency, parseOrderItems, showToast } from '../../../utils/helpe
 
 const Icon = ({ children }) => <span className="material-symbols-rounded" aria-hidden="true">{children}</span>;
 
-export function OrderSuccessTele({ order, customer, onOrderAgain }) {
+export function OrderSuccessTele({ order, customer, supportPhone = '', onOrderAgain }) {
   const canvasRef = useRef(null);
   const [liveOrder, setLiveOrder] = useState(order);
   const [upiId, setUpiId] = useState('Loading...');
@@ -40,7 +40,7 @@ export function OrderSuccessTele({ order, customer, onOrderAgain }) {
   useEffect(() => {
     if (liveOrder && liveOrder.paymentMethod === 'upi' && canvasRef.current) {
       (async () => {
-        const id = await getSetting('upiId') || 'paytmqr6zfcsx@ptys';
+        const id = await getSetting('upiId') || '';
         setUpiId(id);
         try {
           const upiUrl = await generateUPIQR(canvasRef.current, {
@@ -59,7 +59,11 @@ export function OrderSuccessTele({ order, customer, onOrderAgain }) {
   const tracking = getOrderTrackingState(liveOrder);
   const token = liveOrder.displayToken || String(liveOrder.orderNumber || '').split('-').pop();
   const items = parseOrderItems(liveOrder.items);
-  const supportHref = `https://wa.me/910000000000?text=${encodeURIComponent(`Hi, I need help with order ${liveOrder.orderNumber || token}`)}`;
+  const supportDigits = String(supportPhone).replace(/\D/g, '');
+  const normalizedSupportPhone = supportDigits.length === 10 ? `91${supportDigits}` : supportDigits;
+  const supportHref = /^\d{11,15}$/.test(normalizedSupportPhone)
+    ? `https://wa.me/${normalizedSupportPhone}?text=${encodeURIComponent(`Hi, I need help with order ${liveOrder.orderNumber || token}`)}`
+    : '';
   const etaLabel = tracking.etaMinutes ? `${tracking.etaMinutes}-${tracking.etaMinutes + 8} min` : 'Completed';
 
   const submitReview = async () => {
@@ -154,7 +158,7 @@ export function OrderSuccessTele({ order, customer, onOrderAgain }) {
         )}
 
         <div className="customer-tracking-actions">
-          <a href={supportHref}><Icon>support_agent</Icon> Get support</a>
+          {supportHref && <a href={supportHref}><Icon>support_agent</Icon> Get support</a>}
           <button className="btn btn-secondary btn-block btn-lg" id="btn-order-again" onClick={onOrderAgain} type="button">Order Something Else</button>
         </div>
       </div>

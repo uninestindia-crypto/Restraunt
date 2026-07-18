@@ -1,11 +1,9 @@
 // @ts-nocheck
 import { db } from '../db/database';
-import { hashPin } from '../utils/crypto';
 import {
   CloudStaffAccessError,
   appMetadataToStaffAccess,
   isActiveFlag,
-  isActiveStaffWithPin,
   normalizeStaffRole,
   requireCloudStaffAccess
 } from './authGuards';
@@ -16,8 +14,6 @@ const SESSION_DURATION_MS = 8 * 60 * 60 * 1000;
 const LOCKOUT_MAX_ATTEMPTS = 5;
 const LOCKOUT_DURATION_MS = 5 * 60 * 1000;
 const DEFAULT_STORE_ID = 'the-taste';
-export const CLOUD_REQUIRED_ROLES = ['developer', 'owner', 'manager', 'cashier', 'kitchen', 'waiter', 'delivery', 'temporary_staff'];
-
 class AuthService {
   constructor() {
     this.currentStaff = null;
@@ -58,7 +54,7 @@ class AuthService {
 
     let query = client
       .from('staff')
-      .select('*')
+      .select('id, auth_user_id, name, role, allow_express, is_active, created_at, updated_at')
       .eq('store_id', this._getStoreId())
       .eq('is_active', true);
 
@@ -76,28 +72,10 @@ class AuthService {
         cloudUserId: data.auth_user_id || user.id,
         name: data.name,
         role: normalizeStaffRole(data.role) || access.role,
-        pinHash: data.pin_hash || null,
         allowExpress: data.allow_express ? 1 : 0,
         isActive: data.is_active ? 1 : 0,
         createdAt: data.created_at || new Date().toISOString(),
         updatedAt: data.updated_at || new Date().toISOString(),
-        isSynced: 1
-      };
-    }
-
-    if (access.role === 'developer') {
-      const email = user.email || '';
-      const name = user.user_metadata?.name || user.app_metadata?.name || email.split('@')[0] || 'Developer';
-      return {
-        id: Date.now(),
-        cloudUserId: user.id,
-        name,
-        role: 'developer',
-        pinHash: null,
-        allowExpress: 1,
-        isActive: 1,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
         isSynced: 1
       };
     }
@@ -182,8 +160,7 @@ class AuthService {
           account = await this._resolveCloudStaff(session.user);
         } catch (error) {
           if (!(error instanceof CloudStaffAccessError)) throw error;
-          const staffHint = appMetadataToStaffAccess(session.user, this._getStoreId()) ||
-            normalizeStaffRole(session.user?.user_metadata?.role);
+          const staffHint = appMetadataToStaffAccess(session.user, this._getStoreId());
           if (staffHint) {
             console.warn('[AuthService] Stored cloud staff session lacks active membership. Clearing session.');
             await signOutCloudStaff();
@@ -196,8 +173,6 @@ class AuthService {
           this.currentStaff = account;
           this.isAuthenticated = true;
           this._startSessionTimer();
-          // Authorize PIN login on this device since cloud credentials are valid
-          localStorage.setItem(`pin_authorized_${account.id}`, 'true');
           return account;
         }
       }
@@ -209,112 +184,6 @@ class AuthService {
     localStorage.removeItem('auth_staff_pin');
 
     return null;
-  }
-
-  async getStaffByPin(pin) {
-    if (!pin) return null;
-    try {
-      if (!/^\d{4,8}$/.test(pin)) return null;
-      const hashedPin = await hashPin(pin);
-      const staff = await db.staff
-        .where('pinHash')
-        .equals(hashedPin)
-        .and(s => isActiveStaffWithPin(s))
-        .first();
-      return staff || null;
-    } catch (error) {
-      console.error('[AuthService] Dexie database error in getStaffByPin:', error);
-      return null;
-    }
-  }
-
-  async login(pin) {
-    if (!pin) return null;
-    try {
-      if (this.getLockoutRemaining() > 0) {
-        console.warn('[AuthService] Login blocked by PIN lockout.');
-        return null;
-      }
-
-      let staff = await this.getStaffByPin(pin);
-      const hashedPin = pin.length === 64 ? pin : await hashPin(pin);
-
-      if (!staff && navigator.onLine) {
-        console.log('[AuthService] Local PIN lookup failed. Attempting online PIN verification...');
-        try {
-          const { onlineLookupStaffByPin } = await import('./staffAdmin');
-          const result = await onlineLookupStaffByPin(pin);
-          if (result.success && result.data?.staff) {
-            const row = result.data.staff;
-            staff = {
-              id: row.id,
-              cloudUserId: row.cloudUserId,
-              name: row.name,
-              role: row.role,
-              pinHash: hashedPin,
-              allowExpress: row.allowExpress ? 1 : 0,
-              isActive: row.isActive ? 1 : 0,
-              createdAt: row.createdAt,
-              updatedAt: row.updatedAt,
-              isSynced: 1
-            };
-            // Cache in local database
-            await db.staff.put(staff);
-            console.log(`[AuthService] Resolved and cached staff member "${staff.name}" (${staff.role}) online.`);
-          }
-        } catch (onlineErr) {
-          console.warn('[AuthService] Online PIN verification error:', onlineErr.message);
-        }
-      }
-
-      if (!staff) {
-        this.recordFailedAttempt();
-        console.warn('[AuthService] Login failed: no active staff with a valid PIN found.');
-        return null;
-      }
-
-      if (hashedPin !== staff.pinHash) {
-        this.recordFailedAttempt();
-        console.warn('[AuthService] Login failed: PIN hash mismatch.');
-        return null;
-      }
-
-      // Check device authorization for Owner/Manager PIN login
-      if (CLOUD_REQUIRED_ROLES.includes(staff.role)) {
-        if (localStorage.getItem(`pin_authorized_${staff.id}`) !== 'true') {
-          console.warn(`[AuthService] PIN login blocked for ${staff.role} "${staff.name}": Device not authorized. Cloud login required first.`);
-          throw new Error('Device not authorized for PIN login. Please log in using your email/password first.');
-        }
-      }
-
-      this.currentStaff = staff;
-      this.isAuthenticated = true;
-      globalStore.updateState({ activeTerminalStaff: staff });
-      localStorage.removeItem('auth_staff_pin');
-      localStorage.removeItem('auth_failed_attempts');
-      localStorage.removeItem('auth_lockout_until');
-
-      this._startSessionTimer();
-
-      try {
-        await db.activityLog.add({
-          staffId: staff.id,
-          action: 'login',
-          timestamp: new Date().toISOString()
-        });
-      } catch (logError) {
-        console.error('[AuthService] Dexie database error logging login activity:', logError);
-      }
-
-      console.log(`[AuthService] Staff "${staff.name}" (${staff.role}) authenticated successfully.`);
-      return staff;
-    } catch (error) {
-      if (error.message && error.message.includes('Device not authorized')) {
-        throw error;
-      }
-      console.error('[AuthService] Dexie database error in login:', error);
-      return null;
-    }
   }
 
   async loginWithCloudCredentials(email, password) {
@@ -342,9 +211,6 @@ class AuthService {
       globalStore.updateState({ activeTerminalStaff: staff });
       localStorage.setItem('auth_staff_email', email);
       
-      // Authorize PIN login for this staff member on this device
-      localStorage.setItem(`pin_authorized_${staff.id}`, 'true');
-
       localStorage.removeItem('auth_failed_attempts');
       localStorage.removeItem('auth_lockout_until');
 

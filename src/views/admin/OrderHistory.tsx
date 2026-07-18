@@ -193,29 +193,14 @@ export function OrderHistoryComponent() {
   const handleVoidOrder = async (order: OrderItem) => {
     const staff = authService.getCurrentStaff();
     const role = staff?.role?.toLowerCase() || '';
-    const allowCashierVoidVal = await getSetting('allowCashierVoid');
-    const allowCashierVoid = allowCashierVoidVal === 'true' || allowCashierVoidVal === true;
-
-    const canVoid = ['owner', 'manager'].includes(role) || (role === 'cashier' && allowCashierVoid);
+    const canVoid = ['developer', 'owner', 'manager'].includes(role);
 
     if (canVoid) {
       if (confirm('Are you sure you want to void this order? This action will cancel the order and mark it as refunded.')) {
         await executeVoid(order, staff);
       }
     } else {
-      const pin = prompt('Voiding this order requires Manager or Owner authorization.\nPlease enter an authorized PIN:');
-      if (!pin) return;
-
-      const authStaff = await authService.getStaffByPin(pin);
-      const isAuthorized = authStaff && ['owner', 'manager'].includes(authStaff.role?.toLowerCase());
-
-      if (isAuthorized) {
-        await executeVoid(order, authStaff);
-      } else {
-        playSound(300, 200, 'square');
-        vibrateDevice([150]);
-        showToast('Unauthorized PIN code', 'error');
-      }
+      showToast('Voiding or refunding an order requires an active owner or manager cloud session.', 'error');
     }
   };
 

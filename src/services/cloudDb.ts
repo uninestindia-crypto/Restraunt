@@ -148,7 +148,6 @@ function mapStaffToLocal(row: any) {
     cloudUserId: row.auth_user_id || null,
     name: row.name,
     role: row.role,
-    pinHash: row.pin_hash,
     allowExpress: row.allow_express ? 1 : 0,
     isActive: row.is_active ? 1 : 0,
     createdAt: row.created_at,
@@ -310,7 +309,7 @@ export async function fullPull(options: any = {}) {
     // 3. Staff
     const { data: staff, error: staffErr } = await client
       .from('staff')
-      .select('*')
+      .select('id, auth_user_id, name, role, allow_express, is_active, created_at, updated_at')
       .eq('store_id', storeId);
     if (staffErr) {
       console.error('[CloudDB] Failed to fetch staff from cloud:', staffErr.message || staffErr);

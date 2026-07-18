@@ -1,125 +1,120 @@
-# The Taste — Android APK Builder & Uploader Script
-$ErrorActionPreference = "Stop"
+param(
+    [ValidateSet('pos', 'customer', 'all')]
+    [string]$Portal = 'all',
+    [switch]$Upload
+)
 
-# 1. Setup local paths for build environment
-$env:JAVA_HOME = "d:\Zeaul\Restraunt\jdk21\jdk-21.0.3+9"
-$env:ANDROID_HOME = "d:\Zeaul\Restraunt\android-sdk"
-$env:ANDROID_SDK_ROOT = "d:\Zeaul\Restraunt\android-sdk"
-$env:PATH = "$env:JAVA_HOME\bin;$env:PATH"
+$ErrorActionPreference = 'Stop'
+$root = $PSScriptRoot
+$androidRoot = Join-Path $root 'android'
+$capConfigPath = Join-Path $root 'capacitor.config.json'
+$gradlePath = Join-Path $androidRoot 'app\build.gradle'
+$stringsPath = Join-Path $androidRoot 'app\src\main\res\values\strings.xml'
+$artifactDir = Join-Path $root 'artifacts\android'
 
-# Paths to files we need to modify
-$capConfigPath = "d:\Zeaul\Restraunt\capacitor.config.json"
-$gradlePath = "d:\Zeaul\Restraunt\android\app\build.gradle"
-$stringsPath = "d:\Zeaul\Restraunt\android\app\src\main\res\values\strings.xml"
+if (-not $env:JAVA_HOME) { $env:JAVA_HOME = Join-Path $root 'jdk21\jdk-21.0.3+9' }
+if (-not $env:ANDROID_HOME) { $env:ANDROID_HOME = Join-Path $root 'android-sdk' }
+$env:ANDROID_SDK_ROOT = $env:ANDROID_HOME
+$env:PATH = "$(Join-Path $env:JAVA_HOME 'bin');$env:PATH"
 
-# Function to save original files
-$originals = @{}
-function Save-Originals {
-    $originals[$capConfigPath] = Get-Content -Raw $capConfigPath
-    $originals[$gradlePath] = Get-Content -Raw $gradlePath
-    $originals[$stringsPath] = Get-Content -Raw $stringsPath
-}
-
-# Function to restore original files
-function Restore-Originals {
-    Write-Host "Reverting configuration files to original state..."
-    $originals.Keys | ForEach-Object {
-        [System.IO.File]::WriteAllText($_, $originals[$_])
+$requiredSigningVariables = @(
+    'THE_TASTE_KEYSTORE',
+    'THE_TASTE_KEYSTORE_PASSWORD',
+    'THE_TASTE_KEY_ALIAS',
+    'THE_TASTE_KEY_PASSWORD'
+)
+foreach ($variable in $requiredSigningVariables) {
+    if ([string]::IsNullOrWhiteSpace([Environment]::GetEnvironmentVariable($variable))) {
+        throw "Release signing requires environment variable $variable."
     }
 }
 
-# Function to build an APK
-function Build-App-APK ($appId, $appName, $url, $outName) {
-    # Always restore original files first to ensure replacements match cleanly!
-    Restore-Originals
+$resolvedKeystore = (Resolve-Path -LiteralPath $env:THE_TASTE_KEYSTORE).Path
+if (-not (Test-Path -LiteralPath $resolvedKeystore -PathType Leaf)) {
+    throw 'THE_TASTE_KEYSTORE must point to an existing keystore file.'
+}
+$env:THE_TASTE_KEYSTORE = $resolvedKeystore
 
-    Write-Host "`n================================================"
-    Write-Host "Building $appName ($appId) pointing to $url..."
-    Write-Host "================================================"
-
-    # Parse host name for allowNavigation
-    $uri = New-Object System.Uri($url)
-    $hostName = $uri.Host
-
-    # 1. Modify capacitor.config.json
-    $capConfig = @{
-        appId = $appId
-        appName = $appName
-        webDir = "dist"
-        server = @{
-            url = $url
-            cleartext = $true
-            allowNavigation = @(
-                $hostName,
-                "*.supabase.co",
-                "*.supabase.in"
-            )
+function Invoke-Checked([string]$FilePath, [string[]]$Arguments, [string]$WorkingDirectory = $root) {
+    Push-Location $WorkingDirectory
+    try {
+        & $FilePath @Arguments
+        if ($LASTEXITCODE -ne 0) {
+            throw "$FilePath exited with code $LASTEXITCODE."
         }
-    }
-    $capConfig | ConvertTo-Json -Depth 5 | Out-File $capConfigPath -Encoding utf8
-
-    # 2. Modify android/app/build.gradle (replace applicationId)
-    $gradleContent = Get-Content -Raw $gradlePath
-    $gradleContent = $gradleContent -replace 'applicationId "com.thetaste.pos"', "applicationId `"$appId`""
-    [System.IO.File]::WriteAllText($gradlePath, $gradleContent)
-
-    # 3. Modify strings.xml
-    $stringsContent = Get-Content -Raw $stringsPath
-    $stringsContent = $stringsContent -replace '<string name="app_name">TheTaste</string>', "<string name=`"app_name`">$appName</string>"
-    $stringsContent = $stringsContent -replace '<string name="title_activity_main">TheTaste</string>', "<string name=`"title_activity_main`">$appName</string>"
-    $stringsContent = $stringsContent -replace '<string name="package_name">com.thetaste.pos</string>', "<string name=`"package_name`">$appId</string>"
-    $stringsContent = $stringsContent -replace '<string name="custom_url_scheme">com.thetaste.pos</string>', "<string name=`"custom_url_scheme`">$appId</string>"
-    [System.IO.File]::WriteAllText($stringsPath, $stringsContent)
-
-    # 4. Sync Capacitor
-    Write-Host "Syncing Capacitor configurations to Android..."
-    & cmd.exe /c "npx cap sync android"
-
-    # 5. Clean and Build Native APK using Gradle
-    Write-Host "Compiling native Android APK using Gradle..."
-    $prevDir = Get-Location
-    Set-Location -Path "d:\Zeaul\Restraunt\android"
-    & .\gradlew.bat clean assembleDebug
-    Set-Location -Path $prevDir
-
-    # 6. Copy output APK
-    $apkSource = "d:\Zeaul\Restraunt\android\app\build\outputs\apk\debug\app-debug.apk"
-    $apkDest = "d:\Zeaul\Restraunt\$outName"
-    
-    if (Test-Path $apkSource) {
-        Copy-Item -Path $apkSource -Destination $apkDest -Force
-        Write-Host "SUCCESS: Built $appName APK saved to: $apkDest"
-    } else {
-        throw "Build failed: Output APK not found at $apkSource"
+    } finally {
+        Pop-Location
     }
 }
 
-# Run the build process
+function Write-Utf8NoBom([string]$Path, [string]$Content) {
+    [System.IO.File]::WriteAllText($Path, $Content, [System.Text.UTF8Encoding]::new($false))
+}
+
+$originalCapConfig = Get-Content -Raw -LiteralPath $capConfigPath
+$originalGradle = Get-Content -Raw -LiteralPath $gradlePath
+$originalStrings = Get-Content -Raw -LiteralPath $stringsPath
+
+function Build-Portal([string]$PortalName, [string]$AppId, [string]$AppName, [string]$ArtifactName) {
+    Write-Utf8NoBom $capConfigPath $originalCapConfig
+    Write-Utf8NoBom $gradlePath $originalGradle
+    Write-Utf8NoBom $stringsPath $originalStrings
+
+    Invoke-Checked 'npm.cmd' @('run', "build:$PortalName")
+
+    $capConfig = [ordered]@{
+        appId = $AppId
+        appName = $AppName
+        webDir = 'dist'
+        android = @{ allowMixedContent = $false }
+    }
+    Write-Utf8NoBom $capConfigPath ($capConfig | ConvertTo-Json -Depth 4)
+
+    $gradleContent = $originalGradle -replace 'applicationId\s+"com\.thetaste\.pos"', "applicationId `"$AppId`""
+    Write-Utf8NoBom $gradlePath $gradleContent
+
+    $stringsContent = $originalStrings
+    $stringsContent = $stringsContent -replace '<string name="app_name">.*?</string>', "<string name=`"app_name`">$AppName</string>"
+    $stringsContent = $stringsContent -replace '<string name="title_activity_main">.*?</string>', "<string name=`"title_activity_main`">$AppName</string>"
+    $stringsContent = $stringsContent -replace '<string name="package_name">.*?</string>', "<string name=`"package_name`">$AppId</string>"
+    $stringsContent = $stringsContent -replace '<string name="custom_url_scheme">.*?</string>', "<string name=`"custom_url_scheme`">$AppId</string>"
+    Write-Utf8NoBom $stringsPath $stringsContent
+
+    Invoke-Checked 'npx.cmd' @('cap', 'sync', 'android')
+    Invoke-Checked '.\gradlew.bat' @('clean', 'assembleRelease', '--no-daemon') $androidRoot
+
+    $sourceApk = Join-Path $androidRoot 'app\build\outputs\apk\release\app-release.apk'
+    if (-not (Test-Path -LiteralPath $sourceApk -PathType Leaf)) {
+        throw "Signed release APK was not produced at $sourceApk."
+    }
+
+    New-Item -ItemType Directory -Path $artifactDir -Force | Out-Null
+    $artifactPath = Join-Path $artifactDir $ArtifactName
+    Copy-Item -LiteralPath $sourceApk -Destination $artifactPath -Force
+
+    $buildTools = Get-ChildItem -LiteralPath (Join-Path $env:ANDROID_HOME 'build-tools') -Directory | Sort-Object Name -Descending | Select-Object -First 1
+    $apkSigner = Join-Path $buildTools.FullName 'apksigner.bat'
+    $certificateOutput = & $apkSigner verify --print-certs $artifactPath 2>&1 | Out-String
+    if ($LASTEXITCODE -ne 0) { throw "APK signature verification failed for $ArtifactName." }
+    if ($certificateOutput -match 'Android Debug') { throw "Refusing debug-signed artifact $ArtifactName." }
+
+    $sha256 = (Get-FileHash -LiteralPath $artifactPath -Algorithm SHA256).Hash.ToLowerInvariant()
+    Write-Utf8NoBom "$artifactPath.sha256" "$sha256  $ArtifactName`n"
+    Write-Host "Verified signed release: $artifactPath"
+}
+
 try {
-    Save-Originals
-
-    # Build POS APK (Staff Portal)
-    Build-App-APK `
-        -appId "com.thetaste.pos" `
-        -appName "TheTaste POS" `
-        -url "https://restraunt-d646-nine.vercel.app/?portal=pos" `
-        -outName "TheTastePOS.apk"
-
-    # Build Customer APK (Storefront)
-    Build-App-APK `
-        -appId "com.thetaste.customer" `
-        -appName "TheTaste Customer" `
-        -url "https://restraunt-two.vercel.app/?portal=customer" `
-        -outName "TheTasteCustomer.apk"
-
-    # 7. Upload to Supabase Storage
-    Write-Host "`n================================================"
-    Write-Host "Uploading new APKs to Supabase Storage..."
-    Write-Host "================================================"
-    & node scripts/upload-apks.js
-
-} catch {
-    Write-Error "Build process encountered an error: $_"
+    if ($Portal -in @('pos', 'all')) {
+        Build-Portal 'pos' 'com.thetaste.pos' 'TheTaste POS' 'TheTastePOS-release.apk'
+    }
+    if ($Portal -in @('customer', 'all')) {
+        Build-Portal 'customer' 'com.thetaste.customer' 'TheTaste Customer' 'TheTasteCustomer-release.apk'
+    }
+    if ($Upload) {
+        Invoke-Checked 'node.exe' @('scripts/upload-apks.js')
+    }
 } finally {
-    Restore-Originals
+    Write-Utf8NoBom $capConfigPath $originalCapConfig
+    Write-Utf8NoBom $gradlePath $originalGradle
+    Write-Utf8NoBom $stringsPath $originalStrings
 }

@@ -11,11 +11,10 @@ import { authService } from '../../services/auth';
 import { deductInventoryForOrder } from '../../services/inventoryHook';
 import { tableService } from '../../services/tables';
 import { logOrderPlaced, logActivity } from '../../utils/activityLogger';
-import { showToast, formatCurrencyShort, formatCurrency, playSound, vibrateDevice, escapeHtml, formatTime, parseOrderItems } from '../../utils/helpers';
+import { showToast, formatCurrencyShort, formatCurrency, playSound, vibrateDevice, escapeHtml, safeImageUrl, formatTime, parseOrderItems } from '../../utils/helpers';
 import { CheckoutSuccessModal } from '../pos/CheckoutSuccessModal';
 import { generateUPIQR } from '../../services/upi';
 import { orderNotificationService } from '../../services/orderNotification';
-import { hashPin } from '../../utils/crypto';
 
 export class ExpressView {
   constructor(app) {
@@ -130,8 +129,6 @@ export class ExpressView {
 
   render() {
     const gstPercent = parseFloat(localStorage.getItem('app_gst_percent') || '5');
-    const currencySymbol = localStorage.getItem('app_currency_symbol') || '₹';
-
     const subtotal = this.cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
     const total = subtotal * (1 + gstPercent / 100);
     const totalItems = this.cart.reduce((s, i) => s + i.quantity, 0);
@@ -231,7 +228,7 @@ export class ExpressView {
                   <!-- Dyn Table Selection -->
                   <select id="express-table-select" class="meta-dropdown" style="display: ${this.orderType === 'dinein' ? 'block' : 'none'};">
                     <option value="">🪑 Select Table</option>
-                    ${this.tables.map(t => `<option value="${t.id}">Table T${t.number} (${t.capacity} pax)</option>`).join('')}
+                    ${this.tables.map(t => `<option value="${escapeHtml(String(t.id ?? ''))}">Table T${escapeHtml(String(t.number ?? ''))} (${escapeHtml(String(t.capacity ?? ''))} pax)</option>`).join('')}
                   </select>
 
                   <!-- Customer Phone -->
@@ -1435,9 +1432,9 @@ export class ExpressView {
     return this.categories.map(cat => `
       <button 
         class="category-chip ${cat.id === this.selectedCategory ? 'active' : ''}" 
-        data-cat-id="${cat.id}"
+        data-cat-id="${escapeHtml(String(cat.id ?? ''))}"
       >
-        <span style="margin-right: 4px;">${cat.icon || '🍽️'}</span>${cat.name}
+        <span style="margin-right: 4px;">${escapeHtml(cat.icon || '🍽️')}</span>${escapeHtml(cat.name || 'Category')}
       </button>
     `).join('');
   }
@@ -1473,26 +1470,27 @@ export class ExpressView {
     }
 
     return this.filteredItems.map(item => {
+      const itemId = escapeHtml(String(item.id ?? ''));
       const vegTag = item.isVeg 
         ? '<span class="badge-veg" style="transform:scale(0.85);"></span>'
         : '<span class="badge-nonveg" style="transform:scale(0.85);"></span>';
 
-      const resolvedImage = this.getMenuItemImage(item);
+      const resolvedImage = safeImageUrl(this.getMenuItemImage(item));
       const fallbackEmoji = item.icon || this.getCategoryIcon(item.categoryId) || '🍽️';
       
       const imageContent = resolvedImage
-        ? `<img src="${resolvedImage}" alt="${escapeHtml(item.name)}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"><span class="fallback-emoji" style="display:none; width:100%; height:100%; align-items:center; justify-content:center;">${escapeHtml(fallbackEmoji)}</span>`
+        ? `<img data-express-image src="${resolvedImage}" alt="${escapeHtml(item.name)}"><span class="fallback-emoji" style="display:none; width:100%; height:100%; align-items:center; justify-content:center;">${escapeHtml(fallbackEmoji)}</span>`
         : `<span class="fallback-emoji" style="width:100%; height:100%; display:flex; align-items:center; justify-content:center;">${escapeHtml(fallbackEmoji)}</span>`;
 
       return `
-        <div class="express-product-card" data-item-id="${item.id}">
+        <div class="express-product-card" data-item-id="${itemId}">
           <div class="prod-image">${imageContent}</div>
           <div class="prod-name">${escapeHtml(item.name)}</div>
           <div class="prod-bottom">
             <span class="prod-price">${formatCurrencyShort(item.price)}</span>
             ${vegTag}
           </div>
-          <div class="express-item-indicator" id="exp-indicator-${item.id}">
+          <div class="express-item-indicator" id="exp-indicator-${itemId}">
             <span class="material-symbols-rounded">check_circle</span>
           </div>
         </div>
@@ -1514,7 +1512,7 @@ export class ExpressView {
         <div class="row-actions">
           <div class="circle-stepper">
             <button class="step-circle step-dec" data-index="${index}">-</button>
-            <span class="step-val">${item.quantity}</span>
+            <span class="step-val">${Math.max(1, Number(item.quantity) || 1)}</span>
             <button class="step-circle step-inc" data-index="${index}">+</button>
           </div>
           <div class="row-total">${formatCurrencyShort(item.price * item.quantity)}</div>
@@ -1594,6 +1592,10 @@ export class ExpressView {
     kdsFeed.innerHTML = filtered.map(order => {
       const items = parseOrderItems(order.items);
       const elapsedMins = Math.floor((Date.now() - new Date(order.createdAt).getTime()) / 60000);
+      const orderId = escapeHtml(String(order.id ?? ''));
+      const orderToken = escapeHtml(String(order.orderNumber || '').split('-').pop() || '—');
+      const orderType = escapeHtml(order.type || 'takeaway');
+      const safeStatus = ['confirmed', 'preparing', 'ready'].includes(order.status) ? order.status : 'confirmed';
       
       let timerClass = 'card-timer';
       if (order.status !== 'ready') {
@@ -1604,26 +1606,26 @@ export class ExpressView {
       // Large Action Button on Card
       let actionBtn = '';
       if (order.status === 'confirmed') {
-        actionBtn = `<button class="kds-action-btn kds-btn-prepare" data-action="prepare" data-order-id="${order.id}">🔥 Start Cooking</button>`;
+        actionBtn = `<button class="kds-action-btn kds-btn-prepare" data-action="prepare" data-order-id="${orderId}">🔥 Start Cooking</button>`;
       } else if (order.status === 'preparing') {
-        actionBtn = `<button class="kds-action-btn kds-btn-ready" data-action="ready" data-order-id="${order.id}">✅ Food Ready</button>`;
+        actionBtn = `<button class="kds-action-btn kds-btn-ready" data-action="ready" data-order-id="${orderId}">✅ Food Ready</button>`;
       } else if (order.status === 'ready') {
-        actionBtn = `<button class="kds-action-btn kds-btn-complete" data-action="complete" data-order-id="${order.id}">📦 Serve & Close</button>`;
+        actionBtn = `<button class="kds-action-btn kds-btn-complete" data-action="complete" data-order-id="${orderId}">📦 Serve & Close</button>`;
       }
 
       const itemsHtml = items.map(item => `
         <div class="card-item-row">
-          <div><span class="item-qty">${item.quantity}x</span>${escapeHtml(item.itemName || item.name)}</div>
+          <div><span class="item-qty">${Math.max(1, Number(item.quantity) || 1)}x</span>${escapeHtml(item.itemName || item.name || 'Item')}</div>
           <input type="checkbox" class="item-chk">
         </div>
       `).join('');
 
       return `
-        <div class="express-order-card status-${order.status}" id="kds-card-${order.id}">
+        <div class="express-order-card status-${safeStatus}" id="kds-card-${orderId}">
           <div class="card-top">
             <div>
-              <span class="card-num">#${order.orderNumber.split('-').pop()}</span>
-              <span class="card-type" style="margin-left:8px;">${order.type}</span>
+              <span class="card-num">#${orderToken}</span>
+              <span class="card-type" style="margin-left:8px;">${orderType}</span>
             </div>
             <span class="${timerClass}">${elapsedMins === 0 ? 'Just now' : `${elapsedMins}m ago`}</span>
           </div>
@@ -1636,7 +1638,7 @@ export class ExpressView {
 
           <div style="margin-top:4px; display:flex; gap:6px;">
             ${actionBtn}
-            <button class="kds-action-btn kds-delete-btn" data-action="delete" data-order-id="${order.id}" style="
+            <button class="kds-action-btn kds-delete-btn" data-action="delete" data-order-id="${orderId}" style="
               width:36px;
               height:36px;
               min-width:36px;
@@ -1688,29 +1690,9 @@ export class ExpressView {
           const currentStaff = authService.getCurrentStaff();
           const role = currentStaff?.role || 'kitchen';
 
-          let isAuthorized = ['owner', 'developer'].includes(role);
-
-          if (!isAuthorized) {
-            const allowCashierVoidVal = await getSetting('allowCashierVoid');
-            const allowCashierVoid = allowCashierVoidVal === 'true' || allowCashierVoidVal === true;
-            if (role === 'cashier' && allowCashierVoid) {
-              isAuthorized = true;
-            }
-          }
-
-          if (!isAuthorized) {
-            const authorizedStaff = await this.promptAdminPin();
-            if (authorizedStaff) {
-              isAuthorized = true;
-              showToast(`Authorized by ${authorizedStaff.name}`, 'success');
-              
-              await db.activityLog.add({
-                staffId: authorizedStaff.id,
-                action: `void_order_express_authorized_id_${orderId}`,
-                timestamp: new Date().toISOString()
-              });
-            }
-          }
+          const isAuthorized = Boolean(
+            currentStaff?.isActive && ['owner', 'developer', 'manager'].includes(role.toLowerCase())
+          );
 
           if (isAuthorized) {
             if (confirm('Are you sure you want to cancel and void this order?')) {
@@ -1733,6 +1715,7 @@ export class ExpressView {
               showToast('Order cancelled & voided', 'success');
             }
           } else {
+            showToast('Cancelling orders requires an active manager, owner, or developer cloud session.', 'error');
             playSound(300, 200, 'square');
             vibrateDevice([150]);
           }
@@ -2036,6 +2019,13 @@ export class ExpressView {
     // Products Click delegation
     const prodGrid = document.getElementById('express-products-grid');
     if (prodGrid) {
+      prodGrid.addEventListener('error', (event) => {
+        const image = event.target?.closest?.('img[data-express-image]');
+        if (!image) return;
+        image.style.display = 'none';
+        if (image.nextElementSibling) image.nextElementSibling.style.display = 'flex';
+      }, true);
+
       prodGrid.addEventListener('click', (e) => {
         const card = e.target.closest('.express-product-card');
         if (!card) return;
@@ -2183,235 +2173,4 @@ export class ExpressView {
     this.container = null;
   }
 
-  promptAdminPin() {
-    return new Promise((resolve) => {
-      const overlay = document.createElement('div');
-      overlay.id = 'express-auth-pin-overlay';
-      overlay.className = 'modal-overlay';
-      overlay.style.cssText = `
-        background: rgba(9, 9, 14, 0.9);
-        backdrop-filter: blur(12px);
-        z-index: 10000;
-        animation: fadeIn 0.25s ease-out;
-      `;
-
-      const modal = document.createElement('div');
-      modal.className = 'modal prep-modal-card';
-      modal.style.cssText = `
-        background: #12121a;
-        border: 1px solid var(--border-glass);
-        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 40px rgba(239, 68, 68, 0.15);
-        border-radius: var(--radius-xl);
-        padding: 24px;
-        width: 90%;
-        max-width: 320px;
-        text-align: center;
-        animation: scaleUp 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 16px;
-      `;
-
-      const icon = document.createElement('span');
-      icon.className = 'material-symbols-rounded';
-      icon.innerText = 'admin_panel_settings';
-      icon.style.cssText = 'font-size: 40px; color: var(--color-danger);';
-      modal.appendChild(icon);
-
-      const title = document.createElement('h3');
-      title.innerText = 'Admin Authorization';
-      title.style.cssText = `
-        font-family: 'Plus Jakarta Sans', sans-serif;
-        font-size: var(--text-md);
-        font-weight: 800;
-        color: var(--text-primary);
-        margin: 0;
-      `;
-      modal.appendChild(title);
-
-      const subtitle = document.createElement('p');
-      subtitle.innerText = 'Enter Owner or Developer PIN to delete order';
-      subtitle.style.cssText = 'font-size: var(--text-xs); color: var(--text-muted); margin: 0;';
-      modal.appendChild(subtitle);
-
-      const dotsContainer = document.createElement('div');
-      dotsContainer.style.cssText = 'display: flex; gap: 12px; margin: 8px 0;';
-      const dots = Array.from({ length: 4 }).map(() => {
-        const dot = document.createElement('div');
-        dot.style.cssText = `
-          width: 14px;
-          height: 14px;
-          border-radius: 50%;
-          border: 2px solid rgba(255, 255, 255, 0.2);
-          transition: all 0.15s ease;
-        `;
-        dotsContainer.appendChild(dot);
-        return dot;
-      });
-      modal.appendChild(dotsContainer);
-
-      const keypad = document.createElement('div');
-      keypad.style.cssText = `
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 10px;
-        width: 100%;
-        margin-top: 8px;
-      `;
-
-      let currentPin = '';
-
-      const updateDots = () => {
-        dots.forEach((dot, idx) => {
-          if (idx < currentPin.length) {
-            dot.style.background = 'var(--color-danger)';
-            dot.style.borderColor = 'var(--color-danger)';
-            dot.style.transform = 'scale(1.1)';
-          } else {
-            dot.style.background = 'transparent';
-            dot.style.borderColor = 'rgba(255, 255, 255, 0.2)';
-            dot.style.transform = 'scale(1)';
-          }
-        });
-      };
-
-      const handleKey = async (val) => {
-        playSound(700, 80);
-        vibrateDevice([15]);
-
-        if (val === 'clear') {
-          currentPin = '';
-          updateDots();
-        } else if (val === 'backspace') {
-          currentPin = currentPin.slice(0, -1);
-          updateDots();
-        } else {
-          if (currentPin.length < 4) {
-            currentPin += val;
-            updateDots();
-
-            if (currentPin.length === 4) {
-              const pinToVerify = currentPin;
-              currentPin = '';
-              setTimeout(async () => {
-                const isCorrect = await verifyPin(pinToVerify);
-                if (isCorrect) {
-                  resolve(isCorrect);
-                  cleanup();
-                } else {
-                  dots.forEach(d => {
-                    d.style.background = '#EF4444';
-                    d.style.borderColor = '#EF4444';
-                  });
-                  playSound(300, 250, 'square');
-                  vibrateDevice([150]);
-                  showToast('Invalid Admin/Owner PIN', 'error');
-                  setTimeout(() => {
-                    updateDots();
-                  }, 500);
-                }
-              }, 250);
-            }
-          }
-        }
-      };
-
-      const verifyPin = async (pin) => {
-        try {
-          const hash = await hashPin(pin);
-          const staff = await db.staff
-            .where('pinHash')
-            .equals(hash)
-            .and(s => s.isActive && (s.role === 'owner' || s.role === 'developer'))
-            .first();
-          return staff || null;
-        } catch (e) {
-          console.error(e);
-          return null;
-        }
-      };
-
-      const getKeypadBtnStyle = () => {
-        return `
-          height: 48px;
-          font-family: 'Plus Jakarta Sans', sans-serif;
-          font-weight: 700;
-          font-size: 1.1rem;
-          background: rgba(255, 255, 255, 0.02);
-          border: 1px solid var(--border-glass);
-          color: var(--text-primary);
-          border-radius: var(--radius-md);
-          cursor: pointer;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          transition: all 0.15s ease;
-        `;
-      };
-
-      for (let i = 1; i <= 9; i++) {
-        const btn = document.createElement('button');
-        btn.innerText = String(i);
-        btn.style.cssText = getKeypadBtnStyle();
-        btn.onclick = () => handleKey(String(i));
-        keypad.appendChild(btn);
-      }
-
-      const clearBtn = document.createElement('button');
-      clearBtn.innerText = 'C';
-      clearBtn.style.cssText = getKeypadBtnStyle();
-      clearBtn.onclick = () => handleKey('clear');
-      keypad.appendChild(clearBtn);
-
-      const zeroBtn = document.createElement('button');
-      zeroBtn.innerText = '0';
-      zeroBtn.style.cssText = getKeypadBtnStyle();
-      zeroBtn.onclick = () => handleKey('0');
-      keypad.appendChild(zeroBtn);
-
-      const backBtn = document.createElement('button');
-      backBtn.innerHTML = '⌫';
-      backBtn.style.cssText = getKeypadBtnStyle();
-      backBtn.onclick = () => handleKey('backspace');
-      keypad.appendChild(backBtn);
-
-      modal.appendChild(keypad);
-
-      const cancelBtn = document.createElement('button');
-      cancelBtn.innerText = 'Cancel';
-      cancelBtn.style.cssText = `
-        width: 100%;
-        padding: 10px;
-        background: transparent;
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        color: var(--text-muted);
-        border-radius: var(--radius-md);
-        font-family: 'Plus Jakarta Sans', sans-serif;
-        font-weight: 700;
-        font-size: var(--text-xs);
-        cursor: pointer;
-        margin-top: 8px;
-        transition: all var(--transition-fast);
-      `;
-      cancelBtn.onclick = () => {
-        playSound(600, 80);
-        resolve(null);
-        cleanup();
-      };
-      modal.appendChild(cancelBtn);
-
-      overlay.appendChild(modal);
-      document.body.appendChild(overlay);
-
-      const cleanup = () => {
-        overlay.style.animation = 'fadeOut 0.2s ease-in forwards';
-        setTimeout(() => {
-          if (overlay.parentNode) {
-            overlay.parentNode.removeChild(overlay);
-          }
-        }, 200);
-      };
-    });
-  }
 }

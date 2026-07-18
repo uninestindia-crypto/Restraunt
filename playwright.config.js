@@ -2,9 +2,13 @@ import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
   testDir: './tests/e2e',
-  timeout: 30_000,
-  expect: { timeout: 8_000 },
-  fullyParallel: true,
+  timeout: 45_000,
+  expect: { timeout: 15_000 },
+  fullyParallel: false,
+  // The app performs IndexedDB and browser-engine initialization on every fresh
+  // context. One worker keeps the release matrix deterministic on constrained
+  // CI and avoids OS-level browser teardown failures after otherwise green runs.
+  workers: 1,
   reporter: [['list'], ['html', { open: 'never' }]],
   use: {
     baseURL: 'http://127.0.0.1:3000',
@@ -12,7 +16,7 @@ export default defineConfig({
     screenshot: 'only-on-failure'
   },
   webServer: {
-    command: 'node ./node_modules/vite/bin/vite.js --host 127.0.0.1',
+    command: 'npm run preview',
     url: 'http://127.0.0.1:3000',
     reuseExistingServer: true,
     timeout: 60_000

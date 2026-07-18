@@ -68,16 +68,21 @@ async function sha256(value: string) {
   return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
-function makeOrderNumber() {
+function makeOrderNumber(clientOrderId: string) {
   const now = new Date();
   const yyyy = now.getUTCFullYear();
   const mm = String(now.getUTCMonth() + 1).padStart(2, "0");
   const dd = String(now.getUTCDate()).padStart(2, "0");
-  const token = crypto.getRandomValues(new Uint32Array(1))[0].toString().slice(-4).padStart(4, "0");
+  const token = clientOrderId.replace(/-/g, "").slice(0, 16).toUpperCase();
   return {
     orderNumber: `${ORDER_PREFIX}-${yyyy}${mm}${dd}-${token}`,
-    displayToken: token
+    displayToken: token.slice(-6)
   };
+}
+
+function bearerToken(req: Request) {
+  const match = (req.headers.get("authorization") || "").match(/^Bearer\s+(.+)$/i);
+  return match?.[1] || "";
 }
 
 function bad(message: string, status = 400) {
@@ -101,6 +106,13 @@ Deno.serve(async (req: Request) => {
   const supabase = createClient(supabaseUrl, serviceRoleKey, {
     auth: { persistSession: false }
   });
+
+  let authenticatedUserId: string | null = null;
+  const token = bearerToken(req);
+  if (token) {
+    const { data: userData } = await supabase.auth.getUser(token);
+    authenticatedUserId = userData?.user?.id || null;
+  }
 
   let payload: PublicOrderPayload;
   try {
@@ -147,7 +159,7 @@ Deno.serve(async (req: Request) => {
 
   const { data: existingOrder, error: existingError } = await supabase
     .from("orders")
-    .select("client_order_id, order_number, display_token, status, payment_status, delivery_status, grand_total, created_at")
+    .select("client_order_id, order_number, display_token, status, payment_status, delivery_status, total, created_at")
     .eq("store_id", STORE_ID)
     .eq("client_order_id", clientOrderId)
     .eq("idempotency_key", idempotencyKey)
@@ -182,6 +194,17 @@ Deno.serve(async (req: Request) => {
     return bad("One or more items are unavailable.");
   }
 
+  if (type === "dinein") {
+    const { data: table, error: tableError } = await supabase
+      .from("tables")
+      .select("id")
+      .eq("store_id", STORE_ID)
+      .eq("id", Number(payload.tableId))
+      .maybeSingle();
+    if (tableError) return bad(`Table validation failed: ${tableError.message}`, 500);
+    if (!table) return bad("Selected table does not exist.");
+  }
+
   let subtotal = 0;
   const validatedItems = normalizedItems.map((item) => {
     const menu = menuById.get(item.itemId)!;
@@ -203,7 +226,7 @@ Deno.serve(async (req: Request) => {
   const total = Number((subtotal + tax + deliveryFee).toFixed(2));
   const paymentStatus = paymentMethod === "upi" ? "pending" : "unpaid";
   const deliveryStatus = type === "delivery" ? "pending" : "none";
-  const { orderNumber, displayToken } = makeOrderNumber();
+  const { orderNumber, displayToken } = makeOrderNumber(clientOrderId);
 
   const order = {
     store_id: STORE_ID,
@@ -229,6 +252,7 @@ Deno.serve(async (req: Request) => {
     delivery_landmark: type === "delivery" ? deliveryLandmark : "",
     delivery_notes: type === "delivery" ? deliveryNotes : "",
     delivery_status: deliveryStatus,
+    auth_user_id: authenticatedUserId,
     table_id: type === "dinein" ? Number(payload.tableId) : null,
     requires_server_validation: false,
     validation_status: "accepted",

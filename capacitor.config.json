@@ -2,7 +2,7 @@
   "appId": "com.thetaste.pos",
   "appName": "TheTaste",
   "webDir": "dist",
-  "server": {
-    "cleartext": true
+  "android": {
+    "allowMixedContent": false
   }
 }

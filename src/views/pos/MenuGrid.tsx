@@ -4,7 +4,7 @@
  */
 
 import { getCategories, getAllItems, getItemsByCategory, searchItems } from '../../db/database';
-import { formatCurrencyShort, debounce } from '../../utils/helpers';
+import { formatCurrencyShort, debounce, escapeHtml, safeImageUrl } from '../../utils/helpers';
 
 export class MenuGrid {
   constructor({ container, onAddItem }) {
@@ -63,7 +63,7 @@ export class MenuGrid {
             class="input" 
             id="menu-search" 
             placeholder="Search menu items..." 
-            value="${this.searchQuery}"
+            value="${escapeHtml(this.searchQuery)}"
             autocomplete="off"
           >
         </div>
@@ -87,9 +87,9 @@ export class MenuGrid {
     return this.categories.map(cat => `
       <button 
         class="tab ${cat.id === this.selectedCategory && !this.searchQuery ? 'active' : ''}" 
-        data-category-id="${cat.id}"
+        data-category-id="${escapeHtml(cat.id)}"
       >
-        <span style="margin-right: 4px;">${cat.icon || ''}</span>${cat.name}
+        <span style="margin-right: 4px;">${escapeHtml(cat.icon || '')}</span>${escapeHtml(cat.name)}
       </button>
     `).join('');
   }
@@ -134,23 +134,23 @@ export class MenuGrid {
       ? '<span class="badge-veg" title="Vegetarian"></span>'
       : '<span class="badge-nonveg" title="Non-Vegetarian"></span>';
 
-    const resolvedImage = this.getMenuItemImage(item);
-    const imageContent = `<img src="${resolvedImage}" alt="${item.name}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"><span class="fallback-emoji" style="display:none; width:100%; height:100%; align-items:center; justify-content:center;">${item.icon || this.getCategoryIcon(item.categoryId)}</span>`;
+    const resolvedImage = safeImageUrl(this.getMenuItemImage(item), '/assets/dish-starters.jpg');
+    const imageContent = `<img data-menu-image src="${resolvedImage}" alt="${escapeHtml(item.name)}"><span class="fallback-emoji" style="display:none; width:100%; height:100%; align-items:center; justify-content:center;">${escapeHtml(item.icon || this.getCategoryIcon(item.categoryId))}</span>`;
 
     return `
       <div class="menu-item ${!item.isAvailable ? 'sold-out' : ''}" 
-           data-item-id="${item.id}" 
+           data-item-id="${escapeHtml(item.id)}"
            role="button" 
            tabindex="0">
         <div class="menu-item-image">${imageContent}</div>
         <div class="menu-item-info">
-          <div class="menu-item-name">${item.name}</div>
+          <div class="menu-item-name">${escapeHtml(item.name)}</div>
           <div class="menu-item-bottom">
-            <span class="menu-item-price">${formatCurrencyShort(item.price)}</span>
+            <span class="menu-item-price">${escapeHtml(formatCurrencyShort(item.price))}</span>
             ${vegBadge}
           </div>
         </div>
-        <div class="item-added-indicator" id="added-${item.id}">
+        <div class="item-added-indicator" id="added-${escapeHtml(item.id)}">
           <span class="material-symbols-rounded">check_circle</span>
         </div>
       </div>
@@ -216,6 +216,13 @@ export class MenuGrid {
     // Menu items — use event delegation on grid container
     const gridContainer = document.getElementById('menu-grid-container');
     if (gridContainer) {
+      gridContainer.addEventListener('error', (event) => {
+        const image = event.target?.closest?.('img[data-menu-image]');
+        if (!image) return;
+        image.style.display = 'none';
+        if (image.nextElementSibling) image.nextElementSibling.style.display = 'flex';
+      }, true);
+
       gridContainer.addEventListener('click', (e) => {
         const itemEl = e.target.closest('.menu-item');
         if (!itemEl || itemEl.classList.contains('sold-out')) return;

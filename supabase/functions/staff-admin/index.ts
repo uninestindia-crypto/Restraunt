@@ -24,7 +24,6 @@ type StaffAdminPayload = {
     cloudUserId?: string | null;
     name?: string;
     role?: string;
-    pinHash?: string | null;
     allowExpress?: boolean;
     isActive?: boolean;
     createdAt?: string | null;
@@ -43,15 +42,6 @@ function cleanText(value: unknown, max = 120) {
 function normalizeRole(role: unknown) {
   const value = cleanText(role, 30).toLowerCase();
   return STAFF_ROLES.includes(value) ? value : "";
-}
-
-function validPinHash(value: unknown) {
-  return typeof value === "string" && /^[0-9a-f]{64}$/.test(value);
-}
-
-async function hashPin(pin: string) {
-  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(pin));
-  return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
 function bearerToken(req: Request) {
@@ -154,59 +144,7 @@ Deno.serve(async (req: Request) => {
   const action = cleanText(payload.action, 40);
   const now = new Date().toISOString();
 
-  // Bypassing requireOwner check for login-by-pin action so unauthenticated PIN users can log in
-  if (action === "login-by-pin") {
-    try {
-      const pin = cleanText((payload as any).pin, 8);
-      if (!/^\d{4,8}$/.test(pin)) return bad("Invalid PIN format.");
-      const pinHash = await hashPin(pin);
-
-      const forwarded = req.headers.get("x-forwarded-for") || "";
-      const clientIp = req.headers.get("cf-connecting-ip") || forwarded.split(",")[0].trim() || "unknown";
-      const ipDigest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(clientIp));
-      const ipHash = [...new Uint8Array(ipDigest)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
-      const { data: allowed, error: rateError } = await serviceClient.rpc("consume_staff_pin_attempt", {
-        target_store_id: storeId,
-        target_ip_hash: ipHash,
-        max_attempts: 8,
-        window_minutes: 15
-      });
-      if (rateError) throw rateError;
-      if (!allowed) return bad("Too many PIN attempts. Try again later.", 429);
-
-      const { data: staffMember, error: staffErr } = await serviceClient
-        .from("staff")
-        .select("*")
-        .eq("store_id", storeId)
-        .eq("pin_hash", pinHash)
-        .eq("is_active", true)
-        .maybeSingle();
-
-      if (staffErr) throw staffErr;
-      if (!staffMember) {
-        return jsonResponse({ ok: false, message: "Invalid PIN code." });
-      }
-
-      return jsonResponse({
-        ok: true,
-        staff: {
-          id: staffMember.id,
-          storeId: staffMember.store_id,
-          cloudUserId: staffMember.auth_user_id,
-          name: staffMember.name,
-          role: staffMember.role,
-          allowExpress: staffMember.allow_express,
-          isActive: staffMember.is_active,
-          createdAt: staffMember.created_at,
-          updatedAt: staffMember.updated_at
-        }
-      });
-    } catch (err) {
-      return bad(err instanceof Error ? err.message : String(err), 500);
-    }
-  }
-
-  // All other actions require Owner authentication
+  // Every staff-management action requires an authenticated owner/developer.
   const owner = await requireOwner({ serviceClient, token: bearerToken(req), storeId });
   if ("error" in owner) return bad(owner.error || "Unknown error", owner.status);
 
@@ -226,7 +164,7 @@ Deno.serve(async (req: Request) => {
 
       const { data: existing, error: existingError } = await serviceClient
         .from("staff")
-        .select("pin_hash, created_at, role, is_active")
+        .select("created_at, role, is_active")
         .eq("store_id", storeId)
         .eq("id", staffId)
         .maybeSingle();
@@ -244,18 +182,12 @@ Deno.serve(async (req: Request) => {
         if (owners <= 1) return bad("Cannot remove or demote the last active owner.", 409);
       }
 
-      const pinHash = input.pinHash || existing?.pin_hash || null;
-      if (isActive && !validPinHash(pinHash)) {
-        return bad("Active staff must have a valid PIN hash.");
-      }
-
       const staffRow = {
         id: staffId,
         store_id: storeId,
         auth_user_id: cloudUserId,
         name,
         role,
-        pin_hash: pinHash,
         allow_express: Boolean(input.allowExpress),
         is_active: isActive,
         created_at: existing?.created_at || input.createdAt || now,

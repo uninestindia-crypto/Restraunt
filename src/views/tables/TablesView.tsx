@@ -11,7 +11,7 @@
 
 import { db } from '../../db/database';
 import { tableService } from '../../services/tables';
-import { showToast, playSound, vibrateDevice } from '../../utils/helpers';
+import { showToast, playSound, vibrateDevice, escapeHtml } from '../../utils/helpers';
 
 const STATUS_CONFIG = {
   available: { label: 'Available', color: '#10B981', bg: 'rgba(16,185,129,0.08)', border: 'rgba(16,185,129,0.25)', icon: 'check_circle' },
@@ -128,10 +128,10 @@ export class TablesView {
     grid.innerHTML = `<div class="content-grid" style="grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));">${tables.map(t => {
       const cfg = STATUS_CONFIG[t.status] || STATUS_CONFIG.available;
       return `
-        <div class="table-card card" data-id="${t.id}" style="border: 1.5px solid ${cfg.border}; background: ${cfg.bg}; text-align: center; cursor: pointer; padding: 18px 14px;">
-          <div style="font-family:var(--font-display); font-size:1.45rem; font-weight:800; color:${cfg.color}; margin-bottom:6px;">T${t.number}</div>
+        <div class="table-card card" data-id="${escapeHtml(String(t.id ?? ''))}" style="border: 1.5px solid ${cfg.border}; background: ${cfg.bg}; text-align: center; cursor: pointer; padding: 18px 14px;">
+          <div style="font-family:var(--font-display); font-size:1.45rem; font-weight:800; color:${cfg.color}; margin-bottom:6px;">T${escapeHtml(String(t.number ?? ''))}</div>
           <span class="material-symbols-rounded" style="font-size:24px; color:${cfg.color}; display:block; margin-bottom:6px; filter: drop-shadow(0 0 6px ${cfg.border});">${cfg.icon}</span>
-          <div style="font-size:0.7rem; color:var(--text-muted); font-weight:600;">${t.capacity} seats · ${t.floorSection || 'Main'}</div>
+          <div style="font-size:0.7rem; color:var(--text-muted); font-weight:600;">${escapeHtml(t.capacity)} seats · ${escapeHtml(t.floorSection || 'Main')}</div>
           <div style="font-size:0.6rem; color:${cfg.color}; font-weight:700; margin-top:6px; text-transform:uppercase; letter-spacing:0.06em;">${cfg.label}</div>
         </div>
       `;

@@ -13,8 +13,12 @@ import { getSetting } from '../db/database';
  * @returns {string} UPI deep link URL
  */
 export function buildUPILink({ payeeVPA, payeeName, amount, transactionNote, refId }) {
+  const normalizedVpa = String(payeeVPA || '').trim();
+  if (!/^[A-Za-z0-9._-]{2,256}@[A-Za-z0-9.-]{2,64}$/.test(normalizedVpa)) {
+    throw new Error('A valid restaurant UPI ID must be configured in Settings.');
+  }
   const params = new URLSearchParams();
-  params.set('pa', payeeVPA);
+  params.set('pa', normalizedVpa);
   params.set('pn', payeeName);
   if (amount) params.set('am', amount.toFixed(2));
   params.set('cu', 'INR');
@@ -32,7 +36,7 @@ export function buildUPILink({ payeeVPA, payeeName, amount, transactionNote, ref
  * @returns {Promise<string>} The UPI deep link URL
  */
 export async function generateUPIQR(canvasElement, { amount, orderId }) {
-  const upiId = (await getSetting('upiId')) || 'paytmqr6zfcsx@ptys';
+  const upiId = await getSetting('upiId');
   const upiName = (await getSetting('upiName')) || 'The Taste';
 
   const upiLink = buildUPILink({
@@ -64,7 +68,7 @@ export async function generateUPIQR(canvasElement, { amount, orderId }) {
  * @returns {Promise<string>} Base64 data URL of the QR code
  */
 export async function generateUPIQRDataURL({ amount, orderId }) {
-  const upiId = (await getSetting('upiId')) || 'paytmqr6zfcsx@ptys';
+  const upiId = await getSetting('upiId');
   const upiName = (await getSetting('upiName')) || 'The Taste';
 
   const upiLink = buildUPILink({

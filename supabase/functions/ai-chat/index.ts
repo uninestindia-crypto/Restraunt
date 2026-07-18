@@ -28,25 +28,10 @@ declare const Deno: {
  */
 
 const DEFAULT_GROQ_MODEL = "llama-3.3-70b-versatile";
+const ALLOWED_GROQ_MODELS = new Set([DEFAULT_GROQ_MODEL, "llama-3.1-8b-instant"]);
 const MAX_MESSAGES = 12;
 const MAX_TOKENS = 1500;
-
-// Rate limit: max requests per staff per minute
 const RATE_LIMIT_PER_MINUTE = 15;
-const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
-
-function isRateLimited(staffId: string): boolean {
-  const now = Date.now();
-  const entry = rateLimitMap.get(staffId);
-
-  if (!entry || now > entry.resetAt) {
-    rateLimitMap.set(staffId, { count: 1, resetAt: now + 60_000 });
-    return false;
-  }
-
-  entry.count++;
-  return entry.count > RATE_LIMIT_PER_MINUTE;
-}
 
 function bearerToken(req: Request): string {
   const header = req.headers.get("authorization") || "";
@@ -97,19 +82,13 @@ Deno.serve(async (req: Request) => {
   // Verify active staff membership
   const { data: membership, error: membershipError } = await serviceClient
     .from("staff_memberships")
-    .select("role, is_active, staff_id")
+    .select("role, is_active, staff_id, store_id")
     .eq("auth_user_id", user.id)
     .eq("is_active", true)
     .maybeSingle();
 
   if (membershipError || !membership) {
     return bad("Active staff membership required for AI access.", 403);
-  }
-
-  // Rate limiting per staff member
-  const staffKey = `${membership.staff_id || user.id}`;
-  if (isRateLimited(staffKey)) {
-    return bad("Rate limit exceeded. Please wait a moment.", 429);
   }
 
   // ── Parse Request ──
@@ -129,6 +108,26 @@ Deno.serve(async (req: Request) => {
   }
 
   const tier = (payload.tier || "groq").toLowerCase();
+
+  // Atomically persist and count attempts across every Edge worker.
+  const { data: attemptAccepted, error: rateLimitError } = await serviceClient.rpc(
+    "consume_staff_ai_attempt",
+    {
+      target_auth_user_id: user.id,
+      target_store_id: membership.store_id,
+      target_staff_id: membership.staff_id,
+      target_tier: tier,
+      max_attempts: RATE_LIMIT_PER_MINUTE,
+      window_seconds: 60,
+    },
+  );
+  if (rateLimitError) {
+    console.error("[ai-chat] Rate-limit RPC failed:", rateLimitError);
+    return bad("AI request protection is temporarily unavailable.", 503);
+  }
+  if (!attemptAccepted) {
+    return bad("Rate limit exceeded. Please wait a moment.", 429);
+  }
 
   // ── Tier 2: Groq AI ──
   if (tier === "groq") {
@@ -202,7 +201,7 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    const model = payload.model || DEFAULT_GROQ_MODEL;
+    const model = ALLOWED_GROQ_MODELS.has(payload.model || "") ? payload.model! : DEFAULT_GROQ_MODEL;
 
     try {
       const groqResponse = await fetch("https://api.groq.com/openai/v1/chat/completions", {

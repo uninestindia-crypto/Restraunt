@@ -49,8 +49,13 @@ export class PosView {
       const select = document.getElementById('cart-table-select');
       if (select) {
         const available = tables.filter(t => t.status === 'available');
-        select.innerHTML = '<option value="">🪑 Table</option>' +
-          available.map(t => `<option value="${t.id}">T${t.number} (${t.capacity})</option>`).join('');
+        select.replaceChildren(
+          new Option('🪑 Table', ''),
+          ...available.map(t => new Option(
+            `T${String(t.number ?? '')} (${String(t.capacity ?? '')})`,
+            String(t.id ?? '')
+          ))
+        );
       }
     } catch (e) { console.error('Failed to load tables:', e); }
   }
@@ -235,26 +240,6 @@ export class PosView {
 
     let staffId = authService.getCurrentStaff()?.id || null;
     let staffName = authService.getCurrentStaff()?.name || '';
-
-    const requirePinForOrderVal = await getSetting('requirePinForOrder');
-    const requirePinForOrder = requirePinForOrderVal === 'true' || requirePinForOrderVal === true;
-
-    if (requirePinForOrder) {
-      const pin = prompt('Enter your 4-digit PIN to place order:');
-      if (!pin) {
-        showToast('PIN is required to place an order', 'warning');
-        return;
-      }
-      const staff = await authService.getStaffByPin(pin);
-      if (!staff) {
-        playSound(300, 200, 'square');
-        vibrateDevice([150]);
-        showToast('Invalid PIN code', 'error');
-        return;
-      }
-      staffId = staff.id;
-      staffName = staff.name;
-    }
 
     const orderData = {
       orderNumber,

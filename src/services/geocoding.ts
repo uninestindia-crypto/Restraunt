@@ -1,7 +1,4 @@
 // @ts-nocheck
-import { getSetting } from '../db/database';
-
-const USER_AGENT = 'TheTaste-RestaurantOS/4.0.0 (contact: nextgenos-dev@example.com)';
 
 /**
  * Request device geolocation coordinates
@@ -55,48 +52,19 @@ export function getCurrentCoordinates() {
  * @returns {Promise<{address: string, details: object}>}
  */
 export async function reverseGeocode(lat, lng) {
-  const googleKey = await getSetting('googleMapsApiKey');
-
-  if (googleKey && googleKey.trim()) {
-    try {
-      const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${googleKey}`;
-      const res = await fetch(url);
-      const data = await res.json();
-      if (data.status === 'OK' && data.results.length > 0) {
-        return {
-          address: data.results[0].formatted_address,
-          details: data.results[0]
-        };
-      }
-      throw new Error(data.error_message || data.status);
-    } catch (err) {
-      console.warn('[Geocoding] Google Reverse Geocoding failed, falling back to OSM:', err);
-    }
+  const latitude = Number(lat);
+  const longitude = Number(lng);
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+    throw new Error('Invalid location coordinates.');
   }
 
-  // Graceful fallback to free OpenStreetMap Nominatim API
-  try {
-    const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`;
-    const res = await fetch(url, {
-      headers: {
-        'Accept-Language': 'en',
-        'User-Agent': USER_AGENT
-      }
-    });
-    
-    if (!res.ok) throw new Error(`OSM Server returned status ${res.status}`);
-    const data = await res.json();
-    return {
-      address: data.display_name || `${lat.toFixed(5)}, ${lng.toFixed(5)}`,
-      details: data
-    };
-  } catch (err) {
-    console.error('[Geocoding] OSM Nominatim reverse geocode failed:', err);
-    return {
-      address: `${lat.toFixed(6)}, ${lng.toFixed(6)} (Coordinates detected)`,
-      details: { lat, lon: lng }
-    };
-  }
+  // Keep precise customer coordinates in the ordering flow instead of sending
+  // them to a third-party API from the browser. The customer supplies the
+  // deliverable street address manually.
+  return {
+    address: '',
+    details: { lat: latitude, lon: longitude, source: 'device' }
+  };
 }
 
 /**
@@ -105,42 +73,9 @@ export async function reverseGeocode(lat, lng) {
  * @returns {Promise<Array<{description: string, lat: number, lon: number, placeId: string}>>}
  */
 export async function autocompleteAddress(query) {
-  if (!query || query.trim().length < 3) return [];
-  const googleKey = await getSetting('googleMapsApiKey');
-
-  if (googleKey && googleKey.trim()) {
-    try {
-      // NOTE: Direct Google API endpoint calls from browsers trigger CORS. 
-      // If client has a maps key, we recommend loading the Google Maps script 
-      // and using AutocompleteService, but for pure HTTP fallback, we can use OSM.
-      console.log('[Geocoding] Google Maps API key detected. Querying via OSM first for simple HTTP integration...');
-    } catch (err) {
-      // ignore
-    }
-  }
-
-  // Query OpenStreetMap Nominatim search API
-  try {
-    const encodedQuery = encodeURIComponent(query);
-    const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodedQuery}&addressdetails=1&limit=5`;
-    const res = await fetch(url, {
-      headers: {
-        'Accept-Language': 'en',
-        'User-Agent': USER_AGENT
-      }
-    });
-
-    if (!res.ok) throw new Error(`OSM Server returned status ${res.status}`);
-    const data = await res.json();
-    
-    return data.map(item => ({
-      description: item.display_name,
-      lat: parseFloat(item.lat),
-      lon: parseFloat(item.lon),
-      placeId: `osm-${item.place_id}`
-    }));
-  } catch (err) {
-    console.error('[Geocoding] OSM Nominatim search failed:', err);
-    return [];
-  }
+  // Public Nominatim does not permit client-side autocomplete, and a Google
+  // web-service key must not be stored in browser settings. Manual entry is the
+  // deterministic launch-safe path until an authenticated provider is added.
+  void query;
+  return [];
 }

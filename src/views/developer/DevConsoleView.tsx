@@ -10,7 +10,7 @@
  */
 
 import { db, getSetting, setSetting } from '../../db/database';
-import { showToast } from '../../utils/helpers';
+import { showToast, escapeHtml } from '../../utils/helpers';
 
 const TABS = [
   { id: 'system', icon: 'monitoring', label: 'System Info' },
@@ -182,7 +182,10 @@ export class DevConsoleView {
     const onlineStatus = navigator.onLine ? '🟢 Online' : '🔴 Offline';
 
     const supabaseUrl = (await getSetting('supabaseUrl')) || process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-    const supabaseKey = (await getSetting('supabaseKey')) || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+    const supabaseKey = (await getSetting('supabaseKey'))
+      || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+      || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+      || '';
     const currencyCode = (await getSetting('currencyCode')) || 'INR';
     const currencySymbol = (await getSetting('currencySymbol')) || '₹';
     const taxType = (await getSetting('taxType')) || 'gst';
@@ -194,10 +197,10 @@ export class DevConsoleView {
         <h3><span class="material-symbols-rounded" style="font-size:18px;color:#10B981;">info</span> Application</h3>
         <div class="dev-row"><span class="dev-key">App Version</span><span class="dev-val">2.0.0</span></div>
         <div class="dev-row"><span class="dev-key">Platform</span><span class="dev-val">NextGenOS Restaurant OS</span></div>
-        <div class="dev-row"><span class="dev-key">Store ID</span><span class="dev-val">${storeId}</span></div>
+        <div class="dev-row"><span class="dev-key">Store ID</span><span class="dev-val">${escapeHtml(storeId)}</span></div>
         <div class="dev-row"><span class="dev-key">Network</span><span class="dev-val">${onlineStatus}</span></div>
         <div class="dev-row"><span class="dev-key">Service Worker</span><span class="dev-val">${swStatus}</span></div>
-        <div class="dev-row"><span class="dev-key">Theme</span><span class="dev-val">${theme}</span></div>
+        <div class="dev-row"><span class="dev-key">Theme</span><span class="dev-val">${escapeHtml(theme)}</span></div>
       </div>
 
       <div class="dev-card">
@@ -215,8 +218,8 @@ export class DevConsoleView {
         <h3><span class="material-symbols-rounded" style="font-size:18px;color:#F59E0B;">cloud</span> Cloud Connection</h3>
         <div class="dev-row"><span class="dev-key">Supabase URL</span><span class="dev-val">${supabaseUrl ? '✅ Configured' : '❌ Not set'}</span></div>
         <div class="dev-row"><span class="dev-key">Supabase Key</span><span class="dev-val">${supabaseKey ? '✅ Configured' : '❌ Not set'}</span></div>
-        <div class="dev-row"><span class="dev-key">Currency</span><span class="dev-val">${currencyCode} (${currencySymbol})</span></div>
-        <div class="dev-row"><span class="dev-key">Tax Type</span><span class="dev-val">${taxType}</span></div>
+        <div class="dev-row"><span class="dev-key">Currency</span><span class="dev-val">${escapeHtml(currencyCode)} (${escapeHtml(currencySymbol)})</span></div>
+        <div class="dev-row"><span class="dev-key">Tax Type</span><span class="dev-val">${escapeHtml(taxType)}</span></div>
       </div>
     `;
   }
@@ -225,9 +228,9 @@ export class DevConsoleView {
     const allSettings = await db.settings.toArray();
     const rows = allSettings.map(s => `
       <div class="dev-row" style="flex-wrap:wrap;gap:8px;">
-        <span class="dev-key" style="min-width:200px;word-break:break-all;">${s.key}</span>
-        <input class="dev-input setting-input" data-key="${s.key}" value="${String(s.value || '').replace(/"/g, '&quot;')}" style="flex:1;min-width:200px;">
-        <button class="dev-btn save-setting-btn" data-key="${s.key}" style="padding:6px 12px;font-size:0.7rem;">Save</button>
+        <span class="dev-key" style="min-width:200px;word-break:break-all;">${escapeHtml(s.key)}</span>
+        <input class="dev-input setting-input" data-key="${escapeHtml(s.key)}" value="${escapeHtml(s.value || '')}" style="flex:1;min-width:200px;">
+        <button class="dev-btn save-setting-btn" data-key="${escapeHtml(s.key)}" style="padding:6px 12px;font-size:0.7rem;">Save</button>
       </div>
     `).join('');
 
@@ -267,8 +270,8 @@ export class DevConsoleView {
     const rows = audits.map(a => `
       <div class="dev-audit-row">
         <span style="color:var(--text-muted);font-family:'JetBrains Mono',monospace;font-size:0.7rem;">${new Date(a.created_at).toLocaleString()}</span>
-        <span style="color:#10B981;font-weight:600;">${a.action}</span>
-        <span style="color:var(--text-primary);font-size:0.7rem;word-break:break-all;">${JSON.stringify(a.details || {}).slice(0, 200)}</span>
+        <span style="color:#10B981;font-weight:600;">${escapeHtml(a.action)}</span>
+        <span style="color:var(--text-primary);font-size:0.7rem;word-break:break-all;">${escapeHtml(JSON.stringify(a.details || {}).slice(0, 200))}</span>
       </div>
     `).join('');
 
@@ -317,46 +320,22 @@ export class DevConsoleView {
   }
 
   async renderAIConfig(el) {
-    const groqKey = await getSetting('groqApiKey') || '';
-    const lightningKey = await getSetting('lightningApiKey') || '';
-    const lightningEndpoint = await getSetting('lightningEndpoint') || '';
-    const groqModel = await getSetting('groqModel') || 'llama-3.3-70b-versatile';
-
     el.innerHTML = `
       <div class="dev-card">
         <h3><span class="material-symbols-rounded" style="font-size:18px;color:#F59E0B;">smart_toy</span> AI Provider Configuration</h3>
-        <div style="font-size:0.7rem;color:var(--text-muted);margin-bottom:16px;">Configure API keys for the 3-tier AI system. Keys are stored locally and sent to Edge Functions at runtime.</div>
+        <div style="font-size:0.7rem;color:var(--text-muted);margin-bottom:16px;">Provider credentials are server-managed Supabase secrets. They are never stored in or sent directly from this browser.</div>
 
         <div style="margin-bottom:20px;">
           <div style="font-weight:700;color:#10B981;font-size:0.8rem;margin-bottom:8px;">⚡ Tier 2 — Groq (Chat Assistant)</div>
-          <div class="dev-row" style="flex-direction:column;align-items:stretch;gap:8px;">
-            <label class="dev-key">API Key</label>
-            <input class="dev-input" id="ai-groq-key" type="password" value="${groqKey}" placeholder="gsk_...">
-          </div>
-          <div class="dev-row" style="flex-direction:column;align-items:stretch;gap:8px;margin-top:8px;">
-            <label class="dev-key">Model</label>
-            <select class="dev-input" id="ai-groq-model" style="cursor:pointer;">
-              <option value="llama-3.3-70b-versatile" ${groqModel === 'llama-3.3-70b-versatile' ? 'selected' : ''}>Llama 3.3 70B (Best Quality)</option>
-              <option value="llama-3.1-8b-instant" ${groqModel === 'llama-3.1-8b-instant' ? 'selected' : ''}>Llama 3.1 8B Instant (Fastest)</option>
-              <option value="mixtral-8x7b-32768" ${groqModel === 'mixtral-8x7b-32768' ? 'selected' : ''}>Mixtral 8x7B (Balanced)</option>
-            </select>
-          </div>
+          <div class="dev-row"><span class="dev-key">Status</span><span>Protected Edge Function</span></div>
         </div>
 
         <div style="margin-bottom:20px;">
           <div style="font-weight:700;color:#8B5CF6;font-size:0.8rem;margin-bottom:8px;">🧠 Tier 3 — Lightning AI (Complex Analytics)</div>
-          <div class="dev-row" style="flex-direction:column;align-items:stretch;gap:8px;">
-            <label class="dev-key">API Key</label>
-            <input class="dev-input" id="ai-lightning-key" type="password" value="${lightningKey}" placeholder="lit_...">
-          </div>
-          <div class="dev-row" style="flex-direction:column;align-items:stretch;gap:8px;margin-top:8px;">
-            <label class="dev-key">Endpoint URL</label>
-            <input class="dev-input" id="ai-lightning-endpoint" value="${lightningEndpoint}" placeholder="https://your-model.lightning.ai/predict">
-          </div>
+          <div class="dev-row"><span class="dev-key">Status</span><span>Protected Edge Function</span></div>
         </div>
 
         <div style="display:flex;gap:8px;">
-          <button class="dev-btn" id="save-ai-config">Save AI Configuration</button>
           <button class="dev-btn" id="test-groq-btn" style="border-color:rgba(16,185,129,0.25);">Test Groq</button>
           <button class="dev-btn" id="test-lightning-btn" style="border-color:rgba(139,92,246,0.25);color:#8B5CF6;">Test Lightning</button>
         </div>
@@ -434,21 +413,6 @@ export class DevConsoleView {
         this.auditPage++;
         await this.renderTabContent();
         this.bindTabEvents();
-        return;
-      }
-
-      // Save AI config
-      if (e.target.id === 'save-ai-config') {
-        const groqKey = document.getElementById('ai-groq-key')?.value?.trim() || '';
-        const groqModel = document.getElementById('ai-groq-model')?.value || 'llama-3.3-70b-versatile';
-        const lightningKey = document.getElementById('ai-lightning-key')?.value?.trim() || '';
-        const lightningEndpoint = document.getElementById('ai-lightning-endpoint')?.value?.trim() || '';
-
-        await setSetting('groqApiKey', groqKey);
-        await setSetting('groqModel', groqModel);
-        await setSetting('lightningApiKey', lightningKey);
-        await setSetting('lightningEndpoint', lightningEndpoint);
-        showToast('AI configuration saved', 'success');
         return;
       }
 

@@ -14,7 +14,7 @@
  */
 
 import { db, getSetting } from '../db/database';
-import { parseOrderItems } from '../utils/helpers';
+import { parseOrderItems, safeCurrencySymbol } from '../utils/helpers';
 
 // ── Intent Definitions with Tier Routing ──
 
@@ -43,8 +43,6 @@ const INTENTS = [
 class AIService {
   constructor() {
     this.conversationHistory = [];
-    this._groqKeyCache = null;
-    this._lightningKeyCache = null;
     this._configLoaded = false;
   }
 
@@ -52,24 +50,20 @@ class AIService {
 
   async loadConfig() {
     if (this._configLoaded) return;
-    this._groqKeyCache = await getSetting('groqApiKey') || '';
-    this._lightningKeyCache = await getSetting('lightningApiKey') || '';
     this._configLoaded = true;
   }
 
   invalidateConfigCache() {
     this._configLoaded = false;
-    this._groqKeyCache = null;
-    this._lightningKeyCache = null;
   }
 
-  get isGroqAvailable() { return Boolean(this._groqKeyCache); }
-  get isLightningAvailable() { return Boolean(this._lightningKeyCache); }
+  get isGroqAvailable() { return true; }
+  get isLightningAvailable() { return true; }
 
   // ── Formatting Helpers ──
 
   formatCurrency(amount) {
-    const symbol = localStorage.getItem('app_currency_symbol') || '₹';
+    const symbol = safeCurrencySymbol(localStorage.getItem('app_currency_symbol'), '₹');
     const code = localStorage.getItem('app_currency_code') || 'INR';
     const locale = code === 'INR' ? 'en-IN' : (code === 'EUR' ? 'de-DE' : (code === 'GBP' ? 'en-GB' : (code === 'AUD' ? 'en-AU' : (code === 'CAD' ? 'en-CA' : 'en-US'))));
     return symbol + Number(amount || 0).toLocaleString(locale, { minimumFractionDigits: 0, maximumFractionDigits: 0 });
@@ -116,7 +110,7 @@ class AIService {
       // Tier 2 — Groq AI: try cloud, fallback to local
       if (intent.tier === 'groq') {
         const aiEnabled = await getSetting('enableAIChat');
-        if (this.isGroqAvailable && aiEnabled !== 'false') {
+        if (aiEnabled !== 'false') {
           try {
             return await this.queryGroq(query, intent, queryEmbedding);
           } catch (err) {
@@ -130,7 +124,7 @@ class AIService {
       // Tier 3 — Lightning AI: try cloud, fallback to local
       if (intent.tier === 'lightning') {
         const analyticsEnabled = await getSetting('enableAIAnalytics');
-        if (this.isLightningAvailable && analyticsEnabled !== 'false') {
+        if (analyticsEnabled !== 'false') {
           try {
             return await this.queryLightning(query, intent);
           } catch (err) {
@@ -157,13 +151,9 @@ class AIService {
   // ── Cloud AI Callers ──
 
   async queryGroq(query, intent, queryEmbedding = null) {
-    const groqApiKey = this._groqKeyCache;
-    const model = await getSetting('groqModel') || 'llama-3.3-70b-versatile';
-
-    // Gather business context
     const context = await this.gatherBusinessContext();
 
-    let systemPrompt = `You are an AI assistant for "${context.restaurantName || 'The Taste'}" restaurant. 
+    const systemPrompt = `You are an AI assistant for "${context.restaurantName || 'The Taste'}" restaurant.
 You help restaurant staff with business insights, analytics, and operational questions.
 Respond concisely in markdown. Use bold, emojis, and bullet points for readability.
 Currency: ${context.currency}. Today: ${new Date().toLocaleDateString()}.
@@ -179,110 +169,28 @@ Current business data:
       this.conversationHistory = this.conversationHistory.slice(-8);
     }
 
-    // Try online secure Cloud RAG proxy first if authenticated
-    try {
-      const { getCloudSession } = await import('./supabaseClient');
-      const session = await getCloudSession();
-      if (session) {
-        console.log('[AI] Cloud session active, routing through secure Edge RAG function...');
-        const response = await this.queryCloudAIChat(query, [
-          { role: 'system', content: systemPrompt },
-          ...this.conversationHistory
-        ], intent, queryEmbedding);
-        return response;
-      }
-    } catch (err) {
-      console.warn('[AI] Secure Cloud RAG call failed, falling back to direct Groq:', err.message);
-    }
+    return this.queryCloudAIChat(query, [
+      { role: 'system', content: systemPrompt },
+      ...this.conversationHistory
+    ], intent, queryEmbedding);
 
-    // Offline / Local direct API call using local key
-    let localRetrievedContext = '';
-    if (queryEmbedding && db.localEmbeddings) {
-      try {
-        const allLocal = await db.localEmbeddings.toArray();
-        if (allLocal.length > 0) {
-          const matched = allLocal.map(doc => ({
-            ...doc,
-            similarity: this.cosineSimilarity(queryEmbedding, doc.vector)
-          }))
-          .filter(doc => doc.similarity > 0.50)
-          .sort((a, b) => b.similarity - a.similarity)
-          .slice(0, 3);
-
-          if (matched.length > 0) {
-            localRetrievedContext = matched
-              .map(doc => `[Source: ${doc.source || 'Local Document'}] ${doc.content}`)
-              .join('\n\n');
-            console.log(`[AI] Offline Local RAG: retrieved ${matched.length} document(s).`);
-          }
-        }
-      } catch (err) {
-        console.warn('[AI] Offline Local RAG retrieval failed:', err);
-      }
-    }
-
-    if (localRetrievedContext) {
-      systemPrompt += `\n\n--- OFFLINE RETRIEVED CONTEXT (RAG) ---\n${localRetrievedContext}\n---------------------------------------\nAnswer the user's question using the retrieved context above, citing the source where appropriate.`;
-    }
-
-    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${groqApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model,
-        messages: [
-          { role: 'system', content: systemPrompt },
-          ...this.conversationHistory,
-        ],
-        temperature: 0.7,
-        max_tokens: 1024,
-      }),
-    });
-
-    if (!response.ok) {
-      const errBody = await response.text();
-      throw new Error(`Groq API error ${response.status}: ${errBody.slice(0, 200)}`);
-    }
-
-    const data = await response.json();
-    const assistantMessage = data.choices?.[0]?.message?.content || 'No response from Groq.';
-
-    this.conversationHistory.push({ role: 'assistant', content: assistantMessage });
-
-    return this.formatResponse('text', assistantMessage, null,
-      ['📊 Today\'s Summary', '🏆 Best Sellers', '📈 Forecast Tomorrow'], 'groq'
-    );
   }
 
   async queryLightning(query, intent) {
-    const lightningKey = this._lightningKeyCache;
-    const endpoint = await getSetting('lightningEndpoint') || '';
-
-    if (!endpoint) throw new Error('Lightning AI endpoint not configured');
-
+    const { getSupabaseClient } = await import('./supabaseClient');
+    const client = await getSupabaseClient({ persistSession: true });
+    if (!client) throw new Error('Supabase client not available');
     const context = await this.gatherBusinessContext();
-
-    const response = await fetch(endpoint, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${lightningKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
+    const { data, error } = await client.functions.invoke('ai-chat', {
+      body: {
+        tier: 'lightning',
         query,
         intent: intent.id,
         context,
-      }),
+      },
     });
-
-    if (!response.ok) {
-      throw new Error(`Lightning API error ${response.status}`);
-    }
-
-    const data = await response.json();
+    if (error) throw error;
+    if (!data?.ok) throw new Error(data?.error || 'Lightning AI cloud function failed');
     const content = data.result || data.content || data.message || JSON.stringify(data);
 
     return this.formatResponse('text', content, data,
@@ -369,7 +277,7 @@ Current business data:
       .join(', ');
 
     const restaurantName = localStorage.getItem('app_restaurant_name') || await getSetting('restaurantName') || 'The Taste';
-    const currency = `${localStorage.getItem('app_currency_symbol') || '₹'} ${localStorage.getItem('app_currency_code') || 'INR'}`;
+    const currency = `${safeCurrencySymbol(localStorage.getItem('app_currency_symbol'), '₹')} ${String(localStorage.getItem('app_currency_code') || 'INR').replace(/[^A-Za-z]/g, '').slice(0, 5) || 'INR'}`;
 
     return {
       restaurantName,
@@ -386,40 +294,26 @@ Current business data:
   // ── Connection Testers ──
 
   async testGroqConnection() {
-    await this.loadConfig();
-    if (!this._groqKeyCache) return false;
     try {
-      const resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${this._groqKeyCache}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'llama-3.1-8b-instant',
-          messages: [{ role: 'user', content: 'Say "connected" in one word.' }],
-          max_tokens: 10,
-        }),
+      const { getSupabaseClient } = await import('./supabaseClient');
+      const client = await getSupabaseClient({ persistSession: true });
+      if (!client) return false;
+      const { data, error } = await client.functions.invoke('ai-chat', {
+        body: { tier: 'groq', messages: [{ role: 'user', content: 'Reply with connected.' }] },
       });
-      return resp.ok;
+      return !error && Boolean(data?.ok);
     } catch { return false; }
   }
 
   async testLightningConnection() {
-    await this.loadConfig();
-    if (!this._lightningKeyCache) return false;
-    const endpoint = await getSetting('lightningEndpoint');
-    if (!endpoint) return false;
     try {
-      const resp = await fetch(endpoint, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${this._lightningKeyCache}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ query: 'ping', intent: 'test' }),
+      const { getSupabaseClient } = await import('./supabaseClient');
+      const client = await getSupabaseClient({ persistSession: true });
+      if (!client) return false;
+      const { data, error } = await client.functions.invoke('ai-chat', {
+        body: { tier: 'lightning', query: 'ping', intent: 'test', context: {} },
       });
-      return resp.ok;
+      return !error && Boolean(data?.ok);
     } catch { return false; }
   }
 

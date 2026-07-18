@@ -178,11 +178,14 @@ export class Router {
           <div class="empty-state" style="height: 80vh;">
             <span class="material-symbols-rounded">error</span>
             <p>Something went wrong loading this page.</p>
-            <button class="btn btn-primary" onclick="location.hash='#/pos'" style="margin-top: 16px;">
+            <button class="btn btn-primary" id="route-error-home" style="margin-top: 16px;">
               Go to POS
             </button>
           </div>
         `;
+        this.container.querySelector('#route-error-home')?.addEventListener('click', () => {
+          window.location.hash = '#/pos';
+        });
       }
     }
 

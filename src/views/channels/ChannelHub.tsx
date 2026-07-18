@@ -10,7 +10,7 @@
  */
 
 import { db } from '../../db/database';
-import { formatCurrency } from '../../utils/helpers';
+import { escapeHtml, formatCurrency, parseOrderItems } from '../../utils/helpers';
 
 const CHANNELS = [
   { id: 'pos', name: 'POS Counter', icon: 'point_of_sale', status: 'active', color: '#FF6B35' },
@@ -69,24 +69,25 @@ export class ChannelHub {
             <div style="display:flex;flex-direction:column;gap:8px;">
               ${recentOrders.length === 0 ? '<div style="text-align:center;padding:40px;color:var(--text-muted);font-size:var(--text-xs);">No orders yet</div>' :
                 recentOrders.map(o => {
-                  const items = typeof o.items === 'string' ? JSON.parse(o.items) : (o.items || []);
+                  const items = parseOrderItems(o.items);
                   const channel = o.channel || 'pos';
                   const chCfg = CHANNELS.find(c => c.id === channel) || CHANNELS[0];
                   const statusColor = o.status === 'completed' ? '#10B981' : o.status === 'preparing' ? '#F59E0B' : o.status === 'ready' ? '#3B82F6' : 'var(--text-muted)';
                   const timeAgo = this.timeAgo(o.createdAt);
+                  const orderToken = o.displayToken || String(o.orderNumber || '').split('-').pop() || '—';
                   return `
                     <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:rgba(255,255,255,0.01);border:1px solid var(--border-glass);border-radius:12px;">
                       <span class="material-symbols-rounded" style="font-size:18px;color:${chCfg.color};">${chCfg.icon}</span>
                       <div style="flex:1;min-width:0;">
                         <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
-                          <span style="font-size:var(--text-xs);font-weight:700;color:var(--text-primary);">#${o.displayToken || o.orderNumber.split('-').pop()}</span>
+                          <span style="font-size:var(--text-xs);font-weight:700;color:var(--text-primary);">#${escapeHtml(orderToken)}</span>
                           <span style="font-size:0.55rem;padding:1px 6px;border-radius:4px;font-weight:700;color:${chCfg.color};background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.06);">${chCfg.name}</span>
                         </div>
-                        <div style="font-size:0.65rem;color:var(--text-muted);margin-top:2px;">${items.length} items · ${timeAgo}</div>
+                        <div style="font-size:0.65rem;color:var(--text-muted);margin-top:2px;">${items.length} items · ${escapeHtml(timeAgo)}</div>
                       </div>
                       <div style="text-align:right;flex-shrink:0;">
                         <div style="font-size:var(--text-xs);font-weight:700;color:var(--color-primary);">${formatCurrency(o.total || 0)}</div>
-                        <div style="font-size:0.55rem;color:${statusColor};font-weight:700;text-transform:uppercase;margin-top:2px;">${o.status || 'new'}</div>
+                        <div style="font-size:0.55rem;color:${statusColor};font-weight:700;text-transform:uppercase;margin-top:2px;">${escapeHtml(o.status || 'new')}</div>
                       </div>
                     </div>`;
                 }).join('')}

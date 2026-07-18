@@ -24,7 +24,6 @@ export function mapStaffForAdminFunction(staff) {
     cloudUserId: staff?.cloudUserId || null,
     name: String(staff?.name || '').trim(),
     role: normalizeRole(staff?.role),
-    pinHash: staff?.pinHash || null,
     allowExpress: staff?.allowExpress === 1 || staff?.allowExpress === true,
     isActive: staff?.isActive === undefined ? true : isActive(staff.isActive),
     createdAt: staff?.createdAt || null,
@@ -88,11 +87,4 @@ export async function lookupAuthUser(email) {
     return { success: false, message: 'A valid email address is required.' };
   }
   return invokeStaffAdmin('lookup-auth-user', { email: email.toLowerCase().trim() });
-}
-
-export async function onlineLookupStaffByPin(pin) {
-  if (!/^\d{4,8}$/.test(pin || '')) {
-    return { success: false, message: 'A valid PIN is required.' };
-  }
-  return invokeStaffAdmin('login-by-pin', { pin });
 }

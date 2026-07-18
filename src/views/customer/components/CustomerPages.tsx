@@ -4,6 +4,13 @@ import { formatCurrency, formatDateTime, parseOrderItems } from '../../../utils/
 
 const Icon = ({ children }) => <span className="material-symbols-rounded" aria-hidden="true">{children}</span>;
 
+function supportPhoneLinks(phone = '') {
+  const digits = String(phone).replace(/\D/g, '');
+  const normalized = digits.length === 10 ? `91${digits}` : digits;
+  if (!/^\d{11,15}$/.test(normalized)) return null;
+  return { telephone: `tel:+${normalized}`, whatsapp: `https://wa.me/${normalized}` };
+}
+
 export function CustomerPageHeader({ eyebrow, title, copy, onBack }) {
   return (
     <header className="customer-page-hero">
@@ -46,11 +53,12 @@ export function AboutPage({ onBack }) {
   return <main className="customer-page"><CustomerPageHeader eyebrow="Our story" title="Comfort food, cooked with character" copy="The Taste brings bold Indo-Chinese flavours to Patna with the warmth and consistency of a neighbourhood favourite." onBack={onBack} /><section className="customer-story-grid"><article><span>01</span><h2>Wok-fresh</h2><p>Every dish is prepared to order for aroma, texture, and heat that survives the journey home.</p></article><article><span>02</span><h2>Honest value</h2><p>Generous portions, clear pricing, and familiar food made without unnecessary theatre.</p></article><article><span>03</span><h2>Made locally</h2><p>We are rooted in Kumhrar and designed around the way our neighbourhood actually eats.</p></article></section></main>;
 }
 
-export function CateringPage({ onBack }) {
-  return <main className="customer-page"><CustomerPageHeader eyebrow="Catering" title="Big-table food without the fuss" copy="Office lunches, family celebrations, college events, and everything that deserves a generous spread." onBack={onBack} /><section className="customer-contact-panel"><div><Icon>celebration</Icon><h2>Tell us about your gathering</h2><p>Share your date, guest count, preferences, and budget. Our team will help shape a menu that travels well.</p></div><a href="tel:+910000000000">Call the restaurant <Icon>call</Icon></a></section></main>;
+export function CateringPage({ onBack, supportPhone = '' }) {
+  const links = supportPhoneLinks(supportPhone);
+  return <main className="customer-page"><CustomerPageHeader eyebrow="Catering" title="Big-table food without the fuss" copy="Office lunches, family celebrations, college events, and everything that deserves a generous spread." onBack={onBack} /><section className="customer-contact-panel"><div><Icon>celebration</Icon><h2>Tell us about your gathering</h2><p>Share your date, guest count, preferences, and budget. Our team will help shape a menu that travels well.</p></div>{links ? <a href={links.telephone}>Call the restaurant <Icon>call</Icon></a> : <p>Contact details will appear here once the restaurant publishes them.</p>}</section></main>;
 }
 
-export function SupportPage({ onBack }) {
+export function SupportPage({ onBack, supportPhone = '' }) {
   const faqs = [
     ['Can I change an order?', 'Contact the restaurant immediately after placing it. Changes depend on kitchen status.'],
     ['How do I track my order?', 'Your confirmation screen shows the latest status as the kitchen and delivery team update it.'],
@@ -58,7 +66,8 @@ export function SupportPage({ onBack }) {
     ['Do you show allergens?', 'Ask the restaurant before ordering if you have allergies. Allergen labels are being prepared for every menu item.'],
     ['What is your cancellation policy?', 'Cancellation depends on preparation status. Orders already cooking may not be cancellable.'],
   ];
-  return <main className="customer-page"><CustomerPageHeader eyebrow="Help centre" title="We are here when you need us" copy="Quick answers and a direct line to the restaurant—no maze of support screens." onBack={onBack} /><section className="customer-faq-list">{faqs.map(([q, a]) => <details key={q}><summary>{q}<Icon>add</Icon></summary><p>{a}</p></details>)}</section><div className="customer-support-actions"><a href="tel:+910000000000"><Icon>call</Icon> Call us</a><a href="https://wa.me/910000000000"><Icon>chat</Icon> WhatsApp</a></div></main>;
+  const links = supportPhoneLinks(supportPhone);
+  return <main className="customer-page"><CustomerPageHeader eyebrow="Help centre" title="We are here when you need us" copy="Quick answers and a direct line to the restaurant—no maze of support screens." onBack={onBack} /><section className="customer-faq-list">{faqs.map(([q, a]) => <details key={q}><summary>{q}<Icon>add</Icon></summary><p>{a}</p></details>)}</section>{links ? <div className="customer-support-actions"><a href={links.telephone}><Icon>call</Icon> Call us</a><a href={links.whatsapp}><Icon>chat</Icon> WhatsApp</a></div> : <p>Contact details will appear here once the restaurant publishes them.</p>}</main>;
 }
 
 function EmptyAccountCard({ icon, title, copy, action, onAction }) {

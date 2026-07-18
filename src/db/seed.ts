@@ -1,6 +1,5 @@
 // @ts-nocheck
 import { db, generateLocalUuid, getDisplayToken } from './database';
-import { hashPin } from '../utils/crypto';
 
 /**
  * Seeds the database with initial data if empty.
@@ -10,16 +9,14 @@ import { hashPin } from '../utils/crypto';
 export async function seedDatabase(options = {}) {
   const { publicOnly = false } = options;
 
-  // ── Cloud-First Hydration (with retry) ────────────────────────
-  // If Supabase is configured and has data, hydrate from cloud instead of seeding.
-  // This is the KEY fix for multi-device consistency.
-  // We retry up to 3 times because navigator.onLine can be briefly false on mobile
-  // during startup, causing the initial check to fail silently.
+  // Staff startup remains cloud-first for cross-device consistency. Public
+  // startup must never block first paint on network retries; CustomerApp
+  // refreshes its catalog from Supabase after rendering the local cache.
   const MAX_HYDRATION_RETRIES = 3;
   const HYDRATION_RETRY_DELAY_MS = 1500;
   let cloudHydrated = false;
 
-  for (let attempt = 1; attempt <= MAX_HYDRATION_RETRIES; attempt++) {
+  for (let attempt = 1; !publicOnly && attempt <= MAX_HYDRATION_RETRIES; attempt++) {
     try {
       // Wait for network readiness on retry attempts
       if (attempt > 1) {
@@ -38,7 +35,7 @@ export async function seedDatabase(options = {}) {
         await fullPull({ publicOnly });
         cloudHydrated = true;
         // Still run migrations below, but skip seed data
-        await runMigrations({ skipWeakPinCleanup: true });
+        await runMigrations();
         if (!publicOnly) {
           await ensureDefaultTables();
         }
@@ -56,7 +53,7 @@ export async function seedDatabase(options = {}) {
     }
   }
 
-  // Run data migrations (PIN hashing, UPI ID update) on the normal seed path too
+  // Run local compatibility cleanup on the normal seed path too.
   await runMigrations();
 
   if (!publicOnly) {
@@ -226,9 +223,9 @@ export async function seedDatabase(options = {}) {
     const defaultSettings = [
       { key: 'restaurantName', value: 'The Taste' },
       { key: 'restaurantTagline', value: 'Chinese Food — Fresh & Reasonable' },
-      { key: 'restaurantPhone', value: '+91 8809696025' },
+      { key: 'restaurantPhone', value: '' },
       { key: 'restaurantAddress', value: 'Sandalpur Road, Kumhrar, Patna, Bihar' },
-      { key: 'upiId', value: 'paytmqr6zfcsx@ptys' },
+      { key: 'upiId', value: '' },
       { key: 'upiName', value: 'The Taste' },
       { key: 'gstPercent', value: '5' },
       { key: 'printerWidth', value: '58' },
@@ -392,83 +389,29 @@ export async function seedDatabase(options = {}) {
 }
 
 /**
- * Run data migrations (PIN hashing, UPI ID update).
+ * Run local compatibility cleanup and dynamic setting migrations.
  * Extracted so it can be called from both cloud-first and normal seed paths.
  */
-async function runMigrations(options = {}) {
+async function runMigrations() {
   try {
-    const staffCount = await db.staff.count();
-    if (staffCount > 0) {
-      const staffMembers = await db.staff.toArray();
-      for (const staff of staffMembers) {
-        if (staff.pin && !staff.pinHash) {
-          await db.staff.update(staff.id, {
-            pinHash: await hashPin(staff.pin),
-            pin: undefined,
-            isSynced: 0
-          });
-        }
+    await db.settings.bulkDelete(['adminPin', 'adminPinHash', 'requirePinForOrder']);
+    const staffMembers = await db.staff.toArray();
+    for (const staff of staffMembers) {
+      if (staff.pin || staff.pinHash) {
+        await db.staff.update(staff.id, { pin: undefined, pinHash: undefined });
       }
     }
-
-    const legacyAdminPin = await db.settings.get('adminPin');
-    const adminPinHash = await db.settings.get('adminPinHash');
-    if (legacyAdminPin?.value && !adminPinHash?.value && legacyAdminPin.value !== '1234') {
-      await db.settings.put({ key: 'adminPinHash', value: await hashPin(legacyAdminPin.value) });
-      await db.settings.delete('adminPin');
-    }
-
-    // ── Weak PIN Audit (non-destructive) ─────────────────────────
-    // Log a warning for staff using the insecure default PIN '1234',
-    // but do NOT deactivate them here. Deactivation caused a boot-loop
-    // where every new device lost its only owner and showed FirstRunSetup.
-    // The block is enforced only in FirstRunSetup (which rejects '1234').
-    if (!options?.skipWeakPinCleanup) {
-      try {
-        const weakHash = await hashPin('1234');
-        const weakStaff = await db.staff.where('pinHash').equals(weakHash).toArray();
-        const activeOwnerCount = await db.staff
-          .where('role')
-          .equals('owner')
-          .and(s => s.isActive === 1 || s.isActive === true)
-          .count();
-
-        for (const s of weakStaff) {
-          if (s.isActive === true || s.isActive === 1) {
-            // Only deactivate if there are OTHER active owners to fall back on
-            if (s.role === 'owner' && activeOwnerCount <= 1) {
-              console.warn(`[Seed] Owner "${s.name}" (id=${s.id}) uses weak PIN '1234' but is the ONLY active owner. Skipping deactivation to prevent lockout.`);
-            } else {
-              console.warn(`[Seed] Deactivating staff "${s.name}" (id=${s.id}) — insecure default PIN '1234'.`);
-              await db.staff.update(s.id, { isActive: 0, pinHash: '', isSynced: 0 });
-            }
-          }
-        }
-      } catch (weakErr) {
-        console.error('[Seed] Weak PIN audit failed:', weakErr);
-      }
-    }
-
-    // Clean up the legacy adminPin='1234' setting if it's still hanging around
-    try {
-      const legacyDefault = await db.settings.get('adminPin');
-      if (legacyDefault?.value === '1234') {
-        await db.settings.delete('adminPin');
-      }
-    } catch (e) { /* non-critical */ }
 
     // Dynamic UPI ID Migration
     const currentUpiIdSetting = await db.settings.get('upiId');
     if (!currentUpiIdSetting || currentUpiIdSetting.value === 'thetaste@upi' || currentUpiIdSetting.value === '') {
-      await db.settings.put({ key: 'upiId', value: 'paytmqr6zfcsx@ptys' });
-      console.log('[Seed] UPI ID successfully migrated to paytmqr6zfcsx@ptys');
+      await db.settings.put({ key: 'upiId', value: '' });
     }
 
     // Dynamic Store Details Migration
     const phoneSetting = await db.settings.get('restaurantPhone');
     if (!phoneSetting || phoneSetting.value === '') {
-      await db.settings.put({ key: 'restaurantPhone', value: '+91 8809696025' });
-      console.log('[Seed] Restaurant phone successfully updated.');
+      await db.settings.put({ key: 'restaurantPhone', value: '' });
     }
     const addressSetting = await db.settings.get('restaurantAddress');
     if (!addressSetting || addressSetting.value === '' || addressSetting.value.includes('Kolkata')) {

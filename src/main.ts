@@ -27,7 +27,7 @@ import { router } from './router';
 // Telemetry & Observability
 import { telemetry } from './services/telemetry';
 
-import { showToast } from './utils/helpers';
+import { showToast, escapeHtml, safeCurrencySymbol } from './utils/helpers';
 
 // NextGenOS
 import { printConsoleSignature, injectBuildGlobal, performVersionGate, checkForUpdateAndGate } from './utils/watermark';
@@ -153,7 +153,7 @@ class App {
         const appTaxType = await db.settings.get('taxType');
         const appTaxLabel = await db.settings.get('taxLabel');
         
-        localStorage.setItem('app_currency_symbol', appCurrencySymbol ? appCurrencySymbol.value : '₹');
+        localStorage.setItem('app_currency_symbol', safeCurrencySymbol(appCurrencySymbol?.value, '₹'));
         localStorage.setItem('app_currency_code', appCurrencyCode ? appCurrencyCode.value : 'INR');
         localStorage.setItem('app_tax_type', appTaxType ? appTaxType.value : 'GST');
         localStorage.setItem('app_tax_label', appTaxLabel ? appTaxLabel.value : 'GST');
@@ -201,8 +201,11 @@ class App {
         window.location.hash = defaultFallback;
       }
 
-      // Public customers only need catalog data. Staff/admin demo data is seeded on staff entry.
-      await seedDatabase({ publicOnly: isPublicEntry });
+      // Seed only the public offline catalog before first paint. Staff data is
+      // hydrated only after Supabase has verified an active cloud session.
+      if (isPublicEntry) {
+        await seedDatabase({ publicOnly: true });
+      }
 
       // Hide loading screen
       this.hideLoadingScreen();
@@ -237,95 +240,20 @@ class App {
         return;
       }
 
+      // Render the cloud login immediately. Session restoration may require a
+      // network membership check and must not hold the sign-in UI hostage.
+      await this.showLogin();
       const authService = await this.getAuthService();
 
-      // Check for persistent session first (both staff PIN, and Supabase Auth cloud user)
-      // This ensures that on a new device, we restore the cloud session first which pulls
-      // the latest synced staff members before deciding to show FirstRunSetup.
-      let autoLoggedIn = false;
       try {
         const staff = await authService.restoreSession();
         if (staff && staff.role !== 'customer') {
           await this.onLoginSuccess(staff);
-          autoLoggedIn = true;
+          return;
         }
       } catch (e) {
         console.error('[App] Auto-login failed:', e);
       }
-
-      if (autoLoggedIn) {
-        return;
-      }
-
-      // Verify if we have an active owner in the local database.
-      // If we don't, attempt a last-resort cloud pull before deciding what to show.
-      let activeOwner = await db.staff
-        .where('role')
-        .equals('owner')
-        .and(staff => staff.isActive === 1 || staff.isActive === true)
-        .first();
-
-      if (!activeOwner) {
-        // ── Last-Resort Cloud Staff Pull ──────────────────────────
-        // The seed-phase hydration might have failed (timing, offline, etc).
-        // Before deciding what to show, try one more direct cloud pull.
-        try {
-          if (navigator.onLine) {
-            console.log('[App] No local owner found. Attempting direct cloud staff pull...');
-            const { getSupabaseClient } = await import('./services/supabaseClient');
-            const client = await getSupabaseClient({ persistSession: true });
-            if (client) {
-              const storeId = localStorage.getItem('store_id') || 'the-taste';
-              const { data: cloudStaff, error } = await client
-                .from('staff')
-                .select('*')
-                .eq('store_id', storeId)
-                .eq('is_active', true);
-
-              if (!error && cloudStaff && cloudStaff.length > 0) {
-                console.log(`[App] Found ${cloudStaff.length} active staff in cloud. Hydrating...`);
-                for (const row of cloudStaff) {
-                  const localStaff = {
-                    id: row.id,
-                    cloudUserId: row.auth_user_id || null,
-                    name: row.name,
-                    role: row.role,
-                    pinHash: row.pin_hash,
-                    allowExpress: row.allow_express ? 1 : 0,
-                    isActive: row.is_active ? 1 : 0,
-                    createdAt: row.created_at,
-                    updatedAt: row.updated_at,
-                    isSynced: 1
-                  };
-                  await db.staff.put(localStaff);
-                }
-
-                // Re-check for owner after hydration
-                activeOwner = await db.staff
-                  .where('role')
-                  .equals('owner')
-                  .and(staff => staff.isActive === 1 || staff.isActive === true)
-                  .first();
-
-                if (activeOwner) {
-                  console.log(`[App] Cloud owner "${activeOwner.name}" hydrated successfully. Showing login.`);
-                }
-              }
-            }
-          }
-        } catch (cloudErr) {
-          console.warn('[App] Last-resort cloud staff pull failed:', cloudErr.message);
-        }
-      }
-
-      if (!activeOwner) {
-        console.warn('[App] No active owner found. Showing login page.');
-        this.showLogin();
-        return;
-      }
-
-      // Show login screen
-      this.showLogin();
     } catch (error) {
       console.error('Failed to initialize app:', error);
       this.showFatalError(error);
@@ -439,13 +367,17 @@ class App {
             <span class="material-symbols-rounded" style="font-size: 48px; color: var(--color-error, #EF4444);">error</span>
             <h3 style="color: var(--text-primary); font-size: 1.25rem;">Failed to load staff console</h3>
             <p style="color: var(--text-muted); max-width: 400px; font-size: 0.875rem;">
-              ${error.message || 'An unexpected error occurred while initializing the user interface.'}
+              ${escapeHtml(error.message || 'An unexpected error occurred while initializing the user interface.')}
             </p>
-            <button class="btn btn-primary" onclick="localStorage.removeItem('auth_staff_pin'); localStorage.removeItem('auth_staff_email'); location.reload();" style="margin-top: 8px;">
+            <button class="btn btn-primary" id="staff-console-retry" style="margin-top: 8px;">
               Reset Session & Retry
             </button>
           </div>
         `;
+        mainEl.querySelector('#staff-console-retry')?.addEventListener('click', () => {
+          localStorage.removeItem('auth_staff_email');
+          window.location.reload();
+        });
       }
     }
   }
@@ -1083,15 +1015,16 @@ class App {
           <div class="loading-brand" style="margin-bottom: 16px;">⚠️</div>
           <h2 style="color: #FF1744; margin-bottom: 8px;">Failed to Start</h2>
           <p style="color: #94A3B8; margin-bottom: 20px; max-width: 300px;">
-            ${error.message || 'An unexpected error occurred'}
+            ${escapeHtml(error.message || 'An unexpected error occurred')}
           </p>
-          <button onclick="location.reload()" 
+          <button id="fatal-error-retry"
             style="padding: 12px 24px; background: #FF6B35; color: white; border: none; border-radius: 10px; font-size: 16px; cursor: pointer;">
             Retry
           </button>
           <div style="margin-top: 16px; font-size: 0.6rem; color: rgba(148,163,184,0.4);">NextGenOS Restaurant OS v2.0.0</div>
         </div>
       `;
+      loadingScreen.querySelector('#fatal-error-retry')?.addEventListener('click', () => window.location.reload());
     }
   }
 }

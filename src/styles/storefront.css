@@ -2158,6 +2158,15 @@
   margin-top: 4px;
 }
 
+/* Mobile already has a persistent Cart destination in the bottom navigation.
+   Hiding the duplicate floating control prevents it from sitting underneath
+   that navigation and leaves a single, reachable cart action. */
+@media (max-width: 800px) {
+  .store-floating-cart {
+    display: none;
+  }
+}
+
 .customer-tracking-panel {
   width: min(760px, calc(100% - 24px));
   margin: 0 auto;

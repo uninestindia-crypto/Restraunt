@@ -3,7 +3,7 @@
  * CartPanel — Order cart sidebar with items, totals, and actions
  */
 
-import { formatCurrencyShort, formatCurrency } from '../../utils/helpers';
+import { formatCurrencyShort, formatCurrency, escapeHtml } from '../../utils/helpers';
 import { getSetting } from '../../db/database';
 
 export class CartPanel {
@@ -123,23 +123,23 @@ export class CartPanel {
             <div class="cart-item-details">
               <div class="cart-item-name">
                 ${item.isVeg ? '<span class="badge-veg" style="transform: scale(0.8);"></span>' : '<span class="badge-nonveg" style="transform: scale(0.8);"></span>'}
-                ${item.itemName}
+                ${escapeHtml(item.itemName)}
               </div>
-              <div class="cart-item-price">${formatCurrencyShort(item.price)} each</div>
-              ${item.notes ? `<div class="cart-item-notes">${item.notes}</div>` : ''}
+              <div class="cart-item-price">${escapeHtml(formatCurrencyShort(item.price))} each</div>
+              ${item.notes ? `<div class="cart-item-notes">${escapeHtml(item.notes)}</div>` : ''}
             </div>
             <div class="cart-item-actions">
               <div class="stepper">
                 <button class="stepper-minus" data-index="${index}" aria-label="Decrease quantity">
                   <span class="material-symbols-rounded" style="font-size: 18px;">remove</span>
                 </button>
-                <span class="stepper-count">${item.quantity}</span>
+                <span class="stepper-count">${escapeHtml(item.quantity)}</span>
                 <button class="stepper-plus" data-index="${index}" aria-label="Increase quantity">
                   <span class="material-symbols-rounded" style="font-size: 18px;">add</span>
                 </button>
               </div>
             </div>
-            <div class="cart-item-total">${formatCurrencyShort(item.price * item.quantity)}</div>
+            <div class="cart-item-total">${escapeHtml(formatCurrencyShort(item.price * item.quantity))}</div>
             <button class="cart-item-delete" data-index="${index}" aria-label="Remove item">
               <span class="material-symbols-rounded" style="font-size: 18px;">close</span>
             </button>
@@ -163,7 +163,7 @@ export class CartPanel {
           <span>${formatCurrency(subtotal)}</span>
         </div>
         <div class="cart-summary-row">
-          <span>${this.taxLabel} (${this.gstPercent}%)</span>
+          <span>${escapeHtml(this.taxLabel)} (${escapeHtml(this.gstPercent)}%)</span>
           <span>${formatCurrency(tax)}</span>
         </div>
         <div class="cart-summary-row summary-total">

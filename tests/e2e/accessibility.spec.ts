@@ -4,7 +4,7 @@ import { expect, test } from '@playwright/test';
 
 test('public ordering page has no critical accessibility violations', async ({ page }) => {
   await page.goto('/#/self-order');
-  await expect(page.locator('header div').filter({ hasText: /^THE TASTE$/ }).last()).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'The Taste', level: 1 })).toBeVisible();
 
   const results = await new AxeBuilder({ page })
     .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])

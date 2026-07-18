@@ -1,11 +1,9 @@
 // @ts-nocheck
 import React, { useState, useEffect, useRef } from 'react';
 import { createRoot } from 'react-dom/client';
-import { db, getSetting } from '../../db/database';
+import { db } from '../../db/database';
 import { formatCurrency, showToast, playSound, vibrateDevice } from '../../utils/helpers';
-import { authService, CLOUD_REQUIRED_ROLES } from '../../services/auth';
-import { canUnlockAdminPin } from '../../services/authGuards';
-import { hashPin } from '../../utils/crypto';
+import { authService } from '../../services/auth';
 import { globalStore } from '../../store/Store';
 
 // Views
@@ -54,7 +52,7 @@ function StaffManager() {
     fetchStaff();
   }, []);
 
-  const handleRoleChange = async (staffId: number, newRole: string, currentRole: string, name: string, pinHash: string) => {
+  const handleRoleChange = async (staffId: number, newRole: string, currentRole: string, name: string) => {
     if (currentRole === newRole) return;
 
     if (currentRole === 'owner' && newRole !== 'owner') {
@@ -66,10 +64,6 @@ function StaffManager() {
     }
 
     await db.staff.update(staffId, { role: newRole, isSynced: 0 });
-
-    if (newRole === 'owner' && pinHash) {
-      await db.settings.put({ key: 'adminPinHash', value: pinHash });
-    }
 
     playSound(900, 100);
     vibrateDevice([40]);
@@ -159,7 +153,7 @@ function StaffManager() {
                   <select
                     className="input"
                     value={s.role}
-                    onChange={(e) => handleRoleChange(s.id, e.target.value, s.role, s.name, s.pinHash)}
+                    onChange={(e) => handleRoleChange(s.id, e.target.value, s.role, s.name)}
                     style={{
                       fontSize: 'var(--text-xs)',
                       padding: '4px 10px',
@@ -275,97 +269,16 @@ function StaffManager() {
  */
 function AdminConsoleShell({ app }) {
   const storeState = useGlobalStore();
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [pinInput, setPinInput] = useState('');
   const [activeTab, setActiveTab] = useState('dashboard');
   const [theme, setTheme] = useState(localStorage.getItem('app_theme') || 'system');
 
   const currentStaff = authService.getCurrentStaff();
   const isAuthorizedStaff = currentStaff && ['owner', 'manager'].includes(currentStaff.role?.toLowerCase());
 
-  // Direct access if already logged in with valid session
-  useEffect(() => {
-    if (isAuthorizedStaff) {
-      setIsAuthenticated(true);
-    }
-  }, [isAuthorizedStaff]);
-
   // Sync state to body element or layout
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
   }, [theme]);
-
-  // Handle PIN validation
-  const handlePinKey = (val: string) => {
-    playSound(700, 80);
-    vibrateDevice([20]);
-
-    if (val === 'clear') {
-      setPinInput('');
-    } else if (val === 'backspace') {
-      setPinInput((prev) => prev.slice(0, -1));
-    } else {
-      if (pinInput.length < 4) {
-        const nextInput = pinInput + val;
-        setPinInput(nextInput);
-        if (nextInput.length === 4) {
-          setTimeout(() => verifyPin(nextInput), 250);
-        }
-      }
-    }
-  };
-
-  const verifyPin = async (input: string) => {
-    try {
-      const configuredHash = await getSetting('adminPinHash');
-      const legacyPin = await getSetting('adminPin');
-      const inputHash = await hashPin(input);
-      const staff = await authService.getStaffByPin(input);
-
-      const allowManagerAdminVal = await getSetting('allowManagerAdmin');
-      const allowManager = allowManagerAdminVal === 'true' || allowManagerAdminVal === true || allowManagerAdminVal === undefined || allowManagerAdminVal === '';
-
-      const canUnlock = canUnlockAdminPin({
-        staff,
-        inputHash,
-        configuredHash,
-        legacyPin,
-        inputPin: input,
-        allowManager,
-      });
-
-      if (canUnlock) {
-        let staffToVerify = staff;
-        if (!staffToVerify && (inputHash === configuredHash || (legacyPin && input === legacyPin))) {
-          staffToVerify = await db.staff.where('role').equals('owner').first();
-        }
-
-        if (staffToVerify && CLOUD_REQUIRED_ROLES.includes(staffToVerify.role?.toLowerCase())) {
-          if (localStorage.getItem(`pin_authorized_${staffToVerify.id}`) !== 'true') {
-            playSound(300, 200, 'square');
-            vibrateDevice([150]);
-            showToast('Device not authorized for PIN unlock. Please log in with cloud credentials first.', 'error');
-            setPinInput('');
-            return;
-          }
-        }
-
-        setIsAuthenticated(true);
-        playSound(800, 100);
-        setTimeout(() => playSound(1200, 120), 100);
-        vibrateDevice([40, 20, 40]);
-        showToast('Authorized!', 'success');
-      } else {
-        playSound(300, 200, 'square');
-        vibrateDevice([150]);
-        showToast('Invalid PIN code', 'error');
-        setPinInput('');
-      }
-    } catch (err) {
-      console.error('Failed to verify PIN:', err);
-      setPinInput('');
-    }
-  };
 
   const handleLogout = () => {
     playSound(600, 100);
@@ -374,7 +287,6 @@ function AdminConsoleShell({ app }) {
       clearTimeout(app.inactivityTimeout);
       app.inactivityTimeout = null;
     }
-    setIsAuthenticated(false);
     setActiveTab('dashboard');
     if (app.router && app.router.currentView && typeof app.router.currentView.unmount === 'function') {
       app.router.currentView.unmount();
@@ -392,101 +304,18 @@ function AdminConsoleShell({ app }) {
     showToast(`Theme: ${newTheme.charAt(0).toUpperCase() + newTheme.slice(1)}`, 'info');
   };
 
-  if (!isAuthenticated) {
+  if (!isAuthorizedStaff) {
     return (
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '80vh', maxWidth: '420px', margin: '0 auto', padding: '20px' }}>
-        <style>{`
-          @keyframes shield-pulse {
-            0% { box-shadow: 0 0 10px rgba(255, 94, 54, 0.1); }
-            50% { box-shadow: 0 0 25px rgba(255, 94, 54, 0.4); }
-            100% { box-shadow: 0 0 10px rgba(255, 94, 54, 0.1); }
-          }
-          .num-key {
-            background: var(--bg-secondary);
-            border: 1px solid var(--border-color);
-            border-radius: var(--radius-md);
-            color: var(--text-primary);
-            font-size: 1.25rem;
-            font-weight: 700;
-            cursor: pointer;
-            transition: all 0.15s ease;
-            box-shadow: var(--shadow-sm);
-          }
-          .num-key:hover {
-            background: var(--bg-card-hover);
-            border-color: var(--border-active);
-            transform: scale(1.03);
-          }
-          .num-key:active {
-            background: var(--border-color);
-            transform: scale(0.96);
-          }
-          .pin-dot {
-            width: 14px;
-            height: 14px;
-            border-radius: 50%;
-            transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-          }
-        `}</style>
-        
-        <div className="card" style={{
-          width: '100%',
-          textAlign: 'center',
-          padding: '40px 32px',
-          background: 'var(--glass-bg)',
-          border: '1px solid var(--border-color)',
-          borderRadius: 'var(--radius-lg)',
-          boxShadow: 'var(--shadow-md)',
-          backdropFilter: 'blur(30px)'
-        }}>
-          <div style={{
-            width: '64px',
-            height: '64px',
-            borderRadius: '16px',
-            background: 'rgba(255, 94, 54, 0.06)',
-            display: 'inline-flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            marginBottom: '24px',
-            border: '1px solid rgba(255, 94, 54, 0.25)',
-            animation: 'shield-pulse 3s infinite',
-          }}>
-            <span className="material-symbols-rounded" style={{ fontSize: '32px', color: 'var(--color-primary)', filter: 'drop-shadow(0 0 6px var(--color-primary))' }}>shield</span>
-          </div>
-
-          <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--text-lg)', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '8px', letterSpacing: '-0.02em' }}>Terminal Lock</h2>
-          <p style={{ color: 'var(--text-secondary)', fontSize: 'var(--text-xs)', marginBottom: '32px', fontWeight: 500, lineHeight: 1.4 }}>Enter your 4-digit security PIN to unlock the administrative console</p>
-
-          {/* PIN Dots */}
-          <div style={{ display: 'flex', justifyContent: 'center', gap: '20px', marginBottom: '40px' }}>
-            {[0, 1, 2, 3].map((idx) => {
-              const active = idx < pinInput.length;
-              return (
-                <span
-                  key={idx}
-                  className="pin-dot"
-                  style={{
-                    border: `2px solid ${active ? 'var(--color-primary)' : 'rgba(255,255,255,0.15)'}`,
-                    background: active ? 'var(--color-primary)' : 'transparent',
-                    transform: active ? 'scale(1.25)' : 'scale(1)',
-                    boxShadow: active ? '0 0 12px rgba(255, 94, 54, 0.6)' : 'none',
-                  }}
-                />
-              );
-            })}
-          </div>
-
-          {/* Numpad */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px' }}>
-            {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map((val) => (
-              <button key={val} className="num-key" onClick={() => handlePinKey(val)} style={{ height: '54px' }}>{val}</button>
-            ))}
-            <button className="num-key" onClick={() => handlePinKey('clear')} style={{ height: '54px', background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239,68,68,0.2)', color: 'var(--color-danger)' }}>C</button>
-            <button className="num-key" onClick={() => handlePinKey('0')} style={{ height: '54px' }}>0</button>
-            <button className="num-key" onClick={() => handlePinKey('backspace')} style={{ height: '54px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <span className="material-symbols-rounded" style={{ fontSize: '20px', color: 'var(--text-secondary)' }}>backspace</span>
-            </button>
-          </div>
+      <div style={{ flex: 1, display: 'grid', placeItems: 'center', minHeight: '70vh', padding: 24 }}>
+        <div className="card" style={{ maxWidth: 460, textAlign: 'center', padding: 40 }}>
+          <span className="material-symbols-rounded" aria-hidden="true" style={{ fontSize: 42, color: 'var(--color-danger)' }}>shield_lock</span>
+          <h2 style={{ margin: '16px 0 8px' }}>Cloud authorization required</h2>
+          <p style={{ color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+            The administrative console is available only to signed-in owners and managers with an active staff membership.
+          </p>
+          <button type="button" className="btn btn-primary" onClick={() => app.showLogin()} style={{ marginTop: 20 }}>
+            Sign in
+          </button>
         </div>
       </div>
     );

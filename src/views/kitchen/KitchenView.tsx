@@ -4,10 +4,9 @@
  * Kanban-style board for managing order preparation
  */
 
-import { getOrders, updateOrderStatus, getSetting, db } from '../../db/database';
+import { getOrders, updateOrderStatus, db } from '../../db/database';
 import { escapeHtml, formatTime, parseOrderItems, showToast, playSound, vibrateDevice } from '../../utils/helpers';
 import { orderNotificationService } from '../../services/orderNotification';
-import { hashPin } from '../../utils/crypto';
 import { authService } from '../../services/auth';
 
 export class KitchenView {
@@ -448,7 +447,7 @@ export class KitchenView {
       element.innerHTML = `
         <div style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: var(--text-muted); opacity: 0.5; padding: 40px 0;">
           <span class="material-symbols-rounded" style="font-size: 32px; margin-bottom: 6px;">inbox</span>
-          <span style="font-size: var(--text-xs);">${message}</span>
+          <span style="font-size: var(--text-xs);">${escapeHtml(message)}</span>
         </div>
       `;
     }
@@ -457,6 +456,9 @@ export class KitchenView {
   createOrderCard(order) {
     const card = document.createElement('div');
     card.className = 'card card-glass animate-slideUp';
+    const orderId = escapeHtml(String(order.id ?? ''));
+    const orderToken = escapeHtml(String(order.orderNumber || '').split('-').pop() || '—');
+    const prepLimit = Math.max(0, Number(order.estimatedPrepTime) || 0);
     
     // Parse items if string
     const items = parseOrderItems(order.items);
@@ -513,9 +515,9 @@ export class KitchenView {
 
     let isOverdue = false;
     let elapsedPrep = 0;
-    if (order.status === 'preparing' && order.estimatedPrepTime) {
+    if (order.status === 'preparing' && prepLimit) {
       elapsedPrep = Math.floor((Date.now() - new Date(order.prepStartTime).getTime()) / 60000);
-      if (elapsedPrep > order.estimatedPrepTime) {
+      if (elapsedPrep > prepLimit) {
         isOverdue = true;
         cardStyle = `
           padding: 20px;
@@ -545,7 +547,7 @@ export class KitchenView {
         <div style="display: flex; align-items: flex-start; justify-content: space-between; font-size: var(--text-sm); line-height: 1.5; padding: 4px 0;">
           <div style="flex: 1; min-width: 0; padding-right: 12px;">
             <div style="display: flex; align-items: center; gap: 8px;">
-              <span style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 800; color: var(--color-primary); font-size: 1.1rem; line-height: 1;">${item.quantity}x</span>
+              <span style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 800; color: var(--color-primary); font-size: 1.1rem; line-height: 1;">${Math.max(1, Number(item.quantity) || 1)}x</span>
               <span style="color: var(--text-primary); font-weight: 600; font-size: 0.95rem;">${escapeHtml(item.itemName || item.name || 'Item')}</span>
             </div>
             ${item.notes ? `<div style="font-size: var(--text-xs); color: #FF8960; font-weight: 500; font-style: italic; margin-left: 28px; margin-top: 4px; display: flex; align-items: center; gap: 4px;">
@@ -564,7 +566,7 @@ export class KitchenView {
     let actionBtnHtml = '';
     if (order.status === 'confirmed') {
       actionBtnHtml = `
-        <button class="btn btn-primary btn-block btn-sm action-btn" data-action="prepare" data-id="${order.id}" style="
+        <button class="btn btn-primary btn-block btn-sm action-btn" data-action="prepare" data-id="${orderId}" style="
           font-family: 'Plus Jakarta Sans', sans-serif;
           font-weight: 700;
           box-shadow: var(--shadow-primary);
@@ -576,7 +578,7 @@ export class KitchenView {
       `;
     } else if (order.status === 'preparing') {
       actionBtnHtml = `
-        <button class="btn action-btn" data-action="ready" data-id="${order.id}" style="
+        <button class="btn action-btn" data-action="ready" data-id="${orderId}" style="
           color: white; 
           background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%);
           border: none;
@@ -602,7 +604,7 @@ export class KitchenView {
       const action = order.type === 'delivery' ? 'dispatch-wait' : 'complete';
       const label = order.type === 'delivery' ? 'Ready for Dispatch' : 'Done & Serve';
       actionBtnHtml = `
-        <button class="btn action-btn" data-action="${action}" data-id="${order.id}" style="
+        <button class="btn action-btn" data-action="${action}" data-id="${orderId}" style="
           color: white; 
           background: linear-gradient(135deg, #10B981 0%, #059669 100%);
           border: none;
@@ -631,7 +633,7 @@ export class KitchenView {
       <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1px solid var(--border-glass); padding-bottom: 12px;">
         <div>
           <div style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: 1.25rem; font-weight: 800; color: var(--text-primary); letter-spacing: -0.01em;">
-            #${order.orderNumber.split('-').pop()}
+            #${orderToken}
           </div>
           <div style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: var(--text-xs); color: var(--text-secondary); text-transform: uppercase; margin-top: 4px; font-weight: 700; display: flex; align-items: center; gap: 4px;">
             ${order.type === 'dinein' ? 'Dine In' : order.type === 'takeaway' ? 'Pickup' : 'Delivery'}
@@ -650,13 +652,13 @@ export class KitchenView {
             ${elapsedMinutes === 0 ? 'Just now' : `${elapsedMinutes}m ago`}
           </div>
           <div style="font-size: 10px; color: var(--text-muted); margin-top: 6px; font-weight: 500;">
-            ${formatTime(order.createdAt)}
+            ${escapeHtml(formatTime(order.createdAt))}
           </div>
         </div>
       </div>
 
       <!-- Prep Limit Badge -->
-      ${order.status === 'preparing' && order.estimatedPrepTime ? `
+      ${order.status === 'preparing' && prepLimit ? `
         <div style="
           display: flex;
           align-items: center;
@@ -682,10 +684,10 @@ export class KitchenView {
         ">
           ${isOverdue ? `
             <span style="font-size: 14px;">🚨</span>
-            <span>OVERDUE by ${elapsedPrep - order.estimatedPrepTime}m</span>
+            <span>OVERDUE by ${elapsedPrep - prepLimit}m</span>
           ` : `
             <span>⏳</span>
-            <span>Prep Limit: ${order.estimatedPrepTime}m</span>
+            <span>Prep Limit: ${prepLimit}m</span>
           `}
         </div>
       ` : ''}
@@ -746,7 +748,7 @@ export class KitchenView {
       <!-- Actions -->
       <div style="margin-top: 4px; display: flex; gap: 8px;">
         ${actionBtnHtml}
-        <button class="btn btn-secondary btn-icon action-btn" data-action="delete" data-id="${order.id}" style="
+        <button class="btn btn-secondary btn-icon action-btn" data-action="delete" data-id="${orderId}" style="
           color: var(--color-danger); 
           border-color: rgba(239, 68, 68, 0.2); 
           background: rgba(239, 68, 68, 0.05);
@@ -803,29 +805,9 @@ export class KitchenView {
           const currentStaff = authService.getCurrentStaff();
           const role = currentStaff?.role || 'kitchen';
 
-          let isAuthorized = ['owner', 'developer'].includes(role);
-
-          if (!isAuthorized) {
-            const allowCashierVoidVal = await getSetting('allowCashierVoid');
-            const allowCashierVoid = allowCashierVoidVal === 'true' || allowCashierVoidVal === true;
-            if (role === 'cashier' && allowCashierVoid) {
-              isAuthorized = true;
-            }
-          }
-
-          if (!isAuthorized) {
-            const authorizedStaff = await this.promptAdminPin();
-            if (authorizedStaff) {
-              isAuthorized = true;
-              showToast(`Authorized by ${authorizedStaff.name}`, 'success');
-              
-              await db.activityLog.add({
-                staffId: authorizedStaff.id,
-                action: `void_order_kds_authorized_id_${orderId}`,
-                timestamp: new Date().toISOString()
-              });
-            }
-          }
+          const isAuthorized = Boolean(
+            currentStaff?.isActive && ['owner', 'developer', 'manager'].includes(role.toLowerCase())
+          );
 
           if (isAuthorized) {
             if (confirm('Are you sure you want to cancel and void this order?')) {
@@ -848,6 +830,7 @@ export class KitchenView {
               showToast('Order cancelled & voided', 'success');
             }
           } else {
+            showToast('Cancelling orders requires an active manager, owner, or developer cloud session.', 'error');
             playSound(300, 200, 'square');
             vibrateDevice([150]);
           }
@@ -868,235 +851,4 @@ export class KitchenView {
     this.container = null;
   }
 
-  promptAdminPin() {
-    return new Promise((resolve) => {
-      const overlay = document.createElement('div');
-      overlay.id = 'kds-auth-pin-overlay';
-      overlay.className = 'modal-overlay';
-      overlay.style.cssText = `
-        background: rgba(9, 9, 14, 0.9);
-        backdrop-filter: blur(12px);
-        z-index: 10000;
-        animation: fadeIn 0.25s ease-out;
-      `;
-
-      const modal = document.createElement('div');
-      modal.className = 'modal prep-modal-card';
-      modal.style.cssText = `
-        background: #12121a;
-        border: 1px solid var(--border-glass);
-        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 40px rgba(239, 68, 68, 0.15);
-        border-radius: var(--radius-xl);
-        padding: 24px;
-        width: 90%;
-        max-width: 320px;
-        text-align: center;
-        animation: scaleUp 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 16px;
-      `;
-
-      const icon = document.createElement('span');
-      icon.className = 'material-symbols-rounded';
-      icon.innerText = 'admin_panel_settings';
-      icon.style.cssText = 'font-size: 40px; color: var(--color-danger);';
-      modal.appendChild(icon);
-
-      const title = document.createElement('h3');
-      title.innerText = 'Admin Authorization';
-      title.style.cssText = `
-        font-family: 'Plus Jakarta Sans', sans-serif;
-        font-size: var(--text-md);
-        font-weight: 800;
-        color: var(--text-primary);
-        margin: 0;
-      `;
-      modal.appendChild(title);
-
-      const subtitle = document.createElement('p');
-      subtitle.innerText = 'Enter Owner or Developer PIN to delete order';
-      subtitle.style.cssText = 'font-size: var(--text-xs); color: var(--text-muted); margin: 0;';
-      modal.appendChild(subtitle);
-
-      const dotsContainer = document.createElement('div');
-      dotsContainer.style.cssText = 'display: flex; gap: 12px; margin: 8px 0;';
-      const dots = Array.from({ length: 4 }).map(() => {
-        const dot = document.createElement('div');
-        dot.style.cssText = `
-          width: 14px;
-          height: 14px;
-          border-radius: 50%;
-          border: 2px solid rgba(255, 255, 255, 0.2);
-          transition: all 0.15s ease;
-        `;
-        dotsContainer.appendChild(dot);
-        return dot;
-      });
-      modal.appendChild(dotsContainer);
-
-      const keypad = document.createElement('div');
-      keypad.style.cssText = `
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 10px;
-        width: 100%;
-        margin-top: 8px;
-      `;
-
-      let currentPin = '';
-
-      const updateDots = () => {
-        dots.forEach((dot, idx) => {
-          if (idx < currentPin.length) {
-            dot.style.background = 'var(--color-danger)';
-            dot.style.borderColor = 'var(--color-danger)';
-            dot.style.transform = 'scale(1.1)';
-          } else {
-            dot.style.background = 'transparent';
-            dot.style.borderColor = 'rgba(255, 255, 255, 0.2)';
-            dot.style.transform = 'scale(1)';
-          }
-        });
-      };
-
-      const handleKey = async (val) => {
-        playSound(700, 80);
-        vibrateDevice([15]);
-
-        if (val === 'clear') {
-          currentPin = '';
-          updateDots();
-        } else if (val === 'backspace') {
-          currentPin = currentPin.slice(0, -1);
-          updateDots();
-        } else {
-          if (currentPin.length < 4) {
-            currentPin += val;
-            updateDots();
-
-            if (currentPin.length === 4) {
-              const pinToVerify = currentPin;
-              currentPin = '';
-              setTimeout(async () => {
-                const isCorrect = await verifyPin(pinToVerify);
-                if (isCorrect) {
-                  resolve(isCorrect);
-                  cleanup();
-                } else {
-                  dots.forEach(d => {
-                    d.style.background = '#EF4444';
-                    d.style.borderColor = '#EF4444';
-                  });
-                  playSound(300, 250, 'square');
-                  vibrateDevice([150]);
-                  showToast('Invalid Admin/Owner PIN', 'error');
-                  setTimeout(() => {
-                    updateDots();
-                  }, 500);
-                }
-              }, 250);
-            }
-          }
-        }
-      };
-
-      const verifyPin = async (pin) => {
-        try {
-          const hash = await hashPin(pin);
-          const staff = await db.staff
-            .where('pinHash')
-            .equals(hash)
-            .and(s => s.isActive && (s.role === 'owner' || s.role === 'developer'))
-            .first();
-          return staff || null;
-        } catch (e) {
-          console.error(e);
-          return null;
-        }
-      };
-
-      const getKeypadBtnStyle = () => {
-        return `
-          height: 48px;
-          font-family: 'Plus Jakarta Sans', sans-serif;
-          font-weight: 700;
-          font-size: 1.1rem;
-          background: rgba(255, 255, 255, 0.02);
-          border: 1px solid var(--border-glass);
-          color: var(--text-primary);
-          border-radius: var(--radius-md);
-          cursor: pointer;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          transition: all 0.15s ease;
-        `;
-      };
-
-      for (let i = 1; i <= 9; i++) {
-        const btn = document.createElement('button');
-        btn.innerText = String(i);
-        btn.style.cssText = getKeypadBtnStyle();
-        btn.onclick = () => handleKey(String(i));
-        keypad.appendChild(btn);
-      }
-
-      const clearBtn = document.createElement('button');
-      clearBtn.innerText = 'C';
-      clearBtn.style.cssText = getKeypadBtnStyle();
-      clearBtn.onclick = () => handleKey('clear');
-      keypad.appendChild(clearBtn);
-
-      const zeroBtn = document.createElement('button');
-      zeroBtn.innerText = '0';
-      zeroBtn.style.cssText = getKeypadBtnStyle();
-      zeroBtn.onclick = () => handleKey('0');
-      keypad.appendChild(zeroBtn);
-
-      const backBtn = document.createElement('button');
-      backBtn.innerHTML = '⌫';
-      backBtn.style.cssText = getKeypadBtnStyle();
-      backBtn.onclick = () => handleKey('backspace');
-      keypad.appendChild(backBtn);
-
-      modal.appendChild(keypad);
-
-      const cancelBtn = document.createElement('button');
-      cancelBtn.innerText = 'Cancel';
-      cancelBtn.style.cssText = `
-        width: 100%;
-        padding: 10px;
-        background: transparent;
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        color: var(--text-muted);
-        border-radius: var(--radius-md);
-        font-family: 'Plus Jakarta Sans', sans-serif;
-        font-weight: 700;
-        font-size: var(--text-xs);
-        cursor: pointer;
-        margin-top: 8px;
-        transition: all var(--transition-fast);
-      `;
-      cancelBtn.onclick = () => {
-        playSound(600, 80);
-        resolve(null);
-        cleanup();
-      };
-      modal.appendChild(cancelBtn);
-
-      overlay.appendChild(modal);
-      document.body.appendChild(overlay);
-
-      const cleanup = () => {
-        overlay.style.animation = 'fadeOut 0.2s ease-in forwards';
-        setTimeout(() => {
-          if (overlay.parentNode) {
-            overlay.parentNode.removeChild(overlay);
-          }
-        }, 200);
-      };
-    });
-  }
 }

@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { db, getCategories, getItemsByCategory, createOrder, getNextOrderNumber, getSetting, generateLocalUuid } from '../../../db/database';
 import { globalStore } from '../../../store/Store';
-import { formatCurrency, playSound, vibrateDevice, showToast, parseOrderItems, escapeHtml } from '../../../utils/helpers';
+import { formatCurrency, playSound, vibrateDevice, showToast, parseOrderItems } from '../../../utils/helpers';
 import { MenuItem } from './MenuItem';
 import { CategorySlider } from './CategorySlider';
 import { CartDrawer } from './CartDrawer';
@@ -139,11 +139,6 @@ export function CustomerApp({ app }) {
   const [addressSuggestions, setAddressSuggestions] = useState([]);
   const [locating, setLocating] = useState(false);
 
-  // Card payment fields
-  const [cardNum, setCardNum] = useState('');
-  const [cardExpiry, setCardExpiry] = useState('');
-  const [cardCvv, setCardCvv] = useState('');
-
   // Drawers
   const [activeDetailItem, setActiveDetailItem] = useState(null);
   const [showLoyaltyDrawer, setShowLoyaltyDrawer] = useState(false);
@@ -168,13 +163,13 @@ export function CustomerApp({ app }) {
     showToast('Requesting device GPS location...', 'info');
     try {
       const coords = await getCurrentCoordinates();
-      showToast('Coordinates locked. Reverse geocoding...', 'info');
+      showToast('Coordinates locked. Add your full street address.', 'info');
       const geocoded = await reverseGeocode(coords.latitude, coords.longitude);
-      setDeliveryAddress(geocoded.address);
+      if (geocoded.address) setDeliveryAddress(geocoded.address);
       setDeliveryCoordinates({ latitude: coords.latitude, longitude: coords.longitude });
       playSound(900, 100);
       vibrateDevice([40, 20, 40]);
-      showToast('Delivery location resolved!', 'success');
+      showToast('GPS location saved. Please confirm the delivery address.', 'success');
     } catch (err) {
       console.error(err);
       showToast(err.message || 'Failed to detect location', 'error');
@@ -352,49 +347,6 @@ export function CustomerApp({ app }) {
       console.warn('[CustomerView] Failed to retrieve customer auth state:', e);
     }
 
-    // ── Online Menu Hydration from Cloud ──────────────────────
-    if (navigator.onLine) {
-      try {
-        const { getSupabaseClient } = await import('../../../services/supabaseClient');
-        const supabase = await getSupabaseClient();
-        if (supabase) {
-          const { data: cloudCats } = await supabase
-            .from('menu_categories')
-            .select('*')
-            .eq('store_id', storeId)
-            .eq('is_active', true)
-            .order('sort_order');
-
-          if (cloudCats && cloudCats.length > 0) {
-            const { mapCategoryToLocal } = await import('../../../services/sync');
-            const localCats = cloudCats.map(mapCategoryToLocal);
-            await db.transaction('rw', db.menuCategories, async () => {
-              await db.menuCategories.clear();
-              for (const c of localCats) await db.menuCategories.put(c);
-            });
-          }
-
-          const { data: cloudItems } = await supabase
-            .from('menu_items')
-            .select('*')
-            .eq('store_id', storeId)
-            .eq('is_available', true)
-            .order('sort_order');
-
-          if (cloudItems && cloudItems.length > 0) {
-            const { mapItemToLocal } = await import('../../../services/sync');
-            const localItems = cloudItems.map(mapItemToLocal);
-            await db.transaction('rw', db.menuItems, async () => {
-              await db.menuItems.clear();
-              for (const i of localItems) await db.menuItems.put(i);
-            });
-          }
-        }
-      } catch (err) {
-        console.warn('[CustomerView] Direct cloud menu hydration failed. Falling back to local storage:', err);
-      }
-    }
-
     const loadedCats = await getCategories();
     setCategories(loadedCats);
 
@@ -429,6 +381,30 @@ export function CustomerApp({ app }) {
     if (loadedCats.length) {
       setActiveCategoryId(loadedCats[0].id);
       setItems(map.get(loadedCats[0].id) || []);
+    }
+
+    // Refresh the catalog and QR tables after first paint. A slow or unavailable
+    // network never keeps customers on the splash screen; cached/default menu
+    // data remains usable while Supabase is contacted in the background.
+    if (navigator.onLine) {
+      void import('../../../services/cloudDb').then(async ({ fullPull }) => {
+        const result = await fullPull({ publicOnly: true });
+        if (!result?.success) return;
+
+        const refreshedCats = await getCategories();
+        const refreshedMap = new Map();
+        for (const category of refreshedCats) {
+          refreshedMap.set(category.id, await getItemsByCategory(category.id));
+        }
+        setCategories(refreshedCats);
+        setMenuByCategory(refreshedMap);
+        setTables(await db.table('tables').toArray());
+        setActiveCategoryId(current => (
+          current && refreshedMap.has(current) ? current : (refreshedCats[0]?.id || null)
+        ));
+      }).catch(err => {
+        console.warn('[CustomerView] Background catalog refresh failed; using local cache:', err);
+      });
     }
   };
 
@@ -608,26 +584,10 @@ export function CustomerApp({ app }) {
       showToast('Please select your table number', 'warning');
       return;
     }
-    if (selectedPaymentMethod === 'card') {
-      const sanitizedCard = cardNum.replace(/\s/g, '');
-      if (!sanitizedCard || sanitizedCard.length < 16) {
-        showToast('Please enter a valid 16-digit card number', 'warning');
-        return;
-      }
-      if (!cardExpiry || !/^\d{2}\/\d{2}$/.test(cardExpiry)) {
-        showToast('Please enter expiry in MM/YY format', 'warning');
-        return;
-      }
-      if (!cardCvv || cardCvv.length < 3) {
-        showToast('Please enter a valid CVV', 'warning');
-        return;
-      }
-    }
     placeOrder();
   };
 
   const placeOrder = async () => {
-    const isCard = selectedPaymentMethod === 'card';
     const submitBtn = document.getElementById('btn-submit-self-order');
     if (submitBtn) {
       submitBtn.disabled = true;
@@ -660,7 +620,7 @@ export function CustomerApp({ app }) {
         deliveryFee,
         total,
         paymentMethod: selectedPaymentMethod,
-        paymentStatus: isCard ? 'unpaid' : (selectedPaymentMethod === 'upi' ? 'pending' : 'unpaid'),
+        paymentStatus: selectedPaymentMethod === 'upi' ? 'pending' : 'unpaid',
         paymentReference: '',
         paymentVerifiedAt: null,
         customerName,
@@ -702,35 +662,23 @@ export function CustomerApp({ app }) {
 
       const afterOrderCreated = async (ord) => {
         try {
-          const { deductInventoryForOrder } = await import('../../../services/inventoryHook');
-          await deductInventoryForOrder(parseOrderItems(ord.items));
-        } catch (error) {
-          console.error('Inventory deduction failed:', error);
-        }
-
-        try {
           const existing = await db.customers.where('phone').equals(ord.customerPhone).first();
-          const points = Math.floor(ord.total / 10);
           if (existing) {
-            const totalSpent = (existing.totalSpent || 0) + ord.total;
             await db.customers.update(existing.id, {
               name: ord.customerName,
-              totalSpent,
-              visitCount: (existing.visitCount || 0) + 1,
-              loyaltyPoints: (existing.loyaltyPoints || 0) + points,
-              tier: totalSpent >= 5000 ? 'platinum' : totalSpent >= 2000 ? 'gold' : totalSpent >= 500 ? 'silver' : 'bronze',
-              lastVisit: new Date().toISOString(),
+              authUserId: existing.authUserId || loggedInCustomer?.cloudUserId || null,
               isSynced: 0
             });
           } else {
             await db.customers.add({
               phone: ord.customerPhone,
               name: ord.customerName,
-              totalSpent: ord.total,
-              visitCount: 1,
-              loyaltyPoints: points,
-              tier: ord.total >= 500 ? 'silver' : 'bronze',
-              lastVisit: new Date().toISOString(),
+              authUserId: loggedInCustomer?.cloudUserId || null,
+              totalSpent: 0,
+              visitCount: 0,
+              loyaltyPoints: 0,
+              tier: 'bronze',
+              lastVisit: null,
               createdAt: new Date().toISOString(),
               isSynced: 0,
               _platform: 'nextgenos'
@@ -741,55 +689,11 @@ export function CustomerApp({ app }) {
         }
       };
 
-      if (isCard) {
-        showStripeCheckoutModal(
-          order,
-          clientOrderId,
-          async () => {
-            if (navigator.onLine) {
-              const { getSupabaseClient } = await import('../../../services/supabaseClient');
-              const supabase = await getSupabaseClient();
-              if (supabase) {
-                const paymentIntentId = `pi_mock_${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
-                const { data, error } = await supabase.rpc('emulate_stripe_webhook', {
-                  order_client_id: clientOrderId,
-                  payment_intent_id: paymentIntentId,
-                  status: 'succeeded'
-                });
-                if (error) {
-                  throw new Error('Payment webhook processing failed: ' + error.message);
-                }
-              }
-            } else {
-              throw new Error('Device is offline. Stripe payment cannot be finalized.');
-            }
-            
-            const updated = await db.orders.where('clientOrderId').equals(clientOrderId).first();
-            if (updated) {
-              setPlacedOrder(updated);
-            }
-
-            await afterOrderCreated(order);
-            await loadCustomerInsights();
-            setState('success');
-            playSound(900, 90);
-            vibrateDevice([50, 30, 50]);
-          },
-          () => {
-            showToast('Payment cancelled. Please try again.', 'info');
-            if (submitBtn) {
-              submitBtn.disabled = false;
-              submitBtn.innerHTML = 'Place Order';
-            }
-          }
-        );
-      } else {
-        await afterOrderCreated(order);
-        await loadCustomerInsights();
-        setState('success');
-        playSound(900, 90);
-        vibrateDevice([50, 30, 50]);
-      }
+      await afterOrderCreated(order);
+      await loadCustomerInsights();
+      setState('success');
+      playSound(900, 90);
+      vibrateDevice([50, 30, 50]);
     } catch (error) {
       console.error('Failed to submit self-order:', error);
       showToast('Order placement failed: ' + error.message, 'error');
@@ -798,92 +702,6 @@ export function CustomerApp({ app }) {
         submitBtn.innerHTML = 'Place Order';
       }
     }
-  };
-
-  const showStripeCheckoutModal = (order, clientOrderId, onComplete, onCancel) => {
-    const modal = document.createElement('div');
-    modal.className = 'stripe-modal-overlay';
-    modal.style = `
-      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(0, 0, 0, 0.7); backdrop-filter: blur(8px);
-      display: flex; align-items: center; justify-content: center;
-      z-index: 10000; padding: 16px;
-    `;
-
-    modal.innerHTML = `
-      <div style="
-        background: #fff; border-radius: 12px; width: 100%; max-width: 420px;
-        box-shadow: 0 20px 40px rgba(0,0,0,0.3); overflow: hidden;
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-        color: #30313d;
-      ">
-        <div style="background: #f8f9fa; padding: 20px; border-bottom: 1px solid #e3e6e8; display:flex; justify-content:space-between; align-items:center;">
-          <div style="display:flex; align-items:center; gap:8px;">
-            <svg viewBox="0 0 40 16" style="width:38px; height:16px; fill:#635bff;"><path d="M4.09 10.37h1.49v4.29c0 .7.38.93 1.07.93.36 0 .66-.05.81-.12v-1.12a2.3 2.3 0 0 1-.36.03c-.28 0-.44-.08-.44-.45v-3.56H8.2V8.98H6.66V6.63L5.17 7.1v1.88H4.09v1.39zm4.74 3.73c0 .87.7 1.34 1.83 1.34.61 0 1.1-.1 1.38-.24v-1.18c-.28.11-.64.19-1.07.19-.52 0-.8-.17-.8-.58v-1.89h1.83V10.4h-1.83V8.98h-1.34v4.54l-.02.58zm6.54-6.42a2.6 2.6 0 0 0-1.88.75V3.88l-1.49.46v11.12h1.49V10.9a2.44 2.44 0 0 1 1.94-.85c1.23 0 1.91.86 1.91 2.31v3.1h1.49v-3.32c0-2.22-1.17-3.44-3.46-3.44zm6.06-1.57h1.49V4.62h-1.49v1.49zm0 2.27h1.49v9.12h-1.49V9.11zm3.87 0h1.49v1.07c.36-.67 1.08-1.25 2.1-1.25 1.7 0 2.59 1.15 2.59 3.03v6.27H33.4V12.1c0-1.14-.49-1.63-1.34-1.63-.58 0-1.08.3-1.34.78v4.21h-1.49V9.11zm9.35 3.32c0-2.12 1.38-3.32 3.13-3.32 1.82 0 2.92 1.25 2.92 3.25V12.9h-4.54c.05.95.73 1.39 1.63 1.39a3.2 3.2 0 0 0 1.38-.28v1.17c-.36.14-.9.24-1.58.24-1.8 0-2.94-1.17-2.94-3.32zm4.56-1.06c-.05-.73-.5-1.12-1.36-1.12-.76 0-1.23.4-1.32 1.12h2.68z"/></svg>
-            <span style="font-size:12px; color:#6a737d; font-weight:600;">Secure Checkout</span>
-          </div>
-          <button class="btn-stripe-close" style="background:transparent; border:none; color:#a3acb9; cursor:pointer; font-size:16px; padding:4px;"><span class="material-symbols-rounded" style="font-size:16px;">close</span></button>
-        </div>
-        <div style="padding: 24px;">
-          <div style="margin-bottom:20px; display:flex; justify-content:space-between; align-items:center;">
-            <div>
-              <span style="font-size: 12px; color: #6a737d; font-weight: 500; display:block;">ORDER #${order.orderNumber}</span>
-              <strong style="font-size: 15px; color: #1a1b25;">The Taste Storefront</strong>
-            </div>
-            <strong style="font-size: 20px; color: #1a1b25;">${formatCurrency(order.total)}</strong>
-          </div>
-          <div style="display:flex; flex-direction:column; gap:12px;">
-            <div style="display:flex; flex-direction:column; gap:4px;">
-              <label style="font-size: 11px; font-weight: 600; color: #4f5b66;">Card Number</label>
-              <div style="border: 1px solid #e3e6e8; border-radius: 6px; padding: 10px 12px; display: flex; align-items: center; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
-                <span class="material-symbols-rounded" style="font-size:18px; color:#a3acb9; margin-right:8px;">credit_card</span>
-                <input type="text" id="stripe-card-num" value="4242 4242 4242 4242" style="border:none; outline:none; width:100%; font-size:14px; font-family:monospace;" />
-              </div>
-            </div>
-            <div style="display:flex; gap:12px;">
-              <div style="flex:1; display:flex; flex-direction:column; gap:4px;">
-                <label style="font-size: 11px; font-weight: 600; color: #4f5b66;">Expiration</label>
-                <input type="text" id="stripe-card-expiry" value="12/28" style="border: 1px solid #e3e6e8; border-radius: 6px; padding: 10px 12px; font-size:14px; font-family:monospace; outline:none;" />
-              </div>
-              <div style="flex:1; display:flex; flex-direction:column; gap:4px;">
-                <label style="font-size: 11px; font-weight: 600; color: #4f5b66;">CVC</label>
-                <input type="password" id="stripe-card-cvc" value="123" style="border: 1px solid #e3e6e8; border-radius: 6px; padding: 10px 12px; font-size:14px; font-family:monospace; outline:none;" />
-              </div>
-            </div>
-            <button id="stripe-pay-btn" style="
-              background: #635bff; color: #fff; border: none; border-radius: 6px; padding: 12px;
-              font-size: 14px; font-weight: 700; cursor: pointer; margin-top: 16px;
-              display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 4px rgba(99, 91, 255, 0.2);
-            ">
-              Pay ${formatCurrency(order.total)}
-            </button>
-          </div>
-        </div>
-      </div>
-    `;
-
-    document.body.appendChild(modal);
-
-    const closeBtn = modal.querySelector('.btn-stripe-close');
-    const payBtn = modal.querySelector('#stripe-pay-btn');
-
-    closeBtn.addEventListener('click', () => {
-      modal.remove();
-      onCancel();
-    });
-
-    payBtn.addEventListener('click', async () => {
-      payBtn.disabled = true;
-      payBtn.innerHTML = `Processing...`;
-      try {
-        await onComplete();
-        modal.remove();
-      } catch (err) {
-        payBtn.disabled = false;
-        payBtn.innerHTML = `Pay ${formatCurrency(order.total)}`;
-        showToast('Stripe payment failed: ' + err.message, 'error');
-      }
-    });
   };
 
   const handleOrderAgain = () => {
@@ -935,8 +753,8 @@ export function CustomerApp({ app }) {
           />
           {customerPage === 'offers' && <OffersPage onBack={() => openCustomerPage('home')} onOrder={openMenu} offers={customerOffers} />}
           {customerPage === 'about' && <AboutPage onBack={() => openCustomerPage('home')} />}
-          {customerPage === 'catering' && <CateringPage onBack={() => openCustomerPage('home')} />}
-          {customerPage === 'support' && <SupportPage onBack={() => openCustomerPage('home')} />}
+          {customerPage === 'catering' && <CateringPage onBack={() => openCustomerPage('home')} supportPhone={storeSettings.phone} />}
+          {customerPage === 'support' && <SupportPage onBack={() => openCustomerPage('home')} supportPhone={storeSettings.phone} />}
           {customerPage === 'account' && (
             <AccountPage
               onBack={() => openCustomerPage('home')}
@@ -1279,16 +1097,11 @@ export function CustomerApp({ app }) {
             {/* Payment methods */}
             <section className="store-checkout-panel" style={{ marginBottom: '20px' }}>
               <h3>Payment</h3>
-              <div className="store-option-grid three" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
+              <div className="store-option-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                 <button className={`store-choice-btn ${selectedPaymentMethod === 'upi' ? 'is-active' : ''}`} type="button" onClick={() => setSelectedPaymentMethod('upi')}>
                   <span className="material-symbols-rounded">qr_code_2</span>
                   <span>UPI QR</span>
                   <small>Staff verifies</small>
-                </button>
-                <button className={`store-choice-btn ${selectedPaymentMethod === 'card' ? 'is-active' : ''}`} type="button" onClick={() => setSelectedPaymentMethod('card')}>
-                  <span className="material-symbols-rounded">credit_card</span>
-                  <span>Online Card</span>
-                  <small>Instant check</small>
                 </button>
                 <button className={`store-choice-btn ${selectedPaymentMethod === 'cash' ? 'is-active' : ''}`} type="button" onClick={() => setSelectedPaymentMethod('cash')}>
                   <span className="material-symbols-rounded">payments</span>
@@ -1297,24 +1110,6 @@ export function CustomerApp({ app }) {
                 </button>
               </div>
 
-              {selectedPaymentMethod === 'card' && (
-                <div id="card-fields" className="store-conditional-fields" style={{ marginTop: '14px' }}>
-                  <div className="input-group store-input-group">
-                    <label className="store-field-label" htmlFor="card-num">Credit/Debit Card Number</label>
-                    <input type="text" id="card-num" className="input store-input" value={cardNum} onInput={(e) => setCardNum(e.target.value)} placeholder="4111 2222 3333 4444" />
-                  </div>
-                  <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
-                    <div style={{ flex: 1 }} className="input-group store-input-group">
-                      <label className="store-field-label" htmlFor="card-expiry">Expiry Date</label>
-                      <input type="text" id="card-expiry" className="input store-input" value={cardExpiry} onInput={(e) => setCardExpiry(e.target.value)} placeholder="MM/YY" />
-                    </div>
-                    <div style={{ flex: 1 }} className="input-group store-input-group">
-                      <label className="store-field-label" htmlFor="card-cvv">CVV</label>
-                      <input type="password" id="card-cvv" className="input store-input" value={cardCvv} onInput={(e) => setCardCvv(e.target.value)} placeholder="3-digit CVV" />
-                    </div>
-                  </div>
-                </div>
-              )}
             </section>
           </main>
 
@@ -1340,6 +1135,7 @@ export function CustomerApp({ app }) {
         <OrderSuccessTele 
           order={placedOrder}
           customer={loggedInCustomer}
+          supportPhone={storeSettings.phone}
           onOrderAgain={handleOrderAgain}
         />
       )}

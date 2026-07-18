@@ -3,7 +3,7 @@
  * PaymentModal — UPI QR code + Cash payment
  */
 
-import { formatCurrency, formatCurrencyShort, showToast } from '../../utils/helpers';
+import { formatCurrency, formatCurrencyShort, showToast, escapeHtml, safeCurrencySymbol } from '../../utils/helpers';
 import { generateUPIQR, buildUPILink } from '../../services/upi';
 import { getSetting } from '../../db/database';
 
@@ -22,7 +22,7 @@ export class PaymentModal {
     this.splitMode = 'full'; // 'full' | 'half' | 'custom'
     this.customAmount = '';
     this.qrAmount = this.order.total; // amount encoded in QR
-    this.currencySymbol = localStorage.getItem('app_currency_symbol') || '₹';
+    this.currencySymbol = safeCurrencySymbol(localStorage.getItem('app_currency_symbol'), '₹');
   }
 
   show() {
@@ -71,7 +71,7 @@ export class PaymentModal {
               ${formatCurrency(this.order.total)}
             </div>
             <div class="payment-payable-badge">
-              Order #${this.order.orderNumber.split('-').pop()} · ${this.order.type === 'takeaway' ? 'Takeaway' : this.order.type === 'dinein' ? 'Dine In' : 'Delivery'}
+              Order #${escapeHtml(String(this.order.orderNumber || '').split('-').pop() || '—')} · ${this.order.type === 'takeaway' ? 'Takeaway' : this.order.type === 'dinein' ? 'Dine In' : 'Delivery'}
             </div>
           </div>
 
@@ -122,9 +122,9 @@ export class PaymentModal {
                   placeholder="Enter amount for QR"
                   inputmode="numeric"
                   min="1"
-                  max="${this.order.total}"
+                  max="${Number(this.order.total) || 0}"
                   step="1"
-                  value="${this.customAmount}"
+                  value="${escapeHtml(String(this.customAmount))}"
                   style="font-size: 1.3rem; font-weight: 800; text-align: center; background: rgba(0, 0, 0, 0.2); border-color: rgba(245, 158, 11, 0.3);"
                 >
               </div>
@@ -147,7 +147,7 @@ export class PaymentModal {
                 Ask customer to scan with any UPI App
               </div>
             </div>
-            <a href="#" id="upi-deeplink" target="_blank" class="btn btn-secondary btn-block btn-lg" style="margin-top: 14px; text-decoration: none;">
+            <a href="#" id="upi-deeplink" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-block btn-lg" style="margin-top: 14px; text-decoration: none;">
               <span class="material-symbols-rounded" style="font-size: 18px;">open_in_new</span>
               Open in UPI App
             </a>
@@ -166,7 +166,7 @@ export class PaymentModal {
                   inputmode="numeric"
                   min="0"
                   step="10"
-                  value="${this.cashReceived}"
+                  value="${escapeHtml(String(this.cashReceived))}"
                   style="font-size: 1.5rem; font-weight: 800; text-align: center; background: rgba(0, 0, 0, 0.2);"
                 >
               </div>
@@ -233,7 +233,7 @@ export class PaymentModal {
       });
 
       // Show UPI ID
-      const upiId = await getSetting('upiId') || 'paytmqr6zfcsx@ptys';
+      const upiId = await getSetting('upiId');
       if (upiIdDisplay) upiIdDisplay.textContent = upiId;
 
       // Update displayed amount
@@ -251,7 +251,7 @@ export class PaymentModal {
           <div style="padding: 20px; text-align: center; color: var(--text-muted);">
             <span class="material-symbols-rounded" style="font-size: 40px; display: block; margin-bottom: 8px;">qr_code</span>
             <p class="text-sm">Failed to generate QR code</p>
-            <p class="text-xs text-muted">${error.message}</p>
+            <p class="text-xs text-muted">${escapeHtml(error.message)}</p>
           </div>
         `;
       }

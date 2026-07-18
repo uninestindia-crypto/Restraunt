@@ -1,20 +1,19 @@
 // @ts-nocheck
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { db, getSetting, setSetting } from '../../db/database';
-import { escapeHtml, showToast, playSound, vibrateDevice } from '../../utils/helpers';
+import { escapeHtml, showToast, playSound, vibrateDevice, safeCurrencySymbol } from '../../utils/helpers';
 import { orderNotificationService, RINGTONE_OPTIONS, ORDER_ALERT_SETTINGS } from '../../services/orderNotification';
 import type { RingtoneId } from '../../services/orderNotification';
 import { printerService } from '../../services/printer';
 import { ReceiptBuilder } from '../../services/receipt';
 import { exportAllData, exportOrdersCSV, importData } from '../../utils/dataExport';
 import { logDataExported } from '../../utils/activityLogger';
-import { hashPin } from '../../utils/crypto';
 import { signOutCloudStaff } from '../../services/supabaseClient';
-import { authService, CLOUD_REQUIRED_ROLES } from '../../services/auth';
+import { authService } from '../../services/auth';
 
 const CONFIG_KEYS = [
   'restaurantName', 'restaurantTagline', 'restaurantPhone', 'restaurantAddress',
-  'upiId', 'upiName', 'gstPercent', 'printerWidth', 'adminPin', 'adminPinHash',
+  'upiId', 'upiName', 'gstPercent', 'printerWidth',
   'orderNumberPrefix', 'supabaseUrl', 'supabaseKey', 'supabaseEmail',
   'gstin', 'fssaiNumber', 'restaurantEmail', 'restaurantWebsite',
   'operatingHours', 'receiptFooter', 'printDensity', 'printCopies',
@@ -25,8 +24,7 @@ const CONFIG_KEYS = [
   'invoiceFontFamily', 'invoiceLogoUrl', 'invoiceTitle', 'invoiceTerms',
   'invoiceShowSignature', 'invoiceSignatureText', 'invoiceShowGrid',
   'invoiceShowWatermark', 'invoiceShowUpiQr', 'currencyCode',
-  'currencySymbol', 'taxType', 'taxLabel', 'requirePinForOrder',
-  'allowManagerAdmin', 'allowCashierVoid', 'autoLockTerminal',
+  'currencySymbol', 'taxType', 'taxLabel', 'autoLockTerminal',
   'autoLockTimeout', 'sessionDuration', 'app_theme'
 ];
 
@@ -40,7 +38,6 @@ export function SettingsView() {
   const [driveConnected, setDriveConnected] = useState(false);
   const [syncTesting, setSyncTesting] = useState(false);
   const [supabasePassword, setSupabasePassword] = useState('');
-  const [newPin, setNewPin] = useState('');
 
   // Notification alert settings state
   const [alertEnabled, setAlertEnabled] = useState(true);
@@ -83,23 +80,12 @@ export function SettingsView() {
         data[key] = await getSetting(key) || '';
       }
 
-      // Sync adminPinHash with active owner hash
-      const owner = await db.staff
-        .where('role')
-        .equals('owner')
-        .and((s: any) => (s.isActive === 1 || s.isActive === true) && /^[0-9a-f]{64}$/.test(s.pinHash || ''))
-        .first();
-      if (owner && owner.pinHash && owner.pinHash !== data.adminPinHash) {
-        await setSetting('adminPinHash', owner.pinHash);
-        data.adminPinHash = owner.pinHash;
-      }
-
       // Default toggles
-      const defaultOn = ['showLogoOnReceipt', 'showAddressOnReceipt', 'showPhoneOnReceipt', 'showFooterOnReceipt', 'invoiceShowGrid', 'invoiceShowUpiQr', 'allowManagerAdmin'];
+      const defaultOn = ['showLogoOnReceipt', 'showAddressOnReceipt', 'showPhoneOnReceipt', 'showFooterOnReceipt', 'invoiceShowGrid', 'invoiceShowUpiQr'];
       for (const t of defaultOn) {
         if (data[t] === '') data[t] = 'true';
       }
-      const defaultOff = ['showGstinOnReceipt', 'showFssaiOnReceipt', 'showNotesOnReceipt', 'autoPrintOnConfirm', 'autoUploadToDrive', 'invoiceShowSignature', 'invoiceShowWatermark', 'requirePinForOrder', 'allowCashierVoid', 'autoLockTerminal'];
+      const defaultOff = ['showGstinOnReceipt', 'showFssaiOnReceipt', 'showNotesOnReceipt', 'autoPrintOnConfirm', 'autoUploadToDrive', 'invoiceShowSignature', 'invoiceShowWatermark', 'autoLockTerminal'];
       for (const t of defaultOff) {
         if (data[t] === '') data[t] = 'false';
       }
@@ -262,7 +248,7 @@ export function SettingsView() {
     const key = config.supabaseKey?.trim();
 
     if (!url || !key) {
-      showToast('Please enter both Supabase URL and Anon Key to test.', 'warning');
+      showToast('Please enter both Supabase URL and publishable key to test.', 'warning');
       return;
     }
 
@@ -313,8 +299,8 @@ export function SettingsView() {
 
     const name = config.restaurantName?.trim();
     const upiId = config.upiId?.trim();
+    const currencySymbol = safeCurrencySymbol(config.currencySymbol, '₹');
     const currentStaff = authService.getCurrentStaff();
-    const isOwner = currentStaff?.role === 'owner';
 
     if (!name) {
       showToast('Restaurant name is required', 'warning');
@@ -324,49 +310,16 @@ export function SettingsView() {
       showToast('UPI ID is required for checkout QR generation', 'warning');
       return;
     }
-    if (newPin && (newPin.length !== 4 || isNaN(Number(newPin)))) {
-      showToast(`${isOwner ? 'Admin' : 'Manager'} lock PIN must be exactly 4 digits`, 'warning');
-      return;
-    }
-    if (isOwner && !config.adminPinHash && !newPin) {
-      showToast('Set an admin lock PIN before launch', 'warning');
-      return;
-    }
-
     try {
       // Save all field values
       for (const k of CONFIG_KEYS) {
-        if (k !== 'adminPin' && config[k] !== undefined) {
-          await setSetting(k, String(config[k]));
+        if (config[k] !== undefined) {
+          await setSetting(k, k === 'currencySymbol' ? currencySymbol : String(config[k]));
         }
-      }
-
-      // Reset master lock PIN if entered
-      if (newPin) {
-        const pinHashVal = await hashPin(newPin);
-        if (currentStaff && currentStaff.role === 'manager') {
-          await db.staff.update(currentStaff.id, { pinHash: pinHashVal, isSynced: 0 });
-          localStorage.setItem(`pin_authorized_${currentStaff.id}`, 'true');
-          localStorage.setItem('auth_staff_pin', pinHashVal);
-        } else {
-          await setSetting('adminPinHash', pinHashVal);
-          await db.settings.delete('adminPin');
-          handleConfigChange('adminPinHash', pinHashVal);
-
-          const owners = await db.staff.where('role').equals('owner').toArray();
-          for (const o of owners) {
-            await db.staff.update(o.id, { pinHash: pinHashVal, isSynced: 0 });
-            localStorage.setItem(`pin_authorized_${o.id}`, 'true');
-            if (currentStaff && o.id === currentStaff.id) {
-              localStorage.setItem('auth_staff_pin', pinHashVal);
-            }
-          }
-        }
-        setNewPin('');
       }
 
       // Update cached variables
-      localStorage.setItem('app_currency_symbol', config.currencySymbol || '₹');
+      localStorage.setItem('app_currency_symbol', currencySymbol);
       localStorage.setItem('app_currency_code', config.currencyCode || 'INR');
       localStorage.setItem('app_tax_type', config.taxType || 'GST');
       localStorage.setItem('app_tax_label', config.taxLabel || 'GST');
@@ -1074,8 +1027,8 @@ export function SettingsView() {
                     <input type="url" className="input" value={config.supabaseUrl} onChange={(e) => handleConfigChange('supabaseUrl', e.target.value)} placeholder="https://project.supabase.co" />
                   </div>
                   <div className="input-group">
-                    <label>Anon Client Public key</label>
-                    <input type="password" className="input" value={config.supabaseKey} onChange={(e) => handleConfigChange('supabaseKey', e.target.value)} placeholder="Anon Client Key" />
+                    <label>Publishable client key</label>
+                    <input type="password" className="input" value={config.supabaseKey} onChange={(e) => handleConfigChange('supabaseKey', e.target.value)} placeholder="Publishable key" />
                   </div>
 
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
@@ -1157,39 +1110,15 @@ export function SettingsView() {
           {settingsTab === 'security' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
               
-              {/* Security PIN Change & Auto-lock */}
+              {/* Cloud session and automatic lock controls */}
               <div className="settings-card" style={{ background: 'var(--glass-bg)', padding: '24px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
                 <h3 className="settings-card-heading" style={{ margin: '0 0 16px 0', fontSize: 'var(--text-base)', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)' }}>
                   <span className="material-symbols-rounded" style={{ color: 'var(--color-primary)' }}>security</span>
-                  Terminal Lock & Session Timeout
+                  Cloud Session & Automatic Lock
                 </h3>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                  <div className="input-group" style={{ maxWidth: '280px' }}>
-                    <label>Set Lock PIN Code (leave blank to keep)</label>
-                    <input
-                      type="password"
-                      className="input"
-                      value={newPin}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        if (/^[0-9]{0,4}$/.test(val)) setNewPin(val);
-                      }}
-                      maxLength={4}
-                      placeholder="4 digits"
-                      style={{
-                        background: 'var(--bg-primary)', border: '1px solid var(--border-glass)',
-                        color: 'var(--text-primary)', letterSpacing: '0.5em', textAlign: 'center',
-                        fontWeight: 800, fontSize: '1.2rem', padding: '8px 10px',
-                        borderRadius: '6px', width: '100%', outline: 'none'
-                      }}
-                    />
-                  </div>
-
                   <div style={{ background: 'var(--bg-primary)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-glass)', padding: '4px 16px' }}>
                     {[
-                      { id: 'requirePinForOrder', label: 'Require security PIN verification for every POS order checkout' },
-                      { id: 'allowManagerAdmin', label: 'Grant managers full authorization to access Admin Console' },
-                      { id: 'allowCashierVoid', label: 'Grant cashiers privilege to void or refund order records' },
                       { id: 'autoLockTerminal', label: 'Activate automatic lock during cashier terminal inactivity' }
                     ].map(toggle => (
                       <div key={toggle.id} className="settings-toggle-row" style={{ display: 'flex', justifySelf: 'stretch', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>

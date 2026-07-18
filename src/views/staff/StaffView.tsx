@@ -12,7 +12,6 @@
 import { db } from '../../db/database';
 import { escapeHtml, showToast, playSound, vibrateDevice } from '../../utils/helpers';
 import { logShiftStarted, logShiftEnded } from '../../utils/activityLogger';
-import { hashPin } from '../../utils/crypto';
 import { lookupAuthUser } from '../../services/staffAdmin';
 import { authService } from '../../services/auth';
 
@@ -112,10 +111,6 @@ export class StaffView {
               <input type="text" id="staff-name" class="input" placeholder="e.g. Rahul Sharma">
             </div>
             <div class="input-group">
-              <label for="staff-pin">4-Digit PIN</label>
-              <input type="password" id="staff-pin" class="input" placeholder="e.g. 1234" maxlength="4" style="letter-spacing: 0.3em; text-align: center;">
-            </div>
-            <div class="input-group">
               <label for="staff-phone">Phone Number</label>
               <input type="tel" id="staff-phone" class="input" placeholder="e.g. 9876543210">
             </div>
@@ -213,8 +208,7 @@ export class StaffView {
       this.editingStaffId = null;
       this.resetCloudVerification();
       document.getElementById('staff-modal-title').textContent = 'Add Staff';
-      ['staff-name', 'staff-pin', 'staff-phone'].forEach(id => document.getElementById(id).value = '');
-      document.getElementById('staff-pin').placeholder = '4-digit PIN';
+      ['staff-name', 'staff-phone'].forEach(id => document.getElementById(id).value = '');
       document.getElementById('staff-role').value = 'cashier';
       document.getElementById('staff-allow-express').checked = false;
       this.updateCloudSectionVisibility();
@@ -272,7 +266,6 @@ export class StaffView {
     document.getElementById('staff-save').addEventListener('click', async () => {
       const name = document.getElementById('staff-name').value.trim();
       const role = document.getElementById('staff-role').value;
-      const pin = document.getElementById('staff-pin').value;
       const phone = document.getElementById('staff-phone').value.trim();
       const allowExpress = document.getElementById('staff-allow-express').checked ? 1 : 0;
       
@@ -304,43 +297,17 @@ export class StaffView {
         }
       }
       
-      if (!isEdit && (!pin || pin.length !== 4)) {
-        showToast('4-digit PIN is required for new staff', 'error');
-        return;
-      }
-      
-      if (pin && pin.length !== 4) {
-        showToast('PIN must be exactly 4 digits', 'error');
-        return;
-      }
-
-      let hashedPin = '';
-      if (pin) {
-        const isWeak = /^(.)\1{3}$/.test(pin) || '0123456789'.includes(pin) || '9876543210'.includes(pin);
-        hashedPin = await hashPin(pin);
-        
-        const checkId = this.editingStaffId || 0;
-        const existing = await db.staff.where('pinHash').equals(hashedPin).toArray();
-        const collision = existing.some(s => s.isActive && s.id !== checkId);
-        
-        if (isWeak || collision) {
-          showToast('Invalid or insecure PIN. Please choose a different 4-digit combination.', 'error');
-          return;
-        }
-      }
-
       // Build staff data with optional cloud user link
       const cloudUserId = this.verifiedCloudUser?.authUserId || null;
 
       if (isEdit) {
         const updateData = { name, role, phone, allowExpress, isSynced: 0 };
-        if (pin) updateData.pinHash = hashedPin;
         if (cloudUserId) updateData.cloudUserId = cloudUserId;
         await db.staff.update(this.editingStaffId, updateData);
         showToast('Staff member updated!', 'success');
       } else {
         await db.staff.add({
-          name, role, pinHash: hashedPin, phone, allowExpress,
+          name, role, phone, allowExpress,
           cloudUserId,
           isActive: true,
           createdAt: new Date().toISOString(),
@@ -348,10 +315,6 @@ export class StaffView {
           _platform: 'nextgenos'
         });
         showToast('Staff member added!', 'success');
-      }
-
-      if (role === 'owner' && pin) {
-        await db.settings.put({ key: 'adminPinHash', value: hashedPin });
       }
 
       resetModal();
@@ -406,14 +369,13 @@ export class StaffView {
                 </div>
               </div>
               <div style="position:absolute;right:16px;top:50%;transform:translateY(-50%);display:flex;align-items:center;gap:6px;">
-                <div style="font-size:0.65rem;color:var(--text-muted);font-weight:600;letter-spacing:0.15em;background:rgba(255,255,255,0.03);padding:3px 6px;border-radius:4px;border:1px solid rgba(255,255,255,0.05);white-space:nowrap;">PIN: ****</div>
                 ${canManageThis ? `
-                <button class="btn-icon edit-staff-btn" data-id="${s.id}" style="width:30px;height:30px;min-width:30px;border-radius:6px;">
+                <button class="btn-icon edit-staff-btn" data-id="${escapeHtml(String(s.id ?? ''))}" style="width:30px;height:30px;min-width:30px;border-radius:6px;">
                   <span class="material-symbols-rounded" style="font-size:16px;">edit</span>
                 </button>
                 ` : ''}
                 ${isDeletable ? `
-                  <button class="btn-icon delete-staff-btn" data-id="${s.id}" style="color:var(--color-danger);width:30px;height:30px;min-width:30px;border-radius:6px;">
+                  <button class="btn-icon delete-staff-btn" data-id="${escapeHtml(String(s.id ?? ''))}" style="color:var(--color-danger);width:30px;height:30px;min-width:30px;border-radius:6px;">
                     <span class="material-symbols-rounded" style="font-size:16px;">delete</span>
                   </button>
                 ` : ''}
@@ -433,8 +395,6 @@ export class StaffView {
           document.getElementById('staff-modal-title').textContent = 'Edit Staff Member';
           document.getElementById('staff-name').value = staffMember.name || '';
           document.getElementById('staff-role').value = staffMember.role || 'cashier';
-          document.getElementById('staff-pin').value = '';
-          document.getElementById('staff-pin').placeholder = '•••• (leave blank to keep)';
           document.getElementById('staff-phone').value = staffMember.phone || '';
           document.getElementById('staff-allow-express').checked = staffMember.allowExpress === 1 || staffMember.allowExpress === true;
 
@@ -485,11 +445,11 @@ export class StaffView {
         `<div class="content-grid">${recent.map(s => `
           <div class="card" style="display:flex; justify-content:space-between; align-items:center; flex-direction:row;">
             <div>
-              <div style="font-size:var(--text-sm);font-weight:600;color:var(--text-primary);">Staff #${s.staffId}</div>
-              <div style="font-size:0.7rem;color:var(--text-muted);margin-top:2px;">${s.date || '—'}</div>
+              <div style="font-size:var(--text-sm);font-weight:600;color:var(--text-primary);">Staff #${escapeHtml(String(s.staffId ?? '—'))}</div>
+              <div style="font-size:0.7rem;color:var(--text-muted);margin-top:2px;">${escapeHtml(s.date || '—')}</div>
             </div>
             <div style="text-align:right;">
-              <div style="font-size:var(--text-xs);color:var(--color-success);font-weight:600;">${s.clockIn || '—'} → ${s.clockOut || 'Active'}</div>
+              <div style="font-size:var(--text-xs);color:var(--color-success);font-weight:600;">${escapeHtml(s.clockIn || '—')} → ${escapeHtml(s.clockOut || 'Active')}</div>
             </div>
           </div>
         `).join('')}</div>`;
