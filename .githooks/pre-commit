@@ -1,14 +1,18 @@
 #!/bin/sh
 EMAIL=$(git config user.email)
-if [ "$EMAIL" != "uninestindia@gmail.com" ]; then
+if [ "$EMAIL" != "mohammadjalaluddin1010@gmail.com" ]; then
   echo "================================================================="
   echo "❌ Git Commit Blocked: Incorrect Email Configured!"
   echo "-----------------------------------------------------------------"
   echo "Your current git user.email is: '$EMAIL'"
-  echo "This codebase requires commits to be authored by 'uninestindia@gmail.com'"
-  echo "to prevent Vercel deployment blocks."
+  echo "This codebase requires commits to be authored by 'mohammadjalaluddin1010@gmail.com'"
+  echo "to match your Vercel account owner email and prevent deployment blocks."
+  echo ""
+  echo "To fix this, please run:"
+  echo "   git config user.email \"mohammadjalaluddin1010@gmail.com\""
   echo "================================================================="
   exit 1
 fi
+
 
 
