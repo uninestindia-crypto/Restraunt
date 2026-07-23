@@ -18,3 +18,8 @@ All development agents (including AI assistants) modifying the codebase at `d:\Z
 4. **Session Separation Safeguards**:
    * Keep customer loyalty operations and internal cashier POS operations completely decoupled.
    * Never instantiate or overlap public customer views with administrative local PIN authentication interfaces.
+
+5. **Git Author & Vercel Deployment Safeguard**:
+   * All Git commits in this repository MUST be authored using `uninestindia-crypto` and `uninestindia@gmail.com`.
+   * Never alter `user.email` or modify `.githooks/pre-commit` away from `uninestindia@gmail.com` to prevent Vercel deployment block errors.
+
