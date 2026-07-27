@@ -33,6 +33,36 @@ test('security migration restricts storage and privileged RPC execution', () => 
   assert.match(migration, /pg_advisory_xact_lock/);
 });
 
+test('production migration remediation removes legacy authorization bypasses', () => {
+  const base = read('supabase/migrations/20260628000000_initial_schema.sql');
+  const remediation = read('supabase/migrations/20260727160620_launch_advisor_remediation.sql');
+
+  assert.match(base, /operator\(public\.<=>\)/);
+  assert.match(base, /set search_path = ''/);
+  assert.match(remediation, /alter extension vector set schema extensions/);
+  assert.match(remediation, /operator\(extensions\.<=>\)/);
+  assert.match(remediation, /drop policy if exists "authenticated staff full access orders"/);
+  assert.match(remediation, /drop policy if exists "Allow public read access to menu images"/);
+  assert.match(remediation, /revoke all on function public\.audit_order_changes\(\) from public, anon, authenticated/);
+  assert.match(remediation, /revoke all on function public\.rls_auto_enable\(\) from public, anon, authenticated/);
+});
+
+test('production migrations index every previously unindexed foreign key', () => {
+  const migration = read('supabase/migrations/20260727161702_add_missing_foreign_key_indexes.sql');
+
+  for (const indexName of [
+    'idx_customer_reviews_user_id',
+    'idx_customer_saved_addresses_user_id',
+    'idx_recipes_menu_item_id',
+    'idx_reservations_customer_id',
+    'idx_reservations_table_id',
+    'idx_shifts_staff_id',
+    'idx_staff_memberships_staff_id'
+  ]) {
+    assert.match(migration, new RegExp(indexName));
+  }
+});
+
 test('customer identity resolution no longer links by display name', () => {
   const source = read('src/services/auth.ts');
   const resolver = source.slice(source.indexOf('async _resolveCustomer'), source.indexOf('async _resolveCloudAccount'));
@@ -97,6 +127,19 @@ test('production client accepts a Supabase publishable key without exposing serv
   assert.match(client, /NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY/);
   assert.doesNotMatch(client, /SUPABASE_SERVICE_ROLE_KEY/);
   assert.match(envGuard, /SUPABASE_SERVICE_ROLE_KEY/);
+});
+
+test('Vercel serves the hardened static export instead of the raw Next.js adapter output', () => {
+  const config = JSON.parse(read('vercel.json'));
+  const csp = config.headers
+    .flatMap((entry: { headers?: Array<{ key?: string; value?: string }> }) => entry.headers || [])
+    .find((header: { key?: string }) => header.key === 'Content-Security-Policy')?.value || '';
+
+  assert.equal(config.framework, null);
+  assert.equal(config.buildCommand, 'npm run build');
+  assert.equal(config.outputDirectory, 'dist');
+  assert.match(csp, /script-src 'self'/);
+  assert.doesNotMatch(csp, /script-src[^;]*'unsafe-inline'/);
 });
 
 test('public storefront first paint does not wait for cloud catalog retries', () => {

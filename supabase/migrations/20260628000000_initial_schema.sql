@@ -337,10 +337,11 @@ stable
 security definer
 set search_path = ''
 as $$
-  select d.id, d.content, d.metadata, (1 - (d.embedding <=> query_embedding))::float
+  select d.id, d.content, d.metadata, (1 - (d.embedding operator(public.<=>) query_embedding))::float
   from public.document_embeddings d
-  where d.store_id = filter_store_id and 1 - (d.embedding <=> query_embedding) > match_threshold
-  order by d.embedding <=> query_embedding
+  where d.store_id = filter_store_id
+    and 1 - (d.embedding operator(public.<=>) query_embedding) > match_threshold
+  order by d.embedding operator(public.<=>) query_embedding
   limit least(greatest(match_count, 1), 20)
 $$;
 revoke all on function public.match_documents(vector, float, integer, text) from public, anon, authenticated;
