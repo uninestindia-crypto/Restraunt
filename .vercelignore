@@ -1,0 +1,37 @@
+# Local tooling and repository metadata
+.agents/
+.codex/
+.git/
+.githooks/
+.github/
+.vercel/
+
+# Credentials and local environment
+.env
+.env.*
+!.env.example
+!.env.admin.example
+
+# Dependencies and generated output
+node_modules/
+.next/
+dist/
+playwright-report/
+test-results/
+tsconfig.tsbuildinfo
+
+# Non-web deployment sources
+android/
+android-sdk/
+jdk17/
+jdk21/
+artifacts/
+supabase/
+tests/
+
+# Local-only project materials
+*.log
+*.apk
+build-apk.ps1
+capacitor.config.json
+supabase-schema.sql
