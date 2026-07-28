@@ -55,7 +55,7 @@ export class PaymentModal {
       <div class="modal" tabindex="-1" role="dialog" aria-label="Payment" style="max-width: 460px;">
         <div class="modal-header">
           <h3 class="txt-primary txt-bold flex-row-between" style="gap: 8px; margin: 0;">
-            <span class="material-symbols-rounded txt-brand" style="font-size: 24px; filter: drop-shadow(0 0 8px rgba(255, 94, 54, 0.4));">payments</span>
+            <span class="material-symbols-rounded txt-brand" style="font-size: 24px; filter: drop-shadow(0 0 8px rgba(var(--color-primary-rgb), 0.4));">payments</span>
             Secure Checkout
           </h3>
           <button class="btn-icon btn-secondary" id="payment-close-btn" aria-label="Close" style="width: 32px; height: 32px;">
@@ -125,7 +125,7 @@ export class PaymentModal {
                   max="${Number(this.order.total) || 0}"
                   step="1"
                   value="${escapeHtml(String(this.customAmount))}"
-                  style="font-size: 1.3rem; font-weight: 800; text-align: center; background: rgba(0, 0, 0, 0.2); border-color: rgba(245, 158, 11, 0.3);"
+                  style="font-size: 1.3rem; font-weight: 800; text-align: center; background: rgba(0, 0, 0, 0.2); border-color: rgba(var(--color-warning-rgb), 0.3);"
                 >
               </div>
               <div id="custom-remaining-display" class="txt-center txt-muted" style="font-size: var(--text-xs); margin-top: 8px; font-weight: 600;">

@@ -10,6 +10,7 @@
  */
 
 // Styles
+import './styles/fonts.css';
 import './styles/variables.css';
 import './styles/base.css';
 import './styles/components-v2.css';
@@ -31,6 +32,7 @@ import { showToast, escapeHtml, safeCurrencySymbol } from './utils/helpers';
 
 // NextGenOS
 import { printConsoleSignature, injectBuildGlobal, performVersionGate, checkForUpdateAndGate } from './utils/watermark';
+import { initModalA11y } from './utils/modalA11y';
 class App {
   constructor() {
     this.deferredInstallPrompt = null;
@@ -43,6 +45,10 @@ class App {
 
     // Initialize theme immediately to prevent FOUC
     this.initTheme();
+
+    // Apply dialog semantics, focus trapping, and Escape-to-close to every
+    // `.modal-overlay` the app opens, regardless of which view created it.
+    initModalA11y();
   }
 
   initTheme() {

@@ -583,8 +583,8 @@ export function SettingsView() {
           color: var(--text-primary);
         }
         .settings-sidebar-btn.active {
-          background: rgba(255, 94, 54, 0.08);
-          border-color: rgba(255, 94, 54, 0.2);
+          background: rgba(var(--color-primary-rgb), 0.08);
+          border-color: rgba(var(--color-primary-rgb), 0.2);
           color: var(--color-primary);
         }
       `}</style>
@@ -701,7 +701,7 @@ export function SettingsView() {
                 <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: '16px' }}>
                   <div className="input-group">
                     <label>UPI ID (VPA) for Scanning</label>
-                    <input type="text" className="input" style={{ borderColor: 'rgba(255, 94, 54, 0.3)' }} value={config.upiId} onChange={(e) => handleConfigChange('upiId', e.target.value)} placeholder="merchant@upi" />
+                    <input type="text" className="input" style={{ borderColor: 'rgba(var(--color-primary-rgb), 0.3)' }} value={config.upiId} onChange={(e) => handleConfigChange('upiId', e.target.value)} placeholder="merchant@upi" />
                   </div>
                   <div className="input-group">
                     <label>Merchant Name</label>
@@ -803,7 +803,7 @@ export function SettingsView() {
                   </div>
 
                   {permissionError && (
-                    <div style={{ marginTop: '12px', padding: '12px', borderRadius: '8px', background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.2)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <div style={{ marginTop: '12px', padding: '12px', borderRadius: '8px', background: 'rgba(var(--color-danger-rgb), 0.08)', border: '1px solid rgba(var(--color-danger-rgb), 0.2)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                       <div style={{ fontSize: '11px', color: 'var(--color-danger)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
                         <span className="material-symbols-rounded" style={{ fontSize: '14px' }}>error</span>
                         Bluetooth Permission Blocked
@@ -1183,7 +1183,7 @@ export function SettingsView() {
                   </div>
                   <div>
                     <input ref={importFileInputRef} type="file" accept=".json" onChange={handleImportRestore} style={{ display: 'none' }} />
-                    <button onClick={() => importFileInputRef.current?.click()} className="btn btn-secondary btn-sm" style={{ width: '100%', height: '36px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '4px', border: '1px solid rgba(245,158,11,0.25)', background: 'rgba(245,158,11,0.04)', color: '#F59E0B', fontWeight: 700 }}>
+                    <button onClick={() => importFileInputRef.current?.click()} className="btn btn-secondary btn-sm" style={{ width: '100%', height: '36px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '4px', border: '1px solid rgba(var(--color-warning-rgb),0.25)', background: 'rgba(var(--color-warning-rgb),0.04)', color: '#F59E0B', fontWeight: 700 }}>
                       <span className="material-symbols-rounded" style={{ fontSize: '16px' }}>upload</span>
                       Restore / Upload JSON Backup file
                     </button>
@@ -1280,7 +1280,7 @@ export function SettingsView() {
                               border: `1.5px solid ${active ? 'var(--color-primary)' : 'var(--border-glass)'}`,
                               background: active ? 'var(--color-primary-glow)' : 'var(--bg-primary)',
                               color: active ? 'var(--color-primary)' : 'var(--text-secondary)',
-                              boxShadow: active ? '0 0 12px rgba(255, 94, 54, 0.15)' : 'none'
+                              boxShadow: active ? '0 0 12px rgba(var(--color-primary-rgb), 0.15)' : 'none'
                             }}
                           >
                             <span className="material-symbols-rounded" style={{ fontSize: '16px' }}>{r.icon}</span>
@@ -1402,7 +1402,7 @@ export function SettingsView() {
                       display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
                       borderRadius: 'var(--radius-md)', border: 'none', cursor: 'pointer',
                       background: 'var(--color-primary)', color: '#fff',
-                      boxShadow: '0 4px 15px rgba(255, 94, 54, 0.3)'
+                      boxShadow: '0 4px 15px rgba(var(--color-primary-rgb), 0.3)'
                     }}
                   >
                     <span className="material-symbols-rounded" style={{ fontSize: '18px' }}>campaign</span>

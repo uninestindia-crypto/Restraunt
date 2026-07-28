@@ -14,10 +14,10 @@ import { tableService } from '../../services/tables';
 import { showToast, playSound, vibrateDevice, escapeHtml } from '../../utils/helpers';
 
 const STATUS_CONFIG = {
-  available: { label: 'Available', color: '#10B981', bg: 'rgba(16,185,129,0.08)', border: 'rgba(16,185,129,0.25)', icon: 'check_circle' },
-  occupied: { label: 'Occupied', color: '#EF4444', bg: 'rgba(239,68,68,0.08)', border: 'rgba(239,68,68,0.25)', icon: 'group' },
-  reserved: { label: 'Reserved', color: '#F59E0B', bg: 'rgba(245,158,11,0.08)', border: 'rgba(245,158,11,0.25)', icon: 'event' },
-  cleaning: { label: 'Cleaning', color: '#3B82F6', bg: 'rgba(59,130,246,0.08)', border: 'rgba(59,130,246,0.25)', icon: 'cleaning_services' },
+  available: { label: 'Available', color: '#10B981', bg: 'rgba(var(--color-success-rgb),0.08)', border: 'rgba(var(--color-success-rgb),0.25)', icon: 'check_circle' },
+  occupied: { label: 'Occupied', color: '#EF4444', bg: 'rgba(var(--color-danger-rgb),0.08)', border: 'rgba(var(--color-danger-rgb),0.25)', icon: 'group' },
+  reserved: { label: 'Reserved', color: '#F59E0B', bg: 'rgba(var(--color-warning-rgb),0.08)', border: 'rgba(var(--color-warning-rgb),0.25)', icon: 'event' },
+  cleaning: { label: 'Cleaning', color: '#3B82F6', bg: 'rgba(var(--color-info-rgb),0.08)', border: 'rgba(var(--color-info-rgb),0.25)', icon: 'cleaning_services' },
 };
 const STATUS_CYCLE = ['available', 'occupied', 'reserved', 'cleaning'];
 

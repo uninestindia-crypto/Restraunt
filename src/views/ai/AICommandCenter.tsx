@@ -14,8 +14,8 @@ import { showToast, playSound, vibrateDevice } from '../../utils/helpers';
 
 const TIER_BADGES = {
   codebase: { label: '💻 Local AI', color: 'rgba(148,163,184,0.6)', bg: 'rgba(148,163,184,0.08)' },
-  groq: { label: '⚡ Groq', color: '#10B981', bg: 'rgba(16,185,129,0.08)' },
-  lightning: { label: '🧠 Lightning', color: '#8B5CF6', bg: 'rgba(139,92,246,0.08)' },
+  groq: { label: '⚡ Groq', color: '#10B981', bg: 'rgba(var(--color-success-rgb),0.08)' },
+  lightning: { label: '🧠 Lightning', color: '#8B5CF6', bg: 'rgba(var(--nextgenos-purple-rgb),0.08)' },
 };
 
 export class AICommandCenter {
@@ -66,8 +66,8 @@ export class AICommandCenter {
             <div style="font-size:0.55rem;color:rgba(162,155,254,0.45);font-weight:500;letter-spacing:0.08em;text-transform:uppercase;">3-Tier AI • Groq Chat • Lightning Analytics • Local Offline</div>
           </div>
           <div style="margin-left:auto;display:flex;gap:6px;">
-            ${aiService.isGroqAvailable ? '<span style="padding:3px 8px;border-radius:12px;background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.2);font-size:0.6rem;color:#10B981;font-weight:600;">⚡ Groq</span>' : ''}
-            ${aiService.isLightningAvailable ? '<span style="padding:3px 8px;border-radius:12px;background:rgba(139,92,246,0.08);border:1px solid rgba(139,92,246,0.2);font-size:0.6rem;color:#8B5CF6;font-weight:600;">🧠 Lightning</span>' : ''}
+            ${aiService.isGroqAvailable ? '<span style="padding:3px 8px;border-radius:12px;background:rgba(var(--color-success-rgb),0.08);border:1px solid rgba(var(--color-success-rgb),0.2);font-size:0.6rem;color:var(--color-success);font-weight:600;">⚡ Groq</span>' : ''}
+            ${aiService.isLightningAvailable ? '<span style="padding:3px 8px;border-radius:12px;background:rgba(var(--nextgenos-purple-rgb),0.08);border:1px solid rgba(var(--nextgenos-purple-rgb),0.2);font-size:0.6rem;color:var(--nextgenos-purple);font-weight:600;">🧠 Lightning</span>' : ''}
             <span style="padding:3px 8px;border-radius:12px;background:rgba(148,163,184,0.08);border:1px solid rgba(148,163,184,0.15);font-size:0.6rem;color:rgba(148,163,184,0.7);font-weight:600;">💻 Local</span>
           </div>
         </div>
@@ -114,7 +114,7 @@ export class AICommandCenter {
     const div = document.createElement('div');
     div.style.cssText = 'display:flex;justify-content:flex-end;animation:slideUp 0.3s ease;';
     div.innerHTML = `
-      <div style="max-width:75%;padding:12px 16px;background:linear-gradient(135deg,#FF6B35,#FF8960);border-radius:16px 16px 4px 16px;color:white;font-size:var(--text-sm);font-weight:500;line-height:1.5;box-shadow:0 4px 15px rgba(255,107,53,0.2);">${this.escapeHtml(text)}</div>
+      <div style="max-width:75%;padding:12px 16px;background:linear-gradient(135deg,var(--color-primary),#FF8960);border-radius:16px 16px 4px 16px;color:white;font-size:var(--text-sm);font-weight:500;line-height:1.5;box-shadow:0 4px 15px rgba(255,107,53,0.2);">${this.escapeHtml(text)}</div>
     `;
     container.appendChild(div);
     this.scrollToBottom();

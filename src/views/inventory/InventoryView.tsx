@@ -35,7 +35,7 @@ export class InventoryView {
             <span class="material-symbols-rounded" style="font-size:16px;">add</span> Add Item
           </button>
         </div>
-        <div id="low-stock-alert" style="display:none;padding:10px 24px;background:rgba(239,68,68,0.08);border-bottom:1px solid rgba(239,68,68,0.2);"></div>
+        <div id="low-stock-alert" style="display:none;padding:10px 24px;background:rgba(var(--color-danger-rgb),0.08);border-bottom:1px solid rgba(var(--color-danger-rgb),0.2);"></div>
         
         <div class="tab-container">
           <button class="tab inv-tab active" data-tab="stock">Stock Levels</button>

@@ -121,7 +121,7 @@ export class CheckoutSuccessModal {
       <div class="modal" tabindex="-1" role="dialog" style="max-width: 440px;">
         <div class="modal-header">
           <h3 class="txt-primary txt-bold flex-row-between" style="gap: 10px; margin: 0;">
-            <span class="material-symbols-rounded txt-success" style="font-size: 24px; filter: drop-shadow(0 0 6px rgba(16,185,129,0.3));">check_circle</span>
+            <span class="material-symbols-rounded txt-success" style="font-size: 24px; filter: drop-shadow(0 0 6px rgba(var(--color-success-rgb),0.3));">check_circle</span>
             Order Placed Successfully!
           </h3>
         </div>
@@ -152,7 +152,7 @@ export class CheckoutSuccessModal {
               Print (Thermal)
             </button>
             <button class="btn btn-secondary" id="btn-success-browser-print">
-              <span class="material-symbols-rounded" style="font-size: 18px; color:#60A5FA;">local_print_shop</span>
+              <span class="material-symbols-rounded" style="font-size: 18px; color:#60A5FA;">print</span>
               Standard (A4)
             </button>
           </div>
@@ -181,7 +181,7 @@ export class CheckoutSuccessModal {
     if (waPhone) {
       waPhone.addEventListener('focus', () => {
         waPhone.style.borderColor = 'var(--color-primary)';
-        waPhone.style.boxShadow = '0 0 8px rgba(255, 94, 54, 0.2)';
+        waPhone.style.boxShadow = '0 0 8px rgba(var(--color-primary-rgb), 0.2)';
       });
       waPhone.addEventListener('blur', () => {
         waPhone.style.borderColor = 'var(--border-glass)';
@@ -262,7 +262,7 @@ export class CheckoutSuccessModal {
           <title>Generating Invoice...</title>
           <style>
             body { font-family: system-ui, sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; background: #f8fafc; color: #64748b; }
-            .loader { border: 3px solid #e2e8f0; border-top: 3px solid #ff5e36; border-radius: 50%; width: 24px; height: 24px; animation: spin 0.8s linear infinite; margin-right: 12px; }
+            .loader { border: 3px solid #e2e8f0; border-top: 3px solid var(--color-primary); border-radius: 50%; width: 24px; height: 24px; animation: spin 0.8s linear infinite; margin-right: 12px; }
             @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
           </style>
         </head>
@@ -341,7 +341,7 @@ export class CheckoutSuccessModal {
       printWindow.document.open();
       printWindow.document.write(`
         <html>
-          <body style="font-family: system-ui; text-align: center; padding: 40px; color: #ef4444;">
+          <body style="font-family: system-ui; text-align: center; padding: 40px; color: var(--color-danger);">
             <h3>Error generating invoice</h3>
             <p>${escapeHtml(error.message)}</p>
             <p>You may close this window.</p>

@@ -101,9 +101,9 @@ function HelpCenterComponent() {
             <h2>Order Status Lifecycle</h2>
             <p>Every order moves sequentially through these states:</p>
             <div style={{ display: 'flex', gap: '8px', margin: '16px 0', fontSize: '11px', justifyContent: 'space-between', flexWrap: 'wrap' }}>
-              <span style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239,68,68,0.2)', padding: '6px 10px', borderRadius: '4px', color: '#EF4444', fontWeight: 700 }}>1. PENDING (Unpaid/Self)</span>
-              <span style={{ background: 'rgba(245, 158, 11, 0.1)', border: '1px solid rgba(245,158,11,0.2)', padding: '6px 10px', borderRadius: '4px', color: '#F59E0B', fontWeight: 700 }}>2. PREPARING</span>
-              <span style={{ background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16,185,129,0.2)', padding: '6px 10px', borderRadius: '4px', color: '#10B981', fontWeight: 700 }}>3. READY</span>
+              <span style={{ background: 'rgba(var(--color-danger-rgb), 0.1)', border: '1px solid rgba(var(--color-danger-rgb),0.2)', padding: '6px 10px', borderRadius: '4px', color: '#EF4444', fontWeight: 700 }}>1. PENDING (Unpaid/Self)</span>
+              <span style={{ background: 'rgba(var(--color-warning-rgb), 0.1)', border: '1px solid rgba(var(--color-warning-rgb),0.2)', padding: '6px 10px', borderRadius: '4px', color: '#F59E0B', fontWeight: 700 }}>2. PREPARING</span>
+              <span style={{ background: 'rgba(var(--color-success-rgb), 0.1)', border: '1px solid rgba(var(--color-success-rgb),0.2)', padding: '6px 10px', borderRadius: '4px', color: '#10B981', fontWeight: 700 }}>3. READY</span>
               <span style={{ background: 'rgba(99, 102, 241, 0.1)', border: '1px solid rgba(99,102,241,0.2)', padding: '6px 10px', borderRadius: '4px', color: '#6366F1', fontWeight: 700 }}>4. COMPLETED / PAID</span>
             </div>
           </div>
@@ -270,7 +270,7 @@ function HelpCenterComponent() {
           FAQs
         </button>
 
-        <div style={{ marginTop: 'auto', padding: '12px', background: 'rgba(255, 94, 54, 0.05)', border: '1px solid rgba(255, 94, 54, 0.1)', borderRadius: 'var(--radius-md)', fontSize: '11px', color: 'var(--text-secondary)', textAlign: 'center' }}>
+        <div style={{ marginTop: 'auto', padding: '12px', background: 'rgba(var(--color-primary-rgb), 0.05)', border: '1px solid rgba(var(--color-primary-rgb), 0.1)', borderRadius: 'var(--radius-md)', fontSize: '11px', color: 'var(--text-secondary)', textAlign: 'center' }}>
           <strong className="txt-brand">NextGenOS OS v2.0</strong>
           <div style={{ opacity: 0.7, marginTop: '2px' }}>Fully offline ready</div>
         </div>
@@ -289,7 +289,7 @@ function HelpCenterComponent() {
           flex: 1;
           height: 100%;
           overflow: hidden;
-          background: radial-gradient(circle at top right, rgba(255, 94, 54, 0.05) 0%, transparent 60%);
+          background: radial-gradient(circle at top right, rgba(var(--color-primary-rgb), 0.05) 0%, transparent 60%);
         }
         .help-sidebar {
           width: 260px;
@@ -368,8 +368,8 @@ function HelpCenterComponent() {
           color: var(--text-primary);
         }
         .help-nav-btn.active {
-          background: rgba(255, 94, 54, 0.08);
-          border-color: rgba(255, 94, 54, 0.2);
+          background: rgba(var(--color-primary-rgb), 0.08);
+          border-color: rgba(var(--color-primary-rgb), 0.2);
           color: var(--color-primary);
         }
         .help-nav-btn.active span {
@@ -412,7 +412,7 @@ function HelpCenterComponent() {
         }
         
         .help-tip-box {
-          background: rgba(59, 130, 246, 0.06);
+          background: rgba(var(--color-info-rgb), 0.06);
           border-left: 4px solid var(--color-info);
           padding: 16px;
           border-radius: 0 var(--radius-md) var(--radius-md) 0;
@@ -428,8 +428,8 @@ function HelpCenterComponent() {
         }
 
         .help-warning-box {
-          background: rgba(245, 158, 11, 0.06);
-          border-left: 4px solid #F59E0B;
+          background: rgba(var(--color-warning-rgb), 0.06);
+          border-left: 4px solid var(--color-warning);
           padding: 16px;
           border-radius: 0 var(--radius-md) var(--radius-md) 0;
           margin: 20px 0;
@@ -457,13 +457,13 @@ function HelpCenterComponent() {
         .help-step-card:hover {
           transform: translateY(-2px);
           background: rgba(255, 255, 255, 0.03);
-          border-color: rgba(255, 94, 54, 0.15);
+          border-color: rgba(var(--color-primary-rgb), 0.15);
         }
         .help-step-badge {
           width: 28px;
           height: 28px;
           border-radius: 50%;
-          background: rgba(255, 94, 54, 0.1);
+          background: rgba(var(--color-primary-rgb), 0.1);
           color: var(--color-primary);
           display: flex;
           align-items: center;

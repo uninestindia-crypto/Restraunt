@@ -99,7 +99,7 @@ function StaffLogin({ onClose, onLoginSuccess }: StaffLoginProps) {
               <label htmlFor="login-email" style={{ display: 'block', marginBottom: 8, fontWeight: 700 }}>Account email</label>
               <input
                 id="login-email"
-                className="form-input"
+                className="input"
                 type="email"
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
@@ -111,7 +111,7 @@ function StaffLogin({ onClose, onLoginSuccess }: StaffLoginProps) {
               <label htmlFor="login-password" style={{ display: 'block', marginBottom: 8, fontWeight: 700 }}>Password</label>
               <input
                 id="login-password"
-                className="form-input"
+                className="input"
                 type="password"
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
@@ -120,7 +120,7 @@ function StaffLogin({ onClose, onLoginSuccess }: StaffLoginProps) {
                 style={{ width: '100%', marginBottom: 12 }}
               />
 
-              <div role="alert" aria-live="polite" style={{ minHeight: 24, color: 'var(--color-error, #ef4444)', fontSize: 13, marginBottom: 12 }}>
+              <div role="alert" style={{ minHeight: 24, color: 'var(--color-danger)', fontSize: 13, marginBottom: 12 }}>
                 {error}
               </div>
 

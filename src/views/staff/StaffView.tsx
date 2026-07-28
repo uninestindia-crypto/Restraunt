@@ -153,7 +153,7 @@ export class StaffView {
 
     if (!result || !result.success) {
       statusEl.innerHTML = `
-        <div style="display:flex;align-items:center;gap:6px;padding:6px 10px;border-radius:var(--radius-sm);background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);">
+        <div style="display:flex;align-items:center;gap:6px;padding:6px 10px;border-radius:var(--radius-sm);background:rgba(var(--color-danger-rgb),0.08);border:1px solid rgba(var(--color-danger-rgb),0.2);">
           <span class="material-symbols-rounded" style="font-size:14px;color:var(--color-danger);">error</span>
           <span style="font-size:0.7rem;color:var(--color-danger);font-weight:600;">${escapeHtml(result?.message || 'Verification failed. Check your connection.')}</span>
         </div>`;
@@ -163,7 +163,7 @@ export class StaffView {
     const data = result.data;
     if (!data?.found) {
       statusEl.innerHTML = `
-        <div style="display:flex;align-items:center;gap:6px;padding:6px 10px;border-radius:var(--radius-sm);background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);">
+        <div style="display:flex;align-items:center;gap:6px;padding:6px 10px;border-radius:var(--radius-sm);background:rgba(var(--color-danger-rgb),0.08);border:1px solid rgba(var(--color-danger-rgb),0.2);">
           <span class="material-symbols-rounded" style="font-size:14px;color:var(--color-danger);">person_off</span>
           <span style="font-size:0.7rem;color:var(--color-danger);font-weight:600;">No account found. This person must sign up first.</span>
         </div>`;
@@ -192,7 +192,7 @@ export class StaffView {
     }
 
     statusEl.innerHTML = `
-      <div style="display:flex;align-items:center;gap:6px;padding:6px 10px;border-radius:var(--radius-sm);background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.2);">
+      <div style="display:flex;align-items:center;gap:6px;padding:6px 10px;border-radius:var(--radius-sm);background:rgba(var(--color-success-rgb),0.08);border:1px solid rgba(var(--color-success-rgb),0.2);">
         <span class="material-symbols-rounded" style="font-size:14px;color:var(--color-success);">verified</span>
         <div>
           <span style="font-size:0.7rem;color:var(--color-success);font-weight:600;">Verified: ${escapeHtml(data.email)}</span>
@@ -364,7 +364,7 @@ export class StaffView {
                 <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:6px;">
                   <span style="font-size:0.6rem;padding:2px 8px;border-radius:6px;font-weight:700;color:${role.color};background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.06);">${role.label}</span>
                   ${expressBadge}
-                  ${s.cloudUserId ? `<span style="font-size:0.6rem;padding:2px 8px;border-radius:6px;font-weight:700;color:var(--color-success);background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.15);"><span class="material-symbols-rounded" style="font-size:10px;vertical-align:middle;">verified</span> Cloud</span>` : ''}
+                  ${s.cloudUserId ? `<span style="font-size:0.6rem;padding:2px 8px;border-radius:6px;font-weight:700;color:var(--color-success);background:rgba(var(--color-success-rgb),0.08);border:1px solid rgba(var(--color-success-rgb),0.15);"><span class="material-symbols-rounded" style="font-size:10px;vertical-align:middle;">verified</span> Cloud</span>` : ''}
                   <span style="font-size:0.6rem;color:${s.isActive ? 'var(--color-success)' : 'var(--color-error)'};font-weight:700;">${s.isActive ? '● Active' : '● Inactive'}</span>
                 </div>
               </div>
@@ -409,7 +409,7 @@ export class StaffView {
             const statusEl = document.getElementById('staff-cloud-status');
             if (statusEl) {
               statusEl.innerHTML = `
-                <div style="display:flex;align-items:center;gap:6px;padding:6px 10px;border-radius:var(--radius-sm);background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.2);">
+                <div style="display:flex;align-items:center;gap:6px;padding:6px 10px;border-radius:var(--radius-sm);background:rgba(var(--color-success-rgb),0.08);border:1px solid rgba(var(--color-success-rgb),0.2);">
                   <span class="material-symbols-rounded" style="font-size:14px;color:var(--color-success);">verified</span>
                   <span style="font-size:0.7rem;color:var(--color-success);font-weight:600;">Already linked to cloud account</span>
                 </div>`;

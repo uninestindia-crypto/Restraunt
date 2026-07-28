@@ -12,7 +12,12 @@
   font-family: 'Material Symbols Rounded';
   font-style: normal;
   font-weight: 400;
-  src: url('/assets/material-symbols-rounded.ttf') format('truetype');
+  /* Subset to the 148 icons this app actually uses: 1.72 MB TTF -> 17.7 KB WOFF2.
+     Regenerate with fontTools if new icon names are introduced. */
+  src: url('/assets/material-symbols-rounded.woff2') format('woff2');
+  /* 'block' (not 'swap') is deliberate for an icon font: swap would flash the
+     raw ligature text ("settings") before the glyph. At 17.7 KB the block
+     period is imperceptible. */
   font-display: block;
 }
 
@@ -24,6 +29,7 @@
 
   /* ── NextGenOS Platform Brand ────────────────── */
   --nextgenos-purple: #8B5CF6;
+  --nextgenos-purple-rgb: 139, 92, 246;
   --nextgenos-purple-glow: rgba(139, 92, 246, 0.35);
   --nextgenos-purple-bg: rgba(139, 92, 246, 0.06);
   --nextgenos-purple-border: rgba(139, 92, 246, 0.2);

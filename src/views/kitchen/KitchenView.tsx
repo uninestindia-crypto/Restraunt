@@ -30,7 +30,7 @@ export class KitchenView {
         <!-- Sub-Header / Controls -->
         <div style="display: flex; justify-content: space-between; align-items: center; padding: 16px 24px; background: rgba(9,9,14,0.8); backdrop-filter: blur(20px); border-bottom: 1px solid var(--border-glass); z-index: 10;">
           <div style="display: flex; align-items: center; gap: 10px;">
-            <span class="material-symbols-rounded" style="color: var(--color-primary); font-size: 24px; filter: drop-shadow(0 0 8px rgba(255, 94, 54, 0.45));">restaurant</span>
+            <span class="material-symbols-rounded" style="color: var(--color-primary); font-size: 24px; filter: drop-shadow(0 0 8px rgba(var(--color-primary-rgb), 0.45));">restaurant</span>
             <h2 style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: var(--text-lg); font-weight: 800; color: var(--text-primary); letter-spacing: -0.02em; margin: 0;">Kitchen Display System</h2>
           </div>
           <button class="btn btn-secondary btn-sm" id="btn-refresh-kds" style="
@@ -97,7 +97,7 @@ export class KitchenView {
               justify-content: space-between; 
               padding: 16px 20px; 
               border-bottom: 1.5px solid var(--color-warning); 
-              background: rgba(245, 158, 11, 0.02);
+              background: rgba(var(--color-warning-rgb), 0.02);
             ">
               <div style="display: flex; align-items: center; gap: 10px;">
                 <span class="status-dot animate-pulse" style="width: 8px; height: 8px; background: var(--color-warning); box-shadow: 0 0 10px var(--color-warning);"></span>
@@ -147,30 +147,30 @@ export class KitchenView {
       <style>
         @keyframes pulseRed {
           0% {
-            box-shadow: 0 0 8px rgba(239, 68, 68, 0.2), inset 0 0 4px rgba(239, 68, 68, 0.1);
-            border-color: rgba(239, 68, 68, 0.4);
+            box-shadow: 0 0 8px rgba(var(--color-danger-rgb), 0.2), inset 0 0 4px rgba(var(--color-danger-rgb), 0.1);
+            border-color: rgba(var(--color-danger-rgb), 0.4);
           }
           50% {
-            box-shadow: 0 0 20px rgba(239, 68, 68, 0.6), inset 0 0 10px rgba(239, 68, 68, 0.2);
-            border-color: rgba(239, 68, 68, 0.8);
+            box-shadow: 0 0 20px rgba(var(--color-danger-rgb), 0.6), inset 0 0 10px rgba(var(--color-danger-rgb), 0.2);
+            border-color: rgba(var(--color-danger-rgb), 0.8);
           }
           100% {
-            box-shadow: 0 0 8px rgba(239, 68, 68, 0.2), inset 0 0 4px rgba(239, 68, 68, 0.1);
-            border-color: rgba(239, 68, 68, 0.4);
+            box-shadow: 0 0 8px rgba(var(--color-danger-rgb), 0.2), inset 0 0 4px rgba(var(--color-danger-rgb), 0.1);
+            border-color: rgba(var(--color-danger-rgb), 0.4);
           }
         }
         @keyframes pulseGlowRed {
           0% {
-            box-shadow: 0 0 5px rgba(239, 68, 68, 0.2);
-            background: rgba(239, 68, 68, 0.15);
+            box-shadow: 0 0 5px rgba(var(--color-danger-rgb), 0.2);
+            background: rgba(var(--color-danger-rgb), 0.15);
           }
           50% {
-            box-shadow: 0 0 15px rgba(239, 68, 68, 0.5);
-            background: rgba(239, 68, 68, 0.3);
+            box-shadow: 0 0 15px rgba(var(--color-danger-rgb), 0.5);
+            background: rgba(var(--color-danger-rgb), 0.3);
           }
           100% {
-            box-shadow: 0 0 5px rgba(239, 68, 68, 0.2);
-            background: rgba(239, 68, 68, 0.15);
+            box-shadow: 0 0 5px rgba(var(--color-danger-rgb), 0.2);
+            background: rgba(var(--color-danger-rgb), 0.15);
           }
         }
         @keyframes fadeIn {
@@ -188,7 +188,7 @@ export class KitchenView {
         .prep-modal-card {
           background: #12121a;
           border: 1px solid var(--border-glass);
-          box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 40px rgba(255, 94, 54, 0.15);
+          box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 40px rgba(var(--color-primary-rgb), 0.15);
           border-radius: var(--radius-xl);
           padding: 32px;
           width: 90%;
@@ -290,7 +290,7 @@ export class KitchenView {
           btn.style.background = 'var(--color-primary)';
           btn.style.color = 'white';
           btn.style.borderColor = 'var(--color-primary)';
-          btn.style.boxShadow = '0 4px 15px rgba(255, 94, 54, 0.3)';
+          btn.style.boxShadow = '0 4px 15px rgba(var(--color-primary-rgb), 0.3)';
         };
         btn.onmouseleave = () => {
           btn.style.background = 'rgba(255, 255, 255, 0.02)';
@@ -485,14 +485,14 @@ export class KitchenView {
         ageColor = '#EF4444';
         cardStyle = `
           padding: 20px;
-          background: rgba(239, 68, 68, 0.02);
+          background: rgba(var(--color-danger-rgb), 0.02);
           border-radius: var(--radius-xl);
-          border: 1.5px solid rgba(239, 68, 68, 0.4);
+          border: 1.5px solid rgba(var(--color-danger-rgb), 0.4);
           display: flex;
           flex-direction: column;
           gap: 16px;
           position: relative;
-          box-shadow: 0 0 20px rgba(239, 68, 68, 0.15), inset 0 0 12px rgba(239, 68, 68, 0.05);
+          box-shadow: 0 0 20px rgba(var(--color-danger-rgb), 0.15), inset 0 0 12px rgba(var(--color-danger-rgb), 0.05);
           animation: pulseRed 2s infinite ease-in-out;
           transition: all var(--transition-normal);
         `;
@@ -500,14 +500,14 @@ export class KitchenView {
         ageColor = '#F59E0B';
         cardStyle = `
           padding: 20px;
-          background: rgba(245, 158, 11, 0.01);
+          background: rgba(var(--color-warning-rgb), 0.01);
           border-radius: var(--radius-xl);
-          border: 1.5px solid rgba(245, 158, 11, 0.35);
+          border: 1.5px solid rgba(var(--color-warning-rgb), 0.35);
           display: flex;
           flex-direction: column;
           gap: 16px;
           position: relative;
-          box-shadow: 0 8px 24px rgba(245, 158, 11, 0.1);
+          box-shadow: 0 8px 24px rgba(var(--color-warning-rgb), 0.1);
           transition: all var(--transition-normal);
         `;
       }
@@ -521,14 +521,14 @@ export class KitchenView {
         isOverdue = true;
         cardStyle = `
           padding: 20px;
-          background: rgba(239, 68, 68, 0.02);
+          background: rgba(var(--color-danger-rgb), 0.02);
           border-radius: var(--radius-xl);
-          border: 1.5px solid rgba(239, 68, 68, 0.5);
+          border: 1.5px solid rgba(var(--color-danger-rgb), 0.5);
           display: flex;
           flex-direction: column;
           gap: 16px;
           position: relative;
-          box-shadow: 0 0 20px rgba(239, 68, 68, 0.2), inset 0 0 12px rgba(239, 68, 68, 0.05);
+          box-shadow: 0 0 20px rgba(var(--color-danger-rgb), 0.2), inset 0 0 12px rgba(var(--color-danger-rgb), 0.05);
           animation: pulseRed 2s infinite ease-in-out;
           transition: all var(--transition-normal);
         `;
@@ -580,9 +580,9 @@ export class KitchenView {
       actionBtnHtml = `
         <button class="btn action-btn" data-action="ready" data-id="${orderId}" style="
           color: white; 
-          background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%);
+          background: linear-gradient(135deg, var(--color-warning) 0%, #D97706 100%);
           border: none;
-          box-shadow: 0 4px 15px rgba(245, 158, 11, 0.35);
+          box-shadow: 0 4px 15px rgba(var(--color-warning-rgb), 0.35);
           font-family: 'Plus Jakarta Sans', sans-serif;
           font-weight: 700;
           width: 100%;
@@ -606,9 +606,9 @@ export class KitchenView {
       actionBtnHtml = `
         <button class="btn action-btn" data-action="${action}" data-id="${orderId}" style="
           color: white; 
-          background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+          background: linear-gradient(135deg, var(--color-success) 0%, #059669 100%);
           border: none;
-          box-shadow: 0 4px 15px rgba(16, 185, 129, 0.35);
+          box-shadow: 0 4px 15px rgba(var(--color-success-rgb), 0.35);
           font-family: 'Plus Jakarta Sans', sans-serif;
           font-weight: 700;
           width: 100%;
@@ -671,15 +671,15 @@ export class KitchenView {
           margin-top: 8px;
           margin-bottom: 4px;
           ${isOverdue ? `
-            background: rgba(239, 68, 68, 0.15);
+            background: rgba(var(--color-danger-rgb), 0.15);
             color: #FF6B6B;
-            border: 1px solid rgba(239, 68, 68, 0.3);
-            box-shadow: 0 0 10px rgba(239, 68, 68, 0.2);
+            border: 1px solid rgba(var(--color-danger-rgb), 0.3);
+            box-shadow: 0 0 10px rgba(var(--color-danger-rgb), 0.2);
             animation: pulseGlowRed 1.5s infinite;
           ` : `
-            background: rgba(245, 158, 11, 0.15);
+            background: rgba(var(--color-warning-rgb), 0.15);
             color: var(--color-warning);
-            border: 1px solid rgba(245, 158, 11, 0.25);
+            border: 1px solid rgba(var(--color-warning-rgb), 0.25);
           `}
         ">
           ${isOverdue ? `
@@ -720,10 +720,10 @@ export class KitchenView {
         <div style="
           font-size: var(--text-xs);
           color: var(--text-secondary);
-          background: rgba(59, 130, 246, 0.05);
+          background: rgba(var(--color-info-rgb), 0.05);
           padding: 8px 12px;
           border-radius: var(--radius-md);
-          border: 1px dashed rgba(59, 130, 246, 0.24);
+          border: 1px dashed rgba(var(--color-info-rgb), 0.24);
           line-height: 1.4;
         ">
           <strong style="color: var(--text-primary);">Delivery:</strong> ${escapeHtml(order.deliveryAddress || 'Address missing')}
@@ -736,10 +736,10 @@ export class KitchenView {
           font-size: var(--text-xs); 
           color: var(--color-warning); 
           font-weight: 600; 
-          background: rgba(245, 158, 11, 0.05); 
+          background: rgba(var(--color-warning-rgb), 0.05); 
           padding: 8px 12px; 
           border-radius: var(--radius-md);
-          border: 1px solid rgba(245, 158, 11, 0.1);
+          border: 1px solid rgba(var(--color-warning-rgb), 0.1);
         ">
           <strong>Notes:</strong> ${escapeHtml(order.notes)}
         </div>
@@ -750,8 +750,8 @@ export class KitchenView {
         ${actionBtnHtml}
         <button class="btn btn-secondary btn-icon action-btn" data-action="delete" data-id="${orderId}" style="
           color: var(--color-danger); 
-          border-color: rgba(239, 68, 68, 0.2); 
-          background: rgba(239, 68, 68, 0.05);
+          border-color: rgba(var(--color-danger-rgb), 0.2); 
+          background: rgba(var(--color-danger-rgb), 0.05);
           width: 38px;
           height: 38px;
           flex-shrink: 0;

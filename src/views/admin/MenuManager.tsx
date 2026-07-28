@@ -368,11 +368,11 @@ export function MenuManager() {
           border: 1px solid rgba(255,255,255,0.1);
         }
         .dish-type-badge.veg {
-          background: rgba(16, 185, 129, 0.9);
+          background: rgba(var(--color-success-rgb), 0.9);
           color: #fff;
         }
         .dish-type-badge.nonveg {
-          background: rgba(239, 68, 68, 0.9);
+          background: rgba(var(--color-danger-rgb), 0.9);
           color: #fff;
         }
         
@@ -400,8 +400,8 @@ export function MenuManager() {
         }
         .btn-avail-toggle.soldout {
           color: var(--color-danger);
-          background: rgba(239, 68, 68, 0.15);
-          border-color: rgba(239, 68, 68, 0.35);
+          background: rgba(var(--color-danger-rgb), 0.15);
+          border-color: rgba(var(--color-danger-rgb), 0.35);
         }
 
         .category-card {
@@ -538,7 +538,7 @@ export function MenuManager() {
                             <button
                               onClick={() => handleDeleteItemClick(item.id!)}
                               className="btn btn-sm"
-                              style={{ width: '28px', height: '28px', minWidth: '28px', minHeight: '28px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(239,68,68,0.06)', color: '#FF4D4D', border: '1px solid rgba(239,68,68,0.2)' }}
+                              style={{ width: '28px', height: '28px', minWidth: '28px', minHeight: '28px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(var(--color-danger-rgb),0.06)', color: '#FF4D4D', border: '1px solid rgba(var(--color-danger-rgb),0.2)' }}
                               title="Delete Item"
                             >
                               <span className="material-symbols-rounded" style={{ fontSize: '16px' }}>delete</span>
@@ -573,7 +573,7 @@ export function MenuManager() {
                     <div key={cat.id} className="category-card">
                       <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
                         <div style={{
-                          background: 'rgba(255, 94, 54, 0.06)',
+                          background: 'rgba(var(--color-primary-rgb), 0.06)',
                           color: 'var(--color-primary)',
                           width: '40px',
                           height: '40px',
@@ -583,7 +583,7 @@ export function MenuManager() {
                           justifyContent: 'center',
                           fontWeight: 800,
                           fontSize: '1rem',
-                          border: '1px solid rgba(255,94,54,0.2)'
+                          border: '1px solid rgba(var(--color-primary-rgb),0.2)'
                         }}>
                           {cat.sortOrder}
                         </div>
@@ -602,7 +602,7 @@ export function MenuManager() {
                         
                         <div style={{ display: 'flex', gap: '6px' }}>
                           <button onClick={() => handleEditCategoryClick(cat)} className="btn btn-secondary btn-sm" style={{ padding: '4px 10px', height: '30px', display: 'flex', alignItems: 'center', gap: '4px' }}>Edit</button>
-                          <button onClick={() => handleDeleteCategoryClick(cat.id!)} className="btn btn-sm" style={{ padding: '4px 10px', height: '30px', background: 'rgba(239,68,68,0.06)', color: '#FF4D4D', border: '1px solid rgba(239,68,68,0.2)' }}>Delete</button>
+                          <button onClick={() => handleDeleteCategoryClick(cat.id!)} className="btn btn-sm" style={{ padding: '4px 10px', height: '30px', background: 'rgba(var(--color-danger-rgb),0.06)', color: '#FF4D4D', border: '1px solid rgba(var(--color-danger-rgb),0.2)' }}>Delete</button>
                         </div>
                       </div>
                     </div>

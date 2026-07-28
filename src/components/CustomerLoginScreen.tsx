@@ -202,7 +202,7 @@ export class CustomerLoginScreen {
             position: absolute;
             width: 500px;
             height: 500px;
-            background: radial-gradient(circle, rgba(255, 94, 54, 0.15) 0%, transparent 70%);
+            background: radial-gradient(circle, rgba(var(--color-primary-rgb), 0.15) 0%, transparent 70%);
             top: -150px;
             left: -150px;
             animation: floatGlow 15s infinite alternate ease-in-out;
@@ -214,7 +214,7 @@ export class CustomerLoginScreen {
             position: absolute;
             width: 400px;
             height: 400px;
-            background: radial-gradient(circle, rgba(139, 92, 246, 0.12) 0%, transparent 70%);
+            background: radial-gradient(circle, rgba(var(--nextgenos-purple-rgb), 0.12) 0%, transparent 70%);
             bottom: -100px;
             right: -100px;
             animation: floatGlow 20s infinite alternate-reverse ease-in-out;
@@ -245,7 +245,7 @@ export class CustomerLoginScreen {
           object-fit: contain;
           border-radius: var(--radius-md);
           border: 1px solid rgba(255, 255, 255, 0.1);
-          box-shadow: 0 8px 32px rgba(255, 94, 54, 0.25);
+          box-shadow: 0 8px 32px rgba(var(--color-primary-rgb), 0.25);
           transition: transform var(--transition-normal) var(--ease-spring);
         }
         .brand-panel-logo:hover {
@@ -285,12 +285,12 @@ export class CustomerLoginScreen {
         }
         .feature-icon {
           color: var(--color-primary);
-          background: rgba(255, 94, 54, 0.1);
+          background: rgba(var(--color-primary-rgb), 0.1);
           padding: 10px;
           border-radius: var(--radius-md);
           font-size: 20px;
           flex-shrink: 0;
-          border: 1px solid rgba(255, 94, 54, 0.18);
+          border: 1px solid rgba(var(--color-primary-rgb), 0.18);
           display: flex;
           align-items: center;
           justify-content: center;
@@ -421,7 +421,7 @@ export class CustomerLoginScreen {
         }
         
         .login-error {
-          color: var(--color-error, #EF4444);
+          color: var(--color-error, var(--color-danger));
           font-size: 0.75rem;
           font-weight: 600;
           text-align: center;

@@ -174,13 +174,13 @@
   color: var(--color-primary);
   font-size: 0.78rem;
   font-weight: 900;
-  box-shadow: 0 4px 12px rgba(255, 94, 54, 0.25);
+  box-shadow: 0 4px 12px rgba(var(--color-primary-rgb), 0.25);
   transition: all 0.3s ease;
 }
 
 .store-brand:hover .store-brand-mark {
   transform: rotate(-8deg) scale(1.05);
-  box-shadow: 0 6px 16px rgba(255, 94, 54, 0.4);
+  box-shadow: 0 6px 16px rgba(var(--color-primary-rgb), 0.4);
 }
 
 .store-nav-links {
@@ -645,7 +645,7 @@
 .store-primary-action:hover {
   background: var(--color-primary-hover);
   color: #fff;
-  box-shadow: 0 12px 32px rgba(255, 94, 54, 0.45);
+  box-shadow: 0 12px 32px rgba(var(--color-primary-rgb), 0.45);
   transform: translateY(-2px);
 }
 
@@ -729,14 +729,19 @@
 
 .store-service-option:hover {
   transform: translateY(-6px);
-  border-color: rgba(255, 94, 54, 0.3);
-  box-shadow: 0 20px 40px rgba(255, 94, 54, 0.08);
+  border-color: rgba(var(--color-primary-rgb), 0.3);
+  box-shadow: 0 20px 40px rgba(var(--color-primary-rgb), 0.08);
 }
 
+/* Selection is signalled with border, fill, and shadow — never with a
+   transform. Displacing the active card knocks it out of alignment with its
+   siblings for as long as it stays selected. */
 .store-service-option.is-active {
-  transform: translateY(-6px);
   border-color: var(--color-primary);
-  box-shadow: 0 20px 40px rgba(255, 94, 54, 0.15);
+  border-width: 2px;
+  padding: 19px 23px; /* absorb the extra border so the box stays the same size */
+  background: rgba(var(--color-primary-rgb), 0.04);
+  box-shadow: 0 20px 40px rgba(var(--color-primary-rgb), 0.15);
 }
 
 .store-service-option .material-symbols-rounded {
@@ -747,7 +752,7 @@
   align-items: center;
   justify-content: center;
   border-radius: 12px;
-  background: rgba(255, 94, 54, 0.08);
+  background: rgba(var(--color-primary-rgb), 0.08);
   color: var(--color-primary);
   transition: all 0.3s ease;
 }
@@ -755,7 +760,7 @@
 .store-service-option.is-active .material-symbols-rounded {
   background: var(--color-primary);
   color: #fff;
-  box-shadow: 0 4px 12px rgba(255, 94, 54, 0.3);
+  box-shadow: 0 4px 12px rgba(var(--color-primary-rgb), 0.3);
 }
 
 .store-service-option strong {
@@ -824,6 +829,7 @@
 }
 
 .store-featured-item {
+  position: relative;
   min-height: 190px;
   padding: 0;
   border: 1px solid var(--store-line);
@@ -835,6 +841,47 @@
   display: flex;
   flex-direction: column;
   box-shadow: 0 14px 34px rgba(39, 28, 21, 0.08);
+}
+
+/* The card is an <article> so it can hold two independent controls; this
+   button carries the open-details action across the whole card face. */
+.store-featured-open {
+  flex: 1;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: 0 0 14px;
+  background: none;
+  color: inherit;
+  text-align: left;
+}
+
+.store-featured-fav {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  border: 1px solid var(--store-line);
+  background: rgba(255, 253, 249, 0.92);
+  color: var(--store-accent);
+  box-shadow: 0 4px 12px rgba(39, 28, 21, 0.18);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.store-featured-fav:hover {
+  background: var(--store-accent);
+  color: #fff;
+  transform: scale(1.06);
+}
+
+.store-featured-fav .material-symbols-rounded {
+  font-size: 20px;
 }
 
 .store-featured-item:hover {
@@ -913,7 +960,7 @@
   border-color: var(--color-primary);
   background: var(--color-primary);
   color: #fff;
-  box-shadow: 0 6px 14px rgba(255, 94, 54, 0.25);
+  box-shadow: 0 6px 14px rgba(var(--color-primary-rgb), 0.25);
   font-weight: 800;
 }
 
@@ -938,13 +985,13 @@
 
 .store-menu-item:hover {
   transform: translateY(-6px);
-  border-color: rgba(255, 94, 54, 0.2);
-  box-shadow: 0 20px 40px rgba(255, 94, 54, 0.06);
+  border-color: rgba(var(--color-primary-rgb), 0.2);
+  box-shadow: 0 20px 40px rgba(var(--color-primary-rgb), 0.06);
 }
 
 .store-menu-item.is-selected {
-  border-color: rgba(255, 94, 54, 0.45);
-  box-shadow: 0 20px 40px rgba(255, 94, 54, 0.12);
+  border-color: rgba(var(--color-primary-rgb), 0.45);
+  box-shadow: 0 20px 40px rgba(var(--color-primary-rgb), 0.12);
 }
 
 .store-menu-item-image {
@@ -1050,7 +1097,7 @@
   font-size: 0.85rem;
   background: #fff;
   color: var(--color-primary);
-  border: 1.5px solid rgba(255, 94, 54, 0.4);
+  border: 1.5px solid rgba(var(--color-primary-rgb), 0.4);
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.03em;
@@ -1062,7 +1109,7 @@
   background: var(--color-primary);
   color: #fff;
   border-color: var(--color-primary);
-  box-shadow: 0 6px 16px rgba(255, 94, 54, 0.25);
+  box-shadow: 0 6px 16px rgba(var(--color-primary-rgb), 0.25);
   transform: translateY(-1.5px);
 }
 
@@ -1078,7 +1125,7 @@
   align-items: center;
   overflow: hidden;
   height: 38px;
-  box-shadow: 0 6px 14px rgba(255, 94, 54, 0.2);
+  box-shadow: 0 6px 14px rgba(var(--color-primary-rgb), 0.2);
 }
 
 .store-stepper .btn-step {
@@ -2089,7 +2136,7 @@
 /* ── concentric svg telemetry progress ring ── */
 @keyframes telemetry-pulse {
   0% { transform: scale(1); filter: drop-shadow(0 4px 10px rgba(0,0,0,0.03)); }
-  50% { transform: scale(1.03); filter: drop-shadow(0 8px 24px rgba(16, 185, 129, 0.15)); }
+  50% { transform: scale(1.03); filter: drop-shadow(0 8px 24px rgba(var(--color-success-rgb), 0.15)); }
   100% { transform: scale(1); filter: drop-shadow(0 4px 10px rgba(0,0,0,0.03)); }
 }
 
@@ -2122,7 +2169,7 @@
   stroke-dasharray: 251.2;
   stroke-dashoffset: 251.2;
   transition: stroke-dashoffset 0.85s cubic-bezier(0.16, 1, 0.3, 1);
-  filter: drop-shadow(0 0 8px rgba(16, 185, 129, 0.45));
+  filter: drop-shadow(0 0 8px rgba(var(--color-success-rgb), 0.45));
 }
 
 .aether-telemetry-ring-label {
@@ -2139,7 +2186,7 @@
   font-size: 24px;
   color: #10B981;
   margin-bottom: 2px;
-  filter: drop-shadow(0 0 6px rgba(16, 185, 129, 0.3));
+  filter: drop-shadow(0 0 6px rgba(var(--color-success-rgb), 0.3));
 }
 
 .aether-telemetry-ring-label strong {
@@ -2824,5 +2871,50 @@
 
   .store-hero {
     border-radius: 0 0 26px 26px;
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   TOUCH TARGET SIZING — WCAG 2.1 SC 2.5.5 / Apple HIG
+   Keyed on `pointer: coarse` (plus the phone breakpoint) so the denser
+   desktop sizing is preserved for mouse users. Hit areas grow via padding
+   and min-height; the visual weight of each control is unchanged.
+   ══════════════════════════════════════════════════════════════════════ */
+@media (max-width: 800px), (pointer: coarse) {
+  .store-category-tab,
+  .store-add-btn {
+    min-height: 44px;
+  }
+
+  .store-brand,
+  .store-subheader-brand {
+    min-height: 44px;
+  }
+
+  .store-featured-fav {
+    width: 44px;
+    height: 44px;
+  }
+
+  /* Footer links sit at ~24px of text; pad vertically to a 44px hit box
+     without moving them apart visually (the flex gap already separates). */
+  .customer-footer nav {
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .customer-footer nav button {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 0 10px;
+    border-radius: 10px;
+  }
+
+  /* The stepper controls inside cart rows are the smallest repeated target. */
+  .btn-step,
+  .store-qty-btn {
+    min-width: 44px;
+    min-height: 44px;
   }
 }

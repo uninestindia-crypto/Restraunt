@@ -87,7 +87,7 @@ body {
 
 :root[data-theme="light"] .input:focus {
   border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px rgba(255, 94, 54, 0.15), inset 0 1px 2px rgba(0, 0, 0, 0.01);
+  box-shadow: 0 0 0 3px rgba(var(--color-primary-rgb), 0.15), inset 0 1px 2px rgba(0, 0, 0, 0.01);
 }
 
 :root[data-theme="light"] .tab.active {
@@ -139,7 +139,7 @@ body {
 
   :root[data-theme="system"] .input:focus {
     border-color: var(--color-primary);
-    box-shadow: 0 0 0 3px rgba(255, 94, 54, 0.15), inset 0 1px 2px rgba(0, 0, 0, 0.01);
+    box-shadow: 0 0 0 3px rgba(var(--color-primary-rgb), 0.15), inset 0 1px 2px rgba(0, 0, 0, 0.01);
   }
 }
 
@@ -190,6 +190,39 @@ h1, h2, h3, h4, h5, h6 {
 ::placeholder {
   color: var(--text-muted);
   opacity: 1;
+}
+
+/* ══════════════════════════════════════════════════
+   REDUCED MOTION — global guard
+   Applies to every stylesheet, not just the storefront. The staff OS uses
+   spring easing, a 20s hero pan, and view-enter transitions; users who ask
+   the OS for less motion must not receive any of it. Durations collapse to
+   ~0 rather than `none` so transitionend/animationend listeners still fire.
+   ══════════════════════════════════════════════════ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  html,
+  body,
+  .storefront-shell,
+  .store-checkout-shell,
+  .store-success-shell {
+    scroll-behavior: auto !important;
+  }
+
+  /* Transform-based flourishes read as motion even at 0ms; neutralize them. */
+  .input:focus,
+  .menu-item:hover,
+  .card:hover {
+    transform: none !important;
+  }
 }
 
 /* ── Focus Visible ── */

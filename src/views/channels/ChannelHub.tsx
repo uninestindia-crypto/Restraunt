@@ -49,7 +49,7 @@ export class ChannelHub {
           <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px;">
             ${channelData.map(ch => `
               <div style="padding:20px;background:rgba(255,255,255,0.01);border:1px solid var(--border-glass);border-radius:16px;position:relative;overflow:hidden;">
-                ${ch.status === 'coming' ? `<div style="position:absolute;top:10px;right:10px;font-size:0.55rem;padding:2px 8px;border-radius:6px;font-weight:700;color:#A29BFE;background:rgba(108,92,231,0.1);border:1px solid rgba(108,92,231,0.2);">Coming Soon</div>` : `<div style="position:absolute;top:12px;right:12px;width:8px;height:8px;border-radius:50%;background:#10B981;box-shadow:0 0 6px rgba(16,185,129,0.5);"></div>`}
+                ${ch.status === 'coming' ? `<div style="position:absolute;top:10px;right:10px;font-size:0.55rem;padding:2px 8px;border-radius:6px;font-weight:700;color:#A29BFE;background:rgba(108,92,231,0.1);border:1px solid rgba(108,92,231,0.2);">Coming Soon</div>` : `<div style="position:absolute;top:12px;right:12px;width:8px;height:8px;border-radius:50%;background:var(--color-success);box-shadow:0 0 6px rgba(var(--color-success-rgb),0.5);"></div>`}
                 <div style="width:44px;height:44px;border-radius:12px;background:rgba(${ch.status === 'active' ? '255,107,53' : '148,163,184'},0.08);display:flex;align-items:center;justify-content:center;margin-bottom:14px;">
                   <span class="material-symbols-rounded" style="font-size:24px;color:${ch.color};">${ch.icon}</span>
                 </div>

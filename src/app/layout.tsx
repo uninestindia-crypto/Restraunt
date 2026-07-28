@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from 'next';
+import '../styles/fonts.css';
 import '../styles/variables.css';
 import '../styles/base.css';
 import '../styles/components-v2.css';
@@ -52,9 +53,12 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+        {/* Text faces are self-hosted (see scripts/fetch-fonts.js) so first
+            paint never blocks on a third-party origin and the PWA renders
+            correctly offline. Preload only the latin subsets used above the
+            fold; latin-ext loads on demand via its unicode-range. */}
+        <link rel="preload" as="font" type="font/woff2" href="/assets/fonts/inter-latin.woff2" crossOrigin="anonymous" />
+        <link rel="preload" as="font" type="font/woff2" href="/assets/fonts/plus-jakarta-sans-latin.woff2" crossOrigin="anonymous" />
       </head>
       <body>
         {children}

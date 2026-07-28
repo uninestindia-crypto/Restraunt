@@ -798,17 +798,17 @@ export function CustomerApp({ app }) {
 
           {/* Ordering Options Selector Band */}
           <section className="store-service-band" id="order-options" aria-label="Ordering options">
-            <button className={`store-service-option ${orderType === 'delivery' ? 'is-active' : ''}`} onClick={() => setOrderType('delivery')} type="button">
+            <button className={`store-service-option ${orderType === 'delivery' ? 'is-active' : ''}`} aria-pressed={orderType === 'delivery'} onClick={() => setOrderType('delivery')} type="button">
               <span className="material-symbols-rounded" aria-hidden="true">local_shipping</span>
               <strong>Home delivery</strong>
               <small>Delivered by restaurant staff</small>
             </button>
-            <button className={`store-service-option ${orderType === 'takeaway' ? 'is-active' : ''}`} onClick={() => setOrderType('takeaway')} type="button">
+            <button className={`store-service-option ${orderType === 'takeaway' ? 'is-active' : ''}`} aria-pressed={orderType === 'takeaway'} onClick={() => setOrderType('takeaway')} type="button">
               <span className="material-symbols-rounded" aria-hidden="true">shopping_bag</span>
               <strong>Pickup</strong>
               <small>Order ahead and collect</small>
             </button>
-            <button className={`store-service-option ${orderType === 'dinein' ? 'is-active' : ''}`} onClick={() => setOrderType('dinein')} type="button">
+            <button className={`store-service-option ${orderType === 'dinein' ? 'is-active' : ''}`} aria-pressed={orderType === 'dinein'} onClick={() => setOrderType('dinein')} type="button">
               <span className="material-symbols-rounded" aria-hidden="true">table_restaurant</span>
               <strong>{detectedTable ? `Table ${detectedTable.number}` : 'Dine-in QR'}</strong>
               <small>Order from your table</small>
@@ -823,12 +823,29 @@ export function CustomerApp({ app }) {
             </div>
             <div className="store-featured-grid">
               {getFeaturedItems().map(item => (
-                <button key={item.id} className="store-featured-item" onClick={() => handleOpenDetails(item)} onContextMenu={(e) => { e.preventDefault(); handleFavoriteItem(item); }} type="button">
-                  <img src={item.imageUrl || '/assets/dish-starters.jpg'} alt="" width="640" height="420" loading="lazy" decoding="async" />
-                  <span>{item.name}</span>
-                  <strong>{formatCurrency(item.price)}</strong>
-                  <small>Long-press/right-click to favourite</small>
-                </button>
+                <article key={item.id} className="store-featured-item">
+                  <button
+                    className="store-featured-open"
+                    onClick={() => handleOpenDetails(item)}
+                    onContextMenu={(e) => { e.preventDefault(); handleFavoriteItem(item); }}
+                    type="button"
+                  >
+                    <img src={item.imageUrl || '/assets/dish-starters.jpg'} alt="" width="640" height="420" loading="lazy" decoding="async" />
+                    <span>{item.name}</span>
+                    <strong>{formatCurrency(item.price)}</strong>
+                  </button>
+                  {/* Right-click/long-press stays as a shortcut, but favouriting
+                      needs a real control to be reachable by keyboard and AT. */}
+                  <button
+                    className="store-featured-fav"
+                    type="button"
+                    onClick={() => handleFavoriteItem(item)}
+                    aria-label={`Save ${item.name} to favourites`}
+                    title={`Save ${item.name} to favourites`}
+                  >
+                    <span className="material-symbols-rounded" aria-hidden="true">favorite</span>
+                  </button>
+                </article>
               ))}
             </div>
           </section>
@@ -990,8 +1007,8 @@ export function CustomerApp({ app }) {
                         onClick={handleLocateMe} 
                         disabled={locating}
                         style={{
-                          background: 'rgba(255, 94, 54, 0.1)',
-                          border: '1px solid rgba(255, 94, 54, 0.25)',
+                          background: 'rgba(var(--color-primary-rgb), 0.1)',
+                          border: '1px solid rgba(var(--color-primary-rgb), 0.25)',
                           color: 'var(--color-primary)',
                           borderRadius: 'var(--radius-sm)',
                           padding: '4px 10px',
@@ -1062,7 +1079,7 @@ export function CustomerApp({ app }) {
                                 gap: '8px',
                                 transition: 'background 0.2s ease'
                               }}
-                              onMouseEnter={(e) => e.target.style.background = 'rgba(255, 94, 54, 0.08)'}
+                              onMouseEnter={(e) => e.target.style.background = 'rgba(var(--color-primary-rgb), 0.08)'}
                               onMouseLeave={(e) => e.target.style.background = 'none'}
                             >
                               <span className="material-symbols-rounded" style={{ color: 'var(--color-primary)', fontSize: '18px', flexShrink: 0 }}>location_on</span>

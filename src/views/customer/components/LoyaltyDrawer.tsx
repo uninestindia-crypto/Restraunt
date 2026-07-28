@@ -308,7 +308,7 @@ export function LoyaltyDrawer({ loggedInCustomer, customerPhone, customerName, o
 
         <div className="aether-drawer-scroll-content">
           <div className="crm-hero-section">
-            <span className="material-symbols-rounded crm-hero-icon" style={{ color: 'var(--color-primary)', fontSize: '2.5rem', filter: 'drop-shadow(0 2px 8px var(--color-primary-glow))' }}>reward</span>
+            <span className="material-symbols-rounded crm-hero-icon" style={{ color: 'var(--color-primary)', fontSize: '2.5rem', filter: 'drop-shadow(0 2px 8px var(--color-primary-glow))' }}>rewarded_ads</span>
             <h2>TasteRewards Club</h2>
             <p>Earn 1 point for every {formatCurrency(10)} spent. Unlock silver, gold, and platinum culinary tiers.</p>
           </div>

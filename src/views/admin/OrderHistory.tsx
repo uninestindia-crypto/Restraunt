@@ -450,7 +450,7 @@ export function OrderHistoryComponent() {
               <button className="btn btn-primary btn-sm" onClick={() => handlePrintReceipt(activeOrderDetails)}>Print Receipt</button>
               <button className="btn btn-secondary btn-sm" onClick={() => handleWhatsApp(activeOrderDetails)}>WhatsApp Bill</button>
               {activeOrderDetails.status !== 'cancelled' ? (
-                <button className="btn btn-danger btn-sm" onClick={() => handleVoidOrder(activeOrderDetails)} style={{ background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239,68,68,0.25)', color: '#FF4D4D' }}>Void Order</button>
+                <button className="btn btn-danger btn-sm" onClick={() => handleVoidOrder(activeOrderDetails)} style={{ background: 'rgba(var(--color-danger-rgb), 0.08)', border: '1px solid rgba(var(--color-danger-rgb),0.25)', color: '#FF4D4D' }}>Void Order</button>
               ) : null}
               <button className="btn btn-secondary btn-sm" onClick={() => setSelectedOrder(null)}>Close</button>
             </footer>

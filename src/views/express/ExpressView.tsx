@@ -858,21 +858,21 @@ export class ExpressView {
         }
 
         .btn-cash {
-          background: linear-gradient(135deg, #10B981 0%, #059669 100%);
-          box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
+          background: linear-gradient(135deg, var(--color-success) 0%, #059669 100%);
+          box-shadow: 0 4px 12px rgba(var(--color-success-rgb), 0.2);
         }
 
         .btn-cash:hover:not(:disabled) {
-          box-shadow: 0 6px 16px rgba(16, 185, 129, 0.35);
+          box-shadow: 0 6px 16px rgba(var(--color-success-rgb), 0.35);
         }
 
         .btn-upi {
-          background: linear-gradient(135deg, #8B5CF6 0%, #6D28D9 100%);
-          box-shadow: 0 4px 12px rgba(139, 92, 246, 0.2);
+          background: linear-gradient(135deg, var(--nextgenos-purple) 0%, #6D28D9 100%);
+          box-shadow: 0 4px 12px rgba(var(--nextgenos-purple-rgb), 0.2);
         }
 
         .btn-upi:hover:not(:disabled) {
-          box-shadow: 0 6px 16px rgba(139, 92, 246, 0.35);
+          box-shadow: 0 6px 16px rgba(var(--nextgenos-purple-rgb), 0.35);
         }
 
         /* Search input style - Apple Spotlight */
@@ -1033,8 +1033,8 @@ export class ExpressView {
         }
 
         .card-timer.overdue {
-          background: rgba(239, 68, 68, 0.1);
-          border-color: rgba(239, 68, 68, 0.2);
+          background: rgba(var(--color-danger-rgb), 0.1);
+          border-color: rgba(var(--color-danger-rgb), 0.2);
           color: var(--color-danger);
           animation: pulseRed 2s infinite ease-in-out;
         }
@@ -1110,18 +1110,18 @@ export class ExpressView {
         }
 
         .kds-btn-prepare {
-          background: linear-gradient(135deg, #FF5E36 0%, #FF8960 100%);
-          box-shadow: 0 4px 10px rgba(255, 94, 54, 0.2);
+          background: linear-gradient(135deg, var(--color-primary) 0%, #FF8960 100%);
+          box-shadow: 0 4px 10px rgba(var(--color-primary-rgb), 0.2);
         }
 
         .kds-btn-ready {
-          background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%);
-          box-shadow: 0 4px 10px rgba(245, 158, 11, 0.2);
+          background: linear-gradient(135deg, var(--color-warning) 0%, #D97706 100%);
+          box-shadow: 0 4px 10px rgba(var(--color-warning-rgb), 0.2);
         }
 
         .kds-btn-complete {
-          background: linear-gradient(135deg, #10B981 0%, #059669 100%);
-          box-shadow: 0 4px 10px rgba(16, 185, 129, 0.2);
+          background: linear-gradient(135deg, var(--color-success) 0%, #059669 100%);
+          box-shadow: 0 4px 10px rgba(var(--color-success-rgb), 0.2);
         }
 
         .kds-empty-feed {
@@ -1165,9 +1165,9 @@ export class ExpressView {
 
         /* Animation */
         @keyframes pulseRed {
-          0% { border-color: rgba(239, 68, 68, 0.4); box-shadow: 0 0 4px rgba(239, 68, 68, 0.2); }
-          50% { border-color: rgba(239, 68, 68, 0.9); box-shadow: 0 0 14px rgba(239, 68, 68, 0.5); }
-          100% { border-color: rgba(239, 68, 68, 0.4); box-shadow: 0 0 4px rgba(239, 68, 68, 0.2); }
+          0% { border-color: rgba(var(--color-danger-rgb), 0.4); box-shadow: 0 0 4px rgba(var(--color-danger-rgb), 0.2); }
+          50% { border-color: rgba(var(--color-danger-rgb), 0.9); box-shadow: 0 0 14px rgba(var(--color-danger-rgb), 0.5); }
+          100% { border-color: rgba(var(--color-danger-rgb), 0.4); box-shadow: 0 0 4px rgba(var(--color-danger-rgb), 0.2); }
         }
 
         /* Responsive Layout Breaks */
@@ -1646,8 +1646,8 @@ export class ExpressView {
               display:flex;
               align-items:center;
               justify-content:center;
-              background:rgba(239, 68, 68, 0.1);
-              border:1px solid rgba(239, 68, 68, 0.2);
+              background:rgba(var(--color-danger-rgb), 0.1);
+              border:1px solid rgba(var(--color-danger-rgb), 0.2);
               color:var(--color-danger);
               border-radius:var(--radius-md);
               cursor:pointer;

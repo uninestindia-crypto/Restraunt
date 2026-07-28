@@ -32,7 +32,7 @@ export class AnalyticsDashboard {
         <!-- Header -->
         <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 24px;background:rgba(9,9,14,0.8);backdrop-filter:blur(20px);border-bottom:1px solid var(--border-glass);z-index:10;flex-wrap:wrap;gap:12px;">
           <div style="display:flex;align-items:center;gap:10px;">
-            <span class="material-symbols-rounded" style="color:var(--color-primary);font-size:24px;filter:drop-shadow(0 0 8px rgba(255,94,54,0.45));">analytics</span>
+            <span class="material-symbols-rounded" style="color:var(--color-primary);font-size:24px;filter:drop-shadow(0 0 8px rgba(var(--color-primary-rgb),0.45));">analytics</span>
             <h2 style="font-family:'Plus Jakarta Sans',sans-serif;font-size:var(--text-lg);font-weight:800;color:var(--text-primary);letter-spacing:-0.02em;margin:0;">Smart Analytics</h2>
           </div>
           <div style="display:flex;gap:6px;" id="analytics-tabs">
@@ -108,7 +108,7 @@ export class AnalyticsDashboard {
                 cursor:pointer;
                 transition:all 0.2s;
               ">
-                <span class="material-symbols-rounded" style="font-size:18px;color:#10B981;">today</span>
+                <span class="material-symbols-rounded" style="font-size:18px;color:var(--color-success);">today</span>
                 Download Today's Report
               </button>
               
@@ -127,7 +127,7 @@ export class AnalyticsDashboard {
                 cursor:pointer;
                 transition:all 0.2s;
               ">
-                <span class="material-symbols-rounded" style="font-size:18px;color:#FF5E36;">date_range</span>
+                <span class="material-symbols-rounded" style="font-size:18px;color:var(--color-primary);">date_range</span>
                 Download Weekly Report
               </button>
               
@@ -146,7 +146,7 @@ export class AnalyticsDashboard {
                 cursor:pointer;
                 transition:all 0.2s;
               ">
-                <span class="material-symbols-rounded" style="font-size:18px;color:#3B82F6;">calendar_month</span>
+                <span class="material-symbols-rounded" style="font-size:18px;color:var(--color-info);">calendar_month</span>
                 Download Monthly Report
               </button>
             </div>
@@ -232,7 +232,7 @@ export class AnalyticsDashboard {
             const statusEl = document.getElementById('report-drive-upload-status');
             if (isDriveConnected && autoUpload) {
               if (statusEl) {
-                statusEl.innerHTML = `<span class="material-symbols-rounded animate-spin" style="font-size:12px;color:#3B82F6;">sync</span> Uploading backup to Google Drive...`;
+                statusEl.innerHTML = `<span class="material-symbols-rounded animate-spin" style="font-size:12px;color:var(--color-info);">sync</span> Uploading backup to Google Drive...`;
               }
               
               try {
@@ -295,9 +295,9 @@ export class AnalyticsDashboard {
     const container = document.getElementById('analytics-kpis');
     if (!container) return;
     const kpis = [
-      { label: "TOTAL REVENUE", value: formatCurrency(stats.revenue), color: 'var(--color-success)', glow: 'rgba(16,185,129,0.25)' },
-      { label: "TOTAL ORDERS", value: stats.orders, color: 'var(--color-primary)', glow: 'rgba(255,94,54,0.25)' },
-      { label: "AVG BILL VALUE", value: formatCurrency(stats.avg), color: 'var(--color-info)', glow: 'rgba(59,130,246,0.25)' },
+      { label: "TOTAL REVENUE", value: formatCurrency(stats.revenue), color: 'var(--color-success)', glow: 'rgba(var(--color-success-rgb),0.25)' },
+      { label: "TOTAL ORDERS", value: stats.orders, color: 'var(--color-primary)', glow: 'rgba(var(--color-primary-rgb),0.25)' },
+      { label: "AVG BILL VALUE", value: formatCurrency(stats.avg), color: 'var(--color-info)', glow: 'rgba(var(--color-info-rgb),0.25)' },
       { label: "GROWTH RATE", value: `${growth > 0 ? '+' : ''}${growth.toFixed(1)}%`, color: '#A29BFE', glow: 'rgba(108,92,231,0.25)' },
     ];
     container.innerHTML = kpis.map(k => `
@@ -406,7 +406,7 @@ export class AnalyticsDashboard {
             <span style="color:var(--text-primary);font-weight:700;">${formatCurrency(data.total)}</span>
           </div>
           <div style="height:6px;background:rgba(0,0,0,0.25);border-radius:99px;overflow:hidden;">
-            <div style="height:100%;background:linear-gradient(90deg,#FF5E36,#FF8960);width:${pct}%;border-radius:99px;transition:width 0.5s ease;"></div>
+            <div style="height:100%;background:linear-gradient(90deg,var(--color-primary),#FF8960);width:${pct}%;border-radius:99px;transition:width 0.5s ease;"></div>
           </div>
         </div>
       `;

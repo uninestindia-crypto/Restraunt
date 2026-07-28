@@ -138,8 +138,8 @@ function StaffManager() {
                   <span style={{
                     fontSize: '10px',
                     color: s.isActive ? 'var(--color-success)' : 'var(--color-danger)',
-                    background: s.isActive ? 'rgba(16, 185, 129, 0.08)' : 'rgba(239, 68, 68, 0.08)',
-                    border: `1px solid ${s.isActive ? 'rgba(16,185,129,0.2)' : 'rgba(239,68,68,0.2)'}`,
+                    background: s.isActive ? 'rgba(var(--color-success-rgb), 0.08)' : 'rgba(var(--color-danger-rgb), 0.08)',
+                    border: `1px solid ${s.isActive ? 'rgba(var(--color-success-rgb),0.2)' : 'rgba(var(--color-danger-rgb),0.2)'}`,
                     padding: '2px 8px',
                     borderRadius: '4px',
                     fontWeight: 700
@@ -200,8 +200,8 @@ function StaffManager() {
                         width: '30px',
                         height: '30px',
                         borderRadius: '6px',
-                        background: 'rgba(239, 68, 68, 0.05)',
-                        border: '1px solid rgba(239, 68, 68, 0.15)',
+                        background: 'rgba(var(--color-danger-rgb), 0.05)',
+                        border: '1px solid rgba(var(--color-danger-rgb), 0.15)',
                         cursor: 'pointer',
                         display: 'flex',
                         alignItems: 'center',
@@ -248,7 +248,7 @@ function StaffManager() {
                         color: 'var(--color-success)',
                         fontSize: '16px',
                         fontWeight: 'bold',
-                        filter: 'drop-shadow(0 0 4px rgba(16,185,129,0.35))'
+                        filter: 'drop-shadow(0 0 4px rgba(var(--color-success-rgb),0.35))'
                       }}>✓</span>
                     ) : (
                       <span style={{ color: 'var(--text-muted)', opacity: 0.25 }}>—</span>
@@ -324,7 +324,7 @@ function AdminConsoleShell({ app }) {
   const activeStaff = storeState.activeTerminalStaff;
 
   return (
-    <div className="main-area" style={{ display: 'flex', flexDirection: 'column', height: '100%', background: 'radial-gradient(circle at bottom left, rgba(255, 94, 54, 0.04) 0%, transparent 60%)' }}>
+    <div className="main-area" style={{ display: 'flex', flexDirection: 'column', height: '100%', background: 'radial-gradient(circle at bottom left, rgba(var(--color-primary-rgb), 0.04) 0%, transparent 60%)' }}>
       
       {/* Header Tabs */}
       <div className="header-bar" style={{
@@ -390,8 +390,8 @@ function AdminConsoleShell({ app }) {
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexShrink: 0 }}>
           <button onClick={handleLogout} className="btn" style={{
-            background: 'rgba(239, 68, 68, 0.08)',
-            border: '1px solid rgba(239, 68, 68, 0.2)',
+            background: 'rgba(var(--color-danger-rgb), 0.08)',
+            border: '1px solid rgba(var(--color-danger-rgb), 0.2)',
             borderRadius: 'var(--radius-md)',
             color: 'var(--color-danger)',
             display: 'flex',
@@ -407,12 +407,12 @@ function AdminConsoleShell({ app }) {
             e.currentTarget.style.background = 'var(--color-danger)';
             e.currentTarget.style.color = '#ffffff';
             e.currentTarget.style.borderColor = 'transparent';
-            e.currentTarget.style.boxShadow = '0 0 12px rgba(239, 68, 68, 0.25)';
+            e.currentTarget.style.boxShadow = '0 0 12px rgba(var(--color-danger-rgb), 0.25)';
           }}
           onMouseLeave={(e) => {
-            e.currentTarget.style.background = 'rgba(239, 68, 68, 0.08)';
+            e.currentTarget.style.background = 'rgba(var(--color-danger-rgb), 0.08)';
             e.currentTarget.style.color = 'var(--color-danger)';
-            e.currentTarget.style.borderColor = 'rgba(239, 68, 68, 0.2)';
+            e.currentTarget.style.borderColor = 'rgba(var(--color-danger-rgb), 0.2)';
             e.currentTarget.style.boxShadow = 'none';
           }}
           >
