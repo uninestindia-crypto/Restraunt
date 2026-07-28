@@ -1,6 +1,6 @@
 // @ts-ignore: Deno import
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
+import { jsonResponse as baseJsonResponse, restrictedCorsHeaders } from "../_shared/cors.ts";
 
 declare const Deno: {
   serve: (handler: (req: Request) => Response | Promise<Response>) => void;
@@ -30,10 +30,6 @@ type StaffAdminPayload = {
     updatedAt?: string | null;
   };
 };
-
-function bad(message: string, status = 400) {
-  return jsonResponse({ error: message }, status);
-}
 
 function cleanText(value: unknown, max = 120) {
   return String(value || "").trim().slice(0, max);
@@ -116,8 +112,13 @@ async function audit(serviceClient: ReturnType<typeof createClient>, storeId: st
 }
 
 Deno.serve(async (req: Request) => {
+  // Privileged endpoint: pin responses to configured origins when ALLOWED_ORIGINS is set.
+  const cors = restrictedCorsHeaders(req);
+  const jsonResponse = (body: unknown, status = 200) => baseJsonResponse(body, status, cors);
+  const bad = (message: string, status = 400) => baseJsonResponse({ error: message }, status, cors);
+
   if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
+    return new Response("ok", { headers: cors });
   }
   if (req.method !== "POST") {
     return bad("Method not allowed.", 405);
