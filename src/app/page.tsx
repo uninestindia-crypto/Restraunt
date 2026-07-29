@@ -1,26 +1,34 @@
-"use client";
+import { SpaBoot } from './_components/SpaBoot';
+import { StorefrontJsonLd } from './_components/StorefrontJsonLd';
+import { StorefrontSeoShell } from './_components/StorefrontSeoShell';
 
-import { useEffect } from 'react';
-
+/**
+ * Server component: everything except `SpaBoot` is real markup in the export.
+ *
+ * The loading screen sits above the pre-rendered storefront while the bundle
+ * arrives. Without JavaScript the loading screen is hidden instead (see the
+ * <noscript> rule), so the menu below stays readable and ordering falls back
+ * to the phone number.
+ */
 export default function AppPage() {
-  useEffect(() => {
-    // Dynamically import the main entry script to boot the SPA client-side
-    import('../main')
-      .then(() => {
-        console.log('[Next.js SPA Boot] Main script loaded and initialized.');
-      })
-      .catch((err) => {
-        console.error('[Next.js SPA Boot] Failed to boot main script:', err);
-      });
-  }, []);
-
   return (
     <>
+      <noscript>
+        <style>{`
+          #loading-screen { display: none !important; }
+          .storefront-seo-shell { position: static !important; }
+        `}</style>
+      </noscript>
+
+      <StorefrontJsonLd page="home" />
+
       {/* Loading screen (removed by the App class on init) */}
       <div id="loading-screen" aria-label="Loading The Taste Restaurant">
         <img
           src="/assets/the-taste-logo.png"
           alt="The Taste Logo"
+          width={84}
+          height={84}
           style={{
             width: '84px',
             height: '84px',
@@ -40,6 +48,9 @@ export default function AppPage() {
         </div>
       </div>
 
+      {/* Crawlable / no-JS storefront, removed once the SPA takes over */}
+      <StorefrontSeoShell />
+
       {/* NextGenOS metadata */}
       <div
         aria-hidden="true"
@@ -56,6 +67,8 @@ export default function AppPage() {
 
       {/* Toast notifications container */}
       <div id="toast-container" className="toast-container"></div>
+
+      <SpaBoot />
     </>
   );
 }

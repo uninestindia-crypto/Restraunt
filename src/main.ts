@@ -934,6 +934,10 @@ class App {
       loadingScreen.classList.add('hide');
       setTimeout(() => loadingScreen.remove(), 500);
     }
+
+    // The pre-rendered storefront exists for crawlers and no-JS visitors; once
+    // the SPA owns the page it would be a duplicate of the live menu.
+    document.getElementById('storefront-seo-shell')?.remove();
   }
 
   injectSandboxWidget() {

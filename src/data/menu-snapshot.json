@@ -1,0 +1,217 @@
+{
+  "generatedAt": "2026-07-29T16:42:18.503Z",
+  "storeId": "the-taste",
+  "source": "cloud",
+  "categories": [
+    {
+      "id": 1,
+      "name": "Fries",
+      "icon": "🍟",
+      "items": [
+        {
+          "id": 3,
+          "name": "Chicken Crispy",
+          "price": 120,
+          "isVeg": false,
+          "imageUrl": ""
+        },
+        {
+          "id": 1,
+          "name": "French Fries",
+          "price": 80,
+          "isVeg": true,
+          "imageUrl": ""
+        },
+        {
+          "id": 2,
+          "name": "Masala Fries",
+          "price": 90,
+          "isVeg": true,
+          "imageUrl": ""
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "Roll / Wrap",
+      "icon": "🌯",
+      "items": [
+        {
+          "id": 11,
+          "name": "Chicken Cheese Roll",
+          "price": 110,
+          "isVeg": false,
+          "imageUrl": ""
+        },
+        {
+          "id": 10,
+          "name": "Chicken Roll",
+          "price": 100,
+          "isVeg": false,
+          "imageUrl": ""
+        },
+        {
+          "id": 12,
+          "name": "Combi Chicken Roll",
+          "price": 120,
+          "isVeg": false,
+          "imageUrl": ""
+        },
+        {
+          "id": 6,
+          "name": "Double Egg Roll",
+          "price": 80,
+          "isVeg": false,
+          "imageUrl": ""
+        },
+        {
+          "id": 5,
+          "name": "Egg Roll",
+          "price": 70,
+          "isVeg": false,
+          "imageUrl": ""
+        },
+        {
+          "id": 8,
+          "name": "Paneer Cheese Roll",
+          "price": 110,
+          "isVeg": true,
+          "imageUrl": ""
+        },
+        {
+          "id": 7,
+          "name": "Paneer Roll",
+          "price": 100,
+          "isVeg": true,
+          "imageUrl": ""
+        },
+        {
+          "id": 9,
+          "name": "Paneer Schezwan Roll",
+          "price": 110,
+          "isVeg": true,
+          "imageUrl": ""
+        },
+        {
+          "id": 4,
+          "name": "Veg Roll",
+          "price": 65,
+          "isVeg": true,
+          "imageUrl": ""
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "name": "Fried Rice",
+      "icon": "🍚",
+      "items": [
+        {
+          "id": 26,
+          "name": "Chicken Fried Rice (Full)",
+          "price": 170,
+          "isVeg": false,
+          "imageUrl": ""
+        },
+        {
+          "id": 25,
+          "name": "Chicken Fried Rice (Half)",
+          "price": 100,
+          "isVeg": false,
+          "imageUrl": ""
+        },
+        {
+          "id": 27,
+          "name": "Chicken Schezwan Fried Rice (Half)",
+          "price": 100,
+          "isVeg": false,
+          "imageUrl": ""
+        },
+        {
+          "id": 22,
+          "name": "Egg Fried Rice (Full)",
+          "price": 150,
+          "isVeg": false,
+          "imageUrl": ""
+        },
+        {
+          "id": 21,
+          "name": "Egg Fried Rice (Half)",
+          "price": 90,
+          "isVeg": false,
+          "imageUrl": ""
+        },
+        {
+          "id": 24,
+          "name": "Egg Schezwan Fried Rice (Full)",
+          "price": 170,
+          "isVeg": false,
+          "imageUrl": ""
+        },
+        {
+          "id": 23,
+          "name": "Egg Schezwan Fried Rice (Half)",
+          "price": 100,
+          "isVeg": false,
+          "imageUrl": ""
+        },
+        {
+          "id": 18,
+          "name": "Paneer Fried Rice (Full)",
+          "price": 170,
+          "isVeg": true,
+          "imageUrl": ""
+        },
+        {
+          "id": 17,
+          "name": "Paneer Fried Rice (Half)",
+          "price": 100,
+          "isVeg": true,
+          "imageUrl": ""
+        },
+        {
+          "id": 20,
+          "name": "Paneer Schezwan Fried Rice (Full)",
+          "price": 190,
+          "isVeg": true,
+          "imageUrl": ""
+        },
+        {
+          "id": 19,
+          "name": "Paneer Schezwan Fried Rice (Half)",
+          "price": 110,
+          "isVeg": true,
+          "imageUrl": ""
+        },
+        {
+          "id": 14,
+          "name": "Veg Fried Rice (Full)",
+          "price": 130,
+          "isVeg": true,
+          "imageUrl": ""
+        },
+        {
+          "id": 13,
+          "name": "Veg Fried Rice (Half)",
+          "price": 80,
+          "isVeg": true,
+          "imageUrl": ""
+        },
+        {
+          "id": 16,
+          "name": "Veg Schezwan Fried Rice (Full)",
+          "price": 150,
+          "isVeg": true,
+          "imageUrl": ""
+        },
+        {
+          "id": 15,
+          "name": "Veg Schezwan Fried Rice (Half)",
+          "price": 90,
+          "isVeg": true,
+          "imageUrl": ""
+        }
+      ]
+    }
+  ]
+}

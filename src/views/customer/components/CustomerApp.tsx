@@ -1,5 +1,5 @@
 // @ts-nocheck
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { db, getCategories, getItemsByCategory, createOrder, getNextOrderNumber, getSetting, generateLocalUuid } from '../../../db/database';
 import { globalStore } from '../../../store/Store';
 import { formatCurrency, playSound, vibrateDevice, showToast, parseOrderItems, menuItemImageSource } from '../../../utils/helpers';
@@ -11,6 +11,7 @@ import { ItemDetailDrawer } from './ItemDetailDrawer';
 import { LoyaltyDrawer } from './LoyaltyDrawer';
 import { OffersPage, AboutPage, CateringPage, SupportPage, AccountPage } from './CustomerPages';
 import { getCurrentCoordinates, reverseGeocode, autocompleteAddress } from '../../../services/geocoding';
+import { STOREFRONT_DEFAULTS, STOREFRONT_SETTING_KEYS, resolveStorefrontCopy } from '../../../content/storefront';
 import { buildCustomerFavoritesFromOrders, fetchCustomerOffers, injectCustomerStructuredData, RETENTION_PREFERENCES, syncCustomerFavorite } from '../../../services/customerPlatform';
 
 const PHONE_RE = /^[6-9]\d{9}$/;
@@ -133,6 +134,9 @@ export function CustomerApp({ app }) {
   });
   const [searchQuery, setSearchQuery] = useState('');
   const [placedOrder, setPlacedOrder] = useState(null);
+  const [menuLoading, setMenuLoading] = useState(true);
+  const [routeAnnouncement, setRouteAnnouncement] = useState('');
+  const [storefrontCopy, setStorefrontCopy] = useState(() => resolveStorefrontCopy({}));
 
   // Geolocation & Autocomplete states
   const [deliveryCoordinates, setDeliveryCoordinates] = useState({ latitude: null, longitude: null });
@@ -233,7 +237,12 @@ export function CustomerApp({ app }) {
 
     // Initial loading
     handleCustomerRoute();
-    loadData();
+    loadData().catch(err => {
+      // A failed catalogue read must still clear the skeletons, otherwise the
+      // storefront sits on placeholders forever.
+      console.error('[CustomerView] Failed to load the storefront catalogue:', err);
+      setMenuLoading(false);
+    });
 
     return () => {
       unsubscribe();
@@ -254,6 +263,28 @@ export function CustomerApp({ app }) {
   useEffect(() => {
     injectCustomerStructuredData(storeSettings);
   }, [storeSettings]);
+
+  /**
+   * Cart, checkout and confirmation replace the page without a navigation, so
+   * nothing tells a screen reader or a keyboard user that the view changed.
+   * Move focus to the new view's heading and announce it.
+   */
+  useEffect(() => {
+    if (state === 'menu') return;
+    const label = { cart: 'Your cart', checkout: 'Checkout', success: 'Order confirmed' }[state];
+    if (!label) return;
+
+    const frame = requestAnimationFrame(() => {
+      const heading = document.querySelector('.store-checkout-shell h1, .store-checkout-shell h2');
+      if (heading instanceof HTMLElement) {
+        heading.setAttribute('tabindex', '-1');
+        heading.focus({ preventScroll: true });
+      }
+      window.scrollTo({ top: 0 });
+      setRouteAnnouncement(label);
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [state]);
 
   const cleanupTelemetry = () => {
     if (pollIntervalRef.current) {
@@ -329,6 +360,16 @@ export function CustomerApp({ app }) {
     };
     setStoreSettings(resolvedSettings);
 
+    // Marketing copy is owner-editable from the admin panel; the pre-rendered
+    // HTML ships the defaults and the app layers any overrides on top.
+    const storedCopy = {};
+    await Promise.all(
+      Object.values(STOREFRONT_SETTING_KEYS).map(async key => {
+        storedCopy[key] = await getSetting(key);
+      })
+    );
+    setStorefrontCopy(resolveStorefrontCopy(storedCopy));
+
     // Load active customer login info
     try {
       const { authService } = await import('../../../services/auth');
@@ -382,6 +423,7 @@ export function CustomerApp({ app }) {
       setActiveCategoryId(loadedCats[0].id);
       setItems(map.get(loadedCats[0].id) || []);
     }
+    setMenuLoading(false);
 
     // Refresh the catalog and QR tables after first paint. A slow or unavailable
     // network never keeps customers on the splash screen; cached/default menu
@@ -415,7 +457,10 @@ export function CustomerApp({ app }) {
     }
   }, [activeCategoryId, menuByCategory]);
 
-  const getFilteredItems = () => {
+  // Both of these scan the whole catalogue and are read during render, so they
+  // are cached against their inputs rather than recomputed on every keystroke,
+  // cart change and drawer toggle.
+  const filteredItems = useMemo(() => {
     if (!searchQuery || !searchQuery.trim()) {
       return items;
     }
@@ -434,14 +479,27 @@ export function CustomerApp({ app }) {
       }
     }
     return results;
-  };
+  }, [searchQuery, items, menuByCategory]);
 
-  const getFeaturedItems = () => {
+  /**
+   * Featured dishes, in order of authority: the ids the owner picked in the
+   * admin panel, then the shipped default names, then whatever is on the menu.
+   * The old hardcoded name list meant a rename silently emptied the row.
+   */
+  const featuredItems = useMemo(() => {
     const all = categories.flatMap(category => menuByCategory.get(category.id) || []);
-    const names = ['Steamed Veg Momos', 'Veg Hakka Noodles', 'Chicken Hakka Noodles', 'Cold Coffee', 'Chilli Paneer Dry', 'Chocolate Lava Cake'];
-    const featured = names.map(name => all.find(item => item.name === name)).filter(Boolean);
-    return featured.length ? featured.slice(0, 6) : all.slice(0, 6);
-  };
+    if (!all.length) return [];
+
+    const chosen = storefrontCopy.featuredItemIds
+      .map(id => all.find(item => item.id === id))
+      .filter(Boolean);
+    if (chosen.length) return chosen.slice(0, 6);
+
+    const byName = STOREFRONT_DEFAULTS.featuredItemNames
+      .map(name => all.find(item => item.name === name))
+      .filter(Boolean);
+    return byName.length ? byName.slice(0, 6) : all.slice(0, 6);
+  }, [categories, menuByCategory, storefrontCopy.featuredItemIds]);
 
   const handleOpenDetails = (item) => {
     playSound(600, 70);
@@ -740,6 +798,7 @@ export function CustomerApp({ app }) {
   // Main UI Render depending on state route
   return (
     <div className={`storefront-root ${accessibilityClass}`}>
+      <p className="sr-only" role="status" aria-live="polite">{routeAnnouncement}</p>
       {state === 'menu' && (
         <div className="storefront-shell">
           <CustomerShellNav
@@ -781,17 +840,17 @@ export function CustomerApp({ app }) {
             <div className="store-hero-content">
               <p className="store-kicker"><span aria-hidden="true">✦</span> {modeStr}</p>
               <h1>{storeSettings.name}</h1>
-              <p className="store-hero-copy">Bold Indo-Chinese flavours, wok-tossed fresh and delivered hot. Your neighbourhood favourites, made the way they should be.</p>
+              <p className="store-hero-copy">{storefrontCopy.heroCopy}</p>
               <div className="store-hero-actions">
                 <a className="store-primary-action" href="#menu">
                   <span className="material-symbols-rounded" aria-hidden="true">restaurant_menu</span>
-                  Order now
+                  {storefrontCopy.heroCta}
                 </a>
               </div>
               <dl className="store-proof">
-                <div><dt>30 min</dt><dd>Average delivery</dd></div>
-                <div><dt>4.8 ★</dt><dd>Local favourite</dd></div>
-                <div><dt>100%</dt><dd>Freshly prepared</dd></div>
+                {storefrontCopy.proofPoints.map(point => (
+                  <div key={point.label}><dt>{point.value}</dt><dd>{point.label}</dd></div>
+                ))}
               </dl>
             </div>
           </section>
@@ -818,11 +877,15 @@ export function CustomerApp({ app }) {
           {/* Featured items */}
           <section className="store-section store-section-tight" aria-label="Highlights">
             <div className="store-section-head">
-              <p>Popular right now</p>
-              <h2>The dishes Patna keeps coming back for</h2>
+              <p>{storefrontCopy.featuredEyebrow}</p>
+              <h2>{storefrontCopy.featuredHeadline}</h2>
             </div>
             <div className="store-featured-grid">
-              {getFeaturedItems().map(item => (
+              {menuLoading && featuredItems.length === 0
+                ? Array.from({ length: 6 }, (_, index) => (
+                    <div key={`featured-skeleton-${index}`} className="store-skeleton store-skeleton-featured" aria-hidden="true" />
+                  ))
+                : featuredItems.map(item => (
                 <article key={item.id} className="store-featured-item">
                   <button
                     className="store-featured-open"
@@ -854,8 +917,8 @@ export function CustomerApp({ app }) {
           <section className="store-section" id="menu" aria-label="Online menu">
             <div className="store-section-head store-menu-head">
               <div>
-                <p>Order online</p>
-                <h2>What are you craving today?</h2>
+                <p>{storefrontCopy.menuEyebrow}</p>
+                <h2>{storefrontCopy.menuHeadline}</h2>
               </div>
               <div className="store-menu-note">{displayAddress}</div>
             </div>
@@ -869,14 +932,18 @@ export function CustomerApp({ app }) {
               onSearchQueryChange={setSearchQuery}
             />
 
-            <div className="store-menu-grid" style={{ marginTop: '24px' }}>
-              {getFilteredItems().length === 0 ? (
+            <div className="store-menu-grid" style={{ marginTop: '24px' }} aria-busy={menuLoading}>
+              {menuLoading && filteredItems.length === 0 ? (
+                Array.from({ length: 8 }, (_, index) => (
+                  <div key={`menu-skeleton-${index}`} className="store-skeleton store-skeleton-card" aria-hidden="true" />
+                ))
+              ) : filteredItems.length === 0 ? (
                 <div className="store-empty-state">
                   <span className="material-symbols-rounded" aria-hidden="true">restaurant_menu</span>
                   <p>No items found matching your search.</p>
                 </div>
               ) : (
-                getFilteredItems().map(item => (
+                filteredItems.map(item => (
                   <MenuItem 
                     key={item.id}
                     item={item}
@@ -909,7 +976,7 @@ export function CustomerApp({ app }) {
           </section>
 
           <footer className="customer-footer">
-            <div><strong>THE TASTE</strong><p>Wok-fresh Indo-Chinese comfort food from Kumhrar, Patna.</p></div>
+            <div><strong>THE TASTE</strong><p>{storefrontCopy.footerCopy}</p></div>
             <nav aria-label="Customer information"><button type="button" onClick={() => openCustomerPage('about')}>Our story</button><button type="button" onClick={() => openCustomerPage('catering')}>Catering</button><button type="button" onClick={() => openCustomerPage('support')}>Help</button></nav>
             <small>Freshly prepared. Clearly priced. Made locally.</small>
           </footer>
