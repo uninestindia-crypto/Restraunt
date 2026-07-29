@@ -20,7 +20,7 @@
     "launch:verify": "npm run db:validate && npm run typecheck && npm test && npm audit && npm run build && playwright test",
     "cloud:admin": "node scripts/provision-admin.js",
     "document:ingest": "node scripts/ingest-documents.js",
-    "prepare": "git config core.hooksPath .githooks"
+    "prepare": "node scripts/setup-hooks.js"
   },
   "dependencies": {
     "@capacitor-community/bluetooth-le": "^8.2.0",

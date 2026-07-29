@@ -74,3 +74,4 @@ artifacts/android/
 
 
 .vercel/
+*.tsbuildinfo
