@@ -46,7 +46,14 @@ export function MenuItem({ item, categories, cart, onOpenDetails }) {
   };
 
   const handleCardClick = (e) => {
-    if (e.target.closest('.stepper') || e.target.closest('.btn-step') || e.target.closest('.store-add-btn')) {
+    // `.store-menu-item-open` handles its own click; letting it bubble here
+    // would open the drawer twice.
+    if (
+      e.target.closest('.stepper') ||
+      e.target.closest('.btn-step') ||
+      e.target.closest('.store-add-btn') ||
+      e.target.closest('.store-menu-item-open')
+    ) {
       return;
     }
     if (onOpenDetails) {
@@ -71,10 +78,20 @@ export function MenuItem({ item, categories, cart, onOpenDetails }) {
       />
       <div className="store-menu-item-body">
         <div className="store-menu-item-title">
-          <div>
+          {/* The card as a whole is click-to-open for mouse users, but that is
+              invisible to the keyboard. This button is the focusable, labelled
+              equivalent — it cannot be the <article> itself, because the card
+              already contains the stepper and Add controls. */}
+          <button
+            type="button"
+            className="store-menu-item-open"
+            onClick={() => onOpenDetails?.(item)}
+            disabled={!onOpenDetails}
+            aria-label={`View details for ${item.name}`}
+          >
             <h3>{item.name}</h3>
             <p>{getItemDescription()}</p>
-          </div>
+          </button>
           <span className={item.isVeg ? 'store-food-mark veg' : 'store-food-mark nonveg'} aria-hidden="true"></span>
           <span className="sr-only">{item.isVeg ? 'Vegetarian' : 'Non vegetarian'}</span>
         </div>

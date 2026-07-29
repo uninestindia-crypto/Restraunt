@@ -6,8 +6,9 @@
  *
  * The app builds dialogs three different ways — static markup toggled via
  * `style.display`, imperatively appended overlays, and React conditional
- * renders — but all of them land on `.modal-overlay`. Rather than retrofit
- * focus management into ten call sites (and every future one), this observes
+ * renders — across two overlay families: `.modal-overlay` (staff console) and
+ * `.aether-drawer-overlay` (customer storefront sheets). Rather than retrofit
+ * focus management into every call site (and every future one), this observes
  * the document and applies WCAG 2.1 dialog semantics to whichever overlay is
  * currently on top:
  *
@@ -28,10 +29,20 @@ const FOCUSABLE_SELECTOR = [
   '[tabindex]:not([tabindex="-1"])',
 ].join(', ');
 
+/** Both overlay families the app uses to present a dialog. */
+const OVERLAY_SELECTOR = '.modal-overlay, .aether-drawer-overlay';
+
+/** The panel inside an overlay that should carry the dialog semantics. */
+const SURFACE_SELECTOR = '.modal, .aether-drawer-sheet';
+
 type ActiveModal = {
   overlay: HTMLElement;
   dialog: HTMLElement;
   previouslyFocused: HTMLElement | null;
+  /** Identity of the trigger, so focus can be restored even if React has
+   *  replaced the original DOM node while the dialog was open. */
+  triggerId: string | null;
+  triggerLabel: string | null;
 };
 
 let active: ActiveModal | null = null;
@@ -49,7 +60,7 @@ function isVisible(el: HTMLElement): boolean {
 /** The topmost visible overlay — later in DOM order wins, matching paint order. */
 function topmostOverlay(): HTMLElement | null {
   const overlays = Array.from(
-    document.querySelectorAll<HTMLElement>('.modal-overlay')
+    document.querySelectorAll<HTMLElement>(OVERLAY_SELECTOR)
   ).filter(isVisible);
   return overlays.length ? overlays[overlays.length - 1] : null;
 }
@@ -61,12 +72,13 @@ function focusableWithin(dialog: HTMLElement): HTMLElement[] {
 }
 
 /**
- * Resolve the dialog surface inside an overlay. Most overlays wrap a `.modal`,
- * but a few render their panel directly as the overlay's only child.
+ * Resolve the dialog surface inside an overlay. Staff dialogs wrap a `.modal`,
+ * customer sheets wrap an `.aether-drawer-sheet`; anything else falls back to
+ * the overlay's first element child.
  */
 function resolveDialog(overlay: HTMLElement): HTMLElement {
   return (
-    overlay.querySelector<HTMLElement>('.modal') ||
+    overlay.querySelector<HTMLElement>(SURFACE_SELECTOR) ||
     (overlay.firstElementChild as HTMLElement | null) ||
     overlay
   );
@@ -88,7 +100,11 @@ function requestClose(modal: ActiveModal): void {
 
   const labelled = Array.from(
     dialog.querySelectorAll<HTMLElement>('button, [role="button"]')
-  ).find((el) => /close|cancel|dismiss/i.test(el.getAttribute('aria-label') || el.id || ''));
+  ).find((el) =>
+    /close|cancel|dismiss/i.test(
+      [el.getAttribute('aria-label'), el.id, el.className.toString()].filter(Boolean).join(' ')
+    )
+  );
   if (labelled) {
     labelled.click();
     return;
@@ -132,9 +148,17 @@ function activate(overlay: HTMLElement): void {
   }
 
   const previouslyFocused =
-    document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    document.activeElement instanceof HTMLElement && document.activeElement !== document.body
+      ? document.activeElement
+      : null;
 
-  active = { overlay, dialog, previouslyFocused };
+  active = {
+    overlay,
+    dialog,
+    previouslyFocused,
+    triggerId: previouslyFocused?.id || null,
+    triggerLabel: previouslyFocused?.getAttribute('aria-label') || null,
+  };
 
   setBackgroundInert(overlay, true);
   previousBodyOverflow = document.body.style.overflow;
@@ -146,9 +170,42 @@ function activate(overlay: HTMLElement): void {
   (first || focusables[0] || dialog).focus({ preventScroll: true });
 }
 
+/**
+ * Find where focus should land after the dialog closes. Prefer the exact node
+ * that opened it; if a re-render replaced that node, match it by id or label so
+ * focus still returns to the same control rather than collapsing to <body>.
+ */
+function restoreTarget(modal: ActiveModal): HTMLElement | null {
+  const { previouslyFocused, triggerId, triggerLabel } = modal;
+
+  if (previouslyFocused?.isConnected) return previouslyFocused;
+
+  if (triggerId) {
+    const byId = document.getElementById(triggerId);
+    if (byId) return byId;
+  }
+
+  if (triggerLabel) {
+    const escaped = triggerLabel.replace(/"/g, '\\"');
+    const byLabel = document.querySelector<HTMLElement>(`[aria-label="${escaped}"]`);
+    if (byLabel) return byLabel;
+  }
+
+  // Last resort: the main landmark, so focus re-enters the page in a
+  // predictable place instead of being dropped on <body>.
+  const main = document.querySelector<HTMLElement>('#main-content, main');
+  if (main) {
+    if (!main.hasAttribute('tabindex')) main.setAttribute('tabindex', '-1');
+    return main;
+  }
+
+  return null;
+}
+
 function deactivate(): void {
   if (!active) return;
-  const { overlay, dialog, previouslyFocused } = active;
+  const { overlay, dialog } = active;
+  const closing = active;
 
   dialog.removeAttribute('aria-modal');
   setBackgroundInert(overlay, false);
@@ -156,9 +213,19 @@ function deactivate(): void {
 
   active = null;
 
-  if (previouslyFocused && previouslyFocused.isConnected) {
-    previouslyFocused.focus({ preventScroll: true });
-  }
+  // Restore immediately when the trigger survived the close, so focus is never
+  // observably parked on <body>.
+  const immediate = restoreTarget(closing);
+  immediate?.focus({ preventScroll: true });
+
+  // If the trigger was replaced by a re-render, the DOM may not have settled
+  // yet. Retry next frame, but only if focus is still unplaced — never steal it
+  // back from somewhere the user or the app has since moved it.
+  requestAnimationFrame(() => {
+    if (active) return;
+    if (document.activeElement && document.activeElement !== document.body) return;
+    restoreTarget(closing)?.focus({ preventScroll: true });
+  });
 }
 
 function sync(): void {

@@ -48,6 +48,72 @@ test('staff sign in fields are styled, not browser defaults', async ({ page }) =
   expect(radius, 'login email field should pick up design-system input styling').not.toBe('0px');
 });
 
+test('item details are reachable by keyboard and the dialog manages focus', async ({ page }) => {
+  await page.goto('/#/self-order');
+  await expect(page.getByRole('heading', { name: 'The Taste', level: 1 })).toBeVisible();
+
+  // The menu hydrates from IndexedDB after first paint, so wait for a card
+  // rather than sampling the count immediately.
+  const trigger = page.locator('.store-menu-item-open').first();
+  await expect(trigger).toBeVisible({ timeout: 20_000 });
+
+  // The card is click-to-open for a mouse; this asserts the keyboard path.
+  await trigger.focus();
+  const triggerLabel = await trigger.getAttribute('aria-label');
+  await page.keyboard.press('Enter');
+
+  const surface = page.locator('.aether-drawer-sheet, .modal-overlay .modal').first();
+  await expect(surface).toBeVisible();
+
+  await expect(surface).toHaveAttribute('role', 'dialog');
+  await expect(surface).toHaveAttribute('aria-modal', 'true');
+
+  expect(
+    await page.evaluate(() => {
+      const s = document.querySelector('.aether-drawer-sheet, .modal-overlay .modal');
+      return !!s && s.contains(document.activeElement);
+    }),
+    'focus should move into the dialog on open'
+  ).toBe(true);
+
+  // Tabbing must cycle inside the dialog rather than reaching the page behind.
+  for (let i = 0; i < 20; i += 1) {
+    await page.keyboard.press('Tab');
+    const escaped = await page.evaluate(() => {
+      const s = document.querySelector('.aether-drawer-sheet, .modal-overlay .modal');
+      return !!s && !s.contains(document.activeElement);
+    });
+    expect(escaped, `focus escaped the dialog after ${i + 1} Tab presses`).toBe(false);
+  }
+
+  await page.keyboard.press('Escape');
+  await expect(surface).toBeHidden();
+
+  // Focus must land back on the triggering control, or — if a re-render
+  // replaced it — on the main landmark. What it must never do is collapse to
+  // <body>, which strands keyboard users at the top of the document.
+  await expect
+    .poll(
+      () =>
+        page.evaluate(() => {
+          const el = document.activeElement;
+          if (!el || el === document.body) return 'body';
+          return el.getAttribute('aria-label') || el.id || el.tagName;
+        }),
+      { message: 'focus must not be dropped on <body> when a dialog closes', timeout: 5_000 }
+    )
+    .not.toBe('body');
+
+  const landed = await page.evaluate(() => {
+    const el = document.activeElement;
+    return { label: el?.getAttribute('aria-label'), id: el?.id };
+  });
+  expect(
+    landed.label === triggerLabel || landed.id === 'main-content',
+    `focus landed on ${JSON.stringify(landed)}; expected the trigger or the main landmark`
+  ).toBe(true);
+});
+
 test('interactive controls meet the 44px touch target minimum on mobile', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/#/self-order');

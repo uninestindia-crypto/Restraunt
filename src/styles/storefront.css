@@ -1021,6 +1021,30 @@
   justify-content: space-between;
 }
 
+/* Keyboard-reachable equivalent of the card's click-to-open behaviour. It
+   replaces a plain <div>, so it must not introduce any button chrome. */
+.store-menu-item-open {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.store-menu-item-open:disabled {
+  cursor: default;
+}
+
+.store-menu-item-open:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+
 .store-menu-item h3 {
   margin: 0;
   color: var(--store-ink);
