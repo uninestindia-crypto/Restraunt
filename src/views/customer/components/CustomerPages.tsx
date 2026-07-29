@@ -1,6 +1,9 @@
 // @ts-nocheck
 import React from 'react';
 import { formatCurrency, formatDateTime, parseOrderItems } from '../../../utils/helpers';
+// Shared with the statically exported /offers, /about, /catering and /support
+// pages so the app and the indexed pages can never tell different stories.
+import { STOREFRONT_PAGES } from '../../../content/storefront';
 
 const Icon = ({ children }) => <span className="material-symbols-rounded" aria-hidden="true">{children}</span>;
 
@@ -25,7 +28,7 @@ export function CustomerPageHeader({ eyebrow, title, copy, onBack }) {
 export function OffersPage({ onBack, onOrder, offers = [] }) {
   return (
     <main className="customer-page">
-      <CustomerPageHeader eyebrow="Offers" title="More joy in every order" copy="Live offers are displayed here, while final eligibility and discount math stay server validated at checkout." onBack={onBack} />
+      <CustomerPageHeader eyebrow={STOREFRONT_PAGES.offers.eyebrow} title={STOREFRONT_PAGES.offers.title} copy={STOREFRONT_PAGES.offers.copy} onBack={onBack} />
       <section className="customer-card-grid">
         {offers.map(offer => (
           <article className="customer-feature-card" key={offer.id || offer.code || offer.title}>
@@ -50,24 +53,20 @@ export function OffersPage({ onBack, onOrder, offers = [] }) {
 }
 
 export function AboutPage({ onBack }) {
-  return <main className="customer-page"><CustomerPageHeader eyebrow="Our story" title="Comfort food, cooked with character" copy="The Taste brings bold Indo-Chinese flavours to Patna with the warmth and consistency of a neighbourhood favourite." onBack={onBack} /><section className="customer-story-grid"><article><span>01</span><h2>Wok-fresh</h2><p>Every dish is prepared to order for aroma, texture, and heat that survives the journey home.</p></article><article><span>02</span><h2>Honest value</h2><p>Generous portions, clear pricing, and familiar food made without unnecessary theatre.</p></article><article><span>03</span><h2>Made locally</h2><p>We are rooted in Kumhrar and designed around the way our neighbourhood actually eats.</p></article></section></main>;
+  const page = STOREFRONT_PAGES.about;
+  return <main className="customer-page"><CustomerPageHeader eyebrow={page.eyebrow} title={page.title} copy={page.copy} onBack={onBack} /><section className="customer-story-grid">{page.pillars.map(pillar => <article key={pillar.index}><span>{pillar.index}</span><h2>{pillar.title}</h2><p>{pillar.copy}</p></article>)}</section></main>;
 }
 
 export function CateringPage({ onBack, supportPhone = '' }) {
   const links = supportPhoneLinks(supportPhone);
-  return <main className="customer-page"><CustomerPageHeader eyebrow="Catering" title="Big-table food without the fuss" copy="Office lunches, family celebrations, college events, and everything that deserves a generous spread." onBack={onBack} /><section className="customer-contact-panel"><div><Icon>celebration</Icon><h2>Tell us about your gathering</h2><p>Share your date, guest count, preferences, and budget. Our team will help shape a menu that travels well.</p></div>{links ? <a href={links.telephone}>Call the restaurant <Icon>call</Icon></a> : <p>Contact details will appear here once the restaurant publishes them.</p>}</section></main>;
+  const page = STOREFRONT_PAGES.catering;
+  return <main className="customer-page"><CustomerPageHeader eyebrow={page.eyebrow} title={page.title} copy={page.copy} onBack={onBack} /><section className="customer-contact-panel"><div><Icon>celebration</Icon><h2>{page.panelTitle}</h2><p>{page.panelCopy}</p></div>{links ? <a href={links.telephone}>Call the restaurant <Icon>call</Icon></a> : <p>Contact details will appear here once the restaurant publishes them.</p>}</section></main>;
 }
 
 export function SupportPage({ onBack, supportPhone = '' }) {
-  const faqs = [
-    ['Can I change an order?', 'Contact the restaurant immediately after placing it. Changes depend on kitchen status.'],
-    ['How do I track my order?', 'Your confirmation screen shows the latest status as the kitchen and delivery team update it.'],
-    ['Which payments are supported?', 'Available payment methods are shown at checkout and may vary by fulfilment type.'],
-    ['Do you show allergens?', 'Ask the restaurant before ordering if you have allergies. Allergen labels are being prepared for every menu item.'],
-    ['What is your cancellation policy?', 'Cancellation depends on preparation status. Orders already cooking may not be cancellable.'],
-  ];
+  const page = STOREFRONT_PAGES.support;
   const links = supportPhoneLinks(supportPhone);
-  return <main className="customer-page"><CustomerPageHeader eyebrow="Help centre" title="We are here when you need us" copy="Quick answers and a direct line to the restaurant—no maze of support screens." onBack={onBack} /><section className="customer-faq-list">{faqs.map(([q, a]) => <details key={q}><summary>{q}<Icon>add</Icon></summary><p>{a}</p></details>)}</section>{links ? <div className="customer-support-actions"><a href={links.telephone}><Icon>call</Icon> Call us</a><a href={links.whatsapp}><Icon>chat</Icon> WhatsApp</a></div> : <p>Contact details will appear here once the restaurant publishes them.</p>}</main>;
+  return <main className="customer-page"><CustomerPageHeader eyebrow={page.eyebrow} title={page.title} copy={page.copy} onBack={onBack} /><section className="customer-faq-list">{page.faqs.map(([q, a]) => <details key={q}><summary>{q}<Icon>add</Icon></summary><p>{a}</p></details>)}</section>{links ? <div className="customer-support-actions"><a href={links.telephone}><Icon>call</Icon> Call us</a><a href={links.whatsapp}><Icon>chat</Icon> WhatsApp</a></div> : <p>Contact details will appear here once the restaurant publishes them.</p>}</main>;
 }
 
 function EmptyAccountCard({ icon, title, copy, action, onAction }) {

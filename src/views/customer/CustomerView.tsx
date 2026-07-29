@@ -2,6 +2,7 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import { CustomerApp } from './components/CustomerApp';
+import { StorefrontErrorBoundary } from '../../components/StorefrontErrorBoundary';
 
 export class CustomerView {
   constructor(app) {
@@ -13,7 +14,11 @@ export class CustomerView {
   async mount(container) {
     this.container = container;
     this.root = createRoot(container);
-    this.root.render(<CustomerApp app={this.app} />);
+    this.root.render(
+      <StorefrontErrorBoundary>
+        <CustomerApp app={this.app} />
+      </StorefrontErrorBoundary>
+    );
   }
 
   unmount() {
