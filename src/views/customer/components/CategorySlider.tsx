@@ -23,7 +23,7 @@ export function CategorySlider({
           placeholder="Search for dishes, starters, desserts..." 
           style={{ paddingLeft: '44px', width: '100%', borderRadius: 'var(--radius-lg)', height: '44px', fontSize: 'var(--text-sm)', fontWeight: 500 }} 
           value={searchQuery}
-          onInput={(e) => onSearchQueryChange(e.target.value)}
+          onChange={(e) => onSearchQueryChange(e.target.value)}
         />
         {searchQuery ? (
           <button 

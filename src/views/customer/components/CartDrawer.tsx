@@ -66,7 +66,7 @@ export function CartDrawer({ cart, onBack, onCheckout }) {
                   className="input note-input store-note-input" 
                   value={item.notes || ''} 
                   placeholder="Special instructions (e.g. less spicy, packaging, no onions)"
-                  onInput={(e) => handleNoteChange(index, e.target.value)}
+                  onChange={(e) => handleNoteChange(index, e.target.value)}
                   style={{ width: '100%', marginTop: '8px' }}
                 />
               </article>

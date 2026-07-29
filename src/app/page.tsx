@@ -43,7 +43,8 @@ export default function AppPage() {
         <div className="loading-brand">The Taste</div>
         <div className="loading-tagline">Chinese Food — Fresh &amp; Reasonable</div>
         <div className="loading-spinner"></div>
-        <div style={{ marginTop: '32px', fontSize: '0.65rem', color: 'rgba(148,163,184,0.4)', letterSpacing: '0.15em', textTransform: 'uppercase', fontWeight: 600 }}>
+        {/* Opaque, not a 40%-alpha grey: at 10px this has to clear AA on its own. */}
+        <div style={{ marginTop: '32px', fontSize: '0.7rem', color: '#A9B6C6', letterSpacing: '0.15em', textTransform: 'uppercase', fontWeight: 600 }}>
           Sandalpur Road, Kumhrar, Patna
         </div>
       </div>

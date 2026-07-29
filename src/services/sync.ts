@@ -1222,11 +1222,35 @@ class SyncService {
           if (existing?.imageData) localData.imageData = existing.imageData;
         }
 
+        // Orders are written offline first under a local auto-increment key, so
+        // the server id carried in the payload is not this device's primary key.
+        // Reconcile on clientOrderId the way every other order path does
+        // (getOrders, getOrder, hydrateFromCloud) — otherwise the realtime echo
+        // of our own push lands as a *second* row, and the kitchen board shows a
+        // twin that no status change can clear.
+        if (storeName === 'orders' && localData.clientOrderId) {
+          const existing = await db.orders.where('clientOrderId').equals(localData.clientOrderId).first();
+          if (existing) {
+            localData.id = existing.id; // Preserve local auto-increment key
+          }
+        }
+
         // Put data into local IndexedDB
         await db[storeName].put(localData);
         console.log(`[Sync Remote] Applied ${payload.eventType} to ${storeName}:`, localData);
       } else if (payload.eventType === 'DELETE') {
-        const id = payload.old.id;
+        let id = payload.old.id;
+
+        // Same key mismatch as above: the deleted row's server id is not the
+        // local order key, so resolve it before deleting or we would silently
+        // remove nothing (or worse, an unrelated order).
+        if (storeName === 'orders' && id != null) {
+          const local = payload.old.client_order_id
+            ? await db.orders.where('clientOrderId').equals(payload.old.client_order_id).first()
+            : await db.orders.filter(o => o.serverOrderId === id).first();
+          id = local ? local.id : null;
+        }
+
         if (id) {
           await db[storeName].delete(id);
           console.log(`[Sync Remote] Applied DELETE to ${storeName} for ID: ${id}`);

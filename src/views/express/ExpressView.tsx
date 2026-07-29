@@ -36,6 +36,8 @@ export class ExpressView {
     this.activeOrders = [];
     this.kdsFilter = 'all'; // all | new | preparing | ready
     this.refreshInterval = null;
+    this.kdsLoading = null;        // in-flight refresh, guards overlapping fetches
+    this.onSyncDataChanged = null; // realtime listener, detached on unmount
 
     // Layout Mode (for smaller devices)
     // 'split' on desktop, 'pos' or 'kitchen' on mobile
@@ -59,11 +61,24 @@ export class ExpressView {
     this.render();
     this.bindEvents();
     
-    // Load kitchen orders
-    await this.loadKitchenOrders();
+    // Load kitchen orders straight from the cloud — the board must open on the
+    // real state of the store, not on whatever this device last cached.
+    await this.loadKitchenOrders({ fromCloud: true });
 
-    // Start auto-refresh for KDS columns every 5 seconds
-    this.refreshInterval = setInterval(() => this.loadKitchenOrders(), 5000);
+    // Realtime pushes are the primary signal: react the moment an order lands
+    // or changes anywhere, instead of waiting out the poll interval.
+    this.onSyncDataChanged = (event) => {
+      if (event.detail?.storeName !== 'orders') return;
+      this.loadKitchenOrders();
+    };
+    window.addEventListener('sync-data-changed', this.onSyncDataChanged);
+
+    // Poll as a safety net for missed realtime frames. Every tick re-reads the
+    // cloud so a dropped subscription can never strand the board on stale data.
+    this.refreshInterval = setInterval(
+      () => this.loadKitchenOrders({ fromCloud: true }),
+      10000
+    );
   }
 
   async loadTables() {
@@ -75,10 +90,40 @@ export class ExpressView {
     }
   }
 
-  async loadKitchenOrders() {
+  /**
+   * Refresh the kitchen board.
+   *
+   * @param fromCloud pull the authoritative rows from Supabase first. Local-only
+   *   reads are for redraws that follow a change already applied to the cache
+   *   (a realtime push, a status button); anything else must go to the cloud or
+   *   the board silently drifts away from what the rest of the store sees.
+   */
+  async loadKitchenOrders({ fromCloud = false, wait = false } = {}) {
+    // A poll or realtime redraw that collides with a fetch in flight can simply
+    // be dropped. A refresh that follows a staff action cannot: passing `wait`
+    // queues it behind the current fetch so the board always lands on the
+    // post-action state instead of the snapshot taken just before it.
+    if (this.kdsLoading) {
+      if (!wait) return;
+      await this.kdsLoading.catch(() => {});
+    }
+
+    const run = this.fetchKitchenOrders(fromCloud);
+    this.kdsLoading = run;
     try {
-      const allOrders = await getOrders(null, false);
-      
+      await run;
+    } finally {
+      if (this.kdsLoading === run) this.kdsLoading = null;
+    }
+  }
+
+  async fetchKitchenOrders(fromCloud) {
+    const wantsCloud = fromCloud && navigator.onLine;
+    this.setKdsLiveState(wantsCloud ? 'syncing' : null);
+
+    try {
+      const allOrders = await getOrders(null, wantsCloud);
+
       // Filter out completed ones, keep only confirmed, preparing, and ready
       const nextActiveOrders = allOrders.filter(o => 
         o.status === 'confirmed' || o.status === 'preparing' || o.status === 'ready'
@@ -102,9 +147,25 @@ export class ExpressView {
 
       this.activeOrders = nextActiveOrders;
       this.renderKdsList();
+      this.setKdsLiveState(navigator.onLine ? 'live' : 'offline');
     } catch (error) {
       console.error('[ExpressView] KDS load failed:', error);
+      this.setKdsLiveState('offline');
     }
+  }
+
+  /** Tells staff at a glance whether the board is showing live cloud data. */
+  setKdsLiveState(state) {
+    const wrap = document.getElementById('kds-live-dot')?.parentElement;
+    const label = document.getElementById('kds-live-label');
+    if (!wrap || !label) return;
+
+    wrap.classList.toggle('is-syncing', state === 'syncing');
+    wrap.classList.toggle('is-offline', state === 'offline');
+
+    if (state === 'syncing') label.textContent = 'Syncing…';
+    else if (state === 'offline') label.textContent = 'Offline — cached';
+    else if (state === 'live') label.textContent = 'Live';
   }
 
   filterMenuItems(query = '') {
@@ -148,32 +209,35 @@ export class ExpressView {
 
     this.container.innerHTML = `
       <div class="express-layout">
-        <!-- Top Toolbar / Mode Switcher (Visible on Mobile/Tablet) -->
-        <div class="express-mobile-tabs">
-          <button class="mobile-tab-btn ${this.activeTab === 'pos' ? 'active' : ''}" id="tab-btn-pos">
-            <span class="material-symbols-rounded">shopping_cart</span>
-            Take Orders
-          </button>
-          <button class="mobile-tab-btn ${this.activeTab === 'kitchen' ? 'active' : ''}" id="tab-btn-kitchen">
-            <span class="material-symbols-rounded">restaurant</span>
-            Kitchen Display
-            <span class="badge badge-danger kds-badge" id="mobile-kds-badge" style="display:none;">0</span>
-          </button>
+        <!-- Top-centre mode switch: one panel at a time, at every screen size -->
+        <div class="express-mode-bar">
+          <div class="express-mode-switch" role="tablist" aria-label="Express panel mode">
+            <button class="mode-btn ${this.activeTab === 'pos' ? 'active' : ''}" id="tab-btn-pos"
+              type="button" role="tab" aria-selected="${this.activeTab === 'pos'}">
+              <span class="material-symbols-rounded">point_of_sale</span>
+              <span class="mode-label-long">Express Register</span>
+              <span class="mode-label-short">Register</span>
+            </button>
+            <button class="mode-btn ${this.activeTab === 'kitchen' ? 'active' : ''}" id="tab-btn-kitchen"
+              type="button" role="tab" aria-selected="${this.activeTab === 'kitchen'}">
+              <span class="material-symbols-rounded">restaurant</span>
+              <span class="mode-label-long">Kitchen Coordinator</span>
+              <span class="mode-label-short">Kitchen</span>
+              <span class="mode-badge" id="kds-mode-badge" style="display:none;">0</span>
+            </button>
+          </div>
         </div>
 
         <div class="express-main-grid ${this.activeTab === 'pos' ? 'show-pos' : 'show-kitchen'}">
           
           <!-- LEFT PANEL: POS ORDER-TAKING -->
           <div class="express-panel pos-panel">
+            <!-- The mode switch above already names this panel, so the header
+                 is just its controls — no second title competing with it. -->
             <div class="panel-header">
-              <div class="title-with-icon">
-                <span class="material-symbols-rounded icon-orange">point_of_sale</span>
-                <h3>Express Register</h3>
-              </div>
-              <!-- Compact Search -->
               <div class="compact-search">
                 <span class="material-symbols-rounded search-glass">search</span>
-                <input type="text" id="express-item-search" aria-label="Search menu items" placeholder="Type to search..." autocomplete="off">
+                <input type="text" id="express-item-search" aria-label="Search menu items" placeholder="Search the menu…" autocomplete="off">
               </div>
             </div>
 
@@ -252,9 +316,9 @@ export class ExpressView {
           <!-- RIGHT PANEL: KITCHEN DISPLAY SYSTEM (KDS) -->
           <div class="express-panel kds-panel">
             <div class="panel-header">
-              <div class="title-with-icon">
-                <span class="material-symbols-rounded icon-purple">restaurant</span>
-                <h3>Kitchen Coordinator</h3>
+              <div class="kds-live-state">
+                <span class="kds-live-dot" id="kds-live-dot"></span>
+                <span id="kds-live-label">Live</span>
               </div>
               <div class="kds-filter-tabs">
                 <button class="kds-filter-btn ${this.kdsFilter === 'all' ? 'active' : ''}" data-filter="all">All</button>
@@ -320,45 +384,138 @@ export class ExpressView {
           display: none;
         }
 
-        .express-mobile-tabs {
-          display: none;
-          background: var(--bg-surface);
-          border-bottom: 1px solid var(--border-glass);
-          padding: 8px 16px;
-          gap: 12px;
+        /* Top-centre mode switch. The register and the kitchen board are never
+           shown side by side any more — each gets the full width instead. */
+        .express-mode-bar {
+          display: flex;
+          justify-content: center;
+          flex-shrink: 0;
         }
 
-        .mobile-tab-btn {
-          flex: 1;
-          display: flex;
+        .express-mode-switch {
+          display: inline-flex;
+          gap: 4px;
+          padding: 4px;
+          background: var(--bg-secondary);
+          border: 1px solid var(--border-glass);
+          border-radius: var(--radius-full);
+          box-shadow: var(--shadow-sm);
+          max-width: 100%;
+        }
+
+        .mode-btn {
+          display: inline-flex;
           align-items: center;
           justify-content: center;
           gap: 8px;
-          padding: 10px;
-          background: var(--bg-secondary);
-          border: 1px solid var(--border-glass);
-          border-radius: var(--radius-md);
+          padding: 9px 22px;
+          background: transparent;
+          border: none;
+          border-radius: var(--radius-full);
           color: var(--text-secondary);
           font-family: var(--font-display);
           font-weight: 700;
-          font-size: var(--text-sm);
+          font-size: var(--text-xs);
+          white-space: nowrap;
           cursor: pointer;
+          transition: all var(--transition-normal);
+          -webkit-tap-highlight-color: transparent;
+        }
+
+        .mode-btn .material-symbols-rounded {
+          font-size: 18px;
+        }
+
+        .mode-btn:hover:not(.active) {
+          color: var(--text-primary);
+        }
+
+        .mode-btn:active {
+          transform: scale(0.97);
+        }
+
+        .mode-btn.active {
+          background: var(--color-primary-fill);
+          color: #ffffff;
+          box-shadow: 0 4px 12px rgba(var(--color-primary-rgb), 0.28);
+        }
+
+        .mode-label-short {
+          display: none;
+        }
+
+        .mode-badge {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          min-width: 20px;
+          height: 20px;
+          padding: 0 6px;
+          border-radius: var(--radius-full);
+          background: var(--color-danger);
+          color: #ffffff;
+          font-size: 10px;
+          font-weight: 800;
+        }
+
+        .mode-btn.active .mode-badge {
+          background: #ffffff;
+          color: var(--color-primary-on-surface);
+        }
+
+        /* Live-data indicator on the kitchen board header */
+        .kds-live-state {
+          display: flex;
+          align-items: center;
+          gap: 7px;
+          font-family: var(--font-display);
+          font-size: var(--text-xs);
+          font-weight: 700;
+          color: var(--text-secondary);
+        }
+
+        .kds-live-dot {
+          width: 8px;
+          height: 8px;
+          border-radius: 50%;
+          background: var(--color-success);
+          box-shadow: 0 0 8px var(--color-success);
           transition: all var(--transition-fast);
         }
 
-        .mobile-tab-btn.active {
-          background: rgba(var(--color-primary-rgb), 0.08);
-          border-color: var(--color-primary);
-          color: var(--text-primary);
-          box-shadow: 0 0 12px rgba(var(--color-primary-rgb), 0.15);
+        .kds-live-state.is-syncing .kds-live-dot {
+          animation: pulseDot 1s infinite ease-in-out;
+        }
+
+        .kds-live-state.is-offline {
+          color: var(--color-warning);
+        }
+
+        .kds-live-state.is-offline .kds-live-dot {
+          background: var(--color-warning);
+          box-shadow: 0 0 8px var(--color-warning);
+        }
+
+        @keyframes pulseDot {
+          0%, 100% { opacity: 1; transform: scale(1); }
+          50% { opacity: 0.4; transform: scale(0.75); }
         }
 
         .express-main-grid {
-          display: grid;
-          grid-template-columns: 58% 42%;
-          gap: 16px;
+          display: flex;
           flex: 1;
           overflow: hidden;
+          min-height: 0;
+        }
+
+        .express-main-grid > .express-panel {
+          flex: 1;
+          min-width: 0;
+        }
+
+        .express-main-grid.show-pos .kds-panel,
+        .express-main-grid.show-kitchen .pos-panel {
+          display: none;
         }
 
         .express-panel {
@@ -388,30 +545,6 @@ export class ExpressView {
           background: transparent;
           border-bottom: 1px solid var(--border-glass);
           min-height: 64px;
-        }
-
-        .title-with-icon {
-          display: flex;
-          align-items: center;
-          gap: 10px;
-        }
-
-        .title-with-icon h3 {
-          font-family: var(--font-display);
-          font-size: var(--text-base);
-          font-weight: 700;
-          color: var(--text-primary);
-          margin: 0;
-        }
-
-        .icon-orange {
-          color: var(--color-primary-on-surface);
-          filter: drop-shadow(0 0 4px var(--color-primary-glow));
-        }
-
-        .icon-purple {
-          color: var(--nextgenos-purple-on-surface);
-          filter: drop-shadow(0 0 4px var(--nextgenos-purple-glow));
         }
 
         /* Category chips - Apple Segmented/Tab Style */
@@ -1173,32 +1306,14 @@ export class ExpressView {
         /* Responsive Layout Breaks */
         @media (max-width: 1023px) {
           .express-layout {
-            padding: 0;
-            gap: 0;
+            padding: 8px 0 0;
+            gap: 8px;
             height: calc(100vh - 64px);
             overflow: hidden;
           }
 
-          .express-mobile-tabs {
-            display: flex;
-            flex-shrink: 0;
-          }
-
-          .express-main-grid {
-            display: flex;
-            flex-direction: column;
-            height: 100%;
-            overflow: hidden;
-            gap: 0;
-            flex: 1;
-          }
-
-          .express-main-grid.show-pos .kds-panel {
-            display: none !important;
-          }
-
-          .express-main-grid.show-kitchen .pos-panel {
-            display: none !important;
+          .express-mode-bar {
+            padding: 0 12px;
           }
 
           .express-panel {
@@ -1366,6 +1481,20 @@ export class ExpressView {
 
           /* Smartphone screens layout fixes (resolves horizontal overflow) */
           @media (max-width: 560px) {
+            /* Full-width switch with short labels so both modes stay readable */
+            .express-mode-switch {
+              width: 100%;
+            }
+            .mode-btn {
+              flex: 1;
+              padding: 9px 12px;
+            }
+            .mode-label-long {
+              display: none;
+            }
+            .mode-label-short {
+              display: inline;
+            }
             .panel-header {
               flex-direction: column;
               align-items: stretch;
@@ -1549,7 +1678,7 @@ export class ExpressView {
 
   renderKdsList() {
     const kdsFeed = document.getElementById('express-kds-feed');
-    const mobileBadge = document.getElementById('mobile-kds-badge');
+    const modeBadge = document.getElementById('kds-mode-badge');
     if (!kdsFeed) return;
 
     const statusPriority = {
@@ -1572,13 +1701,13 @@ export class ExpressView {
       filtered = filtered.filter(o => o.status === matchStatus);
     }
 
-    if (mobileBadge) {
+    if (modeBadge) {
       const activeCount = this.activeOrders.length;
       if (activeCount > 0) {
-        mobileBadge.textContent = activeCount;
-        mobileBadge.style.display = 'inline-flex';
+        modeBadge.textContent = activeCount;
+        modeBadge.style.display = 'inline-flex';
       } else {
-        mobileBadge.style.display = 'none';
+        modeBadge.style.display = 'none';
       }
     }
 
@@ -1716,7 +1845,9 @@ export class ExpressView {
           }
         }
 
-        await this.loadKitchenOrders();
+        // Re-read from the cloud: the board must settle on the status the server
+        // actually accepted, not on the optimistic local one.
+        await this.loadKitchenOrders({ fromCloud: true, wait: true });
       });
     });
   }
@@ -1942,7 +2073,7 @@ export class ExpressView {
       if (tableSelect) tableSelect.value = '';
 
       // Reload KDS & Tables
-      await this.loadKitchenOrders();
+      await this.loadKitchenOrders({ fromCloud: true, wait: true });
       await this.loadTables();
 
       // Play success feedback
@@ -2080,25 +2211,31 @@ export class ExpressView {
       });
     }
 
-    // Mobile View Tab Switchers
+    // Register <-> Kitchen mode switch
     const btnTabPos = document.getElementById('tab-btn-pos');
     const btnTabKitchen = document.getElementById('tab-btn-kitchen');
     const mainGrid = this.container.querySelector('.express-main-grid');
 
     if (btnTabPos && btnTabKitchen && mainGrid) {
-      btnTabPos.addEventListener('click', () => {
-        this.activeTab = 'pos';
-        btnTabPos.classList.add('active');
-        btnTabKitchen.classList.remove('active');
-        mainGrid.className = 'express-main-grid show-pos';
-      });
+      const setMode = (mode) => {
+        this.activeTab = mode;
+        const isKitchen = mode === 'kitchen';
 
-      btnTabKitchen.addEventListener('click', () => {
-        this.activeTab = 'kitchen';
-        btnTabKitchen.classList.add('active');
-        btnTabPos.classList.remove('active');
-        mainGrid.className = 'express-main-grid show-kitchen';
-      });
+        btnTabPos.classList.toggle('active', !isKitchen);
+        btnTabKitchen.classList.toggle('active', isKitchen);
+        btnTabPos.setAttribute('aria-selected', String(!isKitchen));
+        btnTabKitchen.setAttribute('aria-selected', String(isKitchen));
+        mainGrid.className = `express-main-grid ${isKitchen ? 'show-kitchen' : 'show-pos'}`;
+
+        playSound(700, 60);
+
+        // Opening the board is a deliberate look at the kitchen: pull the live
+        // rows rather than showing whatever the last poll happened to cache.
+        if (isKitchen) this.loadKitchenOrders({ fromCloud: true });
+      };
+
+      btnTabPos.addEventListener('click', () => setMode('pos'));
+      btnTabKitchen.addEventListener('click', () => setMode('kitchen'));
     }
 
     // Mobile Cart Drawer Toggles
@@ -2164,6 +2301,11 @@ export class ExpressView {
   unmount() {
     if (this.refreshInterval) {
       clearInterval(this.refreshInterval);
+      this.refreshInterval = null;
+    }
+    if (this.onSyncDataChanged) {
+      window.removeEventListener('sync-data-changed', this.onSyncDataChanged);
+      this.onSyncDataChanged = null;
     }
     this.container = null;
   }

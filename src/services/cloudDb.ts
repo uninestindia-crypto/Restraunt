@@ -21,7 +21,7 @@ import { runWithHydrationGuard } from './hydrationGuard';
 
 const DEFAULT_STORE_ID = 'the-taste';
 
-function getStoreId() {
+export function getStoreId() {
   return localStorage.getItem('store_id') || DEFAULT_STORE_ID;
 }
 

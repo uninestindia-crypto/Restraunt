@@ -1,5 +1,5 @@
 // @ts-nocheck
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { db, getCategories, getItemsByCategory, createOrder, getNextOrderNumber, getSetting, generateLocalUuid } from '../../../db/database';
 import { globalStore } from '../../../store/Store';
 import { formatCurrency, playSound, vibrateDevice, showToast, parseOrderItems, menuItemImageSource } from '../../../utils/helpers';
@@ -13,6 +13,7 @@ import { OffersPage, AboutPage, CateringPage, SupportPage, AccountPage } from '.
 import { getCurrentCoordinates, reverseGeocode, autocompleteAddress } from '../../../services/geocoding';
 import { STOREFRONT_DEFAULTS, STOREFRONT_SETTING_KEYS, resolveStorefrontCopy } from '../../../content/storefront';
 import { buildCustomerFavoritesFromOrders, fetchCustomerOffers, injectCustomerStructuredData, RETENTION_PREFERENCES, syncCustomerFavorite } from '../../../services/customerPlatform';
+import { startPublicMenuSync } from '../../../services/publicMenuSync';
 
 const PHONE_RE = /^[6-9]\d{9}$/;
 const CUSTOMER_PREFERENCE_OPTIONS = [
@@ -135,6 +136,7 @@ export function CustomerApp({ app }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [placedOrder, setPlacedOrder] = useState(null);
   const [menuLoading, setMenuLoading] = useState(true);
+  const [placingOrder, setPlacingOrder] = useState(false);
   const [routeAnnouncement, setRouteAnnouncement] = useState('');
   const [storefrontCopy, setStorefrontCopy] = useState(() => resolveStorefrontCopy({}));
 
@@ -214,6 +216,27 @@ export function CustomerApp({ app }) {
     showToast('Delivery address selected!', 'success');
   };
 
+  /**
+   * Re-read the catalogue out of the local cache into view state.
+   *
+   * Called after every cloud pull, so an admin price change, a new dish or a
+   * dish going unavailable reaches an already-open storefront tab without a
+   * reload. Keeps the active category if it still exists.
+   */
+  const applyLocalCatalogue = useCallback(async () => {
+    const refreshedCats = await getCategories();
+    const refreshedMap = new Map();
+    for (const category of refreshedCats) {
+      refreshedMap.set(category.id, await getItemsByCategory(category.id));
+    }
+    setCategories(refreshedCats);
+    setMenuByCategory(refreshedMap);
+    setTables(await db.table('tables').toArray());
+    setActiveCategoryId(current => (
+      current && refreshedMap.has(current) ? current : (refreshedCats[0]?.id || null)
+    ));
+  }, []);
+
   useEffect(() => {
     // Subscribe to global store changes
     const unsubscribe = globalStore.subscribe(() => {
@@ -244,13 +267,18 @@ export function CustomerApp({ app }) {
       setMenuLoading(false);
     });
 
+    // Live catalogue. Paints from the local cache first (above), then pulls and
+    // subscribes, so a slow network delays fresh prices but never first paint.
+    const stopMenuSync = startPublicMenuSync(applyLocalCatalogue);
+
     return () => {
       unsubscribe();
+      stopMenuSync();
       window.removeEventListener('switch-store-state', handleSwitchState);
       window.removeEventListener('hashchange', handleCustomerRoute);
       cleanupTelemetry();
     };
-  }, []);
+  }, [applyLocalCatalogue]);
 
   useEffect(() => {
     loadCustomerInsights();
@@ -424,30 +452,6 @@ export function CustomerApp({ app }) {
       setItems(map.get(loadedCats[0].id) || []);
     }
     setMenuLoading(false);
-
-    // Refresh the catalog and QR tables after first paint. A slow or unavailable
-    // network never keeps customers on the splash screen; cached/default menu
-    // data remains usable while Supabase is contacted in the background.
-    if (navigator.onLine) {
-      void import('../../../services/cloudDb').then(async ({ fullPull }) => {
-        const result = await fullPull({ publicOnly: true });
-        if (!result?.success) return;
-
-        const refreshedCats = await getCategories();
-        const refreshedMap = new Map();
-        for (const category of refreshedCats) {
-          refreshedMap.set(category.id, await getItemsByCategory(category.id));
-        }
-        setCategories(refreshedCats);
-        setMenuByCategory(refreshedMap);
-        setTables(await db.table('tables').toArray());
-        setActiveCategoryId(current => (
-          current && refreshedMap.has(current) ? current : (refreshedCats[0]?.id || null)
-        ));
-      }).catch(err => {
-        console.warn('[CustomerView] Background catalog refresh failed; using local cache:', err);
-      });
-    }
   };
 
   useEffect(() => {
@@ -646,11 +650,11 @@ export function CustomerApp({ app }) {
   };
 
   const placeOrder = async () => {
-    const submitBtn = document.getElementById('btn-submit-self-order');
-    if (submitBtn) {
-      submitBtn.disabled = true;
-      submitBtn.innerHTML = 'Placing Order...';
-    }
+    // Submission state lives in React rather than being written straight into
+    // the button's DOM: the old approach fought re-renders and could leave the
+    // control stuck on "Placing Order..." after a state update.
+    if (placingOrder) return;
+    setPlacingOrder(true);
 
     try {
       const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
@@ -755,10 +759,8 @@ export function CustomerApp({ app }) {
     } catch (error) {
       console.error('Failed to submit self-order:', error);
       showToast('Order placement failed: ' + error.message, 'error');
-      if (submitBtn) {
-        submitBtn.disabled = false;
-        submitBtn.innerHTML = 'Place Order';
-      }
+    } finally {
+      setPlacingOrder(false);
     }
   };
 
@@ -1038,11 +1040,11 @@ export function CustomerApp({ app }) {
               <h3>Contact details</h3>
               <div className="input-group store-input-group">
                 <label className="store-field-label" htmlFor="self-name">Your name</label>
-                <input type="text" id="self-name" className="input store-input" value={customerName} onInput={(e) => setCustomerName(e.target.value)} placeholder="Enter your name" />
+                <input type="text" id="self-name" className="input store-input" value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder="Enter your name" />
               </div>
               <div className="input-group store-input-group" style={{ marginTop: '12px' }}>
                 <label className="store-field-label" htmlFor="self-phone">Phone number</label>
-                <input type="tel" id="self-phone" className="input store-input" value={customerPhone} onInput={(e) => setCustomerPhone(e.target.value)} placeholder="10-digit mobile number" />
+                <input type="tel" id="self-phone" className="input store-input" value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} placeholder="10-digit mobile number" />
               </div>
             </section>
 
@@ -1103,7 +1105,7 @@ export function CustomerApp({ app }) {
                         className="input store-input" 
                         rows="3" 
                         value={deliveryAddress} 
-                        onInput={(e) => handleAddressInputChange(e.target.value)} 
+                        onChange={(e) => handleAddressInputChange(e.target.value)} 
                         placeholder="House/flat, street, area"
                       ></textarea>
 
@@ -1159,7 +1161,7 @@ export function CustomerApp({ app }) {
                     
                     <div className="input-group store-input-group" style={{ marginTop: '12px' }}>
                       <label className="store-field-label" htmlFor="self-delivery-landmark">Landmark / delivery notes</label>
-                      <input type="text" id="self-delivery-landmark" className="input store-input" value={deliveryLandmark} onInput={(e) => setDeliveryLandmark(e.target.value)} placeholder="Nearby landmark, gate code, etc." />
+                      <input type="text" id="self-delivery-landmark" className="input store-input" value={deliveryLandmark} onChange={(e) => setDeliveryLandmark(e.target.value)} placeholder="Nearby landmark, gate code, etc." />
                     </div>
                   </div>
                 )}
@@ -1202,14 +1204,16 @@ export function CustomerApp({ app }) {
               <span>Total payable</span>
               <strong>{formatCurrency(total)}</strong>
             </div>
-            <button 
-              className="btn btn-primary btn-block btn-lg" 
-              id="btn-submit-self-order" 
+            <button
+              className="btn btn-primary btn-block btn-lg"
+              id="btn-submit-self-order"
               type="button"
               onClick={handleValidateAndPlaceOrder}
+              disabled={placingOrder}
+              aria-busy={placingOrder}
             >
               <span className="material-symbols-rounded" aria-hidden="true">send_and_archive</span>
-              Place Order
+              {placingOrder ? 'Placing Order…' : 'Place Order'}
             </button>
           </footer>
         </div>

@@ -21,6 +21,12 @@ function describeViolations(violations) {
 
 test('public ordering page has no critical or serious accessibility violations', async ({ page }) => {
   await page.goto('/#/self-order');
+
+  // The pre-rendered shell carries the same <h1>, so waiting on the heading
+  // alone would audit the static markup instead of the running app. The shell
+  // is detached once the SPA owns the page (see hideLoadingScreen).
+  await expect(page.locator('#storefront-seo-shell')).toHaveCount(0);
+  await expect(page.locator('.storefront-shell')).toBeVisible();
   await expect(page.getByRole('heading', { name: 'The Taste', level: 1 })).toBeVisible();
 
   const results = await new AxeBuilder({ page }).withTags(WCAG).analyze();

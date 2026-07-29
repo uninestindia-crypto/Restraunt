@@ -200,6 +200,44 @@ test('resolveStorefrontCopy rejects malformed stored values', () => {
   assert.deepEqual(broken.proofPoints, STOREFRONT_DEFAULTS.proofPoints);
 });
 
+test('checkout submission is driven by state, not by writing into the DOM', () => {
+  const source = read('src/views/customer/components/CustomerApp.tsx');
+
+  // Poking innerHTML/disabled on the live button raced React's own renders and
+  // could strand the control on "Placing Order...".
+  assert.doesNotMatch(source, /submitBtn\.innerHTML/);
+  assert.doesNotMatch(source, /getElementById\('btn-submit-self-order'\)/);
+  assert.match(source, /disabled=\{placingOrder\}/);
+  assert.match(source, /aria-busy=\{placingOrder\}/);
+  assert.match(source, /setPlacingOrder\(false\);/);
+});
+
+test('customer inputs use React onChange rather than the DOM onInput event', () => {
+  const files = [
+    'src/views/customer/components/CustomerApp.tsx',
+    'src/views/customer/components/CartDrawer.tsx',
+    'src/views/customer/components/CategorySlider.tsx',
+    'src/views/customer/components/ItemDetailDrawer.tsx',
+    'src/views/customer/components/LoyaltyDrawer.tsx',
+    'src/views/customer/components/OrderSuccessTele.tsx'
+  ];
+
+  for (const file of files) {
+    assert.doesNotMatch(read(file), /onInput=\{/, `${file} still binds the raw onInput event`);
+  }
+});
+
+test('the boot splash is a styled opaque overlay', () => {
+  const css = read('src/styles/storefront-static.css');
+
+  // Unstyled, it stacked above the pre-rendered menu and composited its text
+  // against whatever showed through.
+  assert.match(css, /#loading-screen \{[\s\S]*?position: fixed;/);
+  assert.match(css, /#loading-screen \{[\s\S]*?background: #040406;/);
+  assert.match(css, /#loading-screen\.hide/);
+  assert.doesNotMatch(read('src/app/page.tsx'), /rgba\(148,163,184,0\.4\)/);
+});
+
 test('the SPA and the static pages share one copy source', () => {
   const spa = read('src/views/customer/components/CustomerPages.tsx');
   assert.match(spa, /import \{ STOREFRONT_PAGES \}/);

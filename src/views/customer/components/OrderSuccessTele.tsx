@@ -150,7 +150,7 @@ export function OrderSuccessTele({ order, customer, supportPhone = '', onOrderAg
                 <div className="customer-rating-row">
                   {[1, 2, 3, 4, 5].map(star => <button key={star} type="button" className={star <= rating ? 'is-active' : ''} onClick={() => setRating(star)}>★</button>)}
                 </div>
-                <textarea value={review} onInput={(e) => setReview(e.target.value)} placeholder="Optional note for the restaurant" rows="3" />
+                <textarea value={review} onChange={(e) => setReview(e.target.value)} placeholder="Optional note for the restaurant" rows="3" />
                 <button type="button" className="store-primary-action" onClick={submitReview}>Submit review</button>
               </>
             ) : <p>Your feedback helps the kitchen keep improving.</p>}

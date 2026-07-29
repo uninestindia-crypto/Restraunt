@@ -888,7 +888,12 @@ export async function updateOrderStatus(
   }
 
   try {
-    const order = await getOrder(id);
+    // Read the local row, NOT getOrder(): when online getOrder() is a
+    // read-through that overwrites the cache with the server's copy, which
+    // would undo the optimistic write above and then push the *stale* status
+    // back to the cloud — the change would look like it applied and silently
+    // reappear on the next refresh.
+    const order = await db.orders.get(id);
     if (!order) {
       return { applied: true, synced: false };
     }

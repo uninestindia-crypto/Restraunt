@@ -332,7 +332,7 @@ export function LoyaltyDrawer({ loggedInCustomer, customerPhone, customerName, o
                     placeholder="10-digit mobile number" 
                     maxLength={10} 
                     value={phoneInput}
-                    onInput={(e) => setPhoneInput(e.target.value)}
+                    onChange={(e) => setPhoneInput(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && handleLookup()}
                   />
                 </div>
@@ -377,7 +377,7 @@ export function LoyaltyDrawer({ loggedInCustomer, customerPhone, customerName, o
                     className="input store-input" 
                     placeholder="E.g. Alexander Mercer" 
                     value={regName}
-                    onInput={(e) => setRegName(e.target.value)}
+                    onChange={(e) => setRegName(e.target.value)}
                   />
                 </div>
 
@@ -391,7 +391,7 @@ export function LoyaltyDrawer({ loggedInCustomer, customerPhone, customerName, o
                       placeholder="10-digit mobile number" 
                       maxLength={10} 
                       value={regPhone}
-                      onInput={(e) => setRegPhone(e.target.value)}
+                      onChange={(e) => setRegPhone(e.target.value)}
                     />
                   </div>
                 )}
@@ -423,7 +423,7 @@ export function LoyaltyDrawer({ loggedInCustomer, customerPhone, customerName, o
                     placeholder="10-digit mobile number" 
                     maxLength={10} 
                     value={linkPhone}
-                    onInput={(e) => setLinkPhone(e.target.value)}
+                    onChange={(e) => setLinkPhone(e.target.value)}
                   />
                 </div>
 

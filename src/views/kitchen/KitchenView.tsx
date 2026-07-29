@@ -15,15 +15,25 @@ export class KitchenView {
     this.container = null;
     this.orders = [];
     this.refreshInterval = null;
+    this.loading = null;
+    this.onSyncDataChanged = null;
   }
 
   async mount(container) {
     this.container = container;
     this.render();
-    await this.loadOrders();
 
-    // Start auto-refresh every 5 seconds for real-time kitchen display
-    this.refreshInterval = setInterval(() => this.loadOrders(), 5000);
+    // Open on the store's real state, not this device's cache.
+    await this.loadOrders(true);
+
+    // Realtime pushes drive the board; the poll below is only a safety net.
+    this.onSyncDataChanged = (event) => {
+      if (event.detail?.storeName !== 'orders') return;
+      this.loadOrders();
+    };
+    window.addEventListener('sync-data-changed', this.onSyncDataChanged);
+
+    this.refreshInterval = setInterval(() => this.loadOrders(true), 10000);
   }  render() {
     this.container.innerHTML = `
       <div style="flex: 1; display: flex; flex-direction: column; height: 100%; overflow: hidden; background: var(--bg-primary);">
@@ -356,13 +366,34 @@ export class KitchenView {
     });
   }
 
-  async loadOrders(forceRefresh = false) {
+  /**
+   * @param wait queue behind a refresh already in flight instead of being
+   *   dropped — required after a staff action, so the board cannot settle on a
+   *   snapshot taken just before the change.
+   */
+  async loadOrders(forceRefresh = false, wait = false) {
+    if (this.loading) {
+      if (!wait) return;
+      await this.loading.catch(() => {});
+    }
+
+    const run = this.fetchOrders(forceRefresh);
+    this.loading = run;
     try {
-      // Get all active kitchen orders
-      const allOrders = await getOrders(null, forceRefresh);
-      
+      await run;
+    } finally {
+      if (this.loading === run) this.loading = null;
+    }
+  }
+
+  async fetchOrders(forceRefresh) {
+    try {
+      // Get all active kitchen orders. A cloud read needs a connection; without
+      // one we fall back to the cache rather than blocking the board.
+      const allOrders = await getOrders(null, forceRefresh && navigator.onLine);
+
       // Filter out completed ones, keep only confirmed, preparing, and ready
-      this.orders = allOrders.filter(o => 
+      this.orders = allOrders.filter(o =>
         o.status === 'confirmed' || o.status === 'preparing' || o.status === 'ready'
       );
 
@@ -825,8 +856,8 @@ export class KitchenView {
           }
         }
 
-        // Instantly reload KDS
-        await this.loadOrders();
+        // Settle on the status the server accepted, not the optimistic local one
+        await this.loadOrders(true, true);
       });
     });
 
@@ -836,6 +867,11 @@ export class KitchenView {
   unmount() {
     if (this.refreshInterval) {
       clearInterval(this.refreshInterval);
+      this.refreshInterval = null;
+    }
+    if (this.onSyncDataChanged) {
+      window.removeEventListener('sync-data-changed', this.onSyncDataChanged);
+      this.onSyncDataChanged = null;
     }
     this.container = null;
   }

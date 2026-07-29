@@ -204,7 +204,7 @@ export function ItemDetailDrawer({ item, categories, onClose, onAddToCart }) {
                 rows="2" 
                 placeholder="E.g. Make it extra crispy, packing sauce separately..."
                 value={customNotes}
-                onInput={(e) => setCustomNotes(e.target.value)}
+                onChange={(e) => setCustomNotes(e.target.value)}
               ></textarea>
             </div>
           </div>
