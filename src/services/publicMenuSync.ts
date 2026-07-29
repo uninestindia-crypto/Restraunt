@@ -50,11 +50,16 @@ export function startPublicMenuSync(onCatalogueChange) {
   let debounceTimer = null;
   let intervalTimer = null;
   let inFlight = null;
+  let pendingReason = null;
 
   const runPull = async (reason) => {
-    // Coalesce: a pull already running is fresh enough for a trigger that
-    // arrived while it was in flight.
-    if (inFlight) return inFlight;
+    // An edit that lands mid-pull may or may not be in the rows already being
+    // read, so it is queued rather than dropped — otherwise a second save
+    // during a bulk menu edit waits for the interval backstop.
+    if (inFlight) {
+      pendingReason = reason;
+      return inFlight;
+    }
 
     inFlight = (async () => {
       try {
@@ -66,6 +71,11 @@ export function startPublicMenuSync(onCatalogueChange) {
         console.warn(`[PublicMenuSync] Refresh failed (${reason}); keeping cached catalogue:`, error);
       } finally {
         inFlight = null;
+        if (pendingReason && !stopped) {
+          const queued = pendingReason;
+          pendingReason = null;
+          scheduleRefresh(queued);
+        }
       }
     })();
 
