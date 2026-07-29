@@ -343,7 +343,9 @@ export class StaffView {
     if (this.tab === 'directory') {
       const currentStaff = authService.getCurrentStaff();
       const isDeveloper = currentStaff?.role === 'developer';
-      const staffList = await db.staff.toArray();
+      // Developer accounts are only visible to developers. The cloud roster is filtered
+      // by RLS as well; this also hides rows already cached locally from before that.
+      const staffList = (await db.staff.toArray()).filter(s => isDeveloper || s.role !== 'developer');
       const owners = staffList.filter(s => s.role === 'owner' && s.isActive);
 
       content.innerHTML = staffList.length === 0 ? '<div class="empty-state"><span class="material-symbols-rounded">person_off</span><p>No staff members yet.</p></div>' :

@@ -1672,17 +1672,14 @@ export class ExpressView {
         vibrateDevice([40]);
 
         if (action === 'prepare') {
-          const prepStartTime = new Date().toISOString();
-          // Use a fixed default estimated prep time of 15 mins for Express mode to avoid blocking dialogs
-          await db.orders.update(orderId, { status: 'preparing', estimatedPrepTime: 15, prepStartTime, isSynced: 0 });
-          
-          import('../../services/sync').then(({ syncService }) => {
-            db.orders.get(orderId).then(order => {
-              if (order) syncService.syncUpOrder(order).catch(err => console.error(err));
-            });
-          }).catch(err => console.warn(err));
-
-          showToast('Cooking started', 'success');
+          // Fixed 15 min estimate in Express mode to avoid a blocking dialog.
+          reportStatusChange(
+            await updateOrderStatus(orderId, 'preparing', {
+              estimatedPrepTime: 15,
+              prepStartTime: new Date().toISOString()
+            }),
+            'Cooking started'
+          );
         } else if (action === 'ready') {
           reportStatusChange(await updateOrderStatus(orderId, 'ready'), 'Food is ready!');
         } else if (action === 'complete') {

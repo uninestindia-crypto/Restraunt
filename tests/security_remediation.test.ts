@@ -151,6 +151,21 @@ test('public storefront first paint does not wait for cloud catalog retries', ()
   assert.match(customerApp, /after first paint/i);
 });
 
+test('developer accounts are hidden from non-developers and cannot be reduced to zero', () => {
+  const edgeFunction = read('supabase/functions/staff-admin/index.ts');
+  const migration = read('supabase/migrations/20260729120000_restrict_developer_visibility.sql');
+  const staffView = read('src/views/staff/StaffView.tsx');
+  const adminView = read('src/views/admin/AdminView.tsx');
+
+  assert.match(edgeFunction, /Cannot remove or demote the last active developer/);
+  assert.match(edgeFunction, /Cannot deactivate the last active developer/);
+  assert.match(edgeFunction, /Cannot demote the last active developer/);
+  assert.match(migration, /staff\.role <> 'developer'/);
+  assert.match(staffView, /isDeveloper \|\| s\.role !== 'developer'/);
+  assert.match(adminView, /isDeveloper \|\| s\.role !== 'developer'/);
+  assert.doesNotMatch(adminView, /Object\.entries\(ROLES\)\.map/);
+});
+
 test('staff sign-in renders before cloud session restoration and never seeds staff demo data', () => {
   const main = read('src/main.ts');
   const loginIndex = main.indexOf('await this.showLogin();');

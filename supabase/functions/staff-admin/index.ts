@@ -57,12 +57,12 @@ async function getNextStaffId(serviceClient: ReturnType<typeof createClient>) {
   return data?.length ? Number(data[0].id) + 1 : 1;
 }
 
-async function activeOwnerCount(serviceClient: ReturnType<typeof createClient>, storeId: string) {
+async function activeRoleCount(serviceClient: ReturnType<typeof createClient>, storeId: string, role: string) {
   const { count, error } = await serviceClient
     .from("staff")
     .select("id", { count: "exact", head: true })
     .eq("store_id", storeId)
-    .eq("role", "owner")
+    .eq("role", role)
     .eq("is_active", true);
 
   if (error) throw error;
@@ -179,8 +179,16 @@ Deno.serve(async (req: Request) => {
       }
 
       if (existing?.role === "owner" && existing.is_active && (!isActive || role !== "owner")) {
-        const owners = await activeOwnerCount(serviceClient, storeId);
+        const owners = await activeRoleCount(serviceClient, storeId, "owner");
         if (owners <= 1) return bad("Cannot remove or demote the last active owner.", 409);
+      }
+
+      // The developer role is the only one that can manage owner/developer accounts,
+      // so losing the last active developer would permanently lock this store out of
+      // staff administration. Recovery would require direct database access.
+      if (existing?.role === "developer" && existing.is_active && (!isActive || role !== "developer")) {
+        const developers = await activeRoleCount(serviceClient, storeId, "developer");
+        if (developers <= 1) return bad("Cannot remove or demote the last active developer.", 409);
       }
 
       const staffRow = {
@@ -236,8 +244,13 @@ Deno.serve(async (req: Request) => {
       }
 
       if (existing?.role === "owner" && existing.is_active && !isActive) {
-        const owners = await activeOwnerCount(serviceClient, storeId);
+        const owners = await activeRoleCount(serviceClient, storeId, "owner");
         if (owners <= 1) return bad("Cannot deactivate the last active owner.", 409);
+      }
+
+      if (existing?.role === "developer" && existing.is_active && !isActive) {
+        const developers = await activeRoleCount(serviceClient, storeId, "developer");
+        if (developers <= 1) return bad("Cannot deactivate the last active developer.", 409);
       }
 
       const { error: staffError } = await serviceClient
@@ -280,8 +293,13 @@ Deno.serve(async (req: Request) => {
       }
 
       if (existing?.role === "owner" && existing.is_active && role !== "owner") {
-        const owners = await activeOwnerCount(serviceClient, storeId);
+        const owners = await activeRoleCount(serviceClient, storeId, "owner");
         if (owners <= 1) return bad("Cannot demote the last active owner.", 409);
+      }
+
+      if (existing?.role === "developer" && existing.is_active && role !== "developer") {
+        const developers = await activeRoleCount(serviceClient, storeId, "developer");
+        if (developers <= 1) return bad("Cannot demote the last active developer.", 409);
       }
 
       const { error: staffError } = await serviceClient

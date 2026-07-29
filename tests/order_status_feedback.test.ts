@@ -33,11 +33,11 @@ test('syncUpOrder reports its outcome instead of swallowing failures', () => {
 test('a refused status transition is rolled back instead of left diverged', () => {
   const source = read('src/db/database.ts');
 
-  assert.match(source, /export async function updateOrderStatus\(id, status\): Promise<OrderStatusUpdateResult>/);
+  assert.match(source, /export async function updateOrderStatus\([\s\S]{0,120}?\): Promise<OrderStatusUpdateResult>/);
   assert.match(source, /if \(outcome\?\.rejected\)/);
 
   // The rollback restores the snapshot taken before the optimistic write.
-  assert.match(source, /previous = \{/);
+  assert.match(source, /previous = \{\};/);
   assert.match(source, /await db\.orders\.update\(id, \{ \.\.\.previous, syncStatus: 'synced', isSynced: 1 \}\)/);
 });
 
@@ -70,6 +70,41 @@ test('kitchen and express views announce the real outcome, never an unconditiona
       `${path} must only log a void that was applied`
     );
   }
+});
+
+test('no view writes an order status directly, bypassing the rollback path', () => {
+  for (const path of ['src/views/kitchen/KitchenView.tsx', 'src/views/express/ExpressView.tsx']) {
+    const source = read(path);
+
+    // The 'preparing' action used to write straight to Dexie and fire a
+    // discarded sync, so it got neither a rollback nor an honest toast.
+    assert.doesNotMatch(
+      source,
+      /db\.orders\.update\([^)]*status:/,
+      `${path} must route status changes through updateOrderStatus`
+    );
+    assert.doesNotMatch(
+      source,
+      /syncUpOrder/,
+      `${path} must not fire its own discarded order sync`
+    );
+    assert.match(
+      source,
+      /updateOrderStatus\(orderId, 'preparing', \{/,
+      `${path} must set prep fields through updateOrderStatus`
+    );
+  }
+});
+
+test('updateOrderStatus carries extra fields and rolls them back too', () => {
+  const source = read('src/db/database.ts');
+
+  assert.match(source, /extraFields: Partial<Order> = \{\}/);
+  assert.match(source, /\.\.\.extraFields,/);
+
+  // The snapshot is derived from what is actually being written, so extra
+  // fields are restored on a refusal rather than left behind.
+  assert.match(source, /for \(const key of Object\.keys\(updates\)\) \{\s*\n\s*previous\[key\] = existing\[key\];/);
 });
 
 test('the outcome reporter surfaces the database message and distinguishes offline saves', () => {

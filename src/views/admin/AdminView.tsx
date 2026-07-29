@@ -22,6 +22,7 @@ function StaffManager() {
   const [owners, setOwners] = useState<any[]>([]);
 
   const ROLES = {
+    developer: { label: 'Developer', color: 'var(--nextgenos-purple-on-surface)', icon: 'code' },
     owner: { label: 'Owner', color: 'var(--color-primary-on-surface)', icon: 'shield_person' },
     manager: { label: 'Manager', color: 'var(--nextgenos-purple-on-surface)', icon: 'manage_accounts' },
     cashier: { label: 'Cashier', color: 'var(--color-success-on-surface)', icon: 'point_of_sale' },
@@ -42,8 +43,14 @@ function StaffManager() {
     { name: 'Admin', roles: ['owner', 'manager'] },
   ];
 
+  const isDeveloper = authService.getCurrentStaff()?.role === 'developer';
+
+  // Only developers may see or assign the developer role. Matches the roster
+  // filtering in StaffView and the "managers read staff roster" RLS policy.
+  const assignableRoles = Object.entries(ROLES).filter(([key]) => isDeveloper || key !== 'developer');
+
   const fetchStaff = async () => {
-    const list = await db.staff.toArray();
+    const list = (await db.staff.toArray()).filter((s: any) => isDeveloper || s.role !== 'developer');
     setStaffList(list);
     setOwners(list.filter((s: any) => s.role === 'owner' && (s.isActive === true || s.isActive === 1)));
   };
@@ -167,7 +174,7 @@ function StaffManager() {
                       background: 'var(--bg-secondary)'
                     }}
                   >
-                    {Object.entries(ROLES).map(([key, r]) => (
+                    {assignableRoles.map(([key, r]) => (
                       <option key={key} value={key} style={{ background: 'var(--bg-secondary)', color: 'var(--text-primary)' }}>{r.label}</option>
                     ))}
                   </select>

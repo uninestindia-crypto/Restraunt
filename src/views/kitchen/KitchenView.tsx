@@ -780,19 +780,13 @@ export class KitchenView {
           if (estimatedPrepTime === null) {
             return;
           }
-          const prepStartTime = new Date().toISOString();
-          await db.orders.update(orderId, { status: 'preparing', estimatedPrepTime, prepStartTime, isSynced: 0 });
-          
-          // Trigger sync in background if possible
-          import('../../services/sync').then(({ syncService }) => {
-            db.orders.get(orderId).then(order => {
-              if (order) {
-                syncService.syncUpOrder(order).catch(err => console.error('Sync failed:', err));
-              }
-            });
-          }).catch(err => console.warn('Sync service not loaded:', err));
-
-          showToast('Preparing order', 'success');
+          reportStatusChange(
+            await updateOrderStatus(orderId, 'preparing', {
+              estimatedPrepTime,
+              prepStartTime: new Date().toISOString()
+            }),
+            'Preparing order'
+          );
         } else if (action === 'ready') {
           reportStatusChange(await updateOrderStatus(orderId, 'ready'), 'Order is ready!');
         } else if (action === 'complete') {

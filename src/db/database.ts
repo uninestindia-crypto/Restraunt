@@ -92,6 +92,10 @@ export interface Order {
   deliveredAt?: string | null;
   staffName?: string;
   notes?: string;
+  /** Minutes the kitchen expects the order to take; drives the KDS prep timer. */
+  estimatedPrepTime?: number;
+  /** When the kitchen started cooking; the KDS timer counts up from here. */
+  prepStartTime?: string;
   requiresServerValidation?: boolean;
   lastSyncError?: string;
   lastSyncedAt?: string | null;
@@ -832,8 +836,16 @@ export interface OrderStatusUpdateResult {
  *
  * Transient network failures are NOT rolled back; those stay queued so the app
  * keeps working offline.
+ *
+ * @param extraFields additional order fields to write alongside the status, so
+ *   callers never have to bypass this function (and its rollback) to record
+ *   something like the kitchen's prep estimate.
  */
-export async function updateOrderStatus(id, status): Promise<OrderStatusUpdateResult> {
+export async function updateOrderStatus(
+  id,
+  status,
+  extraFields: Partial<Order> = {}
+): Promise<OrderStatusUpdateResult> {
   let result = 0;
   let previous: Partial<Order> | null = null;
 
@@ -843,18 +855,8 @@ export async function updateOrderStatus(id, status): Promise<OrderStatusUpdateRe
       return { applied: false, synced: false, error: 'Order not found.' };
     }
 
-    // Snapshot exactly the fields this function touches, so a rollback restores
-    // the prior state without clobbering concurrent edits to other fields.
-    previous = {
-      status: existing.status,
-      updatedAt: existing.updatedAt,
-      completedAt: existing.completedAt,
-      deliveryStatus: existing.deliveryStatus,
-      syncStatus: existing.syncStatus,
-      isSynced: existing.isSynced
-    };
-
     const updates: Partial<Order> = {
+      ...extraFields,
       status,
       updatedAt: new Date().toISOString(),
       syncStatus: 'pending',
@@ -866,6 +868,15 @@ export async function updateOrderStatus(id, status): Promise<OrderStatusUpdateRe
     if (existing?.type === 'delivery' && status === 'ready') {
       updates.deliveryStatus = 'ready_for_dispatch';
     }
+
+    // Snapshot exactly the fields this call touches, so a rollback restores the
+    // prior state without clobbering concurrent edits to other fields. A field
+    // that did not exist before snapshots as undefined, which removes it again.
+    previous = {};
+    for (const key of Object.keys(updates)) {
+      previous[key] = existing[key];
+    }
+
     result = await db.orders.update(id, updates);
   } catch (error) {
     console.error(`[Database] Dexie database error in updateOrderStatus(${id}, ${status}):`, error);
