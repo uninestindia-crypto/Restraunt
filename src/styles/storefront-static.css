@@ -4,11 +4,32 @@
    boot (see hideLoadingScreen in src/main.ts), so a visitor
    whose bundle never arrives still gets a readable menu.
    ══════════════════════════════════════════════════════════ */
+/* The public site is a warm light theme scoped to .storefront-shell, not the
+   dark operator palette. These surfaces render outside that scope, so they
+   restate the same tokens — including the AA-compliant accent (#b9472a rather
+   than the brighter --color-primary, which fails contrast under white text). */
+.storefront-seo-shell,
+.static-page {
+  --store-ink: #211814;
+  --store-body: #4a3a33;
+  --store-muted: #6b5a52;
+  --store-soft: #f7f1e8;
+  --store-panel: #fffdf9;
+  --store-line: rgba(72, 44, 31, 0.14);
+  --store-accent: #b9472a;
+}
+
 .storefront-seo-shell {
-  max-width: 900px;
-  margin: 0 auto;
+  min-height: 100vh;
   padding: 48px 24px 72px;
-  color: var(--text-primary);
+  background: var(--store-soft);
+  color: var(--store-ink);
+}
+
+.storefront-seo-shell > * {
+  max-width: 900px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .seo-shell-head h1 {
@@ -24,21 +45,21 @@
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--color-primary);
+  color: var(--store-accent);
   margin: 0;
 }
 
 .seo-shell-copy {
   font-size: 1.05rem;
   line-height: 1.6;
-  color: var(--text-secondary);
+  color: var(--store-body);
   max-width: 60ch;
   margin: 0 0 12px;
 }
 
 .seo-shell-address {
   font-size: 0.85rem;
-  color: var(--text-muted);
+  color: var(--store-muted);
   margin: 0 0 20px;
 }
 
@@ -57,8 +78,8 @@
   min-height: 44px;
   padding: 0 14px;
   border-radius: 999px;
-  border: 1px solid var(--border-glass, rgba(255, 255, 255, 0.1));
-  color: var(--text-secondary);
+  border: 1px solid var(--store-line);
+  color: var(--store-body);
   font-size: 0.8rem;
   font-weight: 700;
   text-decoration: none;
@@ -70,8 +91,8 @@
 .static-page-nav nav a:focus-visible,
 .static-page-foot nav a:hover,
 .static-page-foot nav a:focus-visible {
-  color: var(--text-primary);
-  border-color: var(--color-primary);
+  color: var(--store-ink);
+  border-color: var(--store-accent);
 }
 
 .seo-shell-proof {
@@ -85,13 +106,13 @@
 .seo-shell-proof dt {
   font-size: 1.35rem;
   font-weight: 800;
-  color: var(--text-primary);
+  color: var(--store-ink);
 }
 
 .seo-shell-proof dd {
   margin: 2px 0 0;
   font-size: 0.78rem;
-  color: var(--text-muted);
+  color: var(--store-muted);
 }
 
 .seo-shell-menu h2 {
@@ -110,7 +131,7 @@
   font-weight: 700;
   margin: 0 0 10px;
   padding-bottom: 8px;
-  border-bottom: 1px solid var(--border-glass, rgba(255, 255, 255, 0.08));
+  border-bottom: 1px solid var(--store-line);
 }
 
 .seo-shell-category ul,
@@ -137,7 +158,7 @@
   font-size: 0.7rem;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: var(--text-muted);
+  color: var(--store-muted);
 }
 
 .seo-shell-item-price {
@@ -148,9 +169,9 @@
 .seo-shell-foot {
   margin-top: 40px;
   padding-top: 20px;
-  border-top: 1px solid var(--border-glass, rgba(255, 255, 255, 0.08));
+  border-top: 1px solid var(--store-line);
   font-size: 0.8rem;
-  color: var(--text-muted);
+  color: var(--store-muted);
 }
 
 /* ══════════════════════════════════════════════════════════
@@ -159,8 +180,8 @@
    ══════════════════════════════════════════════════════════ */
 .static-page {
   min-height: 100vh;
-  background: var(--bg-primary);
-  color: var(--text-primary);
+  background: var(--store-soft);
+  color: var(--store-ink);
 }
 
 .static-page-nav {
@@ -169,10 +190,10 @@
   gap: 16px;
   flex-wrap: wrap;
   padding: 16px 24px;
-  border-bottom: 1px solid var(--border-glass, rgba(255, 255, 255, 0.08));
+  border-bottom: 1px solid var(--store-line);
   position: sticky;
   top: 0;
-  background: var(--bg-primary);
+  background: var(--store-soft);
   z-index: 10;
 }
 
@@ -183,7 +204,7 @@
   font-weight: 800;
   letter-spacing: 0.08em;
   font-size: 0.85rem;
-  color: var(--text-primary);
+  color: var(--store-ink);
   text-decoration: none;
 }
 
@@ -201,9 +222,9 @@
 }
 
 .static-page-nav nav a[aria-current="page"] {
-  color: var(--text-primary);
-  border-color: var(--color-primary);
-  background: rgba(255, 94, 54, 0.1);
+  color: var(--store-ink);
+  border-color: var(--store-accent);
+  background: rgba(185, 71, 42, 0.1);
 }
 
 .static-page-cta {
@@ -212,7 +233,7 @@
   min-height: 44px;
   padding: 0 18px;
   border-radius: 999px;
-  background: var(--color-primary);
+  background: var(--store-accent);
   color: #ffffff;
   font-weight: 700;
   font-size: 0.82rem;
@@ -234,7 +255,7 @@
   font-weight: 700;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--color-primary);
+  color: var(--store-accent);
   margin: 0 0 8px;
 }
 
@@ -249,7 +270,7 @@
 .static-page-hero-copy {
   font-size: 1rem;
   line-height: 1.6;
-  color: var(--text-secondary);
+  color: var(--store-body);
   max-width: 62ch;
   margin: 0;
 }
@@ -263,7 +284,7 @@
   font-weight: 800;
   margin: 0 0 12px;
   padding-bottom: 8px;
-  border-bottom: 1px solid var(--border-glass, rgba(255, 255, 255, 0.08));
+  border-bottom: 1px solid var(--store-line);
 }
 
 .static-menu-section li {
@@ -272,7 +293,7 @@
   gap: 10px;
   padding: 9px 0;
   font-size: 0.92rem;
-  border-bottom: 1px dashed rgba(148, 163, 184, 0.12);
+  border-bottom: 1px dashed var(--store-line);
 }
 
 .static-menu-mark {
@@ -319,15 +340,15 @@
 .static-pillars article {
   padding: 20px;
   border-radius: 14px;
-  border: 1px solid var(--border-glass, rgba(255, 255, 255, 0.08));
-  background: var(--bg-card, rgba(255, 255, 255, 0.02));
+  border: 1px solid var(--store-line);
+  background: var(--store-panel);
 }
 
 .static-pillars span {
   font-size: 0.72rem;
   font-weight: 800;
   letter-spacing: 0.1em;
-  color: var(--color-primary);
+  color: var(--store-accent);
 }
 
 .static-pillars h2 {
@@ -340,15 +361,15 @@
 .static-faq p {
   font-size: 0.9rem;
   line-height: 1.6;
-  color: var(--text-secondary);
+  color: var(--store-body);
   margin: 0;
 }
 
 .static-panel {
   padding: 24px;
   border-radius: 14px;
-  border: 1px solid var(--border-glass, rgba(255, 255, 255, 0.08));
-  background: var(--bg-card, rgba(255, 255, 255, 0.02));
+  border: 1px solid var(--store-line);
+  background: var(--store-panel);
   margin-bottom: 16px;
 }
 
@@ -359,7 +380,7 @@
 
 .static-panel-address {
   margin-top: 12px;
-  color: var(--text-muted);
+  color: var(--store-muted);
 }
 
 .static-panel-cta {
@@ -369,15 +390,15 @@
   padding: 0 18px;
   margin-top: 16px;
   border-radius: 999px;
-  border: 1px solid var(--color-primary);
-  color: var(--color-primary);
+  border: 1px solid var(--store-accent);
+  color: var(--store-accent);
   font-weight: 700;
   font-size: 0.82rem;
   text-decoration: none;
 }
 
 .static-faq details {
-  border-bottom: 1px solid var(--border-glass, rgba(255, 255, 255, 0.08));
+  border-bottom: 1px solid var(--store-line);
   padding: 14px 0;
 }
 
@@ -396,7 +417,7 @@
 .static-page-empty {
   margin-top: 24px;
   font-size: 0.82rem;
-  color: var(--text-muted);
+  color: var(--store-muted);
 }
 
 .static-page-foot {
@@ -405,14 +426,14 @@
   gap: 20px;
   justify-content: space-between;
   padding: 28px 24px 40px;
-  border-top: 1px solid var(--border-glass, rgba(255, 255, 255, 0.08));
+  border-top: 1px solid var(--store-line);
   font-size: 0.8rem;
-  color: var(--text-muted);
+  color: var(--store-muted);
 }
 
 .static-page-foot strong {
   display: block;
-  color: var(--text-primary);
+  color: var(--store-ink);
   letter-spacing: 0.08em;
   margin-bottom: 4px;
 }
@@ -465,12 +486,25 @@
   animation: none;
 }
 
+/* Rendered in place of the customer app, so it sits outside .storefront-shell
+   and has to carry the storefront palette itself. */
 .storefront-error {
-  max-width: 460px;
-  margin: 0 auto;
+  --store-ink: #211814;
+  --store-body: #4a3a33;
+  --store-soft: #f7f1e8;
+  --store-line: rgba(72, 44, 31, 0.14);
+  --store-accent: #b9472a;
+  min-height: 100vh;
   padding: 80px 24px;
   text-align: center;
-  color: var(--text-primary);
+  background: var(--store-soft);
+  color: var(--store-ink);
+}
+
+.storefront-error > * {
+  max-width: 460px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .storefront-error h1 {
@@ -482,13 +516,13 @@
 .storefront-error p {
   font-size: 0.9rem;
   line-height: 1.6;
-  color: var(--text-secondary);
+  color: var(--store-body);
   margin: 0 0 24px;
 }
 
 .storefront-error .material-symbols-rounded {
   font-size: 48px;
-  color: var(--color-primary);
+  color: var(--store-accent);
 }
 
 .storefront-error-actions {
@@ -512,15 +546,15 @@
 }
 
 .storefront-error-actions button {
-  background: var(--color-primary);
+  background: var(--store-accent);
   color: #ffffff;
   border: none;
 }
 
 .storefront-error-actions a {
   background: transparent;
-  color: var(--text-secondary);
-  border: 1px solid var(--border-glass, rgba(255, 255, 255, 0.12));
+  color: var(--store-body);
+  border: 1px solid var(--store-line);
 }
 
 @media (max-width: 640px) {
