@@ -22,11 +22,11 @@ function StaffManager() {
   const [owners, setOwners] = useState<any[]>([]);
 
   const ROLES = {
-    owner: { label: 'Owner', color: '#FF5E36', icon: 'shield_person' },
-    manager: { label: 'Manager', color: '#8B5CF6', icon: 'manage_accounts' },
-    cashier: { label: 'Cashier', color: '#10B981', icon: 'point_of_sale' },
+    owner: { label: 'Owner', color: 'var(--color-primary-on-surface)', icon: 'shield_person' },
+    manager: { label: 'Manager', color: 'var(--nextgenos-purple-on-surface)', icon: 'manage_accounts' },
+    cashier: { label: 'Cashier', color: 'var(--color-success-on-surface)', icon: 'point_of_sale' },
     kitchen: { label: 'Kitchen', color: '#F59E0B', icon: 'restaurant' },
-    waiter: { label: 'Waiter', color: '#3B82F6', icon: 'room_service' },
+    waiter: { label: 'Waiter', color: 'var(--color-info)', icon: 'room_service' },
     delivery: { label: 'Delivery', color: '#06B6D4', icon: 'delivery_dining' },
   };
 
@@ -245,7 +245,7 @@ function StaffManager() {
                   <td key={r} style={{ textAlign: 'center', padding: '10px 8px' }}>
                     {route.roles.includes(r) ? (
                       <span style={{
-                        color: 'var(--color-success)',
+                        color: 'var(--color-success-on-surface)',
                         fontSize: '16px',
                         fontWeight: 'bold',
                         filter: 'drop-shadow(0 0 4px rgba(var(--color-success-rgb),0.35))'

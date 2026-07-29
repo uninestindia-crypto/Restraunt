@@ -60,15 +60,15 @@ export class DevConsoleView {
     this.container.innerHTML = `
       <div style="flex:1;display:flex;flex-direction:column;height:100%;overflow:hidden;background:var(--bg-primary);">
         <!-- Header -->
-        <div style="display:flex;align-items:center;gap:12px;padding:16px 24px;background:rgba(9,9,14,0.8);backdrop-filter:blur(20px);border-bottom:1px solid var(--border-glass);z-index:10;">
+        <div style="display:flex;align-items:center;gap:12px;padding:16px 24px;background:var(--glass-bg);backdrop-filter:blur(20px);border-bottom:1px solid var(--border-glass);z-index:10;">
           <div style="width:40px;height:40px;border-radius:12px;background:rgba(var(--color-success-rgb),0.1);border:1px solid rgba(var(--color-success-rgb),0.25);display:flex;align-items:center;justify-content:center;">
-            <span class="material-symbols-rounded" style="font-size:22px;color:var(--color-success);filter:drop-shadow(0 0 6px rgba(var(--color-success-rgb),0.4));">terminal</span>
+            <span class="material-symbols-rounded" style="font-size:22px;color:var(--color-success-on-surface);filter:drop-shadow(0 0 6px rgba(var(--color-success-rgb),0.4));">terminal</span>
           </div>
           <div>
             <h2 style="font-family:'Plus Jakarta Sans',sans-serif;font-size:var(--text-lg);font-weight:800;color:var(--text-primary);letter-spacing:-0.02em;margin:0;">Developer Console</h2>
-            <div style="font-size:0.55rem;color:rgba(var(--color-success-rgb),0.5);font-weight:500;letter-spacing:0.08em;text-transform:uppercase;">NextGenOS Internal • Super Admin Access</div>
+            <div style="font-size:0.55rem;color:var(--color-success-on-surface);font-weight:500;letter-spacing:0.08em;text-transform:uppercase;">NextGenOS Internal • Super Admin Access</div>
           </div>
-          <div style="margin-left:auto;padding:4px 12px;border-radius:20px;background:rgba(var(--color-success-rgb),0.08);border:1px solid rgba(var(--color-success-rgb),0.2);font-size:0.65rem;color:var(--color-success);font-weight:700;letter-spacing:0.06em;">DEVELOPER</div>
+          <div style="margin-left:auto;padding:4px 12px;border-radius:20px;background:rgba(var(--color-success-rgb),0.08);border:1px solid rgba(var(--color-success-rgb),0.2);font-size:0.65rem;color:var(--color-success-on-surface);font-weight:700;letter-spacing:0.06em;">DEVELOPER</div>
         </div>
 
         <!-- Tabs -->
@@ -77,7 +77,7 @@ export class DevConsoleView {
         </div>
 
         <!-- Tab Content -->
-        <div id="dev-tab-content" style="flex:1;overflow-y:auto;padding:24px;"></div>
+        <div id="dev-tab-content" tabindex="0" role="region" aria-label="Developer console output" style="flex:1;overflow-y:auto;padding:24px;"></div>
       </div>
     `;
 
@@ -96,7 +96,7 @@ export class DevConsoleView {
         .dev-tab:hover { background: rgba(var(--color-success-rgb),0.06); color: var(--text-primary); }
         .dev-tab.active {
           background: rgba(var(--color-success-rgb),0.1); border-color: rgba(var(--color-success-rgb),0.25);
-          color: var(--color-success);
+          color: var(--color-success-on-surface);
         }
         .dev-card {
           background: rgba(255,255,255,0.02); border: 1px solid var(--border-glass);
@@ -135,7 +135,7 @@ export class DevConsoleView {
         .dev-toggle.on::after { left: 20px; background: var(--color-success); }
         .dev-btn {
           padding: 8px 18px; border-radius: 8px; border: 1px solid rgba(var(--color-success-rgb),0.25);
-          background: rgba(var(--color-success-rgb),0.08); color: var(--color-success); cursor: pointer;
+          background: rgba(var(--color-success-rgb),0.08); color: var(--color-success-on-surface); cursor: pointer;
           font-size: 0.8rem; font-weight: 600; font-family: 'Inter', sans-serif;
           transition: all 0.2s;
         }
@@ -194,7 +194,7 @@ export class DevConsoleView {
 
     el.innerHTML = `
       <div class="dev-card">
-        <h3><span class="material-symbols-rounded" style="font-size:18px;color:var(--color-success);">info</span> Application</h3>
+        <h3><span class="material-symbols-rounded" style="font-size:18px;color:var(--color-success-on-surface);">info</span> Application</h3>
         <div class="dev-row"><span class="dev-key">App Version</span><span class="dev-val">2.0.0</span></div>
         <div class="dev-row"><span class="dev-key">Platform</span><span class="dev-val">NextGenOS Restaurant OS</span></div>
         <div class="dev-row"><span class="dev-key">Store ID</span><span class="dev-val">${escapeHtml(storeId)}</span></div>
@@ -270,7 +270,7 @@ export class DevConsoleView {
     const rows = audits.map(a => `
       <div class="dev-audit-row">
         <span style="color:var(--text-muted);font-family:'JetBrains Mono',monospace;font-size:0.7rem;">${new Date(a.created_at).toLocaleString()}</span>
-        <span style="color:var(--color-success);font-weight:600;">${escapeHtml(a.action)}</span>
+        <span style="color:var(--color-success-on-surface);font-weight:600;">${escapeHtml(a.action)}</span>
         <span style="color:var(--text-primary);font-size:0.7rem;word-break:break-all;">${escapeHtml(JSON.stringify(a.details || {}).slice(0, 200))}</span>
       </div>
     `).join('');
@@ -326,7 +326,7 @@ export class DevConsoleView {
         <div style="font-size:0.7rem;color:var(--text-muted);margin-bottom:16px;">Provider credentials are server-managed Supabase secrets. They are never stored in or sent directly from this browser.</div>
 
         <div style="margin-bottom:20px;">
-          <div style="font-weight:700;color:var(--color-success);font-size:0.8rem;margin-bottom:8px;">⚡ Tier 2 — Groq (Chat Assistant)</div>
+          <div style="font-weight:700;color:var(--color-success-on-surface);font-size:0.8rem;margin-bottom:8px;">⚡ Tier 2 — Groq (Chat Assistant)</div>
           <div class="dev-row"><span class="dev-key">Status</span><span>Protected Edge Function</span></div>
         </div>
 
@@ -336,7 +336,7 @@ export class DevConsoleView {
         </div>
 
         <div style="display:flex;gap:8px;">
-          <button class="dev-btn" id="test-groq-btn" style="border-color:rgba(var(--color-success-rgb),0.25);">Test Groq</button>
+          <button class="dev-btn" id="test-groq-btn" style="border-color:var(--color-success-on-surface);">Test Groq</button>
           <button class="dev-btn" id="test-lightning-btn" style="border-color:rgba(var(--nextgenos-purple-rgb),0.25);color:var(--nextgenos-purple);">Test Lightning</button>
         </div>
       </div>

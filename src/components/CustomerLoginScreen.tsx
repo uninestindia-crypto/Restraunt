@@ -284,7 +284,7 @@ export class CustomerLoginScreen {
           align-items: flex-start;
         }
         .feature-icon {
-          color: var(--color-primary);
+          color: var(--color-primary-on-surface);
           background: rgba(var(--color-primary-rgb), 0.1);
           padding: 10px;
           border-radius: var(--radius-md);
@@ -488,7 +488,7 @@ export class CustomerLoginScreen {
         .login-toggle-link {
           font-size: var(--text-xs);
           font-weight: 600;
-          color: var(--color-primary);
+          color: var(--color-primary-on-surface);
           text-align: center;
           margin: 16px 0 0;
           cursor: pointer;
@@ -508,7 +508,7 @@ export class CustomerLoginScreen {
         }
         .footer-dot {
           font-size: 8px;
-          color: var(--color-primary);
+          color: var(--color-primary-on-surface);
         }
         .footer-powered {
           font-weight: 500;

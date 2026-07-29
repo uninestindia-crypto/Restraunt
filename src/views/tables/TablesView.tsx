@@ -14,10 +14,10 @@ import { tableService } from '../../services/tables';
 import { showToast, playSound, vibrateDevice, escapeHtml } from '../../utils/helpers';
 
 const STATUS_CONFIG = {
-  available: { label: 'Available', color: '#10B981', bg: 'rgba(var(--color-success-rgb),0.08)', border: 'rgba(var(--color-success-rgb),0.25)', icon: 'check_circle' },
-  occupied: { label: 'Occupied', color: '#EF4444', bg: 'rgba(var(--color-danger-rgb),0.08)', border: 'rgba(var(--color-danger-rgb),0.25)', icon: 'group' },
-  reserved: { label: 'Reserved', color: '#F59E0B', bg: 'rgba(var(--color-warning-rgb),0.08)', border: 'rgba(var(--color-warning-rgb),0.25)', icon: 'event' },
-  cleaning: { label: 'Cleaning', color: '#3B82F6', bg: 'rgba(var(--color-info-rgb),0.08)', border: 'rgba(var(--color-info-rgb),0.25)', icon: 'cleaning_services' },
+  available: { label: 'Available', color: 'var(--color-success-on-surface)', bg: 'rgba(var(--color-success-rgb),0.08)', border: 'rgba(var(--color-success-rgb),0.25)', icon: 'check_circle' },
+  occupied: { label: 'Occupied', color: 'var(--color-danger)', bg: 'rgba(var(--color-danger-rgb),0.08)', border: 'rgba(var(--color-danger-rgb),0.25)', icon: 'group' },
+  reserved: { label: 'Reserved', color: 'var(--color-warning)', bg: 'rgba(var(--color-warning-rgb),0.08)', border: 'rgba(var(--color-warning-rgb),0.25)', icon: 'event' },
+  cleaning: { label: 'Cleaning', color: 'var(--color-info)', bg: 'rgba(var(--color-info-rgb),0.08)', border: 'rgba(var(--color-info-rgb),0.25)', icon: 'cleaning_services' },
 };
 const STATUS_CYCLE = ['available', 'occupied', 'reserved', 'cleaning'];
 
@@ -111,9 +111,9 @@ export class TablesView {
     if (statsEl) {
       statsEl.innerHTML = [
         { label: 'TOTAL', value: stats.total, color: 'var(--text-primary)' },
-        { label: 'AVAILABLE', value: stats.available, color: '#10B981' },
-        { label: 'OCCUPIED', value: stats.occupied, color: '#EF4444' },
-        { label: 'RESERVED', value: stats.reserved, color: '#F59E0B' },
+        { label: 'AVAILABLE', value: stats.available, color: 'var(--color-success-on-surface)' },
+        { label: 'OCCUPIED', value: stats.occupied, color: 'var(--color-danger)' },
+        { label: 'RESERVED', value: stats.reserved, color: 'var(--color-warning)' },
       ].map(k => `
         <div class="stats-card" style="text-align: center;">
           <div class="stats-card-label">${k.label}</div>

@@ -21,7 +21,7 @@
 
 .app-header {
   height: 60px;
-  background: rgba(9, 9, 14, 0.6);
+  background: var(--glass-bg);
   border-bottom: 1px solid var(--glass-border);
   display: flex;
   align-items: center;
@@ -91,7 +91,7 @@
   bottom: 0;
   left: 0;
   right: 0;
-  background: rgba(9, 9, 14, 0.7);
+  background: var(--glass-bg);
   border-top: 1px solid var(--glass-border);
   display: flex;
   z-index: var(--z-sticky);
@@ -126,7 +126,7 @@
 }
 
 .bottom-nav .nav-item.active {
-  color: var(--color-primary);
+  color: var(--color-primary-on-surface);
 }
 
 .bottom-nav .nav-item.active::before {
@@ -218,7 +218,7 @@
 
 .search-wrapper .input:focus ~ .search-icon,
 .search-wrapper .input:focus + .search-icon {
-  color: var(--color-primary);
+  color: var(--color-primary-on-surface);
 }
 
 
@@ -341,7 +341,7 @@
   font-family: var(--font-sans);
   font-size: var(--text-base);
   font-weight: var(--font-bold);
-  color: var(--color-primary);
+  color: var(--color-primary-on-surface);
   letter-spacing: -0.02em;
 }
 
@@ -391,7 +391,7 @@
 
 .menu-item .item-added-indicator .material-symbols-rounded {
   font-size: 36px;
-  color: var(--color-primary);
+  color: var(--color-primary-on-surface);
   filter: drop-shadow(0 2px 8px rgba(var(--color-primary-rgb), 0.5));
 }
 
@@ -476,7 +476,7 @@
 
 .order-type-btn.active {
   border-color: var(--color-primary);
-  color: var(--color-primary);
+  color: var(--color-primary-on-surface);
   background: rgba(var(--color-primary-rgb), 0.1);
   box-shadow: 0 4px 12px rgba(var(--color-primary-rgb), 0.15);
 }
@@ -537,7 +537,7 @@
 
 .cart-item-notes {
   font-size: var(--text-xs);
-  color: var(--color-primary);
+  color: var(--color-primary-on-surface);
   font-style: italic;
   margin-top: 2px;
 }
@@ -630,7 +630,7 @@
 .cart-summary .summary-total {
   font-size: var(--text-lg);
   font-weight: var(--font-bold);
-  color: var(--color-primary);
+  color: var(--color-primary-on-surface);
   border-top: 1px solid var(--border-color);
   padding-top: 10px;
   margin-top: 6px;
@@ -642,7 +642,7 @@
 }
 
 .cart-summary .summary-total span:last-child {
-  color: var(--color-primary);
+  color: var(--color-primary-on-surface);
   font-weight: var(--font-extrabold);
 }
 
@@ -729,7 +729,7 @@
 .qr-display .qr-amount {
   font-size: var(--text-2xl);
   font-weight: var(--font-extrabold);
-  color: var(--color-primary);
+  color: var(--color-primary-on-surface);
   margin-bottom: 4px;
 }
 
@@ -1063,7 +1063,7 @@
     bottom: calc(60px + 16px + env(safe-area-inset-bottom, 0px));
     left: 16px;
     right: 16px;
-    background: rgba(11, 11, 15, 0.95);
+    background: var(--glass-bg);
     backdrop-filter: var(--glass-backdrop-filter);
     -webkit-backdrop-filter: var(--glass-backdrop-filter);
     border: 1px solid var(--color-primary);
@@ -1223,7 +1223,7 @@
 
 :root[data-theme="light"] .order-type-btn.active {
   border-color: var(--color-primary) !important;
-  color: var(--color-primary) !important;
+  color: var(--color-primary-on-surface) !important;
   background: rgba(var(--color-primary-rgb), 0.08) !important;
 }
 
@@ -1237,7 +1237,7 @@
 }
 
 :root[data-theme="light"] .cart-empty .material-symbols-rounded {
-  color: var(--color-primary) !important;
+  color: var(--color-primary-on-surface) !important;
   opacity: 0.15 !important;
 }
 
@@ -1269,7 +1269,7 @@
   background: #FFFFFF !important;
   border: 1px solid var(--border-color) !important;
   box-shadow: var(--shadow-sm) !important;
-  color: var(--color-primary) !important;
+  color: var(--color-primary-on-surface) !important;
 }
 
 :root[data-theme="light"] .stepper button:hover {
@@ -1304,7 +1304,7 @@
   }
   :root[data-theme="system"] .order-type-btn.active {
     border-color: var(--color-primary) !important;
-    color: var(--color-primary) !important;
+    color: var(--color-primary-on-surface) !important;
     background: rgba(var(--color-primary-rgb), 0.08) !important;
   }
   :root[data-theme="system"] .cart-item:hover {
@@ -1315,7 +1315,7 @@
     border-top: 1px solid var(--border-color) !important;
   }
   :root[data-theme="system"] .cart-empty .material-symbols-rounded {
-    color: var(--color-primary) !important;
+    color: var(--color-primary-on-surface) !important;
     opacity: 0.15 !important;
   }
   :root[data-theme="system"] .tab {
@@ -1342,7 +1342,7 @@
     background: #FFFFFF !important;
     border: 1px solid var(--border-color) !important;
     box-shadow: var(--shadow-sm) !important;
-    color: var(--color-primary) !important;
+    color: var(--color-primary-on-surface) !important;
   }
   :root[data-theme="system"] .stepper button:hover {
     background: rgba(var(--color-primary-rgb), 0.1) !important;
@@ -1366,3 +1366,57 @@
 
 
 
+
+/* ══════════════════════════════════════════════════════════════════════
+   STAFF CHROME TOUCH TARGETS — WCAG 2.1 SC 2.5.5
+   The header and sidebar chrome render on every staff route, so anything
+   undersized here is undersized everywhere. Hit areas grow; visual weight
+   is unchanged. Scoped to coarse pointers and the tablet/phone breakpoint
+   so desktop density is preserved for mouse users.
+   ══════════════════════════════════════════════════════════════════════ */
+@media (max-width: 1024px), (pointer: coarse) {
+  .app-header .logo,
+  .app-header .header-printer-status,
+  .app-header .btn-icon,
+  .sidebar-theme-toggle {
+    min-height: 44px;
+  }
+
+  .app-header .btn-icon {
+    min-width: 44px;
+  }
+
+  /* Tabs and chips are the most repeated controls inside the staff views. */
+  .tab,
+  .category-chip,
+  .dev-tab,
+  .ai-chip,
+  .order-type-btn,
+  .type-btn {
+    min-height: 44px;
+  }
+
+  .btn-sm,
+  .btn.btn-sm {
+    min-height: 44px;
+  }
+}
+
+/* Remaining staff chrome that sits under the 44px target minimum on touch.
+   These render on every route, so they are the highest-frequency controls
+   in the app. */
+@media (max-width: 1024px), (pointer: coarse) {
+  .header-printer-status,
+  .help-nav-btn,
+  .btn-step,
+  .clear-btn,
+  .close-cart-btn {
+    min-height: 44px;
+  }
+
+  .app-header .logo {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+  }
+}

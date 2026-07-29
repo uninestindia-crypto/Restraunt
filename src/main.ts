@@ -496,12 +496,12 @@ class App {
             <button class="btn-icon" id="btn-theme-toggle" title="Toggle Theme" style="margin-left: 4px; color: var(--text-muted);">
               <span class="material-symbols-rounded" id="theme-toggle-icon" style="font-size: 18px;">${App.getResolvedTheme() === 'dark' ? 'light_mode' : 'dark_mode'}</span>
             </button>
-            <span class="nextgenos-header-badge" style="background: var(--nextgenos-purple-bg); color: var(--nextgenos-purple); border: 1px solid var(--nextgenos-purple-border); box-shadow: var(--shadow-glow-purple); font-weight: 700; padding: 2px 8px; border-radius: var(--radius-full); font-size: 0.65rem; letter-spacing: 0.08em; text-transform: uppercase;">NextGenOS</span>
+            <span class="nextgenos-header-badge" style="background: var(--nextgenos-purple-bg); color: var(--nextgenos-purple-on-surface); border: 1px solid var(--nextgenos-purple-border); box-shadow: var(--shadow-glow-purple); font-weight: 700; padding: 2px 8px; border-radius: var(--radius-full); font-size: 0.65rem; letter-spacing: 0.08em; text-transform: uppercase;">NextGenOS</span>
             <div class="header-actions">
               <div class="header-printer-status" id="header-staff-display" title="Logged in staff" style="gap:4px;">
                 <span class="material-symbols-rounded" style="font-size: 16px;">person</span>
                 <span id="header-staff-name" style="font-weight:700;"></span>
-                <span id="header-staff-role" style="font-size:0.55rem;opacity:0.5;text-transform:capitalize;"></span>
+                <span id="header-staff-role" style="font-size:0.55rem;color:var(--text-muted);text-transform:capitalize;"></span>
               </div>
               <button class="header-printer-status" id="sync-status-btn" title="Cloud Sync Status">
                 <span class="material-symbols-rounded" style="font-size: 16px;">cloud_sync</span>

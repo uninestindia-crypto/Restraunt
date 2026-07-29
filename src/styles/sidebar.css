@@ -27,7 +27,7 @@
 /* ── Sidebar ───────────────────────────────────── */
 .sidebar {
   width: 220px;
-  background: rgba(9, 9, 14, 0.55);
+  background: var(--glass-bg);
   backdrop-filter: var(--glass-backdrop-filter);
   -webkit-backdrop-filter: var(--glass-backdrop-filter);
   border-right: 1px solid var(--glass-border);
@@ -67,7 +67,9 @@
 
 .sidebar-header .sidebar-version {
   font-size: 0.55rem;
-  color: rgba(148, 163, 184, 0.4);
+  /* Low-alpha slate composited onto near-black fell to ~2.1:1. Solid value
+     measures AA. */
+  color: var(--text-muted);
   font-weight: 600;
   letter-spacing: 0.08em;
   margin-left: auto;
@@ -94,7 +96,8 @@
   font-family: var(--font-sidebar);
   font-size: 0.625rem;
   font-weight: 800;
-  color: rgba(148, 163, 184, 0.35);
+  /* Was rgba(148,163,184,.35) -> 1.86:1 against the sidebar background. */
+  color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.18em;
   padding: 12px 20px 6px;
@@ -105,7 +108,8 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 10px 20px;
+  /* 11px vertical keeps the whole row at a 44px hit target (SC 2.5.5). */
+  padding: 11px 20px;
   margin: 1px 8px;
   border-radius: var(--radius-md);
   cursor: pointer;
@@ -113,7 +117,10 @@
               background-color 0.25s ease,
               border-color 0.25s ease,
               color 0.25s ease;
-  color: rgba(148, 163, 184, 0.7);
+  /* rgba(148,163,184,.7) composited to 4.25:1 — just under AA, on the single
+     most-repeated label in the app (every nav item on every route). The solid
+     token measures ~7.6:1. */
+  color: var(--text-secondary);
   font-family: var(--font-sans);
   font-size: 0.82rem;
   font-weight: 500;
@@ -136,9 +143,11 @@
 }
 
 .sidebar-item:hover {
-  background: rgba(255, 255, 255, 0.04);
-  color: rgba(255, 255, 255, 0.95);
-  border-color: rgba(255, 255, 255, 0.05);
+  background: var(--glass-bg-hover);
+  /* Was rgba(255,255,255,.95) — literally white text on the white light-mode
+     sidebar. The token flips with the theme. */
+  color: var(--text-primary);
+  border-color: var(--border-glass);
   transform: translateX(4px) scale(1.02);
 }
 
@@ -148,14 +157,15 @@
 
 .sidebar-item.active {
   background: rgba(var(--color-primary-rgb), 0.08);
-  color: #FF8960;
+  /* #FF8960 measured 2.8:1 on the tinted light-mode background. */
+  color: var(--color-primary-on-surface);
   border-color: rgba(var(--color-primary-rgb), 0.2);
   font-weight: 600;
   box-shadow: 0 4px 15px rgba(var(--color-primary-rgb), 0.15);
 }
 
 .sidebar-item.active .sidebar-icon {
-  color: #FF5E36;
+  color: var(--color-primary-on-surface);
   filter: drop-shadow(0 0 8px rgba(var(--color-primary-rgb), 0.5));
 }
 
@@ -215,30 +225,31 @@
   justify-content: center;
   gap: 4px;
   padding: 6px 0;
-  opacity: 0.45;
-  transition: opacity 0.4s ease;
-}
-
-.sidebar-footer:hover .nextgenos-attr {
-  opacity: 0.7;
+  /* Container opacity used to composite every child down to ~1.8:1 regardless
+     of the colours set on them. The subdued look now comes from the child
+     colours themselves, which are contrast-checked. */
+  transition: color 0.4s ease;
 }
 
 .sidebar-footer .ng-diamond {
-  color: rgba(108, 92, 231, 0.6);
+  color: var(--nextgenos-purple-on-surface);
   font-size: 8px;
   font-weight: 800;
 }
 
 .sidebar-footer .ng-text-small {
   font-size: 0.5rem;
-  color: rgba(148, 163, 184, 0.4);
+  /* Was 1.27:1 — effectively invisible. */
+  color: var(--text-muted);
   letter-spacing: 0.06em;
   font-weight: 500;
 }
 
 .sidebar-footer .ng-text-brand {
   font-size: 0.5rem;
-  color: rgba(108, 92, 231, 0.65);
+  /* Was rgba(108,92,231,.65) -> 1.32:1. Solid lifted purple clears AA on the
+     sidebar background while still reading as the platform accent. */
+  color: var(--nextgenos-purple-on-surface);
   letter-spacing: 0.06em;
   font-weight: 600;
 }
@@ -248,7 +259,8 @@
   font-family: 'Plus Jakarta Sans', sans-serif;
   font-size: 0.5rem;
   font-weight: 700;
-  color: rgba(162, 155, 254, 0.5);
+  /* Was rgba(162,155,254,.5) -> 2.33:1 against the header glass. */
+  color: var(--nextgenos-purple-on-surface);
   background: rgba(108, 92, 231, 0.04);
   border: 1px solid rgba(108, 92, 231, 0.1);
   padding: 2px 7px;
@@ -259,12 +271,12 @@
   margin-right: 12px;
   flex-shrink: 0;
   user-select: none;
-  opacity: 0.6;
-  transition: opacity 0.3s ease;
+  /* See .nextgenos-attr — container opacity defeated the badge's own colour. */
+  transition: background 0.3s ease;
 }
 
 .nextgenos-header-badge:hover {
-  opacity: 0.85;
+  background: rgba(var(--nextgenos-purple-rgb), 0.12);
 }
 
 /* ── Mobile Toggle ─────────────────────────────── */
@@ -382,16 +394,16 @@
     border-color: var(--border-color);
   }
   :root[data-theme="system"] .sidebar-item:hover .sidebar-icon {
-    color: var(--color-primary);
+    color: var(--color-primary-on-surface);
   }
   :root[data-theme="system"] .sidebar-item.active {
     background: rgba(var(--color-primary-rgb), 0.08);
-    color: var(--color-primary);
+    color: var(--color-primary-on-surface);
     border-color: rgba(var(--color-primary-rgb), 0.2);
     box-shadow: 0 4px 15px rgba(var(--color-primary-rgb), 0.08);
   }
   :root[data-theme="system"] .sidebar-item.active .sidebar-icon {
-    color: var(--color-primary);
+    color: var(--color-primary-on-surface);
   }
   :root[data-theme="system"] .sidebar-footer {
     border-top: 1px solid var(--border-color);
@@ -423,16 +435,16 @@
   border-color: var(--border-color);
 }
 :root[data-theme="light"] .sidebar-item:hover .sidebar-icon {
-  color: var(--color-primary);
+  color: var(--color-primary-on-surface);
 }
 :root[data-theme="light"] .sidebar-item.active {
   background: rgba(var(--color-primary-rgb), 0.08);
-  color: var(--color-primary);
+  color: var(--color-primary-on-surface);
   border-color: rgba(var(--color-primary-rgb), 0.2);
   box-shadow: 0 4px 15px rgba(var(--color-primary-rgb), 0.08);
 }
 :root[data-theme="light"] .sidebar-item.active .sidebar-icon {
-  color: var(--color-primary);
+  color: var(--color-primary-on-surface);
 }
 :root[data-theme="light"] .sidebar-footer {
   border-top: 1px solid var(--border-color);

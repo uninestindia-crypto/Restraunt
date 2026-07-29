@@ -14,8 +14,8 @@ import { showToast, playSound, vibrateDevice } from '../../utils/helpers';
 
 const TIER_BADGES = {
   codebase: { label: '💻 Local AI', color: 'rgba(148,163,184,0.6)', bg: 'rgba(148,163,184,0.08)' },
-  groq: { label: '⚡ Groq', color: '#10B981', bg: 'rgba(var(--color-success-rgb),0.08)' },
-  lightning: { label: '🧠 Lightning', color: '#8B5CF6', bg: 'rgba(var(--nextgenos-purple-rgb),0.08)' },
+  groq: { label: '⚡ Groq', color: 'var(--color-success-on-surface)', bg: 'rgba(var(--color-success-rgb),0.08)' },
+  lightning: { label: '🧠 Lightning', color: 'var(--nextgenos-purple-on-surface)', bg: 'rgba(var(--nextgenos-purple-rgb),0.08)' },
 };
 
 export class AICommandCenter {
@@ -57,16 +57,16 @@ export class AICommandCenter {
     this.container.innerHTML = `
       <div style="flex:1;display:flex;flex-direction:column;height:100%;overflow:hidden;background:var(--bg-primary);">
         <!-- Header -->
-        <div style="display:flex;align-items:center;gap:12px;padding:16px 24px;background:rgba(9,9,14,0.8);backdrop-filter:blur(20px);border-bottom:1px solid var(--border-glass);z-index:10;">
+        <div style="display:flex;align-items:center;gap:12px;padding:16px 24px;background:var(--glass-bg);backdrop-filter:blur(20px);border-bottom:1px solid var(--border-glass);z-index:10;">
           <div style="width:40px;height:40px;border-radius:12px;background:rgba(108,92,231,0.1);border:1px solid rgba(108,92,231,0.25);display:flex;align-items:center;justify-content:center;">
             <span class="material-symbols-rounded" style="font-size:22px;color:#A29BFE;filter:drop-shadow(0 0 6px rgba(108,92,231,0.4));">smart_toy</span>
           </div>
           <div>
             <h2 style="font-family:'Plus Jakarta Sans',sans-serif;font-size:var(--text-lg);font-weight:800;color:var(--text-primary);letter-spacing:-0.02em;margin:0;">AI Command Center</h2>
-            <div style="font-size:0.55rem;color:rgba(162,155,254,0.45);font-weight:500;letter-spacing:0.08em;text-transform:uppercase;">3-Tier AI • Groq Chat • Lightning Analytics • Local Offline</div>
+            <div style="font-size:0.55rem;color:var(--nextgenos-purple-on-surface);font-weight:500;letter-spacing:0.08em;text-transform:uppercase;">3-Tier AI • Groq Chat • Lightning Analytics • Local Offline</div>
           </div>
           <div style="margin-left:auto;display:flex;gap:6px;">
-            ${aiService.isGroqAvailable ? '<span style="padding:3px 8px;border-radius:12px;background:rgba(var(--color-success-rgb),0.08);border:1px solid rgba(var(--color-success-rgb),0.2);font-size:0.6rem;color:var(--color-success);font-weight:600;">⚡ Groq</span>' : ''}
+            ${aiService.isGroqAvailable ? '<span style="padding:3px 8px;border-radius:12px;background:rgba(var(--color-success-rgb),0.08);border:1px solid rgba(var(--color-success-rgb),0.2);font-size:0.6rem;color:var(--color-success-on-surface);font-weight:600;">⚡ Groq</span>' : ''}
             ${aiService.isLightningAvailable ? '<span style="padding:3px 8px;border-radius:12px;background:rgba(var(--nextgenos-purple-rgb),0.08);border:1px solid rgba(var(--nextgenos-purple-rgb),0.2);font-size:0.6rem;color:var(--nextgenos-purple);font-weight:600;">🧠 Lightning</span>' : ''}
             <span style="padding:3px 8px;border-radius:12px;background:rgba(148,163,184,0.08);border:1px solid rgba(148,163,184,0.15);font-size:0.6rem;color:rgba(148,163,184,0.7);font-weight:600;">💻 Local</span>
           </div>
@@ -143,7 +143,7 @@ export class AICommandCenter {
       <div style="max-width:85%;">
         <div style="padding:16px 18px;background:rgba(255,255,255,0.02);border:1px solid var(--border-glass);border-radius:4px 16px 16px 16px;color:var(--text-primary);font-size:var(--text-sm);line-height:1.6;backdrop-filter:blur(8px);">
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
-            <div style="display:flex;align-items:center;gap:5px;font-size:0.6rem;color:rgba(162,155,254,0.45);font-weight:600;letter-spacing:0.06em;text-transform:uppercase;">
+            <div style="display:flex;align-items:center;gap:5px;font-size:0.6rem;color:var(--nextgenos-purple-on-surface);font-weight:600;letter-spacing:0.06em;text-transform:uppercase;">
               <span class="material-symbols-rounded" style="font-size:13px;">smart_toy</span> AI Assistant
             </div>
             <span style="padding:2px 8px;border-radius:10px;background:${badge.bg};font-size:0.55rem;color:${badge.color};font-weight:700;letter-spacing:0.04em;">${badge.label}</span>

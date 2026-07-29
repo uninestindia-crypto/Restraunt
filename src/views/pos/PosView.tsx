@@ -73,11 +73,11 @@ export class PosView {
         <!-- Mobile Cart Toggle Bar -->
         <div class="mobile-cart-toggle-bar" id="mobile-cart-toggle">
           <div style="display: flex; align-items: center; gap: 8px;">
-            <span class="material-symbols-rounded" style="color: var(--color-primary); font-size: 22px;">shopping_cart</span>
+            <span class="material-symbols-rounded" style="color: var(--color-primary-on-surface); font-size: 22px;">shopping_cart</span>
             <div>
               <span id="mobile-cart-count" style="font-weight: 700; color: var(--text-primary);">0 items</span>
               <span style="color: var(--text-muted); margin: 0 4px;">·</span>
-              <span id="mobile-cart-total" style="font-weight: 800; color: var(--color-primary);">₹0.00</span>
+              <span id="mobile-cart-total" style="font-weight: 800; color: var(--color-primary-on-surface);">₹0.00</span>
             </div>
           </div>
           <button class="btn btn-primary btn-sm" id="btn-mobile-view-cart" style="padding: 8px 16px; font-weight: 700; font-size: 12px; display: flex; align-items: center; gap: 4px;">

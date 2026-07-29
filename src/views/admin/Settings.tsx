@@ -585,7 +585,7 @@ export function SettingsView() {
         .settings-sidebar-btn.active {
           background: rgba(var(--color-primary-rgb), 0.08);
           border-color: rgba(var(--color-primary-rgb), 0.2);
-          color: var(--color-primary);
+          color: var(--color-primary-on-surface);
         }
       `}</style>
 

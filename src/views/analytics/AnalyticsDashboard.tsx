@@ -30,9 +30,9 @@ export class AnalyticsDashboard {
     this.container.innerHTML = `
       <div style="flex:1;display:flex;flex-direction:column;height:100%;overflow:hidden;background:var(--bg-primary);">
         <!-- Header -->
-        <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 24px;background:rgba(9,9,14,0.8);backdrop-filter:blur(20px);border-bottom:1px solid var(--border-glass);z-index:10;flex-wrap:wrap;gap:12px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 24px;background:var(--glass-bg);backdrop-filter:blur(20px);border-bottom:1px solid var(--border-glass);z-index:10;flex-wrap:wrap;gap:12px;">
           <div style="display:flex;align-items:center;gap:10px;">
-            <span class="material-symbols-rounded" style="color:var(--color-primary);font-size:24px;filter:drop-shadow(0 0 8px rgba(var(--color-primary-rgb),0.45));">analytics</span>
+            <span class="material-symbols-rounded" style="color: var(--color-primary-on-surface);font-size:24px;filter:drop-shadow(0 0 8px rgba(var(--color-primary-rgb),0.45));">analytics</span>
             <h2 style="font-family:'Plus Jakarta Sans',sans-serif;font-size:var(--text-lg);font-weight:800;color:var(--text-primary);letter-spacing:-0.02em;margin:0;">Smart Analytics</h2>
           </div>
           <div style="display:flex;gap:6px;" id="analytics-tabs">
@@ -77,7 +77,7 @@ export class AnalyticsDashboard {
           <div class="card" style="padding:20px;background:rgba(108,92,231,0.02);border:1px solid rgba(108,92,231,0.1);border-radius:16px;" id="ai-insight-card">
             <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
               <span style="font-size:16px;">💡</span>
-              <span style="font-family:'Plus Jakarta Sans',sans-serif;font-size:var(--text-xs);font-weight:700;color:rgba(162,155,254,0.55);letter-spacing:0.06em;text-transform:uppercase;">AI Insight</span>
+              <span style="font-family:'Plus Jakarta Sans',sans-serif;font-size:var(--text-xs);font-weight:700;color:var(--nextgenos-purple-on-surface);letter-spacing:0.06em;text-transform:uppercase;">AI Insight</span>
             </div>
             <div style="color:var(--text-secondary);font-size:var(--text-sm);line-height:1.6;font-weight:500;" id="ai-insight-text">Analyzing your data...</div>
           </div>
@@ -85,7 +85,7 @@ export class AnalyticsDashboard {
           <!-- Reports & Downloads -->
           <div class="card card-glass" style="padding:20px;background:rgba(255,255,255,0.01);border:1px solid var(--border-glass);border-radius:16px;display:flex;flex-direction:column;gap:16px;">
             <div style="font-family:'Plus Jakarta Sans',sans-serif;font-size:var(--text-sm);font-weight:700;color:var(--text-primary);display:flex;align-items:center;gap:8px;">
-              <span class="material-symbols-rounded" style="color:var(--color-primary);font-size:20px;">table_view</span>
+              <span class="material-symbols-rounded" style="color: var(--color-primary-on-surface);font-size:20px;">table_view</span>
               <span>Business Reports & CSV Export</span>
             </div>
             <p style="font-size:var(--text-xs);color:var(--text-secondary);line-height:1.5;margin:0;font-weight:500;">
@@ -108,7 +108,7 @@ export class AnalyticsDashboard {
                 cursor:pointer;
                 transition:all 0.2s;
               ">
-                <span class="material-symbols-rounded" style="font-size:18px;color:var(--color-success);">today</span>
+                <span class="material-symbols-rounded" style="font-size:18px;color:var(--color-success-on-surface);">today</span>
                 Download Today's Report
               </button>
               
@@ -127,7 +127,7 @@ export class AnalyticsDashboard {
                 cursor:pointer;
                 transition:all 0.2s;
               ">
-                <span class="material-symbols-rounded" style="font-size:18px;color:var(--color-primary);">date_range</span>
+                <span class="material-symbols-rounded" style="font-size:18px;color: var(--color-primary-on-surface);">date_range</span>
                 Download Weekly Report
               </button>
               
@@ -295,7 +295,7 @@ export class AnalyticsDashboard {
     const container = document.getElementById('analytics-kpis');
     if (!container) return;
     const kpis = [
-      { label: "TOTAL REVENUE", value: formatCurrency(stats.revenue), color: 'var(--color-success)', glow: 'rgba(var(--color-success-rgb),0.25)' },
+      { label: "TOTAL REVENUE", value: formatCurrency(stats.revenue), color: 'var(--color-success-on-surface)', glow: 'rgba(var(--color-success-rgb),0.25)' },
       { label: "TOTAL ORDERS", value: stats.orders, color: 'var(--color-primary)', glow: 'rgba(var(--color-primary-rgb),0.25)' },
       { label: "AVG BILL VALUE", value: formatCurrency(stats.avg), color: 'var(--color-info)', glow: 'rgba(var(--color-info-rgb),0.25)' },
       { label: "GROWTH RATE", value: `${growth > 0 ? '+' : ''}${growth.toFixed(1)}%`, color: '#A29BFE', glow: 'rgba(108,92,231,0.25)' },
@@ -385,7 +385,7 @@ export class AnalyticsDashboard {
           <div style="font-size:var(--text-sm);color:var(--text-primary);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(item.name)}</div>
         </div>
         <div style="text-align:right;flex-shrink:0;">
-          <div style="font-size:var(--text-xs);color:var(--color-primary);font-weight:700;">${item.qty} sold</div>
+          <div style="font-size:var(--text-xs);color: var(--color-primary-on-surface);font-weight:700;">${item.qty} sold</div>
           <div style="font-size:0.65rem;color:var(--text-muted);font-weight:500;">${formatCurrency(item.revenue)}</div>
         </div>
       </div>

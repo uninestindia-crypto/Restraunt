@@ -55,7 +55,7 @@
 }
 
 .btn:disabled {
-  opacity: 0.4;
+  /* Removed: stacked on --text-muted this landed around 1.9:1. */
   cursor: not-allowed;
   pointer-events: none;
 }
@@ -63,7 +63,9 @@
 /* ── Button Variants ── */
 
 .btn-primary {
-  background: var(--gradient-primary);
+  /* Gradient runs to --color-primary-fill so white label text clears 4.5:1;
+     the lighter brand orange alone gave white only 3.04:1. */
+  background: linear-gradient(135deg, var(--color-primary-fill) 0%, var(--color-primary) 100%);
   color: #FFFFFF;
   border: 1px solid rgba(255, 255, 255, 0.18);
   box-shadow: var(--shadow-sm), var(--shadow-primary);
@@ -202,7 +204,7 @@
 }
 
 .card-glass {
-  background: rgba(11, 11, 15, 0.4);
+  background: var(--glass-bg);
   backdrop-filter: var(--glass-backdrop-filter);
   -webkit-backdrop-filter: var(--glass-backdrop-filter);
   border: 1px solid var(--glass-border);
@@ -214,7 +216,7 @@
 .card-glass:hover {
   border-color: var(--glass-border-active);
   transform: translateY(-6px) scale(1.015);
-  background: rgba(11, 11, 15, 0.65);
+  background: var(--glass-bg);
   box-shadow: var(--shadow-xl), var(--shadow-primary);
 }
 
@@ -239,7 +241,7 @@
 
 .badge-primary {
   background: rgba(var(--color-primary-rgb), 0.12);
-  color: var(--color-primary);
+  color: var(--color-primary-on-surface);
   border-color: rgba(var(--color-primary-rgb), 0.2);
 }
 
@@ -480,7 +482,7 @@ textarea.input {
 }
 
 .tab.active {
-  background: var(--color-primary);
+  background: var(--color-primary-fill);
   color: #FFFFFF;
   border-color: rgba(255, 255, 255, 0.1);
   box-shadow: 0 4px 15px rgba(var(--color-primary-rgb), 0.35);
@@ -511,7 +513,7 @@ textarea.input {
   background: rgba(255, 255, 255, 0.06);
   border-radius: 50%;
   border: none;
-  color: var(--color-primary);
+  color: var(--color-primary-on-surface);
   font-size: 1.1rem;
   cursor: pointer;
   transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1),
@@ -740,7 +742,7 @@ textarea.input {
   justify-content: space-between;
   gap: 20px;
   padding: 16px 24px;
-  background: rgba(15, 15, 26, 0.75);
+  background: var(--glass-bg);
   backdrop-filter: blur(20px) saturate(160%);
   -webkit-backdrop-filter: blur(20px) saturate(160%);
   border: 1px solid rgba(255, 107, 53, 0.25);
@@ -784,7 +786,7 @@ textarea.input {
 
 .pwa-update-icon {
   font-size: 28px;
-  color: var(--color-primary);
+  color: var(--color-primary-on-surface);
   background: rgba(255, 107, 53, 0.15);
   padding: 8px;
   border-radius: var(--radius-md);
@@ -856,7 +858,7 @@ textarea.input {
   align-items: center;
   justify-content: space-between;
   padding: 16px 24px;
-  background: rgba(9, 9, 14, 0.85);
+  background: var(--glass-bg);
   backdrop-filter: var(--glass-backdrop-filter);
   -webkit-backdrop-filter: var(--glass-backdrop-filter);
   border-bottom: 1px solid var(--border-glass);
@@ -881,7 +883,7 @@ textarea.input {
 }
 
 .header-bar-title span {
-  color: var(--color-primary);
+  color: var(--color-primary-on-surface);
   font-size: 24px;
   filter: drop-shadow(0 0 8px var(--color-primary-glow));
 }
@@ -1148,7 +1150,7 @@ textarea.input {
 }
 
 .settings-card-heading-icon {
-  color: var(--color-primary);
+  color: var(--color-primary-on-surface);
   filter: drop-shadow(0 0 4px rgba(var(--color-primary-rgb), 0.3));
 }
 
@@ -1238,7 +1240,7 @@ textarea.input {
 .txt-primary { color: var(--text-primary); }
 .txt-secondary { color: var(--text-secondary); }
 .txt-muted { color: var(--text-muted); }
-.txt-brand { color: var(--color-primary); }
+.txt-brand { color: var(--color-primary-on-surface); }
 .txt-success { color: var(--color-success); }
 .txt-danger { color: var(--color-danger); }
 .txt-warning { color: var(--color-warning); }
@@ -1313,7 +1315,7 @@ textarea.input {
   font-family: var(--font-display);
   font-size: 2.6rem;
   font-weight: 800;
-  color: var(--color-primary);
+  color: var(--color-primary-on-surface);
   line-height: 1;
   letter-spacing: -0.03em;
   filter: drop-shadow(0 0 12px rgba(var(--color-primary-rgb), 0.35));
@@ -1447,7 +1449,7 @@ textarea.input {
   font-family: var(--font-display);
   font-size: 1.5rem;
   font-weight: 800;
-  color: var(--color-primary);
+  color: var(--color-primary-on-surface);
   margin-bottom: 4px;
 }
 

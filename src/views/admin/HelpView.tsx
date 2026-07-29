@@ -103,7 +103,7 @@ function HelpCenterComponent() {
             <div style={{ display: 'flex', gap: '8px', margin: '16px 0', fontSize: '11px', justifyContent: 'space-between', flexWrap: 'wrap' }}>
               <span style={{ background: 'rgba(var(--color-danger-rgb), 0.1)', border: '1px solid rgba(var(--color-danger-rgb),0.2)', padding: '6px 10px', borderRadius: '4px', color: '#EF4444', fontWeight: 700 }}>1. PENDING (Unpaid/Self)</span>
               <span style={{ background: 'rgba(var(--color-warning-rgb), 0.1)', border: '1px solid rgba(var(--color-warning-rgb),0.2)', padding: '6px 10px', borderRadius: '4px', color: '#F59E0B', fontWeight: 700 }}>2. PREPARING</span>
-              <span style={{ background: 'rgba(var(--color-success-rgb), 0.1)', border: '1px solid rgba(var(--color-success-rgb),0.2)', padding: '6px 10px', borderRadius: '4px', color: '#10B981', fontWeight: 700 }}>3. READY</span>
+              <span style={{ background: 'rgba(var(--color-success-rgb), 0.1)', border: '1px solid rgba(var(--color-success-rgb),0.2)', padding: '6px 10px', borderRadius: '4px', color: 'var(--color-success-on-surface)', fontWeight: 700 }}>3. READY</span>
               <span style={{ background: 'rgba(99, 102, 241, 0.1)', border: '1px solid rgba(99,102,241,0.2)', padding: '6px 10px', borderRadius: '4px', color: '#6366F1', fontWeight: 700 }}>4. COMPLETED / PAID</span>
             </div>
           </div>
@@ -174,7 +174,7 @@ function HelpCenterComponent() {
             <div className="help-tip-box">
               <strong>💡 Sync Status Dot</strong>
               Monitor the cloud icon in the header:
-              <br />• <span style={{ color: '#10B981', fontWeight: 700 }}>Green (Cloud Active):</span> Network online, database in sync.
+              <br />• <span style={{ color: 'var(--color-success-on-surface)', fontWeight: 700 }}>Green (Cloud Active):</span> Network online, database in sync.
               <br />• <span style={{ color: '#F59E0B', fontWeight: 700 }}>Orange (Syncing):</span> Pushing offline logs.
               <br />• <span style={{ color: '#EF4444', fontWeight: 700 }}>Red (Offline):</span> Running on local storage database.
             </div>
@@ -276,8 +276,10 @@ function HelpCenterComponent() {
         </div>
       </div>
 
-      {/* Documentation Viewport */}
-      <div className="help-content-viewport">
+      {/* Documentation Viewport. It scrolls but holds only static prose, so it
+          needs to be focusable in its own right for keyboard users to reach
+          the overflowing content (WCAG 2.1.1). */}
+      <div className="help-content-viewport" tabIndex={0} role="region" aria-label="Help documentation">
         <div style={{ maxWidth: '800px', margin: '0 auto', width: '100%', display: 'flex', flexDirection: 'column', gap: '32px' }}>
           {renderSectionContent()}
         </div>
@@ -370,10 +372,10 @@ function HelpCenterComponent() {
         .help-nav-btn.active {
           background: rgba(var(--color-primary-rgb), 0.08);
           border-color: rgba(var(--color-primary-rgb), 0.2);
-          color: var(--color-primary);
+          color: var(--color-primary-on-surface);
         }
         .help-nav-btn.active span {
-          color: var(--color-primary);
+          color: var(--color-primary-on-surface);
         }
 
         .help-doc-section h1 {
@@ -464,7 +466,7 @@ function HelpCenterComponent() {
           height: 28px;
           border-radius: 50%;
           background: rgba(var(--color-primary-rgb), 0.1);
-          color: var(--color-primary);
+          color: var(--color-primary-on-surface);
           display: flex;
           align-items: center;
           justify-content: center;

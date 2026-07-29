@@ -129,7 +129,7 @@ export class CustomersView {
     if (kpis) {
       kpis.innerHTML = [
         { label: 'TOTAL', value: customers.length, color: 'var(--text-primary)' },
-        { label: 'ACTIVE (30d)', value: active, color: 'var(--color-success)' },
+        { label: 'ACTIVE (30d)', value: active, color: 'var(--color-success-on-surface)' },
         { label: 'AVG POINTS', value: avgPoints, color: '#A29BFE' },
         { label: 'GOLD+', value: topTier, color: '#FFD700' },
       ].map(k => `
@@ -157,7 +157,7 @@ export class CustomersView {
       const lastVisit = c.lastVisit ? new Date(c.lastVisit).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : 'Never';
       return `
         <div class="premium-card">
-          <div class="premium-card-avatar" style="background:rgba(255,107,53,0.08);border:1px solid rgba(255,107,53,0.15);color:var(--color-primary);">${escapeHtml((c.name || '?')[0].toUpperCase())}</div>
+          <div class="premium-card-avatar" style="background:rgba(255,107,53,0.08);border:1px solid rgba(255,107,53,0.15);color: var(--color-primary-on-surface);">${escapeHtml((c.name || '?')[0].toUpperCase())}</div>
           <div class="premium-card-body">
             <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
               <span class="premium-card-title">${escapeHtml(c.name || 'Unknown')}</span>
@@ -166,7 +166,7 @@ export class CustomersView {
             <div style="font-size:0.7rem;color:var(--text-muted);margin-top:3px;">📱 ${escapeHtml(c.phone || '—')} · Last: ${escapeHtml(lastVisit)}</div>
           </div>
           <div style="text-align:right;flex-shrink:0;">
-            <div style="font-size:var(--text-sm);font-weight:700;color:var(--color-primary);">${formatCurrency(c.totalSpent || 0)}</div>
+            <div style="font-size:var(--text-sm);font-weight:700;color: var(--color-primary-on-surface);">${formatCurrency(c.totalSpent || 0)}</div>
             <div style="font-size:0.65rem;color:var(--text-muted);margin-top:2px;">${c.visitCount || 0} visits · ${c.loyaltyPoints || 0} pts</div>
           </div>
         </div>`;

@@ -186,7 +186,7 @@ export function Dashboard() {
           width: 8px;
           height: 8px;
           border-radius: 50%;
-          background-color: var(--color-success);
+          background-color: var(--color-success-on-surface);
           animation: heartbeat 2s infinite ease-in-out;
           display: inline-block;
           box-shadow: 0 0 8px var(--color-success);
@@ -211,7 +211,7 @@ export function Dashboard() {
           border-color: var(--border-active);
         }
         .stats-card-v2.revenue {
-          border-left-color: var(--color-success);
+          border-left-color: var(--color-success-on-surface);
           background: linear-gradient(135deg, rgba(var(--color-success-rgb), 0.04) 0%, transparent 100%),
                       repeating-linear-gradient(45deg, rgba(var(--color-success-rgb), 0.01) 0px, rgba(var(--color-success-rgb), 0.01) 1px, transparent 1px, transparent 8px),
                       var(--bg-surface);
@@ -244,10 +244,10 @@ export function Dashboard() {
           <div style={{ display: 'flex', justifySelf: 'stretch', justifyContent: 'space-between', alignItems: 'center' }}>
             <span className="stats-card-label" style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-secondary)', letterSpacing: '0.05em' }}>TODAY'S REVENUE</span>
             <div style={{ width: '38px', height: '38px', borderRadius: '50%', background: 'rgba(var(--color-success-rgb), 0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <span className="material-symbols-rounded" style={{ color: 'var(--color-success)', fontSize: '18px' }}>payments</span>
+              <span className="material-symbols-rounded" style={{ color: 'var(--color-success-on-surface)', fontSize: '18px' }}>payments</span>
             </div>
           </div>
-          <div className="stats-card-value" style={{ color: 'var(--color-success)', filter: 'drop-shadow(0 0 10px rgba(var(--color-success-rgb), 0.2))', fontSize: '1.8rem', fontWeight: 800, marginTop: '8px' }}>
+          <div className="stats-card-value" style={{ color: 'var(--color-success-on-surface)', filter: 'drop-shadow(0 0 10px rgba(var(--color-success-rgb), 0.2))', fontSize: '1.8rem', fontWeight: 800, marginTop: '8px' }}>
             {formatCurrency(stats.totalRevenue)}
           </div>
         </div>
@@ -425,13 +425,13 @@ export function Dashboard() {
         {/* System Health */}
         <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '16px', background: 'linear-gradient(135deg, rgba(var(--color-success-rgb), 0.02) 0%, var(--glass-bg) 100%)', border: '1px solid var(--border-color)', borderLeft: '4px solid var(--color-success)', borderRadius: 'var(--radius-md)', padding: '24px', boxShadow: 'var(--shadow-sm)' }}>
           <div style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--text-sm)', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.01em', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span className="material-symbols-rounded" style={{ fontSize: '20px', color: 'var(--color-success)' }}>monitor_heart</span>
+            <span className="material-symbols-rounded" style={{ fontSize: '20px', color: 'var(--color-success-on-surface)' }}>monitor_heart</span>
             System Diagnostics
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
             {[
               { icon: 'cloud', label: 'Network Telemetry', value: storeState.isOnline ? 'Online' : 'Offline', color: storeState.isOnline ? 'var(--color-success)' : 'var(--color-danger)', heartbeat: storeState.isOnline },
-              { icon: 'person', label: 'Console Operator', value: activeStaff ? `${activeStaff.name} (${activeStaff.role})` : 'None', color: 'var(--color-success)' },
+              { icon: 'person', label: 'Console Operator', value: activeStaff ? `${activeStaff.name} (${activeStaff.role})` : 'None', color: 'var(--color-success-on-surface)' },
               { icon: 'groups', label: 'Active Staff Members', value: `${systemHealth.staffCount} staff`, color: 'var(--color-info)' },
               { icon: 'restaurant_menu', label: 'Menu Catalog Items', value: `${systemHealth.totalMenuItems} items`, color: 'var(--color-warning)' },
               { icon: 'receipt_long', label: 'Total Orders Logged', value: `${systemHealth.totalOrders}`, color: 'var(--color-primary)' },

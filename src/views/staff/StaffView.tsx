@@ -19,12 +19,12 @@ import { authService } from '../../services/auth';
 const CLOUD_REQUIRED_ROLES = ['owner', 'manager', 'cashier', 'kitchen', 'waiter', 'delivery', 'temporary_staff'];
 
 const ROLES = {
-  developer: { label: 'Developer', color: '#8B5CF6' },
-  owner: { label: 'Owner', color: '#FF6B35' },
+  developer: { label: 'Developer', color: 'var(--nextgenos-purple-on-surface)' },
+  owner: { label: 'Owner', color: 'var(--color-primary-on-surface)' },
   manager: { label: 'Manager', color: '#6C5CE7' },
-  cashier: { label: 'Cashier', color: '#10B981' },
+  cashier: { label: 'Cashier', color: 'var(--color-success-on-surface)' },
   kitchen: { label: 'Kitchen', color: '#F59E0B' },
-  waiter: { label: 'Waiter', color: '#3B82F6' },
+  waiter: { label: 'Waiter', color: 'var(--color-info)' },
   delivery: { label: 'Delivery', color: '#06B6D4' },
   temporary_staff: { label: 'Temporary Staff', color: '#E11D48' },
 };
@@ -193,9 +193,9 @@ export class StaffView {
 
     statusEl.innerHTML = `
       <div style="display:flex;align-items:center;gap:6px;padding:6px 10px;border-radius:var(--radius-sm);background:rgba(var(--color-success-rgb),0.08);border:1px solid rgba(var(--color-success-rgb),0.2);">
-        <span class="material-symbols-rounded" style="font-size:14px;color:var(--color-success);">verified</span>
+        <span class="material-symbols-rounded" style="font-size:14px;color:var(--color-success-on-surface);">verified</span>
         <div>
-          <span style="font-size:0.7rem;color:var(--color-success);font-weight:600;">Verified: ${escapeHtml(data.email)}</span>
+          <span style="font-size:0.7rem;color:var(--color-success-on-surface);font-weight:600;">Verified: ${escapeHtml(data.email)}</span>
           ${data.confirmed ? '' : '<span style="font-size:0.6rem;color:var(--text-muted);margin-left:4px;">(email not confirmed)</span>'}
           ${membershipNote}
         </div>
@@ -364,7 +364,7 @@ export class StaffView {
                 <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:6px;">
                   <span style="font-size:0.6rem;padding:2px 8px;border-radius:6px;font-weight:700;color:${role.color};background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.06);">${role.label}</span>
                   ${expressBadge}
-                  ${s.cloudUserId ? `<span style="font-size:0.6rem;padding:2px 8px;border-radius:6px;font-weight:700;color:var(--color-success);background:rgba(var(--color-success-rgb),0.08);border:1px solid rgba(var(--color-success-rgb),0.15);"><span class="material-symbols-rounded" style="font-size:10px;vertical-align:middle;">verified</span> Cloud</span>` : ''}
+                  ${s.cloudUserId ? `<span style="font-size:0.6rem;padding:2px 8px;border-radius:6px;font-weight:700;color:var(--color-success-on-surface);background:rgba(var(--color-success-rgb),0.08);border:1px solid rgba(var(--color-success-rgb),0.15);"><span class="material-symbols-rounded" style="font-size:10px;vertical-align:middle;">verified</span> Cloud</span>` : ''}
                   <span style="font-size:0.6rem;color:${s.isActive ? 'var(--color-success)' : 'var(--color-error)'};font-weight:700;">${s.isActive ? '● Active' : '● Inactive'}</span>
                 </div>
               </div>
@@ -410,8 +410,8 @@ export class StaffView {
             if (statusEl) {
               statusEl.innerHTML = `
                 <div style="display:flex;align-items:center;gap:6px;padding:6px 10px;border-radius:var(--radius-sm);background:rgba(var(--color-success-rgb),0.08);border:1px solid rgba(var(--color-success-rgb),0.2);">
-                  <span class="material-symbols-rounded" style="font-size:14px;color:var(--color-success);">verified</span>
-                  <span style="font-size:0.7rem;color:var(--color-success);font-weight:600;">Already linked to cloud account</span>
+                  <span class="material-symbols-rounded" style="font-size:14px;color:var(--color-success-on-surface);">verified</span>
+                  <span style="font-size:0.7rem;color:var(--color-success-on-surface);font-weight:600;">Already linked to cloud account</span>
                 </div>`;
             }
           }
@@ -449,7 +449,7 @@ export class StaffView {
               <div style="font-size:0.7rem;color:var(--text-muted);margin-top:2px;">${escapeHtml(s.date || '—')}</div>
             </div>
             <div style="text-align:right;">
-              <div style="font-size:var(--text-xs);color:var(--color-success);font-weight:600;">${escapeHtml(s.clockIn || '—')} → ${escapeHtml(s.clockOut || 'Active')}</div>
+              <div style="font-size:var(--text-xs);color:var(--color-success-on-surface);font-weight:600;">${escapeHtml(s.clockIn || '—')} → ${escapeHtml(s.clockOut || 'Active')}</div>
             </div>
           </div>
         `).join('')}</div>`;
@@ -460,7 +460,7 @@ export class StaffView {
         '<div class="empty-state"><span class="material-symbols-rounded">history</span><p>No activity logged yet.</p></div>' :
         `<div class="content-grid">${recent.map(l => `
           <div class="card" style="display:flex; gap:12px; align-items:center; flex-direction:row;">
-            <span class="material-symbols-rounded" style="font-size:18px;color:var(--color-primary); flex-shrink:0;">history</span>
+            <span class="material-symbols-rounded" style="font-size:18px;color: var(--color-primary-on-surface); flex-shrink:0;">history</span>
             <div style="flex:1; min-width:0;">
               <div style="font-size:var(--text-xs);color:var(--text-primary);font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(l.action || 'Action')}</div>
               <div style="font-size:0.65rem;color:var(--text-muted);margin-top:2px;">${escapeHtml(l.staffName || 'System')} · ${new Date(l.timestamp).toLocaleString('en-IN')}</div>

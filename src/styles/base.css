@@ -91,7 +91,7 @@ body {
 }
 
 :root[data-theme="light"] .tab.active {
-  color: var(--color-primary);
+  color: var(--color-primary-on-surface);
   border-color: var(--color-primary);
 }
 
@@ -237,7 +237,7 @@ h1, h2, h3, h4, h5, h6 {
 
 /* ── Anchor Defaults ── */
 a {
-  color: var(--color-primary);
+  color: var(--color-primary-on-surface);
   text-decoration: none;
   transition: color var(--transition-fast);
 }
@@ -356,7 +356,7 @@ b {
 .text-2xl { font-size: var(--text-2xl); }
 
 /* ── Text Colors ── */
-.text-primary-color { color: var(--color-primary); }
+.text-primary-color { color: var(--color-primary-on-surface); }
 .text-success       { color: var(--color-success); }
 .text-danger        { color: var(--color-danger); }
 .text-warning       { color: var(--color-warning); }

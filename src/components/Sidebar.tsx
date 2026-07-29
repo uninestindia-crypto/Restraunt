@@ -92,10 +92,10 @@ export class Sidebar {
         <div class="sidebar-group" data-group-label="${group.label}" style="${displayStyle}">
           <div class="sidebar-group-label">${group.label}</div>
           ${visibleItems.map(item => `
-            <div class="sidebar-item ${this.activeHash === item.hash ? 'active' : ''}" data-route="${item.hash}" title="${item.label}">
-              <span class="material-symbols-rounded sidebar-icon">${item.icon}</span>
+            <a class="sidebar-item ${this.activeHash === item.hash ? 'active' : ''}" href="${item.hash}" data-route="${item.hash}" title="${item.label}"${this.activeHash === item.hash ? ' aria-current="page"' : ''}>
+              <span class="material-symbols-rounded sidebar-icon" aria-hidden="true">${item.icon}</span>
               <span class="sidebar-label">${item.label}</span>
-            </div>
+            </a>
           `).join('')}
         </div>
       `;
@@ -125,11 +125,13 @@ export class Sidebar {
       </div>
     `;
 
-    // Bind click events
+    // Nav items are anchors, so the href performs the navigation and keyboard
+    // activation comes for free. This only calls preventDefault so the browser
+    // does not also push a duplicate history entry.
     container.querySelectorAll('.sidebar-item[data-route]').forEach(item => {
-      item.addEventListener('click', () => {
-        const hash = item.dataset.route;
-        window.location.hash = hash;
+      item.addEventListener('click', (event) => {
+        event.preventDefault();
+        window.location.hash = item.dataset.route;
       });
     });
 

@@ -13,9 +13,9 @@ import { db } from '../../db/database';
 import { escapeHtml, formatCurrency, parseOrderItems } from '../../utils/helpers';
 
 const CHANNELS = [
-  { id: 'pos', name: 'POS Counter', icon: 'point_of_sale', status: 'active', color: '#FF6B35' },
-  { id: 'kiosk', name: 'Self-Order Kiosk', icon: 'touch_app', status: 'active', color: '#10B981' },
-  { id: 'qr', name: 'QR Table Order', icon: 'qr_code_scanner', status: 'coming', color: '#3B82F6' },
+  { id: 'pos', name: 'POS Counter', icon: 'point_of_sale', status: 'active', color: 'var(--color-primary-on-surface)' },
+  { id: 'kiosk', name: 'Self-Order Kiosk', icon: 'touch_app', status: 'active', color: 'var(--color-success-on-surface)' },
+  { id: 'qr', name: 'QR Table Order', icon: 'qr_code_scanner', status: 'coming', color: 'var(--color-info)' },
   { id: 'whatsapp', name: 'WhatsApp Orders', icon: 'chat', status: 'coming', color: '#25D366' },
 ];
 
@@ -41,8 +41,8 @@ export class ChannelHub {
 
     this.container.innerHTML = `
       <div style="flex:1;display:flex;flex-direction:column;height:100%;overflow:hidden;background:var(--bg-primary);">
-        <div style="display:flex;align-items:center;gap:10px;padding:16px 24px;background:rgba(9,9,14,0.8);backdrop-filter:blur(20px);border-bottom:1px solid var(--border-glass);z-index:10;">
-          <span class="material-symbols-rounded" style="color:var(--color-primary);font-size:24px;">hub</span>
+        <div style="display:flex;align-items:center;gap:10px;padding:16px 24px;background:var(--glass-bg);backdrop-filter:blur(20px);border-bottom:1px solid var(--border-glass);z-index:10;">
+          <span class="material-symbols-rounded" style="color: var(--color-primary-on-surface);font-size:24px;">hub</span>
           <h2 style="font-family:'Plus Jakarta Sans',sans-serif;font-size:var(--text-lg);font-weight:800;color:var(--text-primary);margin:0;">Multi-Channel Hub</h2>
         </div>
         <div style="flex:1;overflow-y:auto;padding:20px 24px;display:flex;flex-direction:column;gap:20px;">
@@ -56,8 +56,8 @@ export class ChannelHub {
                 <div style="font-family:'Plus Jakarta Sans',sans-serif;font-size:var(--text-sm);font-weight:800;color:var(--text-primary);margin-bottom:8px;">${ch.name}</div>
                 ${ch.status === 'active' ? `
                   <div style="display:flex;gap:16px;">
-                    <div><div style="font-size:0.6rem;color:var(--text-muted);font-weight:600;">Orders</div><div style="font-size:1.1rem;font-weight:800;color:var(--color-primary);font-family:'Plus Jakarta Sans',sans-serif;">${ch.orders}</div></div>
-                    <div><div style="font-size:0.6rem;color:var(--text-muted);font-weight:600;">Revenue</div><div style="font-size:1.1rem;font-weight:800;color:var(--color-success);font-family:'Plus Jakarta Sans',sans-serif;">${formatCurrency(ch.revenue)}</div></div>
+                    <div><div style="font-size:0.6rem;color:var(--text-muted);font-weight:600;">Orders</div><div style="font-size:1.1rem;font-weight:800;color: var(--color-primary-on-surface);font-family:'Plus Jakarta Sans',sans-serif;">${ch.orders}</div></div>
+                    <div><div style="font-size:0.6rem;color:var(--text-muted);font-weight:600;">Revenue</div><div style="font-size:1.1rem;font-weight:800;color:var(--color-success-on-surface);font-family:'Plus Jakarta Sans',sans-serif;">${formatCurrency(ch.revenue)}</div></div>
                   </div>
                 ` : '<div style="font-size:0.7rem;color:var(--text-muted);font-weight:500;margin-top:4px;">Integration available soon via NextGenOS</div>'}
               </div>
@@ -72,7 +72,7 @@ export class ChannelHub {
                   const items = parseOrderItems(o.items);
                   const channel = o.channel || 'pos';
                   const chCfg = CHANNELS.find(c => c.id === channel) || CHANNELS[0];
-                  const statusColor = o.status === 'completed' ? '#10B981' : o.status === 'preparing' ? '#F59E0B' : o.status === 'ready' ? '#3B82F6' : 'var(--text-muted)';
+                  const statusColor = o.status === 'completed' ? 'var(--color-success-on-surface)' : o.status === 'preparing' ? '#F59E0B' : o.status === 'ready' ? 'var(--color-info)' : 'var(--text-muted)';
                   const timeAgo = this.timeAgo(o.createdAt);
                   const orderToken = o.displayToken || String(o.orderNumber || '').split('-').pop() || '—';
                   return `
@@ -86,7 +86,7 @@ export class ChannelHub {
                         <div style="font-size:0.65rem;color:var(--text-muted);margin-top:2px;">${items.length} items · ${escapeHtml(timeAgo)}</div>
                       </div>
                       <div style="text-align:right;flex-shrink:0;">
-                        <div style="font-size:var(--text-xs);font-weight:700;color:var(--color-primary);">${formatCurrency(o.total || 0)}</div>
+                        <div style="font-size:var(--text-xs);font-weight:700;color: var(--color-primary-on-surface);">${formatCurrency(o.total || 0)}</div>
                         <div style="font-size:0.55rem;color:${statusColor};font-weight:700;text-transform:uppercase;margin-top:2px;">${escapeHtml(o.status || 'new')}</div>
                       </div>
                     </div>`;

@@ -30,6 +30,9 @@
   /* ── NextGenOS Platform Brand ────────────────── */
   --nextgenos-purple: #8B5CF6;
   --nextgenos-purple-rgb: 139, 92, 246;
+  /* Purple as *text*. The lifted tint reads on obsidian; light mode needs the
+     deepened shade to clear AA on white. */
+  --nextgenos-purple-on-surface: #B9AEFF;
   --nextgenos-purple-glow: rgba(139, 92, 246, 0.35);
   --nextgenos-purple-bg: rgba(139, 92, 246, 0.06);
   --nextgenos-purple-border: rgba(139, 92, 246, 0.2);
@@ -56,9 +59,18 @@
   --color-primary-hover: #FF704D;
   --color-primary-rgb: 255, 94, 54;
   --color-primary-glow: rgba(255, 94, 54, 0.22);
+
+  /* Brand orange as *text* on a surface. #FF5E36 measures only ~3.0:1 on light
+     surfaces, so light mode needs a deepened shade to stay AA-legible while
+     still reading as the brand. */
+  --color-primary-on-surface: #FF8960;
+  /* Brand orange as a *fill* behind white text. #FF5E36 gives white 3.04:1,
+     below the 4.5:1 needed for body-size labels. */
+  --color-primary-fill: #C4401F;
   
   --color-success: #10B981;
   --color-success-rgb: 16, 185, 129;
+  --color-success-on-surface: #10B981;
   --color-danger: #EF4444;
   --color-danger-rgb: 239, 68, 68;
   --color-warning: #F59E0B;
@@ -68,7 +80,11 @@
   
   --text-primary: #F9FAFB; /* Alabaster white, highly readable */
   --text-secondary: #94A3B8; /* Slate gray, Stripe-inspired */
-  --text-muted: #575765;
+  /* Was #575765, which measured 2.8:1 on the obsidian backgrounds and failed
+     WCAG AA everywhere it was used. #7C8899 is ~5.6:1 on --bg-primary and
+     ~5.4:1 on --bg-secondary, so it stays subordinate to --text-secondary
+     while remaining legible. Do not darken without re-checking contrast. */
+  --text-muted: #7C8899;
   
   /* ── Glassmorphism & Borders ── */
   --border-color: rgba(255, 255, 255, 0.04);
@@ -180,19 +196,23 @@
   --color-primary-hover: #E04B24;
   --color-primary-rgb: 255, 94, 54;
   --color-primary-glow: rgba(255, 94, 54, 0.12);
+  --color-primary-on-surface: #A8330F; /* ~6.1:1 on tinted white */
+  --color-primary-fill: #C4401F;       /* white on this = ~5.1:1 */
+  --nextgenos-purple-on-surface: #5B34C7; /* ~6.6:1 on white */
 
   --color-success: #059669;
   --color-success-rgb: 5, 150, 105;
-  --color-danger: #DC2626;
+  --color-success-on-surface: #046B4C; /* ~5.4:1 on the light tinted cards */
+  --color-danger: #B91C1C;
   --color-danger-rgb: 220, 38, 38;
-  --color-warning: #D97706;
+  --color-warning: #A15C07;
   --color-warning-rgb: 217, 119, 6;
-  --color-info: #2563EB;
+  --color-info: #1D4ED8;
   --color-info-rgb: 37, 99, 235;
 
   --text-primary: #0F172A;
   --text-secondary: #475569;
-  --text-muted: #64748B;
+  --text-muted: #556070; /* #64748B was 4.14:1 on the tinted cards; this is ~5.6:1 there and ~6.1:1 on the page background */
 
   /* ── Borders & Glass ── */
   --border-color: rgba(15, 23, 42, 0.08);
@@ -258,19 +278,23 @@
     --color-primary-hover: #E04B24;
     --color-primary-rgb: 255, 94, 54;
     --color-primary-glow: rgba(255, 94, 54, 0.12);
+    --color-primary-on-surface: #A8330F; /* ~6.1:1 on tinted white */
+    --color-primary-fill: #C4401F;       /* white on this = ~5.1:1 */
+    --nextgenos-purple-on-surface: #5B34C7; /* ~6.6:1 on white */
 
     --color-success: #059669;
     --color-success-rgb: 5, 150, 105;
-    --color-danger: #DC2626;
+    --color-success-on-surface: #046B4C; /* ~5.4:1 on the light tinted cards */
+    --color-danger: #B91C1C;
     --color-danger-rgb: 220, 38, 38;
-    --color-warning: #D97706;
+    --color-warning: #A15C07;
     --color-warning-rgb: 217, 119, 6;
-    --color-info: #2563EB;
+    --color-info: #1D4ED8;
     --color-info-rgb: 37, 99, 235;
 
     --text-primary: #0F172A;
     --text-secondary: #475569;
-    --text-muted: #64748B;
+    --text-muted: #556070; /* #64748B was 4.14:1 on the tinted cards; this is ~5.6:1 there and ~6.1:1 on the page background */
 
     --border-color: rgba(15, 23, 42, 0.08);
     --border-active: rgba(15, 23, 42, 0.16);

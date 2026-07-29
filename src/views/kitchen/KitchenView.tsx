@@ -28,9 +28,9 @@ export class KitchenView {
     this.container.innerHTML = `
       <div style="flex: 1; display: flex; flex-direction: column; height: 100%; overflow: hidden; background: var(--bg-primary);">
         <!-- Sub-Header / Controls -->
-        <div style="display: flex; justify-content: space-between; align-items: center; padding: 16px 24px; background: rgba(9,9,14,0.8); backdrop-filter: blur(20px); border-bottom: 1px solid var(--border-glass); z-index: 10;">
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 16px 24px; background: var(--glass-bg); backdrop-filter: blur(20px); border-bottom: 1px solid var(--border-glass); z-index: 10;">
           <div style="display: flex; align-items: center; gap: 10px;">
-            <span class="material-symbols-rounded" style="color: var(--color-primary); font-size: 24px; filter: drop-shadow(0 0 8px rgba(var(--color-primary-rgb), 0.45));">restaurant</span>
+            <span class="material-symbols-rounded" style="color: var(--color-primary-on-surface); font-size: 24px; filter: drop-shadow(0 0 8px rgba(var(--color-primary-rgb), 0.45));">restaurant</span>
             <h2 style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: var(--text-lg); font-weight: 800; color: var(--text-primary); letter-spacing: -0.02em; margin: 0;">Kitchen Display System</h2>
           </div>
           <button class="btn btn-secondary btn-sm" id="btn-refresh-kds" style="
@@ -445,7 +445,7 @@ export class KitchenView {
   checkEmptyState(element, message) {
     if (element.children.length === 0) {
       element.innerHTML = `
-        <div style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: var(--text-muted); opacity: 0.5; padding: 40px 0;">
+        <div style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: var(--text-muted); padding: 40px 0;">
           <span class="material-symbols-rounded" style="font-size: 32px; margin-bottom: 6px;">inbox</span>
           <span style="font-size: var(--text-xs);">${escapeHtml(message)}</span>
         </div>
@@ -547,7 +547,7 @@ export class KitchenView {
         <div style="display: flex; align-items: flex-start; justify-content: space-between; font-size: var(--text-sm); line-height: 1.5; padding: 4px 0;">
           <div style="flex: 1; min-width: 0; padding-right: 12px;">
             <div style="display: flex; align-items: center; gap: 8px;">
-              <span style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 800; color: var(--color-primary); font-size: 1.1rem; line-height: 1;">${Math.max(1, Number(item.quantity) || 1)}x</span>
+              <span style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 800; color: var(--color-primary-on-surface); font-size: 1.1rem; line-height: 1;">${Math.max(1, Number(item.quantity) || 1)}x</span>
               <span style="color: var(--text-primary); font-weight: 600; font-size: 0.95rem;">${escapeHtml(item.itemName || item.name || 'Item')}</span>
             </div>
             ${item.notes ? `<div style="font-size: var(--text-xs); color: #FF8960; font-weight: 500; font-style: italic; margin-left: 28px; margin-top: 4px; display: flex; align-items: center; gap: 4px;">
@@ -710,7 +710,7 @@ export class KitchenView {
           align-items: center;
           gap: 6px;
         ">
-          <span class="material-symbols-rounded" style="font-size: 14px; color: var(--color-primary);">person</span>
+          <span class="material-symbols-rounded" style="font-size: 14px; color: var(--color-primary-on-surface);">person</span>
           <span style="font-weight: 600;">${escapeHtml(order.customerName)}</span>
           ${order.customerPhone ? `<span style="color: var(--text-muted); font-size: 10px;">(${escapeHtml(order.customerPhone)})</span>` : ''}
         </div>

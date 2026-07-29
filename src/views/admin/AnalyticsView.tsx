@@ -302,7 +302,7 @@ export function AnalyticsView() {
           border-color: var(--border-active);
         }
         .stats-card-v3.revenue {
-          border-left-color: var(--color-success);
+          border-left-color: var(--color-success-on-surface);
           background: linear-gradient(135deg, rgba(var(--color-success-rgb), 0.04) 0%, transparent 100%),
                       repeating-linear-gradient(45deg, rgba(var(--color-success-rgb), 0.01) 0px, rgba(var(--color-success-rgb), 0.01) 1px, transparent 1px, transparent 8px),
                       var(--bg-surface);
@@ -389,10 +389,10 @@ export function AnalyticsView() {
           <div className="stats-card-v3 revenue">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span className="stats-card-label" style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-secondary)' }}>CLOUD REVENUE</span>
-              <span className="material-symbols-rounded" style={{ color: 'var(--color-success)', fontSize: '18px' }}>payments</span>
+              <span className="material-symbols-rounded" style={{ color: 'var(--color-success-on-surface)', fontSize: '18px' }}>payments</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: '12px' }}>
-              <span className="stats-card-value" style={{ color: 'var(--color-success)', filter: 'drop-shadow(0 0 8px rgba(var(--color-success-rgb), 0.15))', fontSize: '1.8rem', fontWeight: 800 }}>{formatCurrency(stats.totalRevenue)}</span>
+              <span className="stats-card-value" style={{ color: 'var(--color-success-on-surface)', filter: 'drop-shadow(0 0 8px rgba(var(--color-success-rgb), 0.15))', fontSize: '1.8rem', fontWeight: 800 }}>{formatCurrency(stats.totalRevenue)}</span>
               <svg width="64" height="24" style={{ overflow: 'visible' }}>
                 <polyline points={trendData.revenueSparkline} fill="none" stroke="var(--color-success)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
@@ -556,7 +556,7 @@ export function AnalyticsView() {
           <div className="card" style={{ padding: '24px', display: 'flex', flexDirection: 'column', height: '430px', background: 'linear-gradient(135deg, rgba(var(--color-success-rgb), 0.02) 0%, var(--glass-bg) 100%)', border: '1px solid var(--border-color)', borderLeft: '4px solid var(--color-success)', boxShadow: 'var(--shadow-sm)', borderRadius: 'var(--radius-md)' }}>
             <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--text-sm)', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span>Cloud Ledger Audit Trails</span>
-              <span style={{ fontSize: '9px', padding: '2px 8px', background: 'rgba(var(--color-success-rgb), 0.08)', border: '1px solid rgba(var(--color-success-rgb),0.2)', color: 'var(--color-success)', borderRadius: '4px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Sync Logs</span>
+              <span style={{ fontSize: '9px', padding: '2px 8px', background: 'rgba(var(--color-success-rgb), 0.08)', border: '1px solid rgba(var(--color-success-rgb),0.2)', color: 'var(--color-success-on-surface)', borderRadius: '4px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Sync Logs</span>
             </h3>
             <div style={{ flex: 1, overflowY: 'auto', border: '1px solid var(--border-glass)', borderRadius: '8px', background: 'var(--bg-secondary)' }} className="scrollbar-none">
               {stats.recentAudits.length === 0 ? (

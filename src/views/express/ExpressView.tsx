@@ -173,7 +173,7 @@ export class ExpressView {
               <!-- Compact Search -->
               <div class="compact-search">
                 <span class="material-symbols-rounded search-glass">search</span>
-                <input type="text" id="express-item-search" placeholder="Type to search..." autocomplete="off">
+                <input type="text" id="express-item-search" aria-label="Search menu items" placeholder="Type to search..." autocomplete="off">
               </div>
             </div>
 
@@ -232,7 +232,7 @@ export class ExpressView {
                   </select>
 
                   <!-- Customer Phone -->
-                  <input type="tel" id="express-cust-phone" class="meta-input" placeholder="📱 Phone number (Optional)" value="${escapeHtml(this.customerPhone)}">
+                  <input type="tel" id="express-cust-phone" class="meta-input" aria-label="Customer phone number (optional)" placeholder="📱 Phone number (Optional)" value="${escapeHtml(this.customerPhone)}">
                 </div>
               </div>
 
@@ -277,7 +277,7 @@ export class ExpressView {
       <div id="express-upi-modal" class="modal-overlay" style="display:none;">
         <div class="modal upi-modal-card">
           <h3 style="font-family:var(--font-display); font-weight:700; color:var(--text-primary); margin-bottom:12px;">Scan UPI QR</h3>
-          <p style="font-size:var(--text-sm); color:var(--text-secondary); margin-bottom:16px;">Scan to collect <strong id="upi-modal-amount" style="color:var(--color-primary);">₹0.00</strong></p>
+          <p style="font-size:var(--text-sm); color:var(--text-secondary); margin-bottom:16px;">Scan to collect <strong id="upi-modal-amount" style="color: var(--color-primary-on-surface);">₹0.00</strong></p>
           <div style="display:flex; justify-content:center; background:#ffffff; padding:16px; border-radius:12px; margin-bottom:20px; width:220px; margin-left:auto; margin-right:auto;">
             <canvas id="express-upi-canvas" style="width:200px; height:200px;"></canvas>
           </div>
@@ -405,12 +405,12 @@ export class ExpressView {
         }
 
         .icon-orange {
-          color: var(--color-primary);
+          color: var(--color-primary-on-surface);
           filter: drop-shadow(0 0 4px var(--color-primary-glow));
         }
 
         .icon-purple {
-          color: var(--nextgenos-purple);
+          color: var(--nextgenos-purple-on-surface);
           filter: drop-shadow(0 0 4px var(--nextgenos-purple-glow));
         }
 
@@ -451,7 +451,7 @@ export class ExpressView {
         }
 
         .category-chip.active {
-          background: var(--color-primary);
+          background: var(--color-primary-fill);
           color: #ffffff;
           border-color: var(--color-primary);
           box-shadow: 0 4px 12px rgba(var(--color-primary-rgb), 0.25);
@@ -543,7 +543,7 @@ export class ExpressView {
 
         .prod-price {
           font-weight: 700;
-          color: var(--color-primary);
+          color: var(--color-primary-on-surface);
           font-size: var(--text-xs);
         }
 
@@ -756,7 +756,7 @@ export class ExpressView {
         }
 
         .type-btn.active {
-          background: var(--color-primary);
+          background: var(--color-primary-fill);
           color: #ffffff;
           box-shadow: var(--shadow-sm);
         }
@@ -815,7 +815,7 @@ export class ExpressView {
           font-family: var(--font-display);
           font-size: 20px;
           font-weight: 800;
-          color: var(--color-primary);
+          color: var(--color-primary-on-surface);
         }
 
         .checkout-buttons-group {
@@ -918,7 +918,7 @@ export class ExpressView {
         }
 
         .compact-search:focus-within .search-glass {
-          color: var(--color-primary);
+          color: var(--color-primary-on-surface);
         }
 
         /* KDS Filter Tabs - iOS Segmented Control style */
@@ -1015,7 +1015,7 @@ export class ExpressView {
         .card-type {
           font-size: 10px;
           font-weight: 700;
-          color: var(--color-primary);
+          color: var(--color-primary-on-surface);
           background: rgba(var(--color-primary-rgb), 0.1);
           padding: 2px 8px;
           border-radius: var(--radius-full);
@@ -1056,7 +1056,7 @@ export class ExpressView {
         }
 
         .item-qty {
-          color: var(--color-primary);
+          color: var(--color-primary-on-surface);
           font-weight: 700;
           margin-right: 6px;
         }
@@ -1078,7 +1078,7 @@ export class ExpressView {
 
         .item-chk:checked {
           background: var(--color-success);
-          border-color: var(--color-success);
+          border-color: var(--color-success-on-surface);
         }
 
         .item-chk:checked::after {
@@ -1160,7 +1160,7 @@ export class ExpressView {
 
         .express-item-indicator span {
           font-size: 28px;
-          color: var(--color-primary);
+          color: var(--color-primary-on-surface);
         }
 
         /* Animation */
@@ -1279,7 +1279,7 @@ export class ExpressView {
 
           .mobile-cart-badge {
             background: #ffffff;
-            color: var(--color-primary);
+            color: var(--color-primary-on-surface);
             width: 22px;
             height: 22px;
             border-radius: 50%;
@@ -1616,7 +1616,7 @@ export class ExpressView {
       const itemsHtml = items.map(item => `
         <div class="card-item-row">
           <div><span class="item-qty">${Math.max(1, Number(item.quantity) || 1)}x</span>${escapeHtml(item.itemName || item.name || 'Item')}</div>
-          <input type="checkbox" class="item-chk">
+          <input type="checkbox" class="item-chk" aria-label="Mark ${escapeHtml(item.itemName || item.name || 'item')} as prepared">
         </div>
       `).join('');
 

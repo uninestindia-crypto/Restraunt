@@ -211,7 +211,7 @@ export class InventoryView {
           <div class="card">
             <div style="font-size:var(--text-sm);font-weight:700;color:var(--text-primary);">${escapeHtml(s.name)}</div>
             <div style="font-size:0.7rem;color:var(--text-muted);margin-top:4px;">📱 ${escapeHtml(s.phone || '—')} · ✉️ ${escapeHtml(s.email || '—')}</div>
-            <span style="display:inline-block;margin-top:8px;font-size:0.6rem;padding:2px 8px;border-radius:6px;font-weight:700;color:var(--color-primary);background:rgba(255,107,53,0.08);border:1px solid rgba(255,107,53,0.15);">${escapeHtml(s.category || 'Other')}</span>
+            <span style="display:inline-block;margin-top:8px;font-size:0.6rem;padding:2px 8px;border-radius:6px;font-weight:700;color: var(--color-primary-on-surface);background:rgba(255,107,53,0.08);border:1px solid rgba(255,107,53,0.15);">${escapeHtml(s.category || 'Other')}</span>
           </div>
         `).join('')}</div>`;
     }
