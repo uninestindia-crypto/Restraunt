@@ -17,6 +17,7 @@
 
 import { db, generateLocalUuid, getDisplayToken } from '../db/database';
 import { getSupabaseClient } from './supabaseClient';
+import { runWithHydrationGuard } from './hydrationGuard';
 
 const DEFAULT_STORE_ID = 'the-taste';
 
@@ -235,6 +236,33 @@ function mapRecipeToLocal(row) {
  * @param {boolean} options.publicOnly - Only pull menu data (for customer storefront)
  * @returns {Promise<{success: boolean, tables: Object}>}
  */
+/**
+ * Run a hydration transaction. Every local write inside `body` is an echo of
+ * cloud state, so the sync hooks must not replicate it back to Supabase.
+ */
+function hydrateTx(stores: any, body: () => Promise<void>) {
+  return runWithHydrationGuard(() => db.transaction('rw', stores, body));
+}
+
+/**
+ * Replace a local store's contents with the authoritative cloud rows.
+ *
+ * Deliberately NOT `clear()` + `bulkPut()`: `clear()` fires Dexie's 'deleting'
+ * hook for every row, which the sync layer replicates as a cloud DELETE. That
+ * raced the re-insert and permanently destroyed menu rows in Supabase. Only
+ * rows genuinely absent from the cloud payload are removed, and the hydration
+ * guard keeps even those from echoing back.
+ */
+async function replaceLocalStore(store: any, incoming: any[]) {
+  const incomingIds = new Set(incoming.map(row => row.id));
+  const staleIds = (await store.toCollection().primaryKeys())
+    .filter((id: any) => !incomingIds.has(id));
+  if (staleIds.length > 0) {
+    await store.bulkDelete(staleIds);
+  }
+  await store.bulkPut(incoming);
+}
+
 export async function fullPull(options: any = {}) {
   const { publicOnly = false, role = '' } = options;
   const client = await getClient();
@@ -259,10 +287,7 @@ export async function fullPull(options: any = {}) {
       console.error('[CloudDB] Failed to fetch menu categories from cloud:', catErr.message || catErr);
     } else if (categories?.length > 0) {
       const localCats = categories.map(mapCategoryToLocal);
-      await db.transaction('rw', db.menuCategories, async () => {
-        await db.menuCategories.clear();
-        await db.menuCategories.bulkPut(localCats);
-      });
+      await hydrateTx(db.menuCategories, () => replaceLocalStore(db.menuCategories, localCats));
       results.categories = localCats.length;
       console.log(`[CloudDB] Hydrated ${localCats.length} categories from cloud.`);
     }
@@ -276,10 +301,7 @@ export async function fullPull(options: any = {}) {
       console.error('[CloudDB] Failed to fetch menu items from cloud:', itemErr.message || itemErr);
     } else if (items?.length > 0) {
       const localItems = items.map(mapItemToLocal);
-      await db.transaction('rw', db.menuItems, async () => {
-        await db.menuItems.clear();
-        await db.menuItems.bulkPut(localItems);
-      });
+      await hydrateTx(db.menuItems, () => replaceLocalStore(db.menuItems, localItems));
       results.items = localItems.length;
       console.log(`[CloudDB] Hydrated ${localItems.length} menu items from cloud.`);
     }
@@ -296,10 +318,7 @@ export async function fullPull(options: any = {}) {
       } else if (tables?.length > 0) {
         const localTables = tables.map(mapTableToLocal);
         const tableStore = db.table('tables');
-        await db.transaction('rw', tableStore, async () => {
-          await tableStore.clear();
-          await tableStore.bulkPut(localTables);
-        });
+        await hydrateTx(tableStore, () => replaceLocalStore(tableStore, localTables));
         results.tables = localTables.length;
       }
       console.log('[CloudDB] Full pull complete (public-only mode).');
@@ -315,7 +334,7 @@ export async function fullPull(options: any = {}) {
       console.error('[CloudDB] Failed to fetch staff from cloud:', staffErr.message || staffErr);
     } else if (staff?.length > 0) {
       const localStaff = staff.map(mapStaffToLocal);
-      await db.transaction('rw', db.staff, async () => {
+      await hydrateTx(db.staff, async () => {
         const localStaffList = await db.staff.toArray();
         const incomingIds = new Set(localStaff.map(s => s.id));
 
@@ -364,7 +383,7 @@ export async function fullPull(options: any = {}) {
       console.error('[CloudDB] Failed to fetch orders from cloud:', orderErr.message || orderErr);
     } else if (orders?.length > 0) {
       const localOrders = orders.map(mapOrderToLocal);
-      await db.transaction('rw', db.orders, async () => {
+      await hydrateTx(db.orders, async () => {
         for (const order of localOrders) {
           const existing = await db.orders.where('clientOrderId').equals(order.clientOrderId).first();
           if (existing) {
@@ -387,7 +406,7 @@ export async function fullPull(options: any = {}) {
     } else if (tables?.length > 0) {
       const localTables = tables.map(mapTableToLocal);
       const tableStore = db.table('tables');
-      await db.transaction('rw', tableStore, async () => {
+      await hydrateTx(tableStore, async () => {
         for (const tbl of localTables) {
           const existing = await tableStore.where('number').equals(tbl.number).first();
           if (existing) {
@@ -409,7 +428,7 @@ export async function fullPull(options: any = {}) {
         console.error('[CloudDB] Failed to fetch inventory from cloud:', invErr.message || invErr);
       } else if (inventory?.length > 0) {
         const localInv = inventory.map(mapInventoryToLocal);
-        await db.transaction('rw', db.inventory, async () => {
+        await hydrateTx(db.inventory, async () => {
           for (const inv of localInv) {
             const existing = await db.inventory.where('name').equals(inv.name).first();
             if (existing) {
@@ -430,7 +449,7 @@ export async function fullPull(options: any = {}) {
         console.error('[CloudDB] Failed to fetch suppliers from cloud:', supErr.message || supErr);
       } else if (suppliers?.length > 0) {
         const localSups = suppliers.map(mapSupplierToLocal);
-        await db.transaction('rw', db.suppliers, async () => {
+        await hydrateTx(db.suppliers, async () => {
           for (const sup of localSups) {
             const existing = await db.suppliers.where('name').equals(sup.name).first();
             if (existing) {
@@ -451,7 +470,7 @@ export async function fullPull(options: any = {}) {
         console.error('[CloudDB] Failed to fetch customers from cloud:', custErr.message || custErr);
       } else if (customers?.length > 0) {
         const localCusts = customers.map(mapCustomerToLocal);
-        await db.transaction('rw', db.customers, async () => {
+        await hydrateTx(db.customers, async () => {
           for (const cust of localCusts) {
             const existing = await db.customers.where('phone').equals(cust.phone).first();
             if (existing) {
@@ -472,7 +491,7 @@ export async function fullPull(options: any = {}) {
         console.error('[CloudDB] Failed to fetch shifts from cloud:', shiftErr.message || shiftErr);
       } else if (shifts?.length > 0) {
         const localShifts = shifts.map(mapShiftToLocal);
-        await db.transaction('rw', db.shifts, async () => {
+        await hydrateTx(db.shifts, async () => {
           for (const shift of localShifts) {
             const existing = await db.shifts
               .where('date')
@@ -497,7 +516,7 @@ export async function fullPull(options: any = {}) {
         console.error('[CloudDB] Failed to fetch recipes from cloud:', recipeErr.message || recipeErr);
       } else if (recipeErr && recipes?.length > 0) {
         const localRecipes = recipes.map(mapRecipeToLocal);
-        await db.transaction('rw', db.recipes, async () => {
+        await hydrateTx(db.recipes, async () => {
           for (const recipe of localRecipes) {
             const existing = await db.recipes
               .where('menuItemId')

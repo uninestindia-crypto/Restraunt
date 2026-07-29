@@ -3,6 +3,7 @@
  */
 import { db } from '../db/database';
 import { getSupabaseClient, resetSupabaseClient, testSupabaseMenuRead } from './supabaseClient';
+import { isHydrating } from './hydrationGuard';
 import { submitPublicOrder } from './publicOrders';
 import { setStaffActiveViaAdminFunction, syncStaffViaAdminFunction } from './staffAdmin';
 import { showToast } from '../utils/helpers';
@@ -1564,11 +1565,22 @@ class SyncService {
     }
   }
 
+  /**
+   * Replicate local Dexie writes up to Supabase.
+   *
+   * Every hook decides whether to replicate *synchronously*, before deferring
+   * the network call. The deferral is what makes this subtle: `isHydrating()`
+   * and `isSyncingFromServer` are only true for the duration of the write that
+   * triggered the hook, so a check inside the setTimeout would almost always
+   * read `false` and replicate an echo. For the 'deleting' hooks that mistake
+   * was destructive — a cloud hydration rebuilding the local cache replicated
+   * its own teardown back as cloud DELETEs and permanently destroyed rows.
+   */
   setupLocalHooks() {
     // Menu Categories hook
     db.menuCategories.hook('creating', (primKey, obj, transaction) => {
+      if (isHydrating() || this.isSyncingFromServer) return;
       setTimeout(async () => {
-        if (this.isSyncingFromServer) return;
         try {
           const cat = await db.menuCategories.get(primKey);
           if (cat) await this.syncUpCategory(cat);
@@ -1579,8 +1591,8 @@ class SyncService {
     });
 
     db.menuCategories.hook('updating', (mods, primKey, obj, transaction) => {
+      if (isHydrating() || this.isSyncingFromServer) return;
       setTimeout(async () => {
-        if (this.isSyncingFromServer) return;
         try {
           const cat = await db.menuCategories.get(primKey);
           if (cat) await this.syncUpCategory(cat);
@@ -1591,8 +1603,9 @@ class SyncService {
     });
 
     db.menuCategories.hook('deleting', (primKey, obj, transaction) => {
+      if (isHydrating() || this.isSyncingFromServer) return;
       setTimeout(async () => {
-        if (this.isSyncingFromServer || !this.isConnected || !supabase) return;
+        if (!this.isConnected || !supabase) return;
         try {
           await retryWithBackoff(async () => {
             const { error } = await supabase.from('menu_categories').delete().eq('id', primKey);
@@ -1607,8 +1620,8 @@ class SyncService {
 
     // Menu Items hook
     db.menuItems.hook('creating', (primKey, obj, transaction) => {
+      if (isHydrating() || this.isSyncingFromServer) return;
       setTimeout(async () => {
-        if (this.isSyncingFromServer) return;
         try {
           const item = await db.menuItems.get(primKey);
           if (item) await this.syncUpItem(item);
@@ -1619,8 +1632,8 @@ class SyncService {
     });
 
     db.menuItems.hook('updating', (mods, primKey, obj, transaction) => {
+      if (isHydrating() || this.isSyncingFromServer) return;
       setTimeout(async () => {
-        if (this.isSyncingFromServer) return;
         try {
           const item = await db.menuItems.get(primKey);
           if (item) await this.syncUpItem(item);
@@ -1631,8 +1644,9 @@ class SyncService {
     });
 
     db.menuItems.hook('deleting', (primKey, obj, transaction) => {
+      if (isHydrating() || this.isSyncingFromServer) return;
       setTimeout(async () => {
-        if (this.isSyncingFromServer || !this.isConnected || !supabase) return;
+        if (!this.isConnected || !supabase) return;
         try {
           await retryWithBackoff(async () => {
             const { error } = await supabase.from('menu_items').delete().eq('id', primKey);
@@ -1647,8 +1661,8 @@ class SyncService {
 
     // Staff hooks
     db.staff.hook('creating', (primKey, obj, transaction) => {
+      if (isHydrating() || this.isSyncingFromServer) return;
       setTimeout(async () => {
-        if (this.isSyncingFromServer) return;
         try {
           const s = await db.staff.get(primKey);
           if (s) await this.syncUpStaff(s);
@@ -1659,8 +1673,8 @@ class SyncService {
     });
 
     db.staff.hook('updating', (mods, primKey, obj, transaction) => {
+      if (isHydrating() || this.isSyncingFromServer) return;
       setTimeout(async () => {
-        if (this.isSyncingFromServer) return;
         try {
           const s = await db.staff.get(primKey);
           if (s) await this.syncUpStaff(s);
@@ -1671,8 +1685,9 @@ class SyncService {
     });
 
     db.staff.hook('deleting', (primKey, obj, transaction) => {
+      if (isHydrating() || this.isSyncingFromServer) return;
       setTimeout(async () => {
-        if (this.isSyncingFromServer || !this.isConnected || !supabase) return;
+        if (!this.isConnected || !supabase) return;
         try {
           await retryWithBackoff(async () => {
             const result = await setStaffActiveViaAdminFunction(obj || primKey, false);
@@ -1687,8 +1702,8 @@ class SyncService {
 
     // Tables hooks
     tableStore().hook('creating', (primKey, obj, transaction) => {
+      if (isHydrating() || this.isSyncingFromServer) return;
       setTimeout(async () => {
-        if (this.isSyncingFromServer) return;
         try {
           const t = await tableStore().get(primKey);
           if (t) await this.syncUpTable(t);
@@ -1699,8 +1714,8 @@ class SyncService {
     });
 
     tableStore().hook('updating', (mods, primKey, obj, transaction) => {
+      if (isHydrating() || this.isSyncingFromServer) return;
       setTimeout(async () => {
-        if (this.isSyncingFromServer) return;
         try {
           const t = await tableStore().get(primKey);
           if (t) await this.syncUpTable(t);
@@ -1711,8 +1726,9 @@ class SyncService {
     });
 
     tableStore().hook('deleting', (primKey, obj, transaction) => {
+      if (isHydrating() || this.isSyncingFromServer) return;
       setTimeout(async () => {
-        if (this.isSyncingFromServer || !this.isConnected || !supabase) return;
+        if (!this.isConnected || !supabase) return;
         try {
           await retryWithBackoff(async () => {
             const { error } = await supabase.from('tables').delete().eq('id', primKey);
@@ -1727,8 +1743,8 @@ class SyncService {
 
     // Inventory hooks
     db.inventory.hook('creating', (primKey, obj, transaction) => {
+      if (isHydrating() || this.isSyncingFromServer) return;
       setTimeout(async () => {
-        if (this.isSyncingFromServer) return;
         try {
           const i = await db.inventory.get(primKey);
           if (i) await this.syncUpInventory(i);
@@ -1739,8 +1755,8 @@ class SyncService {
     });
 
     db.inventory.hook('updating', (mods, primKey, obj, transaction) => {
+      if (isHydrating() || this.isSyncingFromServer) return;
       setTimeout(async () => {
-        if (this.isSyncingFromServer) return;
         try {
           const i = await db.inventory.get(primKey);
           if (i) await this.syncUpInventory(i);
@@ -1751,8 +1767,9 @@ class SyncService {
     });
 
     db.inventory.hook('deleting', (primKey, obj, transaction) => {
+      if (isHydrating() || this.isSyncingFromServer) return;
       setTimeout(async () => {
-        if (this.isSyncingFromServer || !this.isConnected || !supabase) return;
+        if (!this.isConnected || !supabase) return;
         try {
           await retryWithBackoff(async () => {
             const { error } = await supabase.from('inventory').delete().eq('id', primKey);
@@ -1767,8 +1784,8 @@ class SyncService {
 
     // Suppliers hooks
     db.suppliers.hook('creating', (primKey, obj, transaction) => {
+      if (isHydrating() || this.isSyncingFromServer) return;
       setTimeout(async () => {
-        if (this.isSyncingFromServer) return;
         try {
           const s = await db.suppliers.get(primKey);
           if (s) await this.syncUpSupplier(s);
@@ -1779,8 +1796,8 @@ class SyncService {
     });
 
     db.suppliers.hook('updating', (mods, primKey, obj, transaction) => {
+      if (isHydrating() || this.isSyncingFromServer) return;
       setTimeout(async () => {
-        if (this.isSyncingFromServer) return;
         try {
           const s = await db.suppliers.get(primKey);
           if (s) await this.syncUpSupplier(s);
@@ -1791,8 +1808,9 @@ class SyncService {
     });
 
     db.suppliers.hook('deleting', (primKey, obj, transaction) => {
+      if (isHydrating() || this.isSyncingFromServer) return;
       setTimeout(async () => {
-        if (this.isSyncingFromServer || !this.isConnected || !supabase) return;
+        if (!this.isConnected || !supabase) return;
         try {
           await retryWithBackoff(async () => {
             const { error } = await supabase.from('suppliers').delete().eq('id', primKey);
@@ -1807,8 +1825,8 @@ class SyncService {
 
     // Shifts hooks
     db.shifts.hook('creating', (primKey, obj, transaction) => {
+      if (isHydrating() || this.isSyncingFromServer) return;
       setTimeout(async () => {
-        if (this.isSyncingFromServer) return;
         try {
           const s = await db.shifts.get(primKey);
           if (s) await this.syncUpShift(s);
@@ -1819,8 +1837,8 @@ class SyncService {
     });
 
     db.shifts.hook('updating', (mods, primKey, obj, transaction) => {
+      if (isHydrating() || this.isSyncingFromServer) return;
       setTimeout(async () => {
-        if (this.isSyncingFromServer) return;
         try {
           const s = await db.shifts.get(primKey);
           if (s) await this.syncUpShift(s);
@@ -1831,8 +1849,9 @@ class SyncService {
     });
 
     db.shifts.hook('deleting', (primKey, obj, transaction) => {
+      if (isHydrating() || this.isSyncingFromServer) return;
       setTimeout(async () => {
-        if (this.isSyncingFromServer || !this.isConnected || !supabase) return;
+        if (!this.isConnected || !supabase) return;
         try {
           await retryWithBackoff(async () => {
             const { error } = await supabase.from('shifts').delete().eq('id', primKey);
@@ -1847,8 +1866,8 @@ class SyncService {
 
     // Activity Log hooks
     db.activityLog.hook('creating', (primKey, obj, transaction) => {
+      if (isHydrating() || this.isSyncingFromServer) return;
       setTimeout(async () => {
-        if (this.isSyncingFromServer) return;
         try {
           const a = await db.activityLog.get(primKey);
           if (a) await this.syncUpActivity(a);
@@ -1860,8 +1879,8 @@ class SyncService {
 
     // Customers hooks
     db.customers.hook('creating', (primKey, obj, transaction) => {
+      if (isHydrating() || this.isSyncingFromServer) return;
       setTimeout(async () => {
-        if (this.isSyncingFromServer) return;
         try {
           const c = await db.customers.get(primKey);
           if (c) await this.syncUpCustomer(c);
@@ -1872,8 +1891,8 @@ class SyncService {
     });
 
     db.customers.hook('updating', (mods, primKey, obj, transaction) => {
+      if (isHydrating() || this.isSyncingFromServer) return;
       setTimeout(async () => {
-        if (this.isSyncingFromServer) return;
         try {
           const c = await db.customers.get(primKey);
           if (c) await this.syncUpCustomer(c);
@@ -1888,8 +1907,8 @@ class SyncService {
 
     // Recipes hooks
     db.recipes.hook('creating', (primKey, obj, transaction) => {
+      if (isHydrating() || this.isSyncingFromServer) return;
       setTimeout(async () => {
-        if (this.isSyncingFromServer) return;
         try {
           const r = await db.recipes.get(primKey);
           if (r) await this.syncUpRecipe(r);
@@ -1900,8 +1919,8 @@ class SyncService {
     });
 
     db.recipes.hook('updating', (mods, primKey, obj, transaction) => {
+      if (isHydrating() || this.isSyncingFromServer) return;
       setTimeout(async () => {
-        if (this.isSyncingFromServer) return;
         try {
           const r = await db.recipes.get(primKey);
           if (r) await this.syncUpRecipe(r);
@@ -1912,8 +1931,9 @@ class SyncService {
     });
 
     db.recipes.hook('deleting', (primKey, obj, transaction) => {
+      if (isHydrating() || this.isSyncingFromServer) return;
       setTimeout(async () => {
-        if (this.isSyncingFromServer || !this.isConnected || !supabase) return;
+        if (!this.isConnected || !supabase) return;
         try {
           await retryWithBackoff(async () => {
             const { error } = await supabase.from('recipes').delete().eq('id', primKey);
