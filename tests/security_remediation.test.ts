@@ -145,10 +145,40 @@ test('Vercel serves the hardened static export instead of the raw Next.js adapte
 test('public storefront first paint does not wait for cloud catalog retries', () => {
   const seed = read('src/db/seed.ts');
   const customerApp = read('src/views/customer/components/CustomerApp.tsx');
+  const menuSync = read('src/services/publicMenuSync.ts');
 
   assert.match(seed, /!publicOnly && attempt <= MAX_HYDRATION_RETRIES/);
-  assert.match(customerApp, /fullPull\(\{ publicOnly: true \}\)/);
-  assert.match(customerApp, /after first paint/i);
+  assert.match(menuSync, /fullPull\(\{ publicOnly: true \}\)/);
+
+  // The cached catalogue must be on screen before the network is involved.
+  const paintIndex = customerApp.indexOf('loadData().catch');
+  const syncIndex = customerApp.indexOf('startPublicMenuSync(');
+  assert.ok(paintIndex > -1, 'CustomerApp must paint from the local cache on mount');
+  assert.ok(syncIndex > paintIndex, 'cloud sync must start after the local-cache paint');
+});
+
+test('storefront catalogue stays live without an authenticated staff session', () => {
+  const menuSync = read('src/services/publicMenuSync.ts');
+  const customerApp = read('src/views/customer/components/CustomerApp.tsx');
+
+  // Realtime, so an admin menu edit reaches an open storefront tab.
+  assert.match(menuSync, /postgres_changes/);
+  for (const table of ['menu_categories', 'menu_items', 'tables']) {
+    assert.ok(menuSync.includes(`'${table}'`), `${table} must be watched for changes`);
+  }
+  assert.match(menuSync, /store_id=eq\.\$\{getStoreId\(\)\}/);
+
+  // Backstops for what realtime cannot deliver: a dish going unavailable stops
+  // satisfying the anon read policy, so no event is sent to the storefront.
+  assert.match(menuSync, /visibilitychange/);
+  assert.match(menuSync, /'online'/);
+  assert.match(menuSync, /setInterval/);
+
+  // Anonymous customers have no cloud session, so this must not route through
+  // the staff sync service, whose connect() bails out without one.
+  assert.doesNotMatch(menuSync, /services\/sync/);
+  assert.match(customerApp, /const stopMenuSync = startPublicMenuSync\(/);
+  assert.match(customerApp, /stopMenuSync\(\);/);
 });
 
 test('developer accounts are hidden from non-developers and cannot be reduced to zero', () => {
