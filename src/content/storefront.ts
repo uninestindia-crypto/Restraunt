@@ -94,9 +94,14 @@ export function resolveStorefrontCopy(stored: Record<string, any> = {}) {
     if (cleaned.length) proofPoints = cleaned.slice(0, 4);
   }
 
+  // `Number(null)` and `Number('')` are 0, which is a valid-looking Dexie key,
+  // so blanks are rejected before conversion rather than after.
   const rawFeatured = stored[STOREFRONT_SETTING_KEYS.featuredItemIds];
   const featuredItemIds = Array.isArray(rawFeatured)
-    ? rawFeatured.map(Number).filter(id => Number.isFinite(id))
+    ? rawFeatured
+        .filter(id => typeof id === 'number' || (typeof id === 'string' && id.trim() !== ''))
+        .map(Number)
+        .filter(id => Number.isInteger(id) && id > 0)
     : [];
 
   return {

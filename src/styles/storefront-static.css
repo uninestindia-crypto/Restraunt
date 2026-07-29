@@ -1,0 +1,538 @@
+/* ══════════════════════════════════════════════════════════
+   PRE-RENDERED STOREFRONT (crawlers + no-JS)
+   Ships inside the static export and is removed by the SPA on
+   boot (see hideLoadingScreen in src/main.ts), so a visitor
+   whose bundle never arrives still gets a readable menu.
+   ══════════════════════════════════════════════════════════ */
+.storefront-seo-shell {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 48px 24px 72px;
+  color: var(--text-primary);
+}
+
+.seo-shell-head h1 {
+  font-family: var(--font-display, inherit);
+  font-size: clamp(2rem, 6vw, 3rem);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  margin: 4px 0 12px;
+}
+
+.seo-shell-kicker {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-primary);
+  margin: 0;
+}
+
+.seo-shell-copy {
+  font-size: 1.05rem;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  max-width: 60ch;
+  margin: 0 0 12px;
+}
+
+.seo-shell-address {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin: 0 0 20px;
+}
+
+.seo-shell-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 28px;
+}
+
+.seo-shell-nav a,
+.static-page-nav nav a,
+.static-page-foot nav a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1px solid var(--border-glass, rgba(255, 255, 255, 0.1));
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.seo-shell-nav a:hover,
+.seo-shell-nav a:focus-visible,
+.static-page-nav nav a:hover,
+.static-page-nav nav a:focus-visible,
+.static-page-foot nav a:hover,
+.static-page-foot nav a:focus-visible {
+  color: var(--text-primary);
+  border-color: var(--color-primary);
+}
+
+.seo-shell-proof {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 28px;
+  margin: 0 0 36px;
+  padding: 0;
+}
+
+.seo-shell-proof dt {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+
+.seo-shell-proof dd {
+  margin: 2px 0 0;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.seo-shell-menu h2 {
+  font-size: 1.5rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin: 0 0 20px;
+}
+
+.seo-shell-category {
+  margin-bottom: 28px;
+}
+
+.seo-shell-category h3 {
+  font-size: 1.05rem;
+  font-weight: 700;
+  margin: 0 0 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border-glass, rgba(255, 255, 255, 0.08));
+}
+
+.seo-shell-category ul,
+.static-menu-section ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.seo-shell-category li {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 7px 0;
+  font-size: 0.9rem;
+}
+
+.seo-shell-item-name {
+  flex: 1;
+  min-width: 0;
+}
+
+.seo-shell-item-diet {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+
+.seo-shell-item-price {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.seo-shell-foot {
+  margin-top: 40px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border-glass, rgba(255, 255, 255, 0.08));
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+/* ══════════════════════════════════════════════════════════
+   STATIC MARKETING PAGES (/menu, /offers, /about, …)
+   Indexable pages that render without the SPA bundle.
+   ══════════════════════════════════════════════════════════ */
+.static-page {
+  min-height: 100vh;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+}
+
+.static-page-nav {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--border-glass, rgba(255, 255, 255, 0.08));
+  position: sticky;
+  top: 0;
+  background: var(--bg-primary);
+  z-index: 10;
+}
+
+.static-page-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  font-size: 0.85rem;
+  color: var(--text-primary);
+  text-decoration: none;
+}
+
+.static-page-brand img {
+  border-radius: 6px;
+  background: #fff;
+  object-fit: contain;
+}
+
+.static-page-nav nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  flex: 1;
+}
+
+.static-page-nav nav a[aria-current="page"] {
+  color: var(--text-primary);
+  border-color: var(--color-primary);
+  background: rgba(255, 94, 54, 0.1);
+}
+
+.static-page-cta {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 18px;
+  border-radius: 999px;
+  background: var(--color-primary);
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 0.82rem;
+  text-decoration: none;
+}
+
+.static-page-main {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 40px 24px 72px;
+}
+
+.static-page-hero {
+  margin-bottom: 36px;
+}
+
+.static-page-hero > p:first-child {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-primary);
+  margin: 0 0 8px;
+}
+
+.static-page-hero h1 {
+  font-family: var(--font-display, inherit);
+  font-size: clamp(1.9rem, 5vw, 2.75rem);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  margin: 0 0 12px;
+}
+
+.static-page-hero-copy {
+  font-size: 1rem;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  max-width: 62ch;
+  margin: 0;
+}
+
+.static-menu-section {
+  margin-bottom: 32px;
+}
+
+.static-menu-section h2 {
+  font-size: 1.2rem;
+  font-weight: 800;
+  margin: 0 0 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border-glass, rgba(255, 255, 255, 0.08));
+}
+
+.static-menu-section li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 0;
+  font-size: 0.92rem;
+  border-bottom: 1px dashed rgba(148, 163, 184, 0.12);
+}
+
+.static-menu-mark {
+  width: 12px;
+  height: 12px;
+  flex: 0 0 auto;
+  border-radius: 3px;
+  border: 1.5px solid #22C55E;
+  position: relative;
+}
+
+.static-menu-mark::after {
+  content: "";
+  position: absolute;
+  inset: 2px;
+  border-radius: 50%;
+  background: #22C55E;
+}
+
+.static-menu-mark.nonveg {
+  border-color: #EF4444;
+}
+
+.static-menu-mark.nonveg::after {
+  background: #EF4444;
+}
+
+.static-menu-name {
+  flex: 1;
+  min-width: 0;
+}
+
+.static-menu-price {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.static-pillars {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+}
+
+.static-pillars article {
+  padding: 20px;
+  border-radius: 14px;
+  border: 1px solid var(--border-glass, rgba(255, 255, 255, 0.08));
+  background: var(--bg-card, rgba(255, 255, 255, 0.02));
+}
+
+.static-pillars span {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  color: var(--color-primary);
+}
+
+.static-pillars h2 {
+  font-size: 1.05rem;
+  margin: 8px 0 6px;
+}
+
+.static-pillars p,
+.static-panel p,
+.static-faq p {
+  font-size: 0.9rem;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.static-panel {
+  padding: 24px;
+  border-radius: 14px;
+  border: 1px solid var(--border-glass, rgba(255, 255, 255, 0.08));
+  background: var(--bg-card, rgba(255, 255, 255, 0.02));
+  margin-bottom: 16px;
+}
+
+.static-panel h2 {
+  font-size: 1.1rem;
+  margin: 0 0 10px;
+}
+
+.static-panel-address {
+  margin-top: 12px;
+  color: var(--text-muted);
+}
+
+.static-panel-cta {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 18px;
+  margin-top: 16px;
+  border-radius: 999px;
+  border: 1px solid var(--color-primary);
+  color: var(--color-primary);
+  font-weight: 700;
+  font-size: 0.82rem;
+  text-decoration: none;
+}
+
+.static-faq details {
+  border-bottom: 1px solid var(--border-glass, rgba(255, 255, 255, 0.08));
+  padding: 14px 0;
+}
+
+.static-faq summary {
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 0.95rem;
+  min-height: 32px;
+}
+
+.static-faq details p {
+  margin-top: 8px;
+}
+
+.static-page-note,
+.static-page-empty {
+  margin-top: 24px;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+
+.static-page-foot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  justify-content: space-between;
+  padding: 28px 24px 40px;
+  border-top: 1px solid var(--border-glass, rgba(255, 255, 255, 0.08));
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.static-page-foot strong {
+  display: block;
+  color: var(--text-primary);
+  letter-spacing: 0.08em;
+  margin-bottom: 4px;
+}
+
+.static-page-foot p {
+  margin: 0;
+}
+
+/* ══════════════════════════════════════════════════════════
+   LOADING SKELETONS + RENDER FAILURE FALLBACK
+   ══════════════════════════════════════════════════════════ */
+.store-skeleton {
+  border-radius: 16px;
+  background: linear-gradient(
+    100deg,
+    rgba(148, 163, 184, 0.06) 30%,
+    rgba(148, 163, 184, 0.14) 50%,
+    rgba(148, 163, 184, 0.06) 70%
+  );
+  background-size: 220% 100%;
+  animation: store-skeleton-sweep 1.4s ease-in-out infinite;
+}
+
+.store-skeleton-card {
+  height: 300px;
+}
+
+.store-skeleton-featured {
+  aspect-ratio: 3 / 2;
+  min-height: 150px;
+}
+
+@keyframes store-skeleton-sweep {
+  from {
+    background-position: 180% 0;
+  }
+  to {
+    background-position: -60% 0;
+  }
+}
+
+/* Honour both the OS setting and the in-app preference toggle. */
+@media (prefers-reduced-motion: reduce) {
+  .store-skeleton {
+    animation: none;
+  }
+}
+
+.pref-reduced-motion .store-skeleton {
+  animation: none;
+}
+
+.storefront-error {
+  max-width: 460px;
+  margin: 0 auto;
+  padding: 80px 24px;
+  text-align: center;
+  color: var(--text-primary);
+}
+
+.storefront-error h1 {
+  font-size: 1.4rem;
+  font-weight: 800;
+  margin: 16px 0 8px;
+}
+
+.storefront-error p {
+  font-size: 0.9rem;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  margin: 0 0 24px;
+}
+
+.storefront-error .material-symbols-rounded {
+  font-size: 48px;
+  color: var(--color-primary);
+}
+
+.storefront-error-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.storefront-error-actions button,
+.storefront-error-actions a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 20px;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 0.85rem;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.storefront-error-actions button {
+  background: var(--color-primary);
+  color: #ffffff;
+  border: none;
+}
+
+.storefront-error-actions a {
+  background: transparent;
+  color: var(--text-secondary);
+  border: 1px solid var(--border-glass, rgba(255, 255, 255, 0.12));
+}
+
+@media (max-width: 640px) {
+  .static-page-nav {
+    padding: 12px 16px;
+  }
+
+  .static-page-main {
+    padding: 28px 16px 56px;
+  }
+
+  .storefront-seo-shell {
+    padding: 32px 16px 56px;
+  }
+}

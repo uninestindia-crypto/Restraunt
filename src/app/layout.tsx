@@ -7,6 +7,7 @@ import '../styles/components-v2.css';
 import '../styles/layout.css';
 import '../styles/sidebar.css';
 import '../styles/storefront.css';
+import '../styles/storefront-static.css';
 
 export const metadata: Metadata = {
   metadataBase: new URL(STORE_ORIGIN),

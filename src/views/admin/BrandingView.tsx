@@ -1,6 +1,7 @@
 // @ts-nocheck
 import React, { useState, useEffect, useRef } from 'react';
-import { getSetting, setSetting } from '../../db/database';
+import { db, getSetting, setSetting } from '../../db/database';
+import { STOREFRONT_DEFAULTS, STOREFRONT_SETTING_KEYS, resolveStorefrontCopy } from '../../content/storefront';
 import { showToast, playSound, vibrateDevice } from '../../utils/helpers';
 import { compressImage, formatBytes } from '../../utils/imageProcessing';
 
@@ -42,6 +43,10 @@ export function BrandingView() {
     restaurantName: 'The Taste',
     restaurantTagline: 'Chinese & Fast Food'
   });
+  // Public storefront wording. Kept apart from `config` because it is merged
+  // over shipped defaults rather than stored as a complete record.
+  const [copy, setCopy] = useState(() => resolveStorefrontCopy({}));
+  const [menuItems, setMenuItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
@@ -76,11 +81,44 @@ export function BrandingView() {
         }
       }
       setConfig(newConfig);
+
+      const storedCopy: Record<string, any> = {};
+      for (const key of Object.values(STOREFRONT_SETTING_KEYS)) {
+        storedCopy[key] = await getSetting(key);
+      }
+      setCopy(resolveStorefrontCopy(storedCopy));
+      setMenuItems(await db.menuItems.orderBy('sortOrder').toArray());
     } catch (err) {
       console.error('[BrandingView] Load config failed:', err);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleCopyChange = (field: string, value: any) => {
+    setCopy(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleProofChange = (index: number, field: 'value' | 'label', value: string) => {
+    setCopy(prev => ({
+      ...prev,
+      proofPoints: prev.proofPoints.map((point, i) => (i === index ? { ...point, [field]: value } : point))
+    }));
+  };
+
+  const toggleFeaturedItem = (id: number) => {
+    setCopy(prev => {
+      const selected = prev.featuredItemIds.includes(id);
+      if (selected) {
+        return { ...prev, featuredItemIds: prev.featuredItemIds.filter(itemId => itemId !== id) };
+      }
+      // Six is what the storefront row renders; beyond that the picks are ignored.
+      if (prev.featuredItemIds.length >= 6) {
+        showToast('Six featured dishes is the maximum. Remove one first.', 'warning');
+        return prev;
+      }
+      return { ...prev, featuredItemIds: [...prev.featuredItemIds, id] };
+    });
   };
 
   useEffect(() => {
@@ -210,6 +248,24 @@ export function BrandingView() {
       }
       await setSetting('brandLogoBase64', config.brandLogoBase64);
       await setSetting('brandBannerBase64', config.brandBannerBase64);
+
+      // Storefront wording. Blank fields are stored as '' so the shipped
+      // default takes over again rather than rendering an empty heading.
+      await setSetting(STOREFRONT_SETTING_KEYS.heroKicker, copy.heroKicker.trim());
+      await setSetting(STOREFRONT_SETTING_KEYS.heroCopy, copy.heroCopy.trim());
+      await setSetting(STOREFRONT_SETTING_KEYS.heroCta, copy.heroCta.trim());
+      await setSetting(STOREFRONT_SETTING_KEYS.featuredEyebrow, copy.featuredEyebrow.trim());
+      await setSetting(STOREFRONT_SETTING_KEYS.featuredHeadline, copy.featuredHeadline.trim());
+      await setSetting(STOREFRONT_SETTING_KEYS.menuEyebrow, copy.menuEyebrow.trim());
+      await setSetting(STOREFRONT_SETTING_KEYS.menuHeadline, copy.menuHeadline.trim());
+      await setSetting(STOREFRONT_SETTING_KEYS.footerCopy, copy.footerCopy.trim());
+      await setSetting(
+        STOREFRONT_SETTING_KEYS.proofPoints,
+        copy.proofPoints
+          .map(point => ({ value: String(point.value || '').trim(), label: String(point.label || '').trim() }))
+          .filter(point => point.value && point.label)
+      );
+      await setSetting(STOREFRONT_SETTING_KEYS.featuredItemIds, copy.featuredItemIds);
 
       showToast('Branding settings saved! 🎨', 'success');
     } catch (err: any) {
@@ -372,6 +428,128 @@ export function BrandingView() {
               <label>kiosk Footer Text</label>
               <input type="text" className="input" value={config.brandKioskFooter} onChange={(e) => handleInputChange('brandKioskFooter', e.target.value)} placeholder="© 2026 Your Restaurant. All rights reserved." />
             </div>
+          </div>
+        </div>
+
+        {/* Public storefront wording */}
+        <div className="settings-card" style={{ background: 'var(--glass-bg)', padding: '24px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
+          <h3 className="settings-card-heading" style={{ margin: '0 0 4px 0', fontSize: 'var(--text-base)', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)' }}>
+            <span className="material-symbols-rounded" style={{ color: 'var(--color-primary)' }}>storefront</span>
+            Storefront Copy &amp; Highlights
+          </h3>
+          <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)', lineHeight: 1.5, margin: '8px 0 16px 0', fontWeight: 500 }}>
+            The words customers read on the public website. Leave a field empty to fall back to the
+            shipped default.
+          </p>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            <div className="input-group">
+              <label htmlFor="sf-hero-copy">Hero paragraph</label>
+              <textarea
+                id="sf-hero-copy"
+                className="input"
+                rows={3}
+                value={copy.heroCopy}
+                onChange={(e) => handleCopyChange('heroCopy', e.target.value)}
+                placeholder={STOREFRONT_DEFAULTS.heroCopy}
+                style={{ resize: 'vertical', lineHeight: 1.5 }}
+              />
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+              <div className="input-group">
+                <label htmlFor="sf-hero-cta">Hero button label</label>
+                <input id="sf-hero-cta" type="text" className="input" value={copy.heroCta} onChange={(e) => handleCopyChange('heroCta', e.target.value)} placeholder={STOREFRONT_DEFAULTS.heroCta} />
+              </div>
+              <div className="input-group">
+                <label htmlFor="sf-featured-eyebrow">Highlights label</label>
+                <input id="sf-featured-eyebrow" type="text" className="input" value={copy.featuredEyebrow} onChange={(e) => handleCopyChange('featuredEyebrow', e.target.value)} placeholder={STOREFRONT_DEFAULTS.featuredEyebrow} />
+              </div>
+            </div>
+
+            <div className="input-group">
+              <label htmlFor="sf-featured-headline">Highlights heading</label>
+              <input id="sf-featured-headline" type="text" className="input" value={copy.featuredHeadline} onChange={(e) => handleCopyChange('featuredHeadline', e.target.value)} placeholder={STOREFRONT_DEFAULTS.featuredHeadline} />
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+              <div className="input-group">
+                <label htmlFor="sf-menu-eyebrow">Menu label</label>
+                <input id="sf-menu-eyebrow" type="text" className="input" value={copy.menuEyebrow} onChange={(e) => handleCopyChange('menuEyebrow', e.target.value)} placeholder={STOREFRONT_DEFAULTS.menuEyebrow} />
+              </div>
+              <div className="input-group">
+                <label htmlFor="sf-menu-headline">Menu heading</label>
+                <input id="sf-menu-headline" type="text" className="input" value={copy.menuHeadline} onChange={(e) => handleCopyChange('menuHeadline', e.target.value)} placeholder={STOREFRONT_DEFAULTS.menuHeadline} />
+              </div>
+            </div>
+
+            <div className="input-group">
+              <label htmlFor="sf-footer-copy">Footer line</label>
+              <input id="sf-footer-copy" type="text" className="input" value={copy.footerCopy} onChange={(e) => handleCopyChange('footerCopy', e.target.value)} placeholder={STOREFRONT_DEFAULTS.footerCopy} />
+            </div>
+
+            <fieldset style={{ border: '1px solid var(--border-glass)', borderRadius: 'var(--radius-sm)', padding: '14px', margin: 0 }}>
+              <legend style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-secondary)', padding: '0 6px' }}>Proof points shown under the hero</legend>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {copy.proofPoints.map((point, index) => (
+                  <div key={index} style={{ display: 'grid', gridTemplateColumns: '0.6fr 1fr', gap: '10px' }}>
+                    <input
+                      type="text"
+                      className="input"
+                      value={point.value}
+                      onChange={(e) => handleProofChange(index, 'value', e.target.value)}
+                      aria-label={`Proof point ${index + 1} value`}
+                      placeholder="30 min"
+                      style={{ fontWeight: 700 }}
+                    />
+                    <input
+                      type="text"
+                      className="input"
+                      value={point.label}
+                      onChange={(e) => handleProofChange(index, 'label', e.target.value)}
+                      aria-label={`Proof point ${index + 1} label`}
+                      placeholder="Average delivery"
+                    />
+                  </div>
+                ))}
+              </div>
+            </fieldset>
+
+            <fieldset style={{ border: '1px solid var(--border-glass)', borderRadius: 'var(--radius-sm)', padding: '14px', margin: 0 }}>
+              <legend style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-secondary)', padding: '0 6px' }}>
+                Featured dishes ({copy.featuredItemIds.length}/6)
+              </legend>
+              <p style={{ fontSize: '10px', color: 'var(--text-muted)', margin: '0 0 10px' }}>
+                Pick up to six. With none selected the storefront falls back to its default picks.
+              </p>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', maxHeight: '160px', overflowY: 'auto' }}>
+                {menuItems.length === 0 ? (
+                  <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>No menu items yet.</span>
+                ) : menuItems.map(item => {
+                  const selected = copy.featuredItemIds.includes(item.id);
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => toggleFeaturedItem(item.id)}
+                      aria-pressed={selected}
+                      style={{
+                        padding: '5px 10px',
+                        borderRadius: '999px',
+                        fontSize: '11px',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        border: `1px solid ${selected ? 'var(--color-primary)' : 'var(--border-glass)'}`,
+                        background: selected ? 'rgba(var(--color-primary-rgb), 0.15)' : 'transparent',
+                        color: selected ? 'var(--color-primary)' : 'var(--text-secondary)'
+                      }}
+                    >
+                      {item.name}
+                    </button>
+                  );
+                })}
+              </div>
+            </fieldset>
           </div>
         </div>
 

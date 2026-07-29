@@ -20,14 +20,27 @@ function listHtmlFiles(directory) {
 fs.mkdirSync(inlineDir, { recursive: true });
 let extractedCount = 0;
 
+const EXECUTABLE_TYPES = ['text/javascript', 'application/javascript', 'module'];
+
+function scriptType(rawAttributes) {
+  return rawAttributes.match(/\btype\s*=\s*["']([^"']+)["']/i)?.[1]?.toLowerCase() || '';
+}
+
+/**
+ * A typed block the browser never executes — structured data, import maps,
+ * templates. The CSP's `script-src` does not apply to these, so they are safe
+ * to leave inline and must not be mistaken for un-hardened bootstrap code.
+ */
+function isExecutable(rawAttributes) {
+  const type = scriptType(rawAttributes);
+  return !type || EXECUTABLE_TYPES.includes(type);
+}
+
 for (const htmlPath of listHtmlFiles(outputDir)) {
   const original = fs.readFileSync(htmlPath, 'utf8');
   const hardened = original.replace(/<script([^>]*)>([\s\S]*?)<\/script>/gi, (match, rawAttributes, body) => {
     if (/\bsrc\s*=/i.test(rawAttributes) || !body.trim()) return match;
-
-    const typeMatch = rawAttributes.match(/\btype\s*=\s*["']([^"']+)["']/i);
-    const type = typeMatch?.[1]?.toLowerCase() || '';
-    if (type && !['text/javascript', 'application/javascript', 'module'].includes(type)) return match;
+    if (!isExecutable(rawAttributes)) return match;
 
     const digest = crypto.createHash('sha256').update(body).digest('hex').slice(0, 24);
     const filename = `${digest}.js`;
@@ -36,9 +49,13 @@ for (const htmlPath of listHtmlFiles(outputDir)) {
     return `<script${rawAttributes} src="/_next/static/inline/${filename}"></script>`;
   });
 
-  if (/<script(?![^>]*\bsrc\s*=)[^>]*>\s*\S[\s\S]*?<\/script>/i.test(hardened)) {
-    throw new Error(`Executable inline script remains in ${path.relative(root, htmlPath)}.`);
+  for (const [, rawAttributes, body] of hardened.matchAll(/<script([^>]*)>([\s\S]*?)<\/script>/gi)) {
+    if (/\bsrc\s*=/i.test(rawAttributes) || !body.trim()) continue;
+    if (isExecutable(rawAttributes)) {
+      throw new Error(`Executable inline script remains in ${path.relative(root, htmlPath)}.`);
+    }
   }
+
   fs.writeFileSync(htmlPath, hardened, 'utf8');
 }
 

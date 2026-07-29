@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-29T16:42:18.503Z",
+  "generatedAt": "2026-07-29T16:58:35.956Z",
   "storeId": "the-taste",
   "source": "cloud",
   "categories": [
@@ -121,6 +121,13 @@
           "imageUrl": ""
         },
         {
+          "id": 28,
+          "name": "Chicken Schezwan Fried Rice (Full)",
+          "price": 190,
+          "isVeg": false,
+          "imageUrl": ""
+        },
+        {
           "id": 27,
           "name": "Chicken Schezwan Fried Rice (Half)",
           "price": 100,
@@ -209,6 +216,426 @@
           "name": "Veg Schezwan Fried Rice (Half)",
           "price": 90,
           "isVeg": true,
+          "imageUrl": ""
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "name": "Noodles",
+      "icon": "🍜",
+      "items": [
+        {
+          "id": 42,
+          "name": "Chicken Noodles (Full)",
+          "price": 170,
+          "isVeg": false,
+          "imageUrl": ""
+        },
+        {
+          "id": 41,
+          "name": "Chicken Noodles (Half)",
+          "price": 100,
+          "isVeg": false,
+          "imageUrl": ""
+        },
+        {
+          "id": 44,
+          "name": "Chicken Schezwan Noodles (Full)",
+          "price": 190,
+          "isVeg": false,
+          "imageUrl": ""
+        },
+        {
+          "id": 43,
+          "name": "Chicken Schezwan Noodles (Half)",
+          "price": 110,
+          "isVeg": false,
+          "imageUrl": ""
+        },
+        {
+          "id": 38,
+          "name": "Egg Noodles (Full)",
+          "price": 150,
+          "isVeg": false,
+          "imageUrl": ""
+        },
+        {
+          "id": 37,
+          "name": "Egg Noodles (Half)",
+          "price": 90,
+          "isVeg": false,
+          "imageUrl": ""
+        },
+        {
+          "id": 40,
+          "name": "Egg Schezwan Noodles (Full)",
+          "price": 170,
+          "isVeg": false,
+          "imageUrl": ""
+        },
+        {
+          "id": 39,
+          "name": "Egg Schezwan Noodles (Half)",
+          "price": 100,
+          "isVeg": false,
+          "imageUrl": ""
+        },
+        {
+          "id": 34,
+          "name": "Paneer Noodles (Full)",
+          "price": 170,
+          "isVeg": true,
+          "imageUrl": ""
+        },
+        {
+          "id": 33,
+          "name": "Paneer Noodles (Half)",
+          "price": 100,
+          "isVeg": true,
+          "imageUrl": ""
+        },
+        {
+          "id": 36,
+          "name": "Paneer Schezwan Noodles (Full)",
+          "price": 190,
+          "isVeg": true,
+          "imageUrl": ""
+        },
+        {
+          "id": 35,
+          "name": "Paneer Schezwan Noodles (Half)",
+          "price": 110,
+          "isVeg": true,
+          "imageUrl": ""
+        },
+        {
+          "id": 30,
+          "name": "Veg Noodles (Full)",
+          "price": 130,
+          "isVeg": true,
+          "imageUrl": ""
+        },
+        {
+          "id": 29,
+          "name": "Veg Noodles (Half)",
+          "price": 80,
+          "isVeg": true,
+          "imageUrl": ""
+        },
+        {
+          "id": 32,
+          "name": "Veg Schezwan Noodles (Full)",
+          "price": 150,
+          "isVeg": true,
+          "imageUrl": ""
+        },
+        {
+          "id": 31,
+          "name": "Veg Schezwan Noodles (Half)",
+          "price": 90,
+          "isVeg": true,
+          "imageUrl": ""
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "name": "Biryani",
+      "icon": "🍲",
+      "items": [
+        {
+          "id": 46,
+          "name": "Biryani (Full)",
+          "price": 160,
+          "isVeg": false,
+          "imageUrl": ""
+        },
+        {
+          "id": 45,
+          "name": "Biryani (Half)",
+          "price": 100,
+          "isVeg": false,
+          "imageUrl": ""
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "name": "Soup",
+      "icon": "🥣",
+      "items": [
+        {
+          "id": 52,
+          "name": "Chicken Clear Soup (Full)",
+          "price": 110,
+          "isVeg": false,
+          "imageUrl": ""
+        },
+        {
+          "id": 51,
+          "name": "Chicken Clear Soup (Half)",
+          "price": 70,
+          "isVeg": false,
+          "imageUrl": ""
+        },
+        {
+          "id": 54,
+          "name": "Chicken Hot And Sour Soup (Full)",
+          "price": 110,
+          "isVeg": false,
+          "imageUrl": ""
+        },
+        {
+          "id": 53,
+          "name": "Chicken Hot And Sour Soup (Half)",
+          "price": 70,
+          "isVeg": false,
+          "imageUrl": ""
+        },
+        {
+          "id": 56,
+          "name": "Chicken Manchow Soup (Full)",
+          "price": 120,
+          "isVeg": false,
+          "imageUrl": ""
+        },
+        {
+          "id": 55,
+          "name": "Chicken Manchow Soup (Half)",
+          "price": 80,
+          "isVeg": false,
+          "imageUrl": ""
+        },
+        {
+          "id": 58,
+          "name": "Chicken Noodle Soup (Full)",
+          "price": 120,
+          "isVeg": false,
+          "imageUrl": ""
+        },
+        {
+          "id": 57,
+          "name": "Chicken Noodle Soup (Half)",
+          "price": 70,
+          "isVeg": false,
+          "imageUrl": ""
+        },
+        {
+          "id": 48,
+          "name": "Veg Hot And Sour Soup (Full)",
+          "price": 90,
+          "isVeg": true,
+          "imageUrl": ""
+        },
+        {
+          "id": 47,
+          "name": "Veg Hot And Sour Soup (Half)",
+          "price": 60,
+          "isVeg": true,
+          "imageUrl": ""
+        },
+        {
+          "id": 50,
+          "name": "Veg Manchow Soup (Full)",
+          "price": 110,
+          "isVeg": true,
+          "imageUrl": ""
+        },
+        {
+          "id": 49,
+          "name": "Veg Manchow Soup (Half)",
+          "price": 70,
+          "isVeg": true,
+          "imageUrl": ""
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "name": "Veg Chinese",
+      "icon": "🥦",
+      "items": [
+        {
+          "id": 64,
+          "name": "Baby Corn Chilli",
+          "price": 240,
+          "isVeg": true,
+          "imageUrl": ""
+        },
+        {
+          "id": 63,
+          "name": "Mushroom Chilli",
+          "price": 250,
+          "isVeg": true,
+          "imageUrl": ""
+        },
+        {
+          "id": 61,
+          "name": "Paneer Chilli",
+          "price": 200,
+          "isVeg": true,
+          "imageUrl": ""
+        },
+        {
+          "id": 62,
+          "name": "Paneer Manchurian",
+          "price": 175,
+          "isVeg": true,
+          "imageUrl": ""
+        },
+        {
+          "id": 60,
+          "name": "Veg 65",
+          "price": 159,
+          "isVeg": true,
+          "imageUrl": ""
+        },
+        {
+          "id": 59,
+          "name": "Veg Manchurian",
+          "price": 149,
+          "isVeg": true,
+          "imageUrl": ""
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "name": "Non-Veg Chinese",
+      "icon": "🍗",
+      "items": [
+        {
+          "id": 67,
+          "name": "Bone Chilli",
+          "price": 200,
+          "isVeg": false,
+          "imageUrl": ""
+        },
+        {
+          "id": 70,
+          "name": "Chicken 65",
+          "price": 240,
+          "isVeg": false,
+          "imageUrl": ""
+        },
+        {
+          "id": 71,
+          "name": "Chicken Boneless",
+          "price": 170,
+          "isVeg": false,
+          "imageUrl": ""
+        },
+        {
+          "id": 69,
+          "name": "Chicken Chilli",
+          "price": 220,
+          "isVeg": false,
+          "imageUrl": ""
+        },
+        {
+          "id": 68,
+          "name": "Chicken Lollipop",
+          "price": 300,
+          "isVeg": false,
+          "imageUrl": ""
+        },
+        {
+          "id": 65,
+          "name": "Chicken Manchurian",
+          "price": 179,
+          "isVeg": false,
+          "imageUrl": ""
+        },
+        {
+          "id": 66,
+          "name": "Chicken Shezwan",
+          "price": 189,
+          "isVeg": false,
+          "imageUrl": ""
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "name": "Veg Burger",
+      "icon": "🍔",
+      "items": [
+        {
+          "id": 72,
+          "name": "Veg Burger",
+          "price": 70,
+          "isVeg": true,
+          "imageUrl": ""
+        },
+        {
+          "id": 73,
+          "name": "Veg Cheese Burger",
+          "price": 90,
+          "isVeg": true,
+          "imageUrl": ""
+        },
+        {
+          "id": 74,
+          "name": "Veg Double Cheese Burger",
+          "price": 110,
+          "isVeg": true,
+          "imageUrl": ""
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "name": "Egg Burger",
+      "icon": "🥚",
+      "items": [
+        {
+          "id": 75,
+          "name": "Egg Burger",
+          "price": 50,
+          "isVeg": false,
+          "imageUrl": ""
+        },
+        {
+          "id": 76,
+          "name": "Egg Cheese Burger",
+          "price": 70,
+          "isVeg": false,
+          "imageUrl": ""
+        },
+        {
+          "id": 77,
+          "name": "Egg Double Cheese Burger",
+          "price": 90,
+          "isVeg": false,
+          "imageUrl": ""
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "name": "Chicken Burger",
+      "icon": "🍔",
+      "items": [
+        {
+          "id": 78,
+          "name": "Chicken Burger",
+          "price": 80,
+          "isVeg": false,
+          "imageUrl": ""
+        },
+        {
+          "id": 79,
+          "name": "Chicken Cheese Burger",
+          "price": 100,
+          "isVeg": false,
+          "imageUrl": ""
+        },
+        {
+          "id": 80,
+          "name": "Chicken Double Cheese Burger",
+          "price": 120,
+          "isVeg": false,
           "imageUrl": ""
         }
       ]
