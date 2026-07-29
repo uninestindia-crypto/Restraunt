@@ -1,6 +1,6 @@
 // @ts-nocheck
 import React, { useState } from 'react';
-import { formatCurrency, playSound, vibrateDevice } from '../../../utils/helpers';
+import { formatCurrency, playSound, vibrateDevice, menuItemImageSource } from '../../../utils/helpers';
 
 const CATEGORY_IMAGE_MAP = {
   momos: '/assets/dish-momos.jpg',
@@ -35,7 +35,8 @@ export function ItemDetailDrawer({ item, categories, onClose, onAddToCart }) {
   if (!item) return null;
 
   const getItemImage = () => {
-    if (item.imageUrl) return item.imageUrl;
+    const source = menuItemImageSource(item);
+    if (source) return source;
     const cat = categories.find(c => c.id === item.categoryId);
     const catName = cat?.name?.toLowerCase() || '';
     return CATEGORY_IMAGE_MAP[catName] || '/assets/dish-starters.jpg';

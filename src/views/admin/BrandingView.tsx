@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { getSetting, setSetting } from '../../db/database';
 import { showToast, playSound, vibrateDevice } from '../../utils/helpers';
+import { compressImage, formatBytes } from '../../utils/imageProcessing';
 
 interface BrandingConfig {
   brandLogoBase64: string;
@@ -138,46 +139,33 @@ export function BrandingView() {
     }
   }, [loading]);
 
-  const fileToBase64 = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result as string);
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
-  };
-
-  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+  /**
+   * Branding art is stored inline in settings, so it is downscaled here
+   * instead of being rejected for its file size.
+   */
+  const handleBrandingImageUpload = async (e, field, label, limits) => {
+    const input = e.target;
+    const file = input.files?.[0];
     if (!file) return;
-    if (file.size > 1024 * 1024) {
-      showToast('Logo file must be under 1MB', 'error');
-      return;
-    }
     try {
-      const base64 = await fileToBase64(file);
-      setConfig(prev => ({ ...prev, brandLogoBase64: base64 }));
-      showToast('Logo loaded — save to apply', 'info');
-    } catch {
-      showToast('Failed to read file', 'error');
+      const optimised = await compressImage(file, limits);
+      setConfig(prev => ({ ...prev, [field]: optimised.dataUrl }));
+      showToast(
+        `${label} optimised ${formatBytes(optimised.originalBytes)} → ${formatBytes(optimised.bytes)} — save to apply`,
+        'info'
+      );
+    } catch (err: any) {
+      showToast(`Could not use this ${label.toLowerCase()}: ${err?.message || err}`, 'error');
+    } finally {
+      input.value = '';
     }
   };
 
-  const handleBannerUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (file.size > 2 * 1024 * 1024) {
-      showToast('Banner file must be under 2MB', 'error');
-      return;
-    }
-    try {
-      const base64 = await fileToBase64(file);
-      setConfig(prev => ({ ...prev, brandBannerBase64: base64 }));
-      showToast('Banner loaded — save to apply', 'info');
-    } catch {
-      showToast('Failed to read file', 'error');
-    }
-  };
+  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) =>
+    handleBrandingImageUpload(e, 'brandLogoBase64', 'Logo', { maxDimension: 512, maxBytes: 150 * 1024 });
+
+  const handleBannerUpload = (e: React.ChangeEvent<HTMLInputElement>) =>
+    handleBrandingImageUpload(e, 'brandBannerBase64', 'Banner', { maxDimension: 1600, maxBytes: 400 * 1024 });
 
   const handleColorChange = (field: keyof BrandingConfig, value: string) => {
     setConfig(prev => ({ ...prev, [field]: value }));
@@ -304,7 +292,7 @@ export function BrandingView() {
             <div style={{ flex: 1, minWidth: '200px' }}>
               <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: '12px', fontWeight: 500 }}>
                 This logo represents your brand on the customer self-ordering portal, receipt bills, and invoice templates.
-                Format: Transparent PNG/SVG, under 1MB.
+                Format: Transparent PNG/SVG — any size, it is optimised automatically.
               </p>
               <div style={{ display: 'flex', gap: '8px' }}>
                 <button onClick={() => logoInputRef.current?.click()} className="btn btn-secondary btn-sm" style={{ fontWeight: 700, fontSize: 'var(--text-xs)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>

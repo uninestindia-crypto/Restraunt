@@ -11,7 +11,7 @@ import { authService } from '../../services/auth';
 import { deductInventoryForOrder } from '../../services/inventoryHook';
 import { tableService } from '../../services/tables';
 import { logOrderPlaced, logActivity } from '../../utils/activityLogger';
-import { showToast, formatCurrencyShort, formatCurrency, playSound, vibrateDevice, escapeHtml, safeImageUrl, formatTime, parseOrderItems } from '../../utils/helpers';
+import { showToast, formatCurrencyShort, formatCurrency, playSound, vibrateDevice, escapeHtml, safeImageUrl, menuItemImageSource, formatTime, parseOrderItems, reportStatusChange } from '../../utils/helpers';
 import { CheckoutSuccessModal } from '../pos/CheckoutSuccessModal';
 import { generateUPIQR } from '../../services/upi';
 import { orderNotificationService } from '../../services/orderNotification';
@@ -1440,9 +1440,12 @@ export class ExpressView {
   }
 
   getMenuItemImage(item) {
-    if (item.imageUrl) {
+    const source = menuItemImageSource(item);
+    if (source) {
+      // Device-local images are inlined; safeImageUrl still vets them downstream.
+      if (/^data:image\//i.test(source)) return source;
       try {
-        const url = new URL(String(item.imageUrl), window.location.origin);
+        const url = new URL(String(source), window.location.origin);
         return ['http:', 'https:'].includes(url.protocol) ? url.href : '';
       } catch (_error) {
         return '';
@@ -1681,11 +1684,9 @@ export class ExpressView {
 
           showToast('Cooking started', 'success');
         } else if (action === 'ready') {
-          await updateOrderStatus(orderId, 'ready');
-          showToast('Food is ready!', 'success');
+          reportStatusChange(await updateOrderStatus(orderId, 'ready'), 'Food is ready!');
         } else if (action === 'complete') {
-          await updateOrderStatus(orderId, 'completed');
-          showToast('Order served and closed!', 'success');
+          reportStatusChange(await updateOrderStatus(orderId, 'completed'), 'Order served and closed!');
         } else if (action === 'delete') {
           const currentStaff = authService.getCurrentStaff();
           const role = currentStaff?.role || 'kitchen';
@@ -1696,23 +1697,20 @@ export class ExpressView {
 
           if (isAuthorized) {
             if (confirm('Are you sure you want to cancel and void this order?')) {
-              await updateOrderStatus(orderId, 'cancelled');
-              
-              await db.activityLog.add({
-                staffId: currentStaff?.id || 0,
-                action: `void_order_express_id_${orderId}`,
-                timestamp: new Date().toISOString()
-              });
+              // updateOrderStatus replicates to the cloud itself, and rolls the
+              // local change back when the server refuses the transition (for
+              // example, a paid order that has not been refunded).
+              const outcome = await updateOrderStatus(orderId, 'cancelled');
 
-              import('../../services/sync').then(({ syncService }) => {
-                db.orders.get(orderId).then(order => {
-                  if (order) {
-                    syncService.syncUpOrder(order).catch(err => console.error('Sync failed:', err));
-                  }
+              if (outcome.applied) {
+                await db.activityLog.add({
+                  staffId: currentStaff?.id || 0,
+                  action: `void_order_express_id_${orderId}`,
+                  timestamp: new Date().toISOString()
                 });
-              }).catch(err => console.warn('Sync service not loaded:', err));
+              }
 
-              showToast('Order cancelled & voided', 'success');
+              reportStatusChange(outcome, 'Order cancelled & voided');
             }
           } else {
             showToast('Cancelling orders requires an active manager, owner, or developer cloud session.', 'error');

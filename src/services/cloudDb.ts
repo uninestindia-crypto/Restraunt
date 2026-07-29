@@ -89,8 +89,25 @@ function mapItemToLocal(row: any) {
     isAvailable: row.is_available ? 1 : 0,
     isVeg: row.is_veg ? 1 : 0,
     sortOrder: parseInt(row.sort_order) || 0,
+    // Omitting this used to blank every dish photo on each hydration, because
+    // the pull writes whole records back over the local rows.
+    imageUrl: row.image_url || '',
     isSynced: 1
   };
+}
+
+/**
+ * Carry device-local fields across a hydration.
+ *
+ * The cloud has no column for an inlined image, so a pull would otherwise
+ * discard a picture that was set while offline.
+ */
+async function preserveLocalItemImages(incoming: any[]) {
+  const existing = await db.menuItems.bulkGet(incoming.map(row => row.id));
+  return incoming.map((row, index) => {
+    const localImage = String(existing[index]?.imageData || '');
+    return localImage ? { ...row, imageData: localImage } : row;
+  });
 }
 
 export function mapOrderToLocal(row: any) {
@@ -300,7 +317,7 @@ export async function fullPull(options: any = {}) {
     if (itemErr) {
       console.error('[CloudDB] Failed to fetch menu items from cloud:', itemErr.message || itemErr);
     } else if (items?.length > 0) {
-      const localItems = items.map(mapItemToLocal);
+      const localItems = await preserveLocalItemImages(items.map(mapItemToLocal));
       await hydrateTx(db.menuItems, () => replaceLocalStore(db.menuItems, localItems));
       results.items = localItems.length;
       console.log(`[CloudDB] Hydrated ${localItems.length} menu items from cloud.`);

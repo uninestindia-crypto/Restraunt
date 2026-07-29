@@ -28,6 +28,12 @@ export interface MenuItem {
   isVeg: number | boolean;
   sortOrder: number;
   imageUrl?: string;
+  /**
+   * Device-local inlined image (data URL). Used when Supabase Storage is not
+   * reachable. Deliberately unindexed and never pushed to the cloud, whose
+   * `image_url` column is a varchar(500).
+   */
+  imageData?: string;
   updatedAt?: string;
   isSynced?: number;
 }
@@ -806,16 +812,48 @@ export async function getOrder(id) {
   }
 }
 
+export interface OrderStatusUpdateResult {
+  /** True when the new status is safe to show as the order's real state. */
+  applied: boolean;
+  /** True once the cloud has accepted it; false while queued for later sync. */
+  synced: boolean;
+  /** Set when the server refused the transition — a message fit to show a user. */
+  error?: string;
+}
+
 /**
- * Update the status of an order.
- * @param {number} id
- * @param {string} status
- * @returns {Promise<number>} Number of updated records
+ * Update the status of an order, locally and then in the cloud.
+ *
+ * Order lifecycle rules live in Postgres (see the order status transition
+ * trigger), so the server is free to refuse a transition the UI offered —
+ * cancelling a paid order, for instance. The local write is optimistic, so a
+ * refusal must be rolled back here: leaving it in place makes the KDS hide an
+ * order that is still live, until the next hydration silently brings it back.
+ *
+ * Transient network failures are NOT rolled back; those stay queued so the app
+ * keeps working offline.
  */
-export async function updateOrderStatus(id, status) {
+export async function updateOrderStatus(id, status): Promise<OrderStatusUpdateResult> {
   let result = 0;
+  let previous: Partial<Order> | null = null;
+
   try {
     const existing = await db.orders.get(id);
+    if (!existing) {
+      return { applied: false, synced: false, error: 'Order not found.' };
+    }
+
+    // Snapshot exactly the fields this function touches, so a rollback restores
+    // the prior state without clobbering concurrent edits to other fields.
+    previous = {
+      status: existing.status,
+      updatedAt: existing.updatedAt,
+      completedAt: existing.completedAt,
+      deliveryStatus: existing.deliveryStatus,
+      syncStatus: existing.syncStatus,
+      isSynced: existing.isSynced
+    };
+
     const updates: Partial<Order> = {
       status,
       updatedAt: new Date().toISOString(),
@@ -831,26 +869,40 @@ export async function updateOrderStatus(id, status) {
     result = await db.orders.update(id, updates);
   } catch (error) {
     console.error(`[Database] Dexie database error in updateOrderStatus(${id}, ${status}):`, error);
-    return 0;
+    return { applied: false, synced: false, error: 'Could not update the order locally.' };
   }
 
-  if (result > 0) {
-    try {
-      const order = await getOrder(id);
-      if (order) {
-        if (navigator.onLine) {
-          const { syncService } = await import('../services/sync');
-          await syncService.syncUpOrder(order);
-        } else {
-          syncOrderInBackground(order, 'status update');
-        }
-      }
-    } catch (err) {
-      console.error('[Database] Failed to sync order status update:', err);
+  if (result === 0) {
+    return { applied: false, synced: false, error: 'Order not found.' };
+  }
+
+  try {
+    const order = await getOrder(id);
+    if (!order) {
+      return { applied: true, synced: false };
     }
-  }
 
-  return result;
+    if (!navigator.onLine) {
+      syncOrderInBackground(order, 'status update');
+      return { applied: true, synced: false };
+    }
+
+    const { syncService } = await import('../services/sync');
+    const outcome = await syncService.syncUpOrder(order);
+
+    if (outcome?.rejected) {
+      if (previous) {
+        await db.orders.update(id, { ...previous, syncStatus: 'synced', isSynced: 1 });
+      }
+      console.warn(`[Database] Server refused status ${status} for order ${id}; local change rolled back.`);
+      return { applied: false, synced: false, error: outcome.error };
+    }
+
+    return { applied: true, synced: Boolean(outcome?.success) };
+  } catch (err) {
+    console.error('[Database] Failed to sync order status update:', err);
+    return { applied: true, synced: false };
+  }
 }
 
 /**

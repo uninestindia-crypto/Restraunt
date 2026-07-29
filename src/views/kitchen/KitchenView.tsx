@@ -5,7 +5,7 @@
  */
 
 import { getOrders, updateOrderStatus, db } from '../../db/database';
-import { escapeHtml, formatTime, parseOrderItems, showToast, playSound, vibrateDevice } from '../../utils/helpers';
+import { escapeHtml, formatTime, parseOrderItems, showToast, playSound, vibrateDevice, reportStatusChange } from '../../utils/helpers';
 import { orderNotificationService } from '../../services/orderNotification';
 import { authService } from '../../services/auth';
 
@@ -794,11 +794,9 @@ export class KitchenView {
 
           showToast('Preparing order', 'success');
         } else if (action === 'ready') {
-          await updateOrderStatus(orderId, 'ready');
-          showToast('Order is ready!', 'success');
+          reportStatusChange(await updateOrderStatus(orderId, 'ready'), 'Order is ready!');
         } else if (action === 'complete') {
-          await updateOrderStatus(orderId, 'completed');
-          showToast('Order served & closed', 'success');
+          reportStatusChange(await updateOrderStatus(orderId, 'completed'), 'Order served & closed');
         } else if (action === 'dispatch-wait') {
           showToast('Use Orders to assign delivery staff', 'info');
         } else if (action === 'delete') {
@@ -811,23 +809,20 @@ export class KitchenView {
 
           if (isAuthorized) {
             if (confirm('Are you sure you want to cancel and void this order?')) {
-              await updateOrderStatus(orderId, 'cancelled');
-              
-              await db.activityLog.add({
-                staffId: currentStaff?.id || 0,
-                action: `void_order_kds_id_${orderId}`,
-                timestamp: new Date().toISOString()
-              });
+              // updateOrderStatus replicates to the cloud itself, and rolls the
+              // local change back when the server refuses the transition (for
+              // example, a paid order that has not been refunded).
+              const outcome = await updateOrderStatus(orderId, 'cancelled');
 
-              import('../../services/sync').then(({ syncService }) => {
-                db.orders.get(orderId).then(order => {
-                  if (order) {
-                    syncService.syncUpOrder(order).catch(err => console.error('Sync failed:', err));
-                  }
+              if (outcome.applied) {
+                await db.activityLog.add({
+                  staffId: currentStaff?.id || 0,
+                  action: `void_order_kds_id_${orderId}`,
+                  timestamp: new Date().toISOString()
                 });
-              }).catch(err => console.warn('Sync service not loaded:', err));
+              }
 
-              showToast('Order cancelled & voided', 'success');
+              reportStatusChange(outcome, 'Order cancelled & voided');
             }
           } else {
             showToast('Cancelling orders requires an active manager, owner, or developer cloud session.', 'error');

@@ -1,7 +1,11 @@
 // @ts-nocheck
 import React, { useState, useEffect, useMemo } from 'react';
 import { db } from '../../db/database';
-import { formatCurrency, showToast, playSound, vibrateDevice } from '../../utils/helpers';
+import { formatCurrency, showToast, playSound, vibrateDevice, menuItemImageSource } from '../../utils/helpers';
+import { compressImage, formatBytes } from '../../utils/imageProcessing';
+
+/** Cloud `menu_items.image_url` is a varchar(500); anything longer must stay local. */
+const MAX_REMOTE_IMAGE_URL_LENGTH = 500;
 
 interface Category {
   id?: number;
@@ -21,6 +25,7 @@ interface MenuItem {
   isAvailable: number;
   sortOrder: number;
   imageUrl?: string;
+  imageData?: string;
   isSynced?: number;
 }
 
@@ -104,33 +109,41 @@ export function MenuManager() {
     loadData();
   };
 
-  const handleItemImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !editingItem) return;
-
-    if (file.size > 2 * 1024 * 1024) {
-      showToast('Image size must be less than 2MB', 'warning');
-      e.target.value = '';
-      return;
-    }
-
-    setImageUploading(true);
+  /**
+   * Push an already-optimised image to the shared bucket.
+   *
+   * Storage writes are gated by RLS on an active cloud manager session, so a
+   * PIN-only or offline shift legitimately cannot upload. That is reported as
+   * a reason rather than an error: the caller keeps the picture on the device.
+   */
+  const uploadItemImageToCloud = async (optimised: any) => {
     try {
       const { getSupabaseClient } = await import('../../services/supabaseClient');
       const supabase = await getSupabaseClient();
       if (!supabase) {
-        throw new Error('Supabase client is not available or configured.');
+        return { url: '', reason: 'Cloud storage is not configured on this device.' };
       }
 
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}.${fileExt}`;
-      const filePath = `items/${fileName}`;
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData?.session) {
+        return { url: '', reason: 'Sign in with your cloud manager account to publish it to all devices.' };
+      }
+
+      const extByType: Record<string, string> = {
+        'image/png': 'png',
+        'image/webp': 'webp',
+        'image/svg+xml': 'svg'
+      };
+      const fileExt = extByType[optimised.type] || 'jpg';
+      // The storage policy only accepts writes under `items/`.
+      const filePath = `items/${Date.now()}_${Math.random().toString(36).slice(2, 11)}.${fileExt}`;
 
       const { error } = await supabase.storage
         .from('menu-images')
-        .upload(filePath, file, {
+        .upload(filePath, optimised.blob, {
           cacheControl: '3600',
-          upsert: true
+          upsert: true,
+          contentType: optimised.type
         });
 
       if (error) throw error;
@@ -139,15 +152,66 @@ export function MenuManager() {
         .from('menu-images')
         .getPublicUrl(filePath);
 
-      const publicUrl = urlData.publicUrl;
-      setEditingItem(prev => prev ? { ...prev, imageUrl: publicUrl } : null);
-      showToast('Image uploaded successfully!', 'success');
+      const publicUrl = String(urlData?.publicUrl || '');
+      if (!publicUrl) {
+        return { url: '', reason: 'Cloud storage did not return a public link.' };
+      }
+      return { url: publicUrl, reason: '' };
     } catch (err: any) {
-      console.error('Image upload failed:', err);
-      showToast(`Image upload failed: ${err.message || err}`, 'error');
+      const message = err?.message || String(err);
+      console.error('Cloud image upload failed:', err);
+      const denied = /row-level security|not authoriz|unauthoriz|permission|policy|403/i.test(message);
+      return {
+        url: '',
+        reason: denied
+          ? 'Cloud upload was refused — a manager/owner cloud login is required.'
+          : `Cloud upload failed: ${message}`
+      };
+    }
+  };
+
+  const handleItemImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const input = e.target;
+    const file = input.files?.[0];
+    if (!file || !editingItem) return;
+
+    setImageUploading(true);
+    try {
+      // Any camera-sized photo is accepted: it is downscaled here instead of
+      // being rejected for its file size.
+      const optimised = await compressImage(file, { maxDimension: 1280, maxBytes: 400 * 1024 });
+
+      // Show the new picture straight away, whether or not the cloud accepts it.
+      setEditingItem(prev => prev ? { ...prev, imageData: optimised.dataUrl } : null);
+
+      const { url, reason } = await uploadItemImageToCloud(optimised);
+      if (url) {
+        setEditingItem(prev => prev ? { ...prev, imageUrl: url, imageData: '' } : null);
+        showToast(
+          `Image optimised ${formatBytes(optimised.originalBytes)} → ${formatBytes(optimised.bytes)} and uploaded. Save to apply.`,
+          'success'
+        );
+      } else {
+        showToast(`${reason} Image saved on this device only. Save to apply.`, 'warning');
+      }
+    } catch (err: any) {
+      console.error('Image processing failed:', err);
+      showToast(`Could not use this image: ${err?.message || err}`, 'error');
     } finally {
       setImageUploading(false);
+      input.value = '';
     }
+  };
+
+  const handleImageUrlChange = (value: string) => {
+    const url = value.trim();
+    setEditingItem(prev => prev ? { ...prev, imageUrl: url, imageData: url ? '' : prev.imageData } : null);
+  };
+
+  const handleRemoveItemImage = () => {
+    playSound(400, 80);
+    setEditingItem(prev => prev ? { ...prev, imageUrl: '', imageData: '' } : null);
+    showToast('Image cleared — the category default will be shown. Save to apply.', 'info');
   };
 
   const handleSaveItem = async () => {
@@ -159,8 +223,18 @@ export function MenuManager() {
       return;
     }
 
+    // A pasted data URL (or an over-long link) cannot fit the cloud's
+    // varchar(500) `image_url`, so it is kept as a device-local image instead
+    // of silently breaking the next menu sync.
+    const rawUrl = String(editingItem.imageUrl || '').trim();
+    const urlIsRemoteSafe = rawUrl.length <= MAX_REMOTE_IMAGE_URL_LENGTH && !/^data:/i.test(rawUrl);
+
     const savedItem = {
       ...editingItem,
+      imageUrl: urlIsRemoteSafe ? rawUrl : '',
+      imageData: urlIsRemoteSafe
+        ? String(editingItem.imageData || '')
+        : (String(editingItem.imageData || '') || rawUrl),
       name,
       categoryId: Number(editingItem.categoryId),
       price: Number(editingItem.price) || 0,
@@ -495,7 +569,7 @@ export function MenuManager() {
                   const vegClass = item.isVeg === 1 ? 'veg' : 'nonveg';
                   const vegLabel = item.isVeg === 1 ? 'Veg' : 'Non-Veg';
                   
-                  const resolvedImg = item.imageUrl || defaultImgMap[(catName || '').toLowerCase()] || '/assets/dish-starters.jpg';
+                  const resolvedImg = menuItemImageSource(item) || defaultImgMap[(catName || '').toLowerCase()] || '/assets/dish-starters.jpg';
 
                   return (
                     <div key={item.id} className="dish-card">
@@ -669,11 +743,13 @@ export function MenuManager() {
 
               {/* Image upload dropzone */}
               <div className="input-group">
-                <label htmlFor="item-image-file" style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '6px' }}>Dish Image (Max 2MB)</label>
+                <label htmlFor="item-image-file" style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '6px' }}>
+                  Dish Image — any photo, resized automatically
+                </label>
                 <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
                   <img
                     id="item-image-preview"
-                    src={editingItem.imageUrl || defaultImgMap[(categories.find(c => c.id === Number(editingItem.categoryId))?.name || '').toLowerCase()] || '/assets/dish-starters.jpg'}
+                    src={menuItemImageSource(editingItem) || defaultImgMap[(categories.find(c => c.id === Number(editingItem.categoryId))?.name || '').toLowerCase()] || '/assets/dish-starters.jpg'}
                     style={{ width: '60px', height: '60px', borderRadius: '10px', objectFit: 'cover', border: '1px solid var(--border-glass)', boxShadow: '0 0 10px rgba(0,0,0,0.2)' }}
                     alt="Preview"
                   />
@@ -683,6 +759,7 @@ export function MenuManager() {
                       id="item-image-file"
                       onChange={handleItemImageUpload}
                       accept="image/*"
+                      disabled={imageUploading}
                       className="input"
                       style={{ padding: '6px', fontSize: '11px', height: 'auto' }}
                     />
@@ -690,6 +767,34 @@ export function MenuManager() {
                       <div className="loading-spinner" style={{ position: 'absolute', right: '12px', top: '10px', width: '16px', height: '16px', borderWidth: '2px' }}></div>
                     )}
                   </div>
+                  {(editingItem.imageUrl || editingItem.imageData) && (
+                    <button
+                      type="button"
+                      className="btn btn-ghost"
+                      onClick={handleRemoveItemImage}
+                      disabled={imageUploading}
+                      title="Remove image"
+                      style={{ padding: '8px 10px', fontSize: '11px', fontWeight: 700 }}
+                    >
+                      <span className="material-symbols-rounded" style={{ fontSize: '16px' }}>delete</span>
+                    </button>
+                  )}
+                </div>
+                <input
+                  type="url"
+                  id="item-image-url"
+                  className="input"
+                  value={editingItem.imageUrl || ''}
+                  onChange={(e) => handleImageUrlChange(e.target.value)}
+                  placeholder="…or paste an image link (https://…)"
+                  style={{ marginTop: '8px', fontSize: '11px' }}
+                />
+                <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '6px' }}>
+                  {imageUploading
+                    ? 'Optimising and uploading…'
+                    : editingItem.imageData
+                      ? 'Stored on this device only — sign in to the cloud to share it with every terminal.'
+                      : 'Large photos are compressed to about 400 KB before upload.'}
                 </div>
               </div>
 

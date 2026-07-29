@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { db, getCategories, getItemsByCategory, createOrder, getNextOrderNumber, getSetting, generateLocalUuid } from '../../../db/database';
 import { globalStore } from '../../../store/Store';
-import { formatCurrency, playSound, vibrateDevice, showToast, parseOrderItems } from '../../../utils/helpers';
+import { formatCurrency, playSound, vibrateDevice, showToast, parseOrderItems, menuItemImageSource } from '../../../utils/helpers';
 import { MenuItem } from './MenuItem';
 import { CategorySlider } from './CategorySlider';
 import { CartDrawer } from './CartDrawer';
@@ -830,7 +830,7 @@ export function CustomerApp({ app }) {
                     onContextMenu={(e) => { e.preventDefault(); handleFavoriteItem(item); }}
                     type="button"
                   >
-                    <img src={item.imageUrl || '/assets/dish-starters.jpg'} alt="" width="640" height="420" loading="lazy" decoding="async" />
+                    <img src={menuItemImageSource(item) || '/assets/dish-starters.jpg'} alt="" width="640" height="420" loading="lazy" decoding="async" />
                     <span>{item.name}</span>
                     <strong>{formatCurrency(item.price)}</strong>
                   </button>

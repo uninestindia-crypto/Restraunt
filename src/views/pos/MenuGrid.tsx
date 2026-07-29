@@ -4,7 +4,7 @@
  */
 
 import { getCategories, getAllItems, getItemsByCategory, searchItems } from '../../db/database';
-import { formatCurrencyShort, debounce, escapeHtml, safeImageUrl } from '../../utils/helpers';
+import { formatCurrencyShort, debounce, escapeHtml, safeImageUrl, menuItemImageSource } from '../../utils/helpers';
 
 export class MenuGrid {
   constructor({ container, onAddItem }) {
@@ -112,7 +112,8 @@ export class MenuGrid {
   }
 
   getMenuItemImage(item) {
-    if (item.imageUrl) return item.imageUrl;
+    const source = menuItemImageSource(item);
+    if (source) return source;
     const cat = this.categories.find(c => c.id === item.categoryId);
     const catName = cat ? cat.name.toLowerCase() : '';
     const defaultImgMap = {

@@ -1,7 +1,7 @@
 // @ts-nocheck
 import React from 'react';
 import { globalStore } from '../../../store/Store';
-import { formatCurrency, escapeHtml } from '../../../utils/helpers';
+import { formatCurrency, escapeHtml, menuItemImageSource } from '../../../utils/helpers';
 
 const CATEGORY_IMAGE_MAP = {
   momos: '/assets/dish-momos.jpg',
@@ -32,7 +32,8 @@ export function MenuItem({ item, categories, cart, onOpenDetails }) {
   const qty = cartItem?.quantity || 0;
 
   const getItemImage = () => {
-    if (item.imageUrl) return item.imageUrl;
+    const source = menuItemImageSource(item);
+    if (source) return source;
     const cat = categories.find(c => c.id === item.categoryId);
     const catName = cat?.name?.toLowerCase() || '';
     return CATEGORY_IMAGE_MAP[catName] || '/assets/dish-momos.jpg';

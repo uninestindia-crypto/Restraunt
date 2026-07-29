@@ -62,6 +62,19 @@ export function mapCategoryToLocal(row: any) {
   };
 }
 
+/**
+ * `menu_items.image_url` is a varchar(500), so an inlined data URL or an
+ * over-long link would make the whole menu upsert fail. Those images live in
+ * the local-only `imageData` field instead and are simply not published.
+ */
+const MAX_REMOTE_IMAGE_URL_LENGTH = 500;
+
+function toRemoteImageUrl(value: any) {
+  const url = String(value || '').trim();
+  if (!url || url.length > MAX_REMOTE_IMAGE_URL_LENGTH) return '';
+  return /^data:/i.test(url) ? '' : url;
+}
+
 function mapItemToRemote(item: any) {
   return {
     id: item.id,
@@ -72,7 +85,7 @@ function mapItemToRemote(item: any) {
     is_available: item.isAvailable === 1,
     is_veg: item.isVeg === 1,
     sort_order: parseInt(item.sortOrder) || 0,
-    image_url: item.imageUrl || ''
+    image_url: toRemoteImageUrl(item.imageUrl)
   };
 }
 
@@ -365,6 +378,41 @@ export function mapCustomerToLocal(row) {
     createdAt: row.created_at,
     isSynced: 1
   };
+}
+
+export interface SyncOutcome {
+  success: boolean;
+  /** True when the server definitively refused the write (constraint, trigger, RLS). */
+  rejected: boolean;
+  offline: boolean;
+  error?: string;
+}
+
+/**
+ * Distinguish a definitive server refusal from a transient network problem.
+ *
+ * This drives whether an optimistic local write is rolled back or kept for a
+ * later retry. Rolling back on a flaky connection would break offline use;
+ * keeping a write the database has permanently refused leaves the local cache
+ * lying to the user until the next hydration silently reverts it.
+ */
+function isServerRejection(error: any) {
+  const status = error?.status ?? error?.statusCode;
+  if (typeof status === 'number' && status >= 400 && status < 500 && status !== 408 && status !== 429) {
+    return true;
+  }
+  // PostgREST surfaces Postgres SQLSTATEs, e.g. P0001 for `raise exception`
+  // from the order-status transition trigger, or 42501 for an RLS denial.
+  return typeof error?.code === 'string' && /^[0-9A-Z]{5}$/.test(error.code);
+}
+
+/**
+ * Prefer the database's own message — triggers raise text written for humans
+ * ("Paid orders must be refunded before cancellation") that is far more useful
+ * than a generic failure notice.
+ */
+function describeSyncError(error: any) {
+  return error?.message || error?.details || error?.hint || String(error);
 }
 
 let supabase = null;
@@ -1166,7 +1214,14 @@ class SyncService {
     try {
       if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
         const localData = mapToLocalFn(payload.new);
-        
+
+        // A device-local dish image has no cloud column, so carry it across
+        // the overwrite instead of losing it to a remote edit.
+        if (storeName === 'menuItems' && localData.id != null) {
+          const existing = await db.menuItems.get(localData.id);
+          if (existing?.imageData) localData.imageData = existing.imageData;
+        }
+
         // Put data into local IndexedDB
         await db[storeName].put(localData);
         console.log(`[Sync Remote] Applied ${payload.eventType} to ${storeName}:`, localData);
@@ -1204,11 +1259,17 @@ class SyncService {
     }
   }
 
-  // Active sync-up method for newly created or updated Orders
-  async syncUpOrder(order) {
+  /**
+   * Replicate a locally created or updated order to the cloud.
+   *
+   * Returns the outcome rather than swallowing it, so optimistic callers can
+   * tell a definitive server refusal (roll the local write back) apart from a
+   * transient network failure (keep it and retry later).
+   */
+  async syncUpOrder(order): Promise<SyncOutcome> {
     if (!this.isConnected || !supabase) {
       console.warn(`[Sync cache] Skipping order sync for ${order?.orderNumber || order?.id}: offline or disconnected.`);
-      return;
+      return { success: false, rejected: false, offline: true, error: 'Offline or disconnected.' };
     }
     try {
       if (needsServerValidation(order)) {
@@ -1226,7 +1287,7 @@ class SyncService {
           lastSyncedAt: new Date().toISOString()
         });
         console.log(`[Sync cache] Public order ${order.orderNumber} validated by Edge Function.`);
-        return;
+        return { success: true, rejected: false, offline: false };
       }
 
       const remote = mapOrderToRemote(order);
@@ -1254,8 +1315,10 @@ class SyncService {
       }
 
       console.log(`[Sync cache] Order ${order.orderNumber} successfully replicated to cloud and updated in cache.`);
+      return { success: true, rejected: false, offline: false };
     } catch (e) {
       console.error(`[Sync net] Cloud replication failed for order ${order?.orderNumber || order?.id}:`, e);
+      const rejected = isServerRejection(e);
       if (order?.id) {
         try {
           await db.orders.update(order.id, {
@@ -1269,6 +1332,7 @@ class SyncService {
           console.error(`[Sync db] Error marking order ${order.id} sync failure:`, dbErr);
         }
       }
+      return { success: false, rejected, offline: false, error: describeSyncError(e) };
     }
   }
 
