@@ -373,7 +373,10 @@ export class ExpressView {
 
         .express-pos-body {
           display: grid;
-          grid-template-columns: 1fr 290px;
+          /* A fixed 290px column wrapped "Dine-In" onto two lines and pushed the
+             pay buttons into their own icons on a desktop screen. It now scales
+             with the window and stops growing before it steals menu space. */
+          grid-template-columns: 1fr clamp(300px, 23vw, 380px);
           gap: 0;
           flex: 1;
           overflow: hidden;
@@ -593,8 +596,11 @@ export class ExpressView {
         /* Products Grid */
         .express-products-grid {
           display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-          gap: 10px;
+          /* The track has to grow with the screen: auto-filling a flat 120px
+             track gave a 1400px menu ten unreadable columns on a desktop till,
+             while a flat desktop size would break the phone layout. */
+          grid-template-columns: repeat(auto-fill, minmax(clamp(120px, 13.5vw, 210px), 1fr));
+          gap: clamp(10px, 0.9vw, 16px);
           padding: 12px 16px;
           overflow-y: auto;
           background: transparent;
@@ -632,7 +638,7 @@ export class ExpressView {
 
         .prod-image {
           width: 100%;
-          height: 80px;
+          height: clamp(80px, 8.5vw, 132px);
           display: flex;
           align-items: center;
           justify-content: center;
@@ -655,11 +661,11 @@ export class ExpressView {
         }
 
         .prod-name {
-          font-size: var(--text-xs);
+          font-size: clamp(var(--text-xs), 0.95vw, var(--text-sm));
           font-weight: 600;
           color: var(--text-primary);
           line-height: 1.3;
-          height: 32px;
+          height: 2.6em;
           overflow: hidden;
           display: -webkit-box;
           -webkit-line-clamp: 2;
@@ -677,7 +683,7 @@ export class ExpressView {
         .prod-price {
           font-weight: 700;
           color: var(--color-primary-on-surface);
-          font-size: var(--text-xs);
+          font-size: clamp(var(--text-xs), 0.95vw, var(--text-base));
         }
 
         /* Cart Section */
@@ -858,17 +864,21 @@ export class ExpressView {
           border: 1px solid var(--border-glass);
           border-radius: var(--radius-full);
           padding: 3px;
-          flex: 1.5;
-          min-width: 240px;
+          /* Takes the full row and never claims more width than the cart has:
+             a 240px floor inside a 260px column is what wrapped the labels. */
+          flex: 1 1 100%;
+          min-width: 0;
         }
 
         .type-btn {
-          flex: 1;
+          flex: 1 1 0;
+          min-width: 0;
+          white-space: nowrap;
           display: flex;
           align-items: center;
           justify-content: center;
-          gap: 6px;
-          padding: 6px 12px;
+          gap: 5px;
+          padding: 7px 8px;
           background: transparent;
           border: none;
           color: var(--text-secondary);
@@ -927,7 +937,8 @@ export class ExpressView {
           display: flex;
           justify-content: space-between;
           align-items: center;
-          gap: 12px;
+          gap: 10px;
+          flex-wrap: wrap;
         }
 
         .express-total-info {
@@ -937,6 +948,7 @@ export class ExpressView {
         }
 
         .total-lbl {
+          white-space: nowrap;
           font-size: 9px;
           color: var(--text-secondary);
           text-transform: uppercase;
@@ -954,13 +966,17 @@ export class ExpressView {
         .checkout-buttons-group {
           display: flex;
           gap: 8px;
-          flex: 1;
+          flex: 1 1 180px;
+          min-width: 0;
           justify-content: flex-end;
         }
 
         .quick-pay-btn {
           height: 44px;
-          padding: 0 18px;
+          flex: 1 1 0;
+          min-width: 0;
+          white-space: nowrap;
+          padding: 0 14px;
           border-radius: var(--radius-md);
           border: none;
           font-family: var(--font-display);
@@ -1603,9 +1619,9 @@ export class ExpressView {
 
     return this.filteredItems.map(item => {
       const itemId = escapeHtml(String(item.id ?? ''));
-      const vegTag = item.isVeg 
-        ? '<span class="badge-veg" style="transform:scale(0.85);"></span>'
-        : '<span class="badge-nonveg" style="transform:scale(0.85);"></span>';
+      const vegTag = item.isVeg
+        ? '<span class="badge-veg"></span>'
+        : '<span class="badge-nonveg"></span>';
 
       const resolvedImage = safeImageUrl(this.getMenuItemImage(item));
       const fallbackEmoji = item.icon || this.getCategoryIcon(item.categoryId) || '🍽️';
@@ -1666,11 +1682,11 @@ export class ExpressView {
       <div class="checkout-buttons-group">
         <button class="quick-pay-btn btn-cash" id="express-pay-cash" ${this.cart.length === 0 ? 'disabled' : ''}>
           <span class="material-symbols-rounded">payments</span>
-          💵 CASH
+          Cash
         </button>
         <button class="quick-pay-btn btn-upi" id="express-pay-upi" ${this.cart.length === 0 ? 'disabled' : ''}>
           <span class="material-symbols-rounded">qr_code_2</span>
-          📱 UPI QR
+          <span>UPI</span><span>QR</span>
         </button>
       </div>
     `;

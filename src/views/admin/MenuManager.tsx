@@ -4,6 +4,12 @@ import { db } from '../../db/database';
 import { ensureFresh } from '../../services/cloudDb';
 import { formatCurrency, showToast, playSound, vibrateDevice, menuItemImageSource } from '../../utils/helpers';
 import { compressImage, formatBytes } from '../../utils/imageProcessing';
+import {
+  hasUnpublishedImage,
+  publishPendingMenuImages,
+  startPendingImageRetry,
+  uploadMenuImage
+} from '../../services/menuImagePublisher';
 
 /** Cloud `menu_items.image_url` is a varchar(500); anything longer must stay local. */
 const MAX_REMOTE_IMAGE_URL_LENGTH = 500;
@@ -55,6 +61,13 @@ export function MenuManager() {
       setLoading(true);
       // Read the published menu, not this browser's copy of it.
       await ensureFresh(['categories', 'items']);
+
+      // A photo picked while signed out of the cloud never reached Supabase, so
+      // a second device still shows the old dish. Retry those before listing.
+      const publish = await publishPendingMenuImages();
+      if (publish.published > 0) {
+        showToast(`Published ${publish.published} dish photo${publish.published > 1 ? 's' : ''} to all devices.`, 'success');
+      }
       const catsList = await db.menuCategories.orderBy('sortOrder').toArray();
       const itemsList = await db.menuItems.orderBy('sortOrder').toArray();
       setCategories(catsList);
@@ -67,6 +80,7 @@ export function MenuManager() {
   };
 
   useEffect(() => {
+    startPendingImageRetry();
     loadData();
   }, []);
 
@@ -112,67 +126,6 @@ export function MenuManager() {
     loadData();
   };
 
-  /**
-   * Push an already-optimised image to the shared bucket.
-   *
-   * Storage writes are gated by RLS on an active cloud manager session, so a
-   * PIN-only or offline shift legitimately cannot upload. That is reported as
-   * a reason rather than an error: the caller keeps the picture on the device.
-   */
-  const uploadItemImageToCloud = async (optimised: any) => {
-    try {
-      const { getSupabaseClient } = await import('../../services/supabaseClient');
-      const supabase = await getSupabaseClient();
-      if (!supabase) {
-        return { url: '', reason: 'Cloud storage is not configured on this device.' };
-      }
-
-      const { data: sessionData } = await supabase.auth.getSession();
-      if (!sessionData?.session) {
-        return { url: '', reason: 'Sign in with your cloud manager account to publish it to all devices.' };
-      }
-
-      const extByType: Record<string, string> = {
-        'image/png': 'png',
-        'image/webp': 'webp',
-        'image/svg+xml': 'svg'
-      };
-      const fileExt = extByType[optimised.type] || 'jpg';
-      // The storage policy only accepts writes under `items/`.
-      const filePath = `items/${Date.now()}_${Math.random().toString(36).slice(2, 11)}.${fileExt}`;
-
-      const { error } = await supabase.storage
-        .from('menu-images')
-        .upload(filePath, optimised.blob, {
-          cacheControl: '3600',
-          upsert: true,
-          contentType: optimised.type
-        });
-
-      if (error) throw error;
-
-      const { data: urlData } = supabase.storage
-        .from('menu-images')
-        .getPublicUrl(filePath);
-
-      const publicUrl = String(urlData?.publicUrl || '');
-      if (!publicUrl) {
-        return { url: '', reason: 'Cloud storage did not return a public link.' };
-      }
-      return { url: publicUrl, reason: '' };
-    } catch (err: any) {
-      const message = err?.message || String(err);
-      console.error('Cloud image upload failed:', err);
-      const denied = /row-level security|not authoriz|unauthoriz|permission|policy|403/i.test(message);
-      return {
-        url: '',
-        reason: denied
-          ? 'Cloud upload was refused — a manager/owner cloud login is required.'
-          : `Cloud upload failed: ${message}`
-      };
-    }
-  };
-
   const handleItemImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const input = e.target;
     const file = input.files?.[0];
@@ -187,7 +140,7 @@ export function MenuManager() {
       // Show the new picture straight away, whether or not the cloud accepts it.
       setEditingItem(prev => prev ? { ...prev, imageData: optimised.dataUrl } : null);
 
-      const { url, reason } = await uploadItemImageToCloud(optimised);
+      const { url, reason } = await uploadMenuImage(optimised.blob, optimised.type);
       if (url) {
         setEditingItem(prev => prev ? { ...prev, imageUrl: url, imageData: '' } : null);
         showToast(
@@ -195,7 +148,9 @@ export function MenuManager() {
           'success'
         );
       } else {
-        showToast(`${reason} Image saved on this device only. Save to apply.`, 'warning');
+        // Kept as a pending photo rather than a lost one: the item is flagged in
+        // the list below and retried whenever a cloud session is available.
+        showToast(`${reason} Saved on this device for now — it will publish automatically once you are signed in to the cloud.`, 'warning', 8000);
       }
     } catch (err: any) {
       console.error('Image processing failed:', err);
@@ -452,7 +407,30 @@ export function MenuManager() {
           background: rgba(var(--color-danger-rgb), 0.9);
           color: #fff;
         }
-        
+
+        /* A photo that has not reached Supabase yet. Without this the item looks
+           updated everywhere while a second device still shows the old dish. */
+        .dish-photo-pending {
+          position: absolute;
+          bottom: 10px;
+          left: 10px;
+          right: 10px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 4px;
+          font-size: 9px;
+          font-weight: 800;
+          padding: 4px 8px;
+          border-radius: 6px;
+          text-transform: uppercase;
+          letter-spacing: 0.02em;
+          background: rgba(var(--color-warning-rgb), 0.92);
+          color: #1a1205;
+          border: 1px solid rgba(0, 0, 0, 0.12);
+          cursor: help;
+        }
+
         /* Toggle available button */
         .btn-avail-toggle {
           position: absolute;
@@ -573,6 +551,7 @@ export function MenuManager() {
                   const vegLabel = item.isVeg === 1 ? 'Veg' : 'Non-Veg';
                   
                   const resolvedImg = menuItemImageSource(item) || defaultImgMap[(catName || '').toLowerCase()] || '/assets/dish-starters.jpg';
+                  const photoPending = hasUnpublishedImage(item);
 
                   return (
                     <div key={item.id} className="dish-card">
@@ -583,6 +562,16 @@ export function MenuManager() {
                         <span className={`dish-type-badge ${vegClass}`}>
                           {vegLabel}
                         </span>
+
+                        {photoPending && (
+                          <span
+                            className="dish-photo-pending"
+                            title="This photo is only on this device. It publishes automatically once you are signed in to the cloud as a manager or owner."
+                          >
+                            <span className="material-symbols-rounded" style={{ fontSize: '13px' }}>cloud_off</span>
+                            This device only
+                          </span>
+                        )}
 
                         <button
                           className={`btn-avail-toggle ${item.isAvailable === 0 ? 'soldout' : ''}`}

@@ -303,9 +303,10 @@
   content: '';
   width: 14px;
   height: 14px;
-  border: 1.5px solid #EF4444;
   clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
-  background: rgba(var(--color-danger-rgb), 0.05);
+  /* Solid, not an outline: a 1.5px red edge on a 5%-opacity fill was invisible
+     against a dark menu card, and this mark decides what a customer is served. */
+  background: #EF4444;
 }
 
 

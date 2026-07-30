@@ -76,10 +76,52 @@ test('admin image picker optimises instead of rejecting large photos', () => {
 
   // A refused cloud upload still has to leave the operator with a changed image.
   assert.match(source, /imageData: optimised\.dataUrl/);
-  assert.match(source, /Sign in with your cloud manager account/);
+});
+
+/**
+ * Regression cover for "I changed the photo yesterday and my other laptop still
+ * shows the old one".
+ *
+ * A photo that Storage refused (no cloud manager session, dropped connection)
+ * stayed in the device-local `imageData` field, which is deliberately never
+ * published — so the operator saw their new picture and every other device kept
+ * the old one, permanently and silently.
+ */
+test('a dish photo the cloud refused stays pending and is retried', () => {
+  const publisher = read('src/services/menuImagePublisher.ts');
 
   // Storage RLS only accepts writes under items/.
-  assert.match(source, /`items\/\$\{Date\.now\(\)\}/);
+  assert.match(publisher, /const UPLOAD_PREFIX = 'items'/);
+  assert.match(publisher, /Sign in with your cloud manager account/);
+
+  // Pending = shown locally, absent from the cloud.
+  assert.match(publisher, /export function hasUnpublishedImage/);
+  assert.match(publisher, /String\(item\.imageData \|\| ''\) && !String\(item\.imageUrl \|\| ''\)\.trim\(\)/);
+
+  // A published photo must become the cloud link and stop being device-local,
+  // or the local copy keeps winning on the device that took it.
+  assert.match(publisher, /imageUrl: url, imageData: '', isSynced: 0/);
+  assert.match(publisher, /syncService\.syncUpItem\(updated\)/);
+
+  // Retried without the operator re-picking the file.
+  assert.match(publisher, /export function startPendingImageRetry/);
+  assert.match(publisher, /window\.addEventListener\('online'/);
+});
+
+test('the menu manager retries pending photos and marks the items it cannot publish', () => {
+  const source = read('src/views/admin/MenuManager.tsx');
+
+  assert.match(source, /await publishPendingMenuImages\(\)/, 'opening the menu must retry pending photos');
+  assert.match(source, /startPendingImageRetry\(\)/);
+
+  // The operator has to be able to see that a photo is not live everywhere.
+  assert.match(source, /const photoPending = hasUnpublishedImage\(item\)/);
+  assert.match(source, /dish-photo-pending/);
+  assert.match(source, /This device only/);
+
+  // One upload implementation, shared with the retry path.
+  assert.doesNotMatch(source, /supabase\.storage/, 'uploads belong to menuImagePublisher');
+  assert.match(source, /uploadMenuImage\(optimised\.blob, optimised\.type\)/);
 });
 
 test('branding uploads no longer enforce a hard file-size limit', () => {
