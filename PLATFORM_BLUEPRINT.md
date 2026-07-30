@@ -9,7 +9,7 @@
 
 ## 1. What Is This Platform?
 
-**NextGenOS Restaurant Operating System** is a **full-stack, offline-first, cloud-synced restaurant management platform** that combines a customer-facing online ordering storefront with a staff-facing operations backend — all running as a single Progressive Web App (PWA) and Android APK.
+**NextGenOS Restaurant Operating System** is a **full-stack, online-first, offline-capable restaurant management platform** that combines a customer-facing online ordering storefront with a staff-facing operations backend — all running as a single Progressive Web App (PWA) and Android APK.
 
 ### The Core Concept
 
@@ -40,8 +40,8 @@ It is designed for **small-to-medium restaurants in India** (specifically "The T
 |-------|-----------|---------|
 | **Frontend** | Vanilla JS (ES Modules) + Vite | Zero-framework SPA with code-splitting |
 | **Styling** | Vanilla CSS (7 stylesheets, ~113KB) | Dark mode glassmorphism design system |
-| **Local Database** | Dexie.js (IndexedDB) | Offline-first data layer (5 schema versions) |
-| **Cloud Database** | Supabase (PostgreSQL) | Cloud persistence, RLS, Realtime sync |
+| **Local Database** | Dexie.js (IndexedDB) | Offline cache behind the online-first read path (8 schema versions) |
+| **Cloud Database** | Supabase (PostgreSQL) | Source of truth for every read, RLS, Realtime sync |
 | **Auth** | Dual: PIN-based (SHA-256) + Supabase Auth | Staff authentication with RBAC |
 | **Sync Engine** | Custom bidirectional sync service (1,722 lines) | Offline→Cloud with exponential backoff |
 | **Edge Functions** | Supabase Edge Functions (Deno) | Server-side order validation |
@@ -165,7 +165,24 @@ erDiagram
     }
 ```
 
-### 3.3 Security Architecture
+### 3.3 Data Layer (Online-First)
+
+Supabase is the source of truth for every read. IndexedDB is a cache that
+answers only when the cloud cannot be reached — not a parallel copy of the
+store that happens to be synced periodically.
+
+| Concern | How it works |
+|---------|--------------|
+| **Read path** | `ensureFresh(resources)` (`services/cloudDb.ts`) pulls the table from Supabase, hydrates IndexedDB, then the caller reads Dexie as usual |
+| **Resource registry** | Each cloud-owned table is described once — query, mapping and local reconciliation rule — and login hydration (`fullPull`) reuses it, so the two paths cannot drift |
+| **Cost control** | `services/freshness.ts` shares one query between concurrent callers and reuses a pull for a few seconds, so a screen's cascade of reads costs one query per table |
+| **Offline** | An unreachable cloud resolves the read from the cache; nothing throws, and the pull is retried on the next read rather than cached as a success |
+| **Reconnect** | Regaining the network (or a realtime channel coming back) retires every freshness window, so the next read goes to Supabase |
+| **Writes** | Unchanged: orders are written to the cloud first and refuse to complete offline; other writes replicate through the sync service with an offline queue |
+
+---
+
+### 3.4 Security Architecture
 
 | Feature | Implementation |
 |---------|---------------|

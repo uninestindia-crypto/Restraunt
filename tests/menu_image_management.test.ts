@@ -31,7 +31,11 @@ test('cloud hydration carries the dish image back into the local menu', () => {
 
   // The cloud has no column for a device-local image, so a pull must not eat it.
   assert.match(source, /async function preserveLocalItemImages/);
-  assert.match(source, /preserveLocalItemImages\(items\.map\(mapItemToLocal\)\)/);
+  assert.match(
+    source,
+    /preserveLocalItemImages\(\s*\w+\.map\(mapItemToLocal\)\s*\)/,
+    'the menu_items pull must map through preserveLocalItemImages before hydrating'
+  );
 });
 
 test('realtime menu updates keep a device-local dish image', () => {

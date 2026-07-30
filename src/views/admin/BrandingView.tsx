@@ -1,6 +1,7 @@
 // @ts-nocheck
 import React, { useState, useEffect, useRef } from 'react';
 import { db, getSetting, setSetting } from '../../db/database';
+import { ensureFresh } from '../../services/cloudDb';
 import { STOREFRONT_DEFAULTS, STOREFRONT_SETTING_KEYS, resolveStorefrontCopy } from '../../content/storefront';
 import { showToast, playSound, vibrateDevice } from '../../utils/helpers';
 import { compressImage, formatBytes } from '../../utils/imageProcessing';
@@ -87,6 +88,7 @@ export function BrandingView() {
         storedCopy[key] = await getSetting(key);
       }
       setCopy(resolveStorefrontCopy(storedCopy));
+      await ensureFresh(['items']);
       setMenuItems(await db.menuItems.orderBy('sortOrder').toArray());
     } catch (err) {
       console.error('[BrandingView] Load config failed:', err);

@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { createRoot } from 'react-dom/client';
 import { db, getOrder, getOrders, getSetting, updateOrderFields, updatePayment } from '../../db/database';
+import { ensureFresh } from '../../services/cloudDb';
 import { ReceiptBuilder } from '../../services/receipt';
 import { printerService } from '../../services/printer';
 import { sendBillOnWhatsApp } from '../../services/whatsapp';
@@ -48,6 +49,7 @@ export function OrderHistoryComponent() {
     try {
       setLoading(true);
       const ordersList = await getOrders();
+      await ensureFresh(['staff']);
       const staffList = (await db.staff.toArray())
         .filter((staff: any) => staff.role === 'delivery' && (staff.isActive === 1 || staff.isActive === true));
       setOrders(ordersList);

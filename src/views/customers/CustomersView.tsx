@@ -10,6 +10,7 @@
  */
 
 import { db } from '../../db/database';
+import { ensureFresh } from '../../services/cloudDb';
 import { escapeHtml, formatCurrency, showToast, playSound, vibrateDevice } from '../../utils/helpers';
 
 const TIERS = {
@@ -113,6 +114,8 @@ export class CustomersView {
   }
 
   async loadCustomers() {
+    // Loyalty balances change wherever the customer last ordered.
+    await ensureFresh(['customers']);
     let customers = await db.customers.reverse().sortBy('createdAt');
     if (this.searchQuery) {
       customers = customers.filter(c => (c.name || '').toLowerCase().includes(this.searchQuery) || (c.phone || '').includes(this.searchQuery));

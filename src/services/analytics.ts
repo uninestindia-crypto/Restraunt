@@ -10,6 +10,7 @@
  */
 
 import { db } from '../db/database';
+import { ensureFresh } from './cloudDb';
 import { parseOrderItems } from '../utils/helpers';
 
 class AnalyticsService {
@@ -22,6 +23,10 @@ class AnalyticsService {
   }
 
   async getCompletedOrders(startISO, endISO) {
+    // Reporting on one device's cache under-reports the store's takings, so the
+    // orders behind every figure are pulled live before they are aggregated.
+    await ensureFresh(['orders']);
+
     try {
       const orders = await db.orders.where('createdAt').between(startISO, endISO).toArray();
       return orders.filter(o => o.paymentStatus === 'paid');

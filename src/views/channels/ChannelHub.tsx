@@ -10,6 +10,7 @@
  */
 
 import { db } from '../../db/database';
+import { ensureFresh } from '../../services/cloudDb';
 import { escapeHtml, formatCurrency, parseOrderItems } from '../../utils/helpers';
 
 const CHANNELS = [
@@ -28,6 +29,10 @@ export class ChannelHub {
   }
 
   async render() {
+    // Channel mix is a store-wide figure; online and QR orders never touch
+    // this device, so they only exist in the cloud.
+    await ensureFresh(['orders']);
+
     const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
     const todayEnd = new Date(); todayEnd.setHours(23, 59, 59, 999);
     const allOrders = await db.orders.where('createdAt').between(todayStart.toISOString(), todayEnd.toISOString()).toArray();

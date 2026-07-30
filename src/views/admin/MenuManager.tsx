@@ -1,6 +1,7 @@
 // @ts-nocheck
 import React, { useState, useEffect, useMemo } from 'react';
 import { db } from '../../db/database';
+import { ensureFresh } from '../../services/cloudDb';
 import { formatCurrency, showToast, playSound, vibrateDevice, menuItemImageSource } from '../../utils/helpers';
 import { compressImage, formatBytes } from '../../utils/imageProcessing';
 
@@ -52,6 +53,8 @@ export function MenuManager() {
   const loadData = async () => {
     try {
       setLoading(true);
+      // Read the published menu, not this browser's copy of it.
+      await ensureFresh(['categories', 'items']);
       const catsList = await db.menuCategories.orderBy('sortOrder').toArray();
       const itemsList = await db.menuItems.orderBy('sortOrder').toArray();
       setCategories(catsList);

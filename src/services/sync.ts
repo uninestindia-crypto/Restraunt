@@ -1204,6 +1204,16 @@ class SyncService {
 
     this.channel.subscribe((status) => {
       console.log(`Supabase real-time channel state: ${status}`);
+
+      // A channel that just came up may have missed changes while it was down,
+      // and one that just went down will miss them from here on. Either way the
+      // cached rows can no longer be assumed current, so retire the read
+      // freshness windows and let the next read go back to Supabase.
+      if (['SUBSCRIBED', 'CHANNEL_ERROR', 'TIMED_OUT', 'CLOSED'].includes(status)) {
+        import('./cloudDb')
+          .then(({ markCloudDataStale }) => markCloudDataStale())
+          .catch(err => console.warn('[Sync] Could not retire cloud read freshness:', err));
+      }
     });
   }
 

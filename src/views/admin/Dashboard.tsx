@@ -1,6 +1,7 @@
 // @ts-nocheck
 import React, { useState, useEffect, useMemo } from 'react';
 import { db, getTodayStats } from '../../db/database';
+import { ensureFresh } from '../../services/cloudDb';
 import { formatCurrency } from '../../utils/helpers';
 import { globalStore } from '../../store/Store';
 
@@ -43,6 +44,10 @@ export function Dashboard() {
   const loadData = async () => {
     try {
       setLoading(true);
+      // Every figure below is a store-wide total, so the rows behind them are
+      // pulled from the cloud before anything is counted.
+      await ensureFresh(['orders', 'items', 'staff']);
+
       // Fetch today's summary stats
       const todayStats = await getTodayStats();
       setStats(todayStats);

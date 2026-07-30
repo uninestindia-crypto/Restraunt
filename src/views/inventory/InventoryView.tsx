@@ -10,6 +10,7 @@
  */
 
 import { db } from '../../db/database';
+import { ensureFresh } from '../../services/cloudDb';
 import { inventoryService } from '../../services/inventory';
 import { escapeHtml, showToast, playSound, vibrateDevice } from '../../utils/helpers';
 
@@ -166,6 +167,10 @@ export class InventoryView {
   async loadData() {
     const content = document.getElementById('inv-content');
     if (!content) return;
+
+    // Stock is depleted by every till in the store, so both the levels and the
+    // supplier list are read from the cloud.
+    await ensureFresh(['inventory', 'suppliers']);
 
     // Low stock alert
     const lowStock = await inventoryService.getLowStockItems();

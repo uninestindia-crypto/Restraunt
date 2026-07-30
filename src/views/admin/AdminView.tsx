@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createRoot } from 'react-dom/client';
 import { db } from '../../db/database';
+import { ensureFresh } from '../../services/cloudDb';
 import { formatCurrency, showToast, playSound, vibrateDevice } from '../../utils/helpers';
 import { authService } from '../../services/auth';
 import { globalStore } from '../../store/Store';
@@ -50,6 +51,8 @@ function StaffManager() {
   const assignableRoles = Object.entries(ROLES).filter(([key]) => isDeveloper || key !== 'developer');
 
   const fetchStaff = async () => {
+    // The roster is cloud-owned; a stale local copy hides staff added elsewhere.
+    await ensureFresh(['staff']);
     const list = (await db.staff.toArray()).filter((s: any) => isDeveloper || s.role !== 'developer');
     setStaffList(list);
     setOwners(list.filter((s: any) => s.role === 'owner' && (s.isActive === true || s.isActive === 1)));

@@ -10,9 +10,12 @@
  */
 
 import { db } from '../db/database';
+import { ensureFresh } from './cloudDb';
 
 class InventoryService {
   async getStockLevels() {
+    await ensureFresh(['inventory']);
+
     try {
       return await db.inventory.toArray();
     } catch (e) {
@@ -22,6 +25,8 @@ class InventoryService {
   }
 
   async getLowStockItems() {
+    await ensureFresh(['inventory']);
+
     try {
       const items = await db.inventory.toArray();
       return items.filter(i => i.quantity <= (i.minThreshold || 0));
@@ -59,6 +64,8 @@ class InventoryService {
   }
 
   async getSuppliers() {
+    await ensureFresh(['suppliers']);
+
     try {
       return await db.suppliers.toArray();
     } catch (e) {

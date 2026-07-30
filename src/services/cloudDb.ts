@@ -8,16 +8,23 @@
  *  Version: 2.1.0
  *  © 2026 NextGenOS. All Rights Reserved.
  *
- *  Architecture: Cloud-First with Offline Cache
+ *  Architecture: Online-First with Offline Cache
  *  - Online:  All reads/writes go to Supabase FIRST, then cache in IndexedDB
  *  - Offline: Reads from IndexedDB cache, writes queued for flush on reconnect
  *  - Any device that logs in sees the SAME live data instantly
+ *
+ *  Reads enter through `ensureFresh()`: it pulls the requested tables from
+ *  Supabase into IndexedDB, and the caller then reads Dexie as usual. The cache
+ *  is a fallback for an unreachable cloud, NOT a second source of truth that
+ *  happens to be synced periodically — a login hydration is no longer what
+ *  stands between a screen and the store's real state.
  * ═══════════════════════════════════════════════════
  */
 
 import { db, generateLocalUuid, getDisplayToken } from '../db/database';
 import { getSupabaseClient } from './supabaseClient';
 import { runWithHydrationGuard } from './hydrationGuard';
+import { createFreshnessTracker } from './freshness';
 
 const DEFAULT_STORE_ID = 'the-taste';
 
@@ -240,19 +247,14 @@ function mapRecipeToLocal(row) {
   };
 }
 
-// ── Full Cloud Pull (Hydration) ─────────────────────────────────
-// This is THE key function that solves multi-device data consistency.
-// On every login/reconnect, it pulls ALL data from Supabase → IndexedDB.
+// ── Cloud Reads (Online-First) ──────────────────────────────────
+// Every cloud-owned table is described once, here. A read of that table goes
+// to Supabase and lands in IndexedDB; the cache is what a read falls back to
+// when the device is offline or the cloud refuses the query. Login hydration
+// (`fullPull`) and an individual screen's read therefore share the same fetch
+// and the same reconciliation rules — there is no second, drifting copy of
+// "how orders are pulled".
 
-/**
- * Pull all data from Supabase cloud into IndexedDB.
- * This ensures any device that connects sees the real production data
- * instead of stale local seeds or data from a different device.
- *
- * @param {Object} options
- * @param {boolean} options.publicOnly - Only pull menu data (for customer storefront)
- * @returns {Promise<{success: boolean, tables: Object}>}
- */
 /**
  * Run a hydration transaction. Every local write inside `body` is an echo of
  * cloud state, so the sync hooks must not replicate it back to Supabase.
@@ -280,88 +282,104 @@ async function replaceLocalStore(store: any, incoming: any[]) {
   await store.bulkPut(incoming);
 }
 
-export async function fullPull(options: any = {}) {
-  const { publicOnly = false, role = '' } = options;
-  const client = await getClient();
-  if (!client) {
-    console.warn('[CloudDB] Cannot perform full pull: Supabase unavailable.');
-    return { success: false, tables: {} };
+async function selectStoreRows(client: any, table: string, columns = '*') {
+  const { data, error } = await client
+    .from(table)
+    .select(columns)
+    .eq('store_id', getStoreId());
+  if (error) throw error;
+  return data || [];
+}
+
+/**
+ * Returned by `resolveLocalId` for a cloud row that has no local counterpart
+ * *and* must not be stored under its cloud id — the local store hands it a
+ * fresh key instead. See the orders resource for why that matters.
+ */
+const ASSIGN_LOCAL_KEY = Symbol('assign-local-key');
+
+/**
+ * Hydrate rows whose local primary key is a device-local auto-increment that
+ * does not match the cloud id (orders), or whose identity is a natural key the
+ * cloud id cannot be matched on across devices (a table's number, an
+ * ingredient's name). `resolveLocalId` maps a cloud row onto the local row it
+ * already owns so hydration updates it instead of inserting a twin.
+ */
+async function mergeLocalStore(store: any, incoming: any[], resolveLocalId: (row: any) => Promise<any>) {
+  for (const row of incoming) {
+    const localId = await resolveLocalId(row);
+    if (localId === ASSIGN_LOCAL_KEY) {
+      delete row.id;
+    } else if (localId !== undefined && localId !== null) {
+      row.id = localId;
+    }
+    await store.put(row);
   }
+}
 
-  const storeId = getStoreId();
-  const results: any = {};
-  const isTempStaff = role === 'temporary_staff';
+/** Newest orders a non-kitchen pull keeps locally available for history views. */
+const ORDER_PULL_LIMIT = 500;
 
-  try {
-    console.log(`[CloudDB] Starting full pull from cloud (store: ${storeId}, role: ${role})...`);
+/**
+ * How long a resource that was just read from Supabase is reused before the
+ * next read goes back to the network.
+ *
+ * Small enough that a screen shows the store's live state, large enough that
+ * one screen's cascade of reads (categories, then items, then items per
+ * category) costs a single query per table.
+ */
+const READ_FRESHNESS_MS = 3000;
 
-    // 1. Categories (always needed)
-    const { data: categories, error: catErr } = await client
-      .from('menu_categories')
-      .select('*')
-      .eq('store_id', storeId);
-    if (catErr) {
-      console.error('[CloudDB] Failed to fetch menu categories from cloud:', catErr.message || catErr);
-    } else if (categories?.length > 0) {
-      const localCats = categories.map(mapCategoryToLocal);
-      await hydrateTx(db.menuCategories, () => replaceLocalStore(db.menuCategories, localCats));
-      results.categories = localCats.length;
-      console.log(`[CloudDB] Hydrated ${localCats.length} categories from cloud.`);
+interface CloudResource {
+  /** Supabase table this resource reads. */
+  table: string;
+  /** Fetch the authoritative rows. Throws on a Supabase error. */
+  fetch(client: any, options: any): Promise<any[]>;
+  /** Write the fetched rows into the local cache. Returns the row count. */
+  hydrate(rows: any[]): Promise<number>;
+}
+
+const CLOUD_RESOURCE_MAP: Record<string, CloudResource> = {
+  categories: {
+    table: 'menu_categories',
+    fetch: (client) => selectStoreRows(client, 'menu_categories'),
+    hydrate: async (rows) => {
+      const local = rows.map(mapCategoryToLocal);
+      await hydrateTx(db.menuCategories, () => replaceLocalStore(db.menuCategories, local));
+      return local.length;
     }
+  },
 
-    // 2. Menu Items (always needed)
-    const { data: items, error: itemErr } = await client
-      .from('menu_items')
-      .select('*')
-      .eq('store_id', storeId);
-    if (itemErr) {
-      console.error('[CloudDB] Failed to fetch menu items from cloud:', itemErr.message || itemErr);
-    } else if (items?.length > 0) {
-      const localItems = await preserveLocalItemImages(items.map(mapItemToLocal));
-      await hydrateTx(db.menuItems, () => replaceLocalStore(db.menuItems, localItems));
-      results.items = localItems.length;
-      console.log(`[CloudDB] Hydrated ${localItems.length} menu items from cloud.`);
+  items: {
+    table: 'menu_items',
+    fetch: (client) => selectStoreRows(client, 'menu_items'),
+    hydrate: async (rows) => {
+      const local = await preserveLocalItemImages(rows.map(mapItemToLocal));
+      await hydrateTx(db.menuItems, () => replaceLocalStore(db.menuItems, local));
+      return local.length;
     }
+  },
 
-    // Public storefront only needs menu data
-    if (publicOnly) {
-      // Also pull tables for QR ordering
-      const { data: tables, error: tblErr } = await client
-        .from('tables')
-        .select('*')
-        .eq('store_id', storeId);
-      if (tblErr) {
-        console.error('[CloudDB] Failed to fetch tables from cloud (publicOnly):', tblErr.message || tblErr);
-      } else if (tables?.length > 0) {
-        const localTables = tables.map(mapTableToLocal);
-        const tableStore = db.table('tables');
-        await hydrateTx(tableStore, () => replaceLocalStore(tableStore, localTables));
-        results.tables = localTables.length;
-      }
-      console.log('[CloudDB] Full pull complete (public-only mode).');
-      return { success: true, tables: results };
-    }
-
-    // 3. Staff
-    const { data: staff, error: staffErr } = await client
-      .from('staff')
-      .select('id, auth_user_id, name, role, allow_express, is_active, created_at, updated_at')
-      .eq('store_id', storeId);
-    if (staffErr) {
-      console.error('[CloudDB] Failed to fetch staff from cloud:', staffErr.message || staffErr);
-    } else if (staff?.length > 0) {
-      const localStaff = staff.map(mapStaffToLocal);
+  staff: {
+    table: 'staff',
+    fetch: (client) => selectStoreRows(
+      client,
+      'staff',
+      'id, auth_user_id, name, role, allow_express, is_active, created_at, updated_at'
+    ),
+    hydrate: async (rows) => {
+      const local = rows.map(mapStaffToLocal);
       await hydrateTx(db.staff, async () => {
         const localStaffList = await db.staff.toArray();
-        const incomingIds = new Set(localStaff.map(s => s.id));
+        const incomingIds = new Set(local.map(s => s.id));
 
-        for (const local of localStaffList) {
-          if (!incomingIds.has(local.id)) {
-            await db.staff.delete(local.id);
+        for (const existing of localStaffList) {
+          if (!incomingIds.has(existing.id)) {
+            await db.staff.delete(existing.id);
           }
         }
 
-        for (const s of localStaff) {
+        for (const s of local) {
           let existing = null;
           if (s.cloudUserId) {
             existing = await db.staff.where('cloudUserId').equals(s.cloudUserId).first();
@@ -379,183 +397,277 @@ export async function fullPull(options: any = {}) {
           await db.staff.put(s);
         }
       });
-      results.staff = localStaff.length;
-      console.log(`[CloudDB] Hydrated ${localStaff.length} staff members from cloud.`);
+      return local.length;
     }
+  },
 
-    // 4. Orders (for temporary staff, only pull active kitchen orders; else last 500)
-    let orderQuery = client
-      .from('orders')
-      .select('*')
-      .eq('store_id', storeId);
+  orders: {
+    table: 'orders',
+    // Temporary staff only ever see the live kitchen board, so they pull the
+    // active tickets rather than the store's trading history.
+    fetch: async (client, options) => {
+      let query = client.from('orders').select('*').eq('store_id', getStoreId());
+      if (options?.role === 'temporary_staff') {
+        query = query.in('status', ['confirmed', 'preparing', 'ready']);
+      } else {
+        query = query.order('created_at', { ascending: false }).limit(ORDER_PULL_LIMIT);
+      }
+      const { data, error } = await query;
+      if (error) throw error;
+      return data || [];
+    },
+    hydrate: async (rows) => {
+      const local = rows.map(mapOrderToLocal);
+      // Orders are NOT pruned against the payload: an order created on this
+      // device and not yet accepted by the cloud is absent from it, and must
+      // survive a hydration so it can still be pushed.
+      await hydrateTx(db.orders, () => mergeLocalStore(db.orders, local, async (row) => {
+        const existing = await db.orders.where('clientOrderId').equals(row.clientOrderId).first();
+        if (existing) return existing.id; // preserve the local auto-increment key
 
-    if (isTempStaff) {
-      orderQuery = orderQuery.in('status', ['confirmed', 'preparing', 'ready']);
-    } else {
-      orderQuery = orderQuery.order('created_at', { ascending: false }).limit(500);
+        // A cloud order this device has never seen still carries a cloud id, and
+        // that number can already belong to an unrelated order created offline
+        // here. Storing it under the cloud id would overwrite that order — a
+        // real ticket, with a real payment on it — so the incoming row takes a
+        // fresh local key. Its cloud identity lives in serverOrderId.
+        const collision = await db.orders.get(row.id);
+        return collision ? ASSIGN_LOCAL_KEY : row.id;
+      }));
+      return local.length;
     }
+  },
 
-    const { data: orders, error: orderErr } = await orderQuery;
-    if (orderErr) {
-      console.error('[CloudDB] Failed to fetch orders from cloud:', orderErr.message || orderErr);
-    } else if (orders?.length > 0) {
-      const localOrders = orders.map(mapOrderToLocal);
-      await hydrateTx(db.orders, async () => {
-        for (const order of localOrders) {
-          const existing = await db.orders.where('clientOrderId').equals(order.clientOrderId).first();
-          if (existing) {
-            order.id = existing.id; // Preserve local auto-increment key
-          }
-          await db.orders.put(order);
-        }
-      });
-      results.orders = localOrders.length;
-      console.log(`[CloudDB] Hydrated ${localOrders.length} orders from cloud.`);
+  tables: {
+    table: 'tables',
+    fetch: (client) => selectStoreRows(client, 'tables'),
+    hydrate: async (rows) => {
+      const local = rows.map(mapTableToLocal);
+      const store = db.table('tables');
+      await hydrateTx(store, () => mergeLocalStore(
+        store,
+        local,
+        async (row) => (await store.where('number').equals(row.number).first())?.id
+      ));
+      return local.length;
     }
+  },
 
-    // 5. Tables
-    const { data: tables, error: tblErr } = await client
-      .from('tables')
-      .select('*')
-      .eq('store_id', storeId);
-    if (tblErr) {
-      console.error('[CloudDB] Failed to fetch tables from cloud:', tblErr.message || tblErr);
-    } else if (tables?.length > 0) {
-      const localTables = tables.map(mapTableToLocal);
-      const tableStore = db.table('tables');
-      await hydrateTx(tableStore, async () => {
-        for (const tbl of localTables) {
-          const existing = await tableStore.where('number').equals(tbl.number).first();
-          if (existing) {
-            tbl.id = existing.id;
-          }
-          await tableStore.put(tbl);
-        }
-      });
-      results.tables = localTables.length;
+  inventory: {
+    table: 'inventory',
+    fetch: (client) => selectStoreRows(client, 'inventory'),
+    hydrate: async (rows) => {
+      const local = rows.map(mapInventoryToLocal);
+      await hydrateTx(db.inventory, () => mergeLocalStore(
+        db.inventory,
+        local,
+        async (row) => (await db.inventory.where('name').equals(row.name).first())?.id
+      ));
+      return local.length;
     }
+  },
 
-    if (!isTempStaff) {
-      // 6. Inventory
-      const { data: inventory, error: invErr } = await client
-        .from('inventory')
-        .select('*')
-        .eq('store_id', storeId);
-      if (invErr) {
-        console.error('[CloudDB] Failed to fetch inventory from cloud:', invErr.message || invErr);
-      } else if (inventory?.length > 0) {
-        const localInv = inventory.map(mapInventoryToLocal);
-        await hydrateTx(db.inventory, async () => {
-          for (const inv of localInv) {
-            const existing = await db.inventory.where('name').equals(inv.name).first();
-            if (existing) {
-              inv.id = existing.id;
-            }
-            await db.inventory.put(inv);
-          }
-        });
-        results.inventory = localInv.length;
-      }
-
-      // 7. Suppliers
-      const { data: suppliers, error: supErr } = await client
-        .from('suppliers')
-        .select('*')
-        .eq('store_id', storeId);
-      if (supErr) {
-        console.error('[CloudDB] Failed to fetch suppliers from cloud:', supErr.message || supErr);
-      } else if (suppliers?.length > 0) {
-        const localSups = suppliers.map(mapSupplierToLocal);
-        await hydrateTx(db.suppliers, async () => {
-          for (const sup of localSups) {
-            const existing = await db.suppliers.where('name').equals(sup.name).first();
-            if (existing) {
-              sup.id = existing.id;
-            }
-            await db.suppliers.put(sup);
-          }
-        });
-        results.suppliers = localSups.length;
-      }
-
-      // 8. Customers
-      const { data: customers, error: custErr } = await client
-        .from('customers')
-        .select('*')
-        .eq('store_id', storeId);
-      if (custErr) {
-        console.error('[CloudDB] Failed to fetch customers from cloud:', custErr.message || custErr);
-      } else if (customers?.length > 0) {
-        const localCusts = customers.map(mapCustomerToLocal);
-        await hydrateTx(db.customers, async () => {
-          for (const cust of localCusts) {
-            const existing = await db.customers.where('phone').equals(cust.phone).first();
-            if (existing) {
-              cust.id = existing.id;
-            }
-            await db.customers.put(cust);
-          }
-        });
-        results.customers = localCusts.length;
-      }
-
-      // 9. Shifts
-      const { data: shifts, error: shiftErr } = await client
-        .from('shifts')
-        .select('*')
-        .eq('store_id', storeId);
-      if (shiftErr) {
-        console.error('[CloudDB] Failed to fetch shifts from cloud:', shiftErr.message || shiftErr);
-      } else if (shifts?.length > 0) {
-        const localShifts = shifts.map(mapShiftToLocal);
-        await hydrateTx(db.shifts, async () => {
-          for (const shift of localShifts) {
-            const existing = await db.shifts
-              .where('date')
-              .equals(shift.date)
-              .and(s => s.staffId === shift.staffId)
-              .first();
-            if (existing) {
-              shift.id = existing.id;
-            }
-            await db.shifts.put(shift);
-          }
-        });
-        results.shifts = localShifts.length;
-      }
-
-      // 10. Recipes
-      const { data: recipes, error: recipeErr } = await client
-        .from('recipes')
-        .select('*')
-        .eq('store_id', storeId);
-      if (recipeErr) {
-        console.error('[CloudDB] Failed to fetch recipes from cloud:', recipeErr.message || recipeErr);
-      } else if (recipeErr && recipes?.length > 0) {
-        const localRecipes = recipes.map(mapRecipeToLocal);
-        await hydrateTx(db.recipes, async () => {
-          for (const recipe of localRecipes) {
-            const existing = await db.recipes
-              .where('menuItemId')
-              .equals(recipe.menuItemId)
-              .first();
-            if (existing) {
-              recipe.id = existing.id;
-            }
-            await db.recipes.put(recipe);
-          }
-        });
-        results.recipes = localRecipes.length;
-        console.log(`[CloudDB] Hydrated ${localRecipes.length} recipes from cloud.`);
-      }
+  suppliers: {
+    table: 'suppliers',
+    fetch: (client) => selectStoreRows(client, 'suppliers'),
+    hydrate: async (rows) => {
+      const local = rows.map(mapSupplierToLocal);
+      await hydrateTx(db.suppliers, () => mergeLocalStore(
+        db.suppliers,
+        local,
+        async (row) => (await db.suppliers.where('name').equals(row.name).first())?.id
+      ));
+      return local.length;
     }
+  },
 
-    console.log('[CloudDB] ✅ Full pull complete. Results:', results);
-    return { success: true, tables: results };
-  } catch (error) {
-    console.error('[CloudDB] Full pull failed:', error);
-    return { success: false, tables: results };
+  customers: {
+    table: 'customers',
+    fetch: (client) => selectStoreRows(client, 'customers'),
+    hydrate: async (rows) => {
+      const local = rows.map(mapCustomerToLocal);
+      await hydrateTx(db.customers, () => mergeLocalStore(
+        db.customers,
+        local,
+        async (row) => (await db.customers.where('phone').equals(row.phone).first())?.id
+      ));
+      return local.length;
+    }
+  },
+
+  shifts: {
+    table: 'shifts',
+    fetch: (client) => selectStoreRows(client, 'shifts'),
+    hydrate: async (rows) => {
+      const local = rows.map(mapShiftToLocal);
+      await hydrateTx(db.shifts, () => mergeLocalStore(
+        db.shifts,
+        local,
+        async (row) => (await db.shifts
+          .where('date')
+          .equals(row.date)
+          .and((s: any) => s.staffId === row.staffId)
+          .first())?.id
+      ));
+      return local.length;
+    }
+  },
+
+  recipes: {
+    table: 'recipes',
+    fetch: (client) => selectStoreRows(client, 'recipes'),
+    hydrate: async (rows) => {
+      const local = rows.map(mapRecipeToLocal);
+      await hydrateTx(db.recipes, () => mergeLocalStore(
+        db.recipes,
+        local,
+        async (row) => (await db.recipes.where('menuItemId').equals(row.menuItemId).first())?.id
+      ));
+      return local.length;
+    }
   }
+};
+
+const freshness = createFreshnessTracker({ ttlMs: READ_FRESHNESS_MS });
+
+/** Row counts from the most recent successful pull, for diagnostics/logging. */
+const lastPullCounts: Record<string, number> = {};
+
+/** Every cloud-owned resource a full-access role may read. */
+export const CLOUD_RESOURCES = Object.keys(CLOUD_RESOURCE_MAP);
+
+/** Menu data the anonymous storefront reads. */
+export const PUBLIC_RESOURCES = ['categories', 'items', 'tables'];
+
+/** The live kitchen board — all a temporary staff account is allowed to read. */
+export const KITCHEN_RESOURCES = ['categories', 'items', 'staff', 'orders', 'tables'];
+
+async function pullResource(name: string, options: any) {
+  const resource = CLOUD_RESOURCE_MAP[name];
+  if (!resource) {
+    console.warn(`[CloudDB] Unknown cloud resource "${name}".`);
+    return false;
+  }
+
+  const client = await getClient();
+  if (!client) return false;
+
+  try {
+    const rows = await resource.fetch(client, options);
+
+    // An empty payload is ambiguous: a table with no rows and a table the
+    // current role cannot see through RLS look identical. The fetch itself
+    // succeeded, so the read is live — but the cache is left alone rather than
+    // wiped on the strength of a payload that may just be invisible to us.
+    if (rows.length === 0) {
+      lastPullCounts[name] = 0;
+      return true;
+    }
+
+    lastPullCounts[name] = await resource.hydrate(rows);
+    return true;
+  } catch (error: any) {
+    console.error(`[CloudDB] Failed to read ${resource.table} from cloud:`, error?.message || error);
+    return false;
+  }
+}
+
+export interface EnsureFreshResult {
+  /** True when every requested resource now holds live cloud state. */
+  ok: boolean;
+  /** Resources served from the cloud (or still inside their fresh window). */
+  fresh: string[];
+  /** Resources that could not be reached; their reads fall back to the cache. */
+  stale: string[];
+  /** Rows hydrated per resource by the most recent pull. */
+  counts: Record<string, number>;
+}
+
+/**
+ * Bring `resources` up to date from Supabase before they are read locally.
+ *
+ * This is the entry point for online-first reads: callers await it, then read
+ * IndexedDB as they always have. When the cloud is unreachable it resolves
+ * quickly with `ok: false` and the caller transparently serves its cache, so
+ * the app stays usable offline.
+ *
+ * Concurrent callers asking for the same resource share one query, and a
+ * resource read moments ago is not re-fetched — see `freshness.ts`.
+ */
+export async function ensureFresh(
+  resources: string | string[],
+  options: any = {}
+): Promise<EnsureFreshResult> {
+  const names = (Array.isArray(resources) ? resources : [resources]).filter(Boolean);
+  const fresh: string[] = [];
+  const stale: string[] = [];
+  const counts: Record<string, number> = {};
+
+  await Promise.all(names.map(async (name) => {
+    const ok = await freshness.run(name, () => pullResource(name, options), { force: options.force === true });
+    (ok ? fresh : stale).push(name);
+    if (name in lastPullCounts) counts[name] = lastPullCounts[name];
+  }));
+
+  return { ok: stale.length === 0, fresh, stale, counts };
+}
+
+/**
+ * Drop the freshness window so the next read goes back to Supabase.
+ *
+ * Used when something happened that the cache cannot be trusted to reflect —
+ * a reconnect, or a realtime channel coming back after missing changes.
+ */
+export function markCloudDataStale(resources?: string | string[]) {
+  freshness.markStale(resources);
+}
+
+/** True while `resource` is inside its read-freshness window. */
+export function isCloudDataFresh(resource: string) {
+  return freshness.isFresh(resource);
+}
+
+// ── Full Cloud Pull (Hydration) ─────────────────────────────────
+// Login and reconnect hydration: pull everything the signed-in role may read,
+// so a device opens on the store's real state instead of a stale local seed.
+
+/**
+ * Pull all data this role may read from Supabase into IndexedDB.
+ *
+ * @param {Object} options
+ * @param {boolean} options.publicOnly - Only pull menu data (for customer storefront)
+ * @param {string} options.role - Signed-in staff role; narrows the pull
+ * @returns {Promise<{success: boolean, tables: Object}>}
+ */
+export async function fullPull(options: any = {}) {
+  const { publicOnly = false, role = '' } = options;
+
+  const client = await getClient();
+  if (!client) {
+    console.warn('[CloudDB] Cannot perform full pull: Supabase unavailable.');
+    return { success: false, tables: {} };
+  }
+
+  const names = publicOnly
+    ? PUBLIC_RESOURCES
+    : role === 'temporary_staff'
+      ? KITCHEN_RESOURCES
+      : CLOUD_RESOURCES;
+
+  console.log(`[CloudDB] Starting full pull from cloud (store: ${getStoreId()}, role: ${role || 'n/a'})...`);
+
+  // `force` so a hydration never settles for a fresh-window hit — a login or a
+  // reconnect is exactly when the cache is least trustworthy.
+  const result = await ensureFresh(names, { ...options, force: true });
+
+  if (result.stale.length > 0) {
+    console.warn(`[CloudDB] Full pull could not refresh: ${result.stale.join(', ')}.`);
+  }
+
+  // A pull that reached nothing at all is a failed pull: callers use this to
+  // decide whether to re-render from the cache or leave the screen as it is.
+  const success = result.fresh.length > 0;
+  console.log(`[CloudDB] ${success ? '✅' : '⚠️'} Full pull complete. Results:`, result.counts);
+  return { success, tables: result.counts };
 }
 
 // ── Flush Offline Queue ─────────────────────────────────────────
@@ -716,6 +828,10 @@ export async function cloudHasData() {
 // Auto-flush offline queue and re-hydrate when connectivity returns
 window.addEventListener('online', () => {
   _isOnline = true;
+  // Anything read while the device was offline came from the cache, and reads
+  // taken during the drop may sit inside a freshness window. Retire all of it
+  // so the first read after reconnecting goes to Supabase.
+  markCloudDataStale();
   setTimeout(async () => {
     console.log('[CloudDB] Network restored. Flushing offline queue...');
     await flushOfflineQueue();

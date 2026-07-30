@@ -10,6 +10,7 @@
  */
 
 import { db } from '../../db/database';
+import { ensureFresh } from '../../services/cloudDb';
 import { escapeHtml, showToast, playSound, vibrateDevice } from '../../utils/helpers';
 import { logShiftStarted, logShiftEnded } from '../../utils/activityLogger';
 import { lookupAuthUser } from '../../services/staffAdmin';
@@ -340,6 +341,10 @@ export class StaffView {
   async loadData() {
     const content = document.getElementById('staff-content');
     if (!content) return;
+
+    // Staff are created and deactivated from any device, so the roster and the
+    // shift log are read from the cloud rather than from this one's cache.
+    await ensureFresh(['staff', 'shifts']);
     if (this.tab === 'directory') {
       const currentStaff = authService.getCurrentStaff();
       const isDeveloper = currentStaff?.role === 'developer';

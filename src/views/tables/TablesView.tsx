@@ -103,6 +103,8 @@ export class TablesView {
   }
 
   async loadTables() {
+    // tableService.getAllTables() reads the floor live; nothing else on this
+    // screen comes from a cloud-owned table.
     const tables = await tableService.getAllTables();
     const stats = await tableService.getTableStats();
 

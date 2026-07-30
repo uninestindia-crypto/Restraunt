@@ -10,11 +10,16 @@
  */
 
 import { db } from '../db/database';
+import { ensureFresh } from './cloudDb';
 
 const tablesStore = () => db.table('tables');
 
 class TableService {
   async getAllTables() {
+    // Floor state is shared across every till, so it is read from the cloud
+    // first; the local cache only answers when Supabase is unreachable.
+    await ensureFresh(['tables']);
+
     try {
       return await tablesStore().orderBy('number').toArray();
     } catch (e) {

@@ -458,10 +458,38 @@ function syncOrderInBackground(order, context = 'order update') {
 }
 
 /**
+ * Bring cloud-owned tables up to date before reading them locally.
+ *
+ * This is what makes the read path online-first rather than cache-first: the
+ * local store is a fallback for when Supabase cannot be reached, not the
+ * primary source. A failure here is never fatal — the read that follows simply
+ * serves the last known rows, which is how the app keeps working offline.
+ *
+ * The cloud layer collapses concurrent and repeated calls into a single query
+ * per table (see services/freshness.ts), so callers are free to ask on every
+ * read without worrying about round trips.
+ */
+async function refreshFromCloud(resources: string[], options: any = {}) {
+  try {
+    const { ensureFresh } = await import('../services/cloudDb');
+    return await ensureFresh(resources, options);
+  } catch (error) {
+    console.warn(`[Database] Cloud read unavailable for ${resources.join(', ')}; serving cached rows:`, error);
+    return { ok: false, fresh: [], stale: resources, counts: {} };
+  }
+}
+
+/**
  * Get all active categories sorted by sortOrder.
+ *
+ * Reads live from Supabase; the local cache answers only when the cloud is
+ * unreachable.
+ *
  * @returns {Promise<Array>} Active categories
  */
 export async function getCategories() {
+  await refreshFromCloud(['categories']);
+
   try {
     return await db.menuCategories
       .where('isActive')
@@ -479,6 +507,8 @@ export async function getCategories() {
  * @returns {Promise<Array>} Available items in the category
  */
 export async function getItemsByCategory(categoryId) {
+  await refreshFromCloud(['items']);
+
   try {
     return await db.menuItems
       .where('[categoryId+isAvailable]')
@@ -506,6 +536,8 @@ export async function getItemsByCategory(categoryId) {
  * @returns {Promise<Array>} All available items
  */
 export async function getAllItems() {
+  await refreshFromCloud(['items']);
+
   try {
     return await db.menuItems
       .where('isAvailable')
@@ -526,6 +558,8 @@ export async function searchItems(query) {
   try {
     const lowerQuery = query.toLowerCase().trim();
     if (!lowerQuery) return [];
+
+    await refreshFromCloud(['items']);
 
     const allItems = await db.menuItems
       .where('isAvailable')
@@ -572,6 +606,11 @@ export async function createOrder(orderData: any, options: any = {}) {
         });
 
         const storeId = localStorage.getItem('store_id') || 'the-taste';
+
+        // The lockout below measures the order against cloud stock, so the
+        // recipes it multiplies out must be the cloud's too — an outdated local
+        // recipe silently checks the wrong ingredients.
+        await refreshFromCloud(['recipes']);
 
         // ── Cloud Inventory Lockout Check ──
         const { data: dbInventory, error: invError } = await supabase
@@ -710,39 +749,19 @@ export async function createOrder(orderData: any, options: any = {}) {
 
 /**
  * Get orders, optionally filtered by status, sorted by createdAt descending.
+ *
+ * Always reads the store's live orders from Supabase first, so a device shows
+ * what the store actually has rather than what this browser last cached; the
+ * local cache answers only when the cloud is unreachable.
+ *
  * @param {string} [status] - Optional status filter
+ * @param {boolean} [forceRefresh] - Bypass the short read-freshness window, for
+ *   callers that must not see even a seconds-old snapshot (a manual refresh, or
+ *   a re-read right after a staff action).
  * @returns {Promise<Array>} Orders
  */
 export async function getOrders(status, forceRefresh = false) {
-  if (forceRefresh && navigator.onLine) {
-    try {
-      const { getSupabaseClient } = await import('../services/supabaseClient');
-      const supabase = await getSupabaseClient({ persistSession: true });
-      if (supabase) {
-        const storeId = localStorage.getItem('store_id') || 'the-taste';
-        let query = supabase.from('orders').select('*').eq('store_id', storeId);
-        if (status) {
-          query = query.eq('status', status);
-        }
-        const { data, error } = await query.order('created_at', { ascending: false }).limit(200);
-        if (!error && data) {
-          const { mapOrderToLocal } = await import('../services/cloudDb');
-          const localOrders = data.map(mapOrderToLocal);
-          await db.transaction('rw', db.orders, async () => {
-            for (const order of localOrders) {
-              const existing = await db.orders.where('clientOrderId').equals(order.clientOrderId).first();
-              if (existing) {
-                order.id = existing.id; // Preserve local auto-increment key
-              }
-              await db.orders.put(order);
-            }
-          });
-        }
-      }
-    } catch (err) {
-      console.warn('[Database] Failed to fetch orders from cloud, falling back to local cache:', err);
-    }
-  }
+  await refreshFromCloud(['orders'], { force: forceRefresh });
 
   try {
     let collection;
@@ -1067,6 +1086,10 @@ export async function setSupabaseConfig(url, key) {
  * @returns {Promise<string>} Next order number
  */
 export async function getNextOrderNumber() {
+  // The sequence is per store, not per till: without the cloud's orders in
+  // hand, two devices trading at once both hand out the same number.
+  await refreshFromCloud(['orders']);
+
   try {
     const prefix = (await getSetting('orderNumberPrefix')) || 'TT';
 
@@ -1102,6 +1125,10 @@ export async function getNextOrderNumber() {
  * @returns {Promise<Object>} { totalOrders, totalRevenue, avgOrderValue, paymentBreakdown }
  */
 export async function getTodayStats() {
+  // Today's takings are a whole-store figure, so they have to come from the
+  // cloud: orders taken on another till are not in this device's cache.
+  await refreshFromCloud(['orders']);
+
   try {
     const now = new Date();
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
