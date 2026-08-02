@@ -264,6 +264,23 @@ function hydrateTx(stores: any, body: () => Promise<void>) {
 }
 
 /**
+ * True when the device holds a change to this row that Supabase has not
+ * accepted yet — an order cancelled while the sync service was disconnected, a
+ * price edited offline, a dish created before a reconnect.
+ *
+ * The cloud is authoritative for everything *except* those rows: they are the
+ * one piece of state the cloud does not have yet, and the push queue is what
+ * resolves them. Overwriting one loses a real edit and, worse, tells the
+ * operator it was applied — the kitchen's "order cancelled" toast followed by
+ * the card reappearing on the next refresh was exactly this.
+ */
+function hasUnpushedLocalEdit(row: any) {
+  if (!row) return false;
+  if (row.syncStatus === 'pending' || row.syncStatus === 'error') return true;
+  return row.isSynced === 0;
+}
+
+/**
  * Replace a local store's contents with the authoritative cloud rows.
  *
  * Deliberately NOT `clear()` + `bulkPut()`: `clear()` fires Dexie's 'deleting'
@@ -276,10 +293,21 @@ async function replaceLocalStore(store: any, incoming: any[]) {
   const incomingIds = new Set(incoming.map(row => row.id));
   const staleIds = (await store.toCollection().primaryKeys())
     .filter((id: any) => !incomingIds.has(id));
+
   if (staleIds.length > 0) {
-    await store.bulkDelete(staleIds);
+    // A row missing from the payload is usually one the cloud no longer has —
+    // but it is also what a dish created offline looks like, and that one is
+    // waiting to be pushed, not deleted.
+    const staleRows = await store.bulkGet(staleIds);
+    const prunableIds = staleIds.filter((_: any, index: number) => !hasUnpushedLocalEdit(staleRows[index]));
+    if (prunableIds.length > 0) {
+      await store.bulkDelete(prunableIds);
+    }
   }
-  await store.bulkPut(incoming);
+
+  const existing = await store.bulkGet(incoming.map(row => row.id));
+  const writable = incoming.filter((_, index) => !hasUnpushedLocalEdit(existing[index]));
+  await store.bulkPut(writable);
 }
 
 async function selectStoreRows(client: any, table: string, columns = '*') {
@@ -312,6 +340,9 @@ async function mergeLocalStore(store: any, incoming: any[], resolveLocalId: (row
       delete row.id;
     } else if (localId !== undefined && localId !== null) {
       row.id = localId;
+      // Leave the device's own unpushed change in place; the sync queue owns it
+      // until Supabase accepts or refuses it.
+      if (hasUnpushedLocalEdit(await store.get(localId))) continue;
     }
     await store.put(row);
   }

@@ -433,3 +433,84 @@ test('the menu, order and reporting reads in the data layer are all online-first
     );
   }
 });
+
+// ── Local changes the cloud has not accepted yet ─────────────────
+
+/**
+ * Reproduces "the kitchen says the order was cancelled and nothing happens".
+ *
+ * Cancelling from the KDS writes the new status locally, then pushes it. When
+ * the push cannot go out — no cloud session, a dropped connection — the change
+ * is queued and the board is told so. The very next read then pulled the order
+ * back from Supabase, still active, and hydration wrote it straight over the
+ * queued local change: the card reappeared, the queued push was gone, and the
+ * operator had been shown a success message.
+ */
+test('a queued local change is not overwritten by the next cloud read', async () => {
+  await reset();
+
+  await db.orders.add({
+    clientOrderId: 'kds-order-1',
+    orderNumber: 'TT-20260730-021',
+    status: 'cancelled',           // cancelled on this device...
+    items: '[]',
+    total: 300,
+    createdAt: '2026-07-30T09:00:00.000Z',
+    updatedAt: '2026-07-30T12:00:00.000Z',
+    syncStatus: 'pending',         // ...and not yet accepted by the cloud
+    isSynced: 0
+  } as any);
+
+  cloudRows.orders = [{
+    id: 500,
+    client_order_id: 'kds-order-1',
+    order_number: 'TT-20260730-021',
+    status: 'preparing',           // the cloud still has it live
+    items: [],
+    total: 300,
+    created_at: '2026-07-30T09:00:00.000Z',
+    updated_at: '2026-07-30T09:00:00.000Z'
+  }];
+
+  const orders = await getOrders();
+
+  const order = orders.find((o: any) => o.clientOrderId === 'kds-order-1');
+  assert.equal(order.status, 'cancelled', 'the queued cancellation must survive the read');
+  assert.equal(order.syncStatus, 'pending', 'and must still be queued for the cloud');
+});
+
+test('a menu edit made offline is not discarded by the next cloud read', async () => {
+  await reset();
+
+  await db.menuItems.put({
+    id: 1, categoryId: 42, name: 'Paneer Tikka',
+    price: 260,                    // repriced on this device
+    isAvailable: 1, isVeg: 1, sortOrder: 1,
+    isSynced: 0                    // not pushed yet
+  } as any);
+
+  cloudRows.menu_items = [
+    { id: 1, category_id: 42, name: 'Paneer Tikka', price: 240, is_available: true, is_veg: true, sort_order: 1 }
+  ];
+
+  const items = await getAllItems();
+  assert.equal(items[0].price, 260, 'an unpushed price change must not be reverted by a read');
+});
+
+test('an item created offline is not pruned by a read that cannot see it yet', async () => {
+  await reset();
+
+  await db.menuItems.put({
+    id: 99, categoryId: 42, name: 'New Special',
+    price: 199, isAvailable: 1, isVeg: 1, sortOrder: 9,
+    isSynced: 0
+  } as any);
+
+  cloudRows.menu_items = [
+    { id: 1, category_id: 42, name: 'Paneer Tikka', price: 240, is_available: true, is_veg: true, sort_order: 1 }
+  ];
+
+  await getAllItems();
+  const created = await db.menuItems.get(99);
+  assert.ok(created, 'a dish created offline must survive until it has been pushed');
+});

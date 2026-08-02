@@ -21,9 +21,12 @@ test('cloud hydration never clears local stores wholesale', () => {
   // `clear()` fires a 'deleting' hook per row, which replicates as a cloud DELETE.
   assert.doesNotMatch(source, /\.clear\(\)/);
 
-  // Stale rows are pruned by explicit id diff instead.
+  // Stale rows are pruned by explicit id diff instead — and only those the
+  // cloud is authoritative for, never a row still waiting to be pushed.
   assert.match(source, /async function replaceLocalStore/);
-  assert.match(source, /bulkDelete\(staleIds\)/);
+  assert.match(source, /const staleIds = /);
+  assert.match(source, /bulkDelete\(prunableIds\)/);
+  assert.match(source, /prunableIds = staleIds\.filter\([\s\S]*?hasUnpushedLocalEdit/);
 });
 
 test('every local write performed by fullPull is wrapped in the hydration guard', () => {
