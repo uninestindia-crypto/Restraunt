@@ -85,7 +85,34 @@ function mapItemToRemote(item: any) {
     is_available: item.isAvailable === 1,
     is_veg: item.isVeg === 1,
     sort_order: parseInt(item.sortOrder) || 0,
+    description: String(item.description || ''),
     image_url: toRemoteImageUrl(item.imageUrl)
+  };
+}
+
+function mapAddonToRemote(addon: any) {
+  return {
+    id: addon.id,
+    store_id: getStoreId(),
+    menu_item_id: addon.menuItemId,
+    name: String(addon.name || '').slice(0, 60),
+    price: parseFloat(addon.price) || 0,
+    is_active: addon.isActive === 1 || addon.isActive === true,
+    sort_order: parseInt(addon.sortOrder) || 0,
+    updated_at: new Date().toISOString()
+  };
+}
+
+export function mapAddonToLocal(row: any) {
+  return {
+    id: row.id,
+    menuItemId: row.menu_item_id,
+    name: row.name,
+    price: parseFloat(row.price) || 0,
+    isActive: row.is_active ? 1 : 0,
+    sortOrder: parseInt(row.sort_order) || 0,
+    updatedAt: row.updated_at,
+    isSynced: 1
   };
 }
 
@@ -98,6 +125,7 @@ export function mapItemToLocal(row: any) {
     isAvailable: row.is_available ? 1 : 0,
     isVeg: row.is_veg ? 1 : 0,
     sortOrder: parseInt(row.sort_order) || 0,
+    description: row.description || '',
     imageUrl: row.image_url || '',
     isSynced: 1
   };
@@ -749,6 +777,21 @@ class SyncService {
         }
       }
 
+      // 2b. Sync Add-ons
+      let unsyncedAddons = [];
+      try {
+        unsyncedAddons = await db.menuItemAddons.filter(a => !a.isSynced).toArray();
+      } catch (dbErr) {
+        console.error('[Sync db] Error fetching unsynced add-ons:', dbErr);
+      }
+
+      if (unsyncedAddons.length > 0) {
+        console.log(`[Sync cache] Found ${unsyncedAddons.length} unsynced add-ons in local cache.`);
+        for (const addon of unsyncedAddons) {
+          await this.syncUpAddon(addon);
+        }
+      }
+
       // 3. Sync Orders
       let unsyncedOrders = [];
       try {
@@ -1121,6 +1164,15 @@ class SyncService {
       }
     );
 
+    // Handle menu_item_addons updates
+    this.channel.on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'menu_item_addons' },
+      async (payload) => {
+        await this.handleRemoteChange('menuItemAddons', payload, mapAddonToLocal);
+      }
+    );
+
     // Handle orders updates
     this.channel.on(
       'postgres_changes',
@@ -1427,6 +1479,35 @@ class SyncService {
     } catch (e) {
       console.error(`[Sync net] Cloud replication failed for item "${item.name}":`, e);
       await this.markPushPending(db.menuItems, item.id);
+    }
+  }
+
+  async syncUpAddon(addon) {
+    if (!this.isConnected || !supabase) {
+      console.warn(`[Sync cache] Skipping add-on sync for "${addon?.name}": offline or disconnected.`);
+      await this.markPushPending(db.menuItemAddons, addon.id);
+      return;
+    }
+    try {
+      const remote = mapAddonToRemote(addon);
+
+      await retryWithBackoff(async () => {
+        const { error } = await supabase.from('menu_item_addons').upsert(remote);
+        if (error) throw error;
+      }, { maxRetries: 3, initialDelayMs: 1000, backoffFactor: 2 });
+
+      this.isSyncingFromServer = true;
+      try {
+        await db.menuItemAddons.update(addon.id, { isSynced: 1 });
+      } catch (dbErr) {
+        console.error(`[Sync db] Error marking add-on ${addon.id} as synced:`, dbErr);
+      } finally {
+        this.isSyncingFromServer = false;
+      }
+      console.log(`[Sync cache] Add-on "${addon.name}" successfully replicated to cloud.`);
+    } catch (e) {
+      console.error(`[Sync net] Cloud replication failed for add-on "${addon?.name}":`, e);
+      await this.markPushPending(db.menuItemAddons, addon.id);
     }
   }
 
@@ -1885,6 +1966,46 @@ class SyncService {
     });
 
     // Inventory hooks
+    db.menuItemAddons.hook('creating', (primKey, obj, transaction) => {
+      if (isHydrating() || this.isSyncingFromServer) return;
+      setTimeout(async () => {
+        try {
+          const addon = await db.menuItemAddons.get(primKey);
+          if (addon) await this.syncUpAddon(addon);
+        } catch (dbErr) {
+          console.error('[Sync db] Error in add-on creating hook:', dbErr);
+        }
+      }, 50);
+    });
+
+    db.menuItemAddons.hook('updating', (mods, primKey, obj, transaction) => {
+      if (isHydrating() || this.isSyncingFromServer) return;
+      setTimeout(async () => {
+        try {
+          const addon = await db.menuItemAddons.get(primKey);
+          if (addon) await this.syncUpAddon(addon);
+        } catch (dbErr) {
+          console.error('[Sync db] Error in add-on updating hook:', dbErr);
+        }
+      }, 50);
+    });
+
+    db.menuItemAddons.hook('deleting', (primKey, obj, transaction) => {
+      if (isHydrating() || this.isSyncingFromServer) return;
+      setTimeout(async () => {
+        if (!this.isConnected || !supabase) return;
+        try {
+          await retryWithBackoff(async () => {
+            const { error } = await supabase.from('menu_item_addons').delete().eq('id', primKey);
+            if (error) throw error;
+          }, { maxRetries: 3 });
+          console.log(`[Sync cache] Deleted add-on ${primKey} from cloud.`);
+        } catch (e) {
+          console.error(`[Sync net] Failed to delete add-on ${primKey} from cloud after retries:`, e);
+        }
+      }, 50);
+    });
+
     db.inventory.hook('creating', (primKey, obj, transaction) => {
       if (isHydrating() || this.isSyncingFromServer) return;
       setTimeout(async () => {

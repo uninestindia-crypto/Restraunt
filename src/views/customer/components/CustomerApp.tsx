@@ -101,6 +101,7 @@ export function CustomerApp({ app }) {
   const [activeCategoryId, setActiveCategoryId] = useState(null);
   const [items, setItems] = useState([]);
   const [menuByCategory, setMenuByCategory] = useState(new Map());
+  const [addons, setAddons] = useState([]);
   const [tables, setTables] = useState([]);
   const [detectedTable, setDetectedTable] = useState(null);
   const [selectedTableId, setSelectedTableId] = useState('');
@@ -231,6 +232,7 @@ export function CustomerApp({ app }) {
     }
     setCategories(refreshedCats);
     setMenuByCategory(refreshedMap);
+    setAddons(await db.menuItemAddons.toArray());
     setTables(await db.table('tables').toArray());
     setActiveCategoryId(current => (
       current && refreshedMap.has(current) ? current : (refreshedCats[0]?.id || null)
@@ -515,22 +517,18 @@ export function CustomerApp({ app }) {
     setActiveDetailItem(null);
   };
 
-  const handleAddToCartFromDrawer = ({ item, qty, spicyLevel, modifiers, customNotes, price }) => {
+  const handleAddToCartFromDrawer = ({ item, qty, spicyLevel, addons: chosenAddons = [], addonIds = [], customNotes, price }) => {
+    // The ticket the kitchen prints still reads as a sentence; the ids beside it
+    // are what the server prices the order from.
     let consolidatedNotes = `Spicy: ${spicyLevel}`;
-    if (modifiers.length > 0) consolidatedNotes += ` | Mods: ${modifiers.join(', ')}`;
+    if (chosenAddons.length > 0) consolidatedNotes += ` | Add-ons: ${chosenAddons.map(a => a.name).join(', ')}`;
     if (customNotes) consolidatedNotes += ` | Note: ${customNotes}`;
 
-    const currentCart = [...globalStore.state.cart];
-    const existingIndex = currentCart.findIndex(ci => ci.itemId === item.id && ci.notes === consolidatedNotes);
-    if (existingIndex !== -1) {
-      currentCart[existingIndex].quantity += qty;
-      globalStore.updateState({ cart: currentCart });
-    } else {
-      globalStore.addToCart({
-        ...item,
-        price
-      }, qty, consolidatedNotes);
-    }
+    globalStore.addToCart({ ...item, price }, qty, consolidatedNotes, {
+      addonIds,
+      addons: chosenAddons,
+      spiceLevel: spicyLevel
+    });
 
     playSound(900, 100);
     vibrateDevice([40, 20, 40]);
@@ -1234,6 +1232,7 @@ export function CustomerApp({ app }) {
           item={activeDetailItem}
           categories={categories}
           onClose={handleCloseDetails}
+          addons={addons}
           onAddToCart={handleAddToCartFromDrawer}
         />
       )}

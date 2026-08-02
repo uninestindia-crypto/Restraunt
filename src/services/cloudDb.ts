@@ -96,9 +96,23 @@ function mapItemToLocal(row: any) {
     isAvailable: row.is_available ? 1 : 0,
     isVeg: row.is_veg ? 1 : 0,
     sortOrder: parseInt(row.sort_order) || 0,
+    description: row.description || '',
     // Omitting this used to blank every dish photo on each hydration, because
     // the pull writes whole records back over the local rows.
     imageUrl: row.image_url || '',
+    isSynced: 1
+  };
+}
+
+function mapAddonToLocal(row: any) {
+  return {
+    id: row.id,
+    menuItemId: row.menu_item_id,
+    name: row.name,
+    price: parseFloat(row.price) || 0,
+    isActive: row.is_active ? 1 : 0,
+    sortOrder: parseInt(row.sort_order) || 0,
+    updatedAt: row.updated_at,
     isSynced: 1
   };
 }
@@ -391,6 +405,16 @@ const CLOUD_RESOURCE_MAP: Record<string, CloudResource> = {
     }
   },
 
+  addons: {
+    table: 'menu_item_addons',
+    fetch: (client) => selectStoreRows(client, 'menu_item_addons'),
+    hydrate: async (rows) => {
+      const local = rows.map(mapAddonToLocal);
+      await hydrateTx(db.menuItemAddons, () => replaceLocalStore(db.menuItemAddons, local));
+      return local.length;
+    }
+  },
+
   staff: {
     table: 'staff',
     fetch: (client) => selectStoreRows(
@@ -567,10 +591,10 @@ const lastPullCounts: Record<string, number> = {};
 export const CLOUD_RESOURCES = Object.keys(CLOUD_RESOURCE_MAP);
 
 /** Menu data the anonymous storefront reads. */
-export const PUBLIC_RESOURCES = ['categories', 'items', 'tables'];
+export const PUBLIC_RESOURCES = ['categories', 'items', 'addons', 'tables'];
 
 /** The live kitchen board — all a temporary staff account is allowed to read. */
-export const KITCHEN_RESOURCES = ['categories', 'items', 'staff', 'orders', 'tables'];
+export const KITCHEN_RESOURCES = ['categories', 'items', 'addons', 'staff', 'orders', 'tables'];
 
 async function pullResource(name: string, options: any) {
   const resource = CLOUD_RESOURCE_MAP[name];

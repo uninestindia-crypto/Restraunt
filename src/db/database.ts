@@ -19,10 +19,23 @@ export interface MenuCategory {
   isSynced?: number;
 }
 
+export interface MenuItemAddon {
+  id?: number;
+  menuItemId: number;
+  name: string;
+  price: number;
+  isActive: number | boolean;
+  sortOrder: number;
+  updatedAt?: string;
+  isSynced?: number;
+}
+
 export interface MenuItem {
   id?: number;
   categoryId: number;
   name: string;
+  /** Dish copy shown on the storefront. Empty falls back to category wording. */
+  description?: string;
   price: number;
   isAvailable: number | boolean;
   isVeg: number | boolean;
@@ -225,6 +238,7 @@ export class RestaurantDatabase extends Dexie {
   activityLog!: Dexie.Table<ActivityLogEntry, number>;
   aiConversations!: Dexie.Table<AIConversation, number>;
   localEmbeddings!: Dexie.Table<LocalEmbedding, number>;
+  menuItemAddons!: Dexie.Table<MenuItemAddon, number>;
 
   constructor() {
     super('TheTastePOS');
@@ -414,6 +428,27 @@ db.version(8).stores({
     await tx.table('staff').put(staff);
   }
   await tx.table('settings').bulkDelete(['adminPin', 'adminPinHash', 'requirePinForOrder']);
+});
+
+// Schema v9: per-dish paid add-ons. Dish descriptions ride on menuItems as an
+// unindexed field, so they need no store definition of their own.
+db.version(9).stores({
+  menuCategories: '++id, name, sortOrder, isActive, updatedAt',
+  menuItems: '++id, categoryId, [categoryId+isAvailable], name, price, isAvailable, isVeg, sortOrder, imageUrl, updatedAt',
+  orders: '++id, clientOrderId, idempotencyKey, orderNumber, displayToken, type, status, paymentMethod, paymentStatus, createdAt, completedAt, customerId, staffId, tableId, channel, source, deliveryStatus, deliveryStaffId, updatedAt, syncStatus, validationStatus',
+  settings: 'key',
+  customers: '++id, phone, name, authUserId, totalSpent, visitCount, loyaltyPoints, tier, lastVisit, createdAt',
+  staff: '++id, name, role, cloudUserId, isActive, createdAt',
+  shifts: '++id, staffId, date, clockIn, clockOut',
+  inventory: '++id, name, unit, quantity, minThreshold, categoryTag',
+  suppliers: '++id, name, phone, category',
+  recipes: '++id, menuItemId',
+  tables: '++id, number, status, floorSection',
+  reservations: '++id, tableId, customerId, date, time, status',
+  activityLog: '++id, staffId, action, timestamp',
+  aiConversations: '++id, createdAt, title',
+  localEmbeddings: '++id, source',
+  menuItemAddons: '++id, menuItemId, [menuItemId+isActive], sortOrder',
 });
 
 

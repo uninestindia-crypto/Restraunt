@@ -17,10 +17,16 @@ const MAX_ORDERS_PER_WINDOW = Number(Deno.env.get("PUBLIC_ORDER_RATE_LIMIT_MAX")
 const RATE_LIMIT_WINDOW_MINUTES = Number(Deno.env.get("PUBLIC_ORDER_RATE_LIMIT_MINUTES") || "10");
 const RATE_LIMIT_SALT = Deno.env.get("PUBLIC_ORDER_RATE_LIMIT_SALT") || "the-taste-public-order";
 
+/** Spice levels the kitchen recognises. Free of charge, so no pricing here. */
+const SPICE_LEVELS = ["Mild", "Medium", "Spicy"];
+
 type PublicOrderItem = {
   itemId: number;
   quantity: number;
   notes?: string;
+  /** Chosen add-ons, by id. The client never sends what they cost. */
+  addonIds?: number[];
+  spiceLevel?: string;
 };
 
 type PublicOrderPayload = {
@@ -150,7 +156,13 @@ Deno.serve(async (req: Request) => {
   const normalizedItems = items.map((item) => ({
     itemId: Number(item.itemId),
     quantity: Math.max(1, Math.min(50, Number(item.quantity) || 1)),
-    notes: cleanText(item.notes, 240)
+    notes: cleanText(item.notes, 240),
+    addonIds: [...new Set(
+      (Array.isArray(item.addonIds) ? item.addonIds : [])
+        .map((id) => Number(id))
+        .filter((id) => Number.isFinite(id) && id > 0)
+    )].slice(0, 10),
+    spiceLevel: SPICE_LEVELS.includes(String(item.spiceLevel)) ? String(item.spiceLevel) : ""
   }));
 
   if (normalizedItems.some((item) => !Number.isFinite(item.itemId) || item.itemId <= 0)) {
@@ -194,6 +206,32 @@ Deno.serve(async (req: Request) => {
     return bad("One or more items are unavailable.");
   }
 
+  // Add-ons are charged, so their price is read here and never taken from the
+  // request. Each one must also still be on offer AND belong to the dish it was
+  // chosen for, or a caller could attach a cheap add-on id to any line.
+  const requestedAddonIds = [...new Set(normalizedItems.flatMap((item) => item.addonIds))];
+  const addonById = new Map<number, any>();
+  if (requestedAddonIds.length > 0) {
+    const { data: addonRows, error: addonError } = await supabase
+      .from("menu_item_addons")
+      .select("id, menu_item_id, name, price")
+      .eq("store_id", STORE_ID)
+      .eq("is_active", true)
+      .in("id", requestedAddonIds);
+
+    if (addonError) return bad(`Add-on validation failed: ${addonError.message}`, 500);
+    for (const row of addonRows || []) addonById.set(Number(row.id), row);
+
+    for (const item of normalizedItems) {
+      for (const addonId of item.addonIds) {
+        const addon = addonById.get(addonId);
+        if (!addon || Number(addon.menu_item_id) !== item.itemId) {
+          return bad("One or more selected add-ons are unavailable.");
+        }
+      }
+    }
+  }
+
   if (type === "dinein") {
     const { data: table, error: tableError } = await supabase
       .from("tables")
@@ -208,15 +246,25 @@ Deno.serve(async (req: Request) => {
   let subtotal = 0;
   const validatedItems = normalizedItems.map((item) => {
     const menu = menuById.get(item.itemId)!;
-    const price = Number(menu.price) || 0;
+    const addons = item.addonIds.map((addonId) => {
+      const addon = addonById.get(addonId)!;
+      return { id: Number(addon.id), name: addon.name, price: Number(addon.price) || 0 };
+    });
+
+    // Add-ons are per unit of the dish, so they scale with the quantity.
+    const addonsPrice = addons.reduce((sum, addon) => sum + addon.price, 0);
+    const price = (Number(menu.price) || 0) + addonsPrice;
     const lineTotal = price * item.quantity;
     subtotal += lineTotal;
     return {
       itemId: Number(menu.id),
       itemName: menu.name,
       price,
+      basePrice: Number(menu.price) || 0,
       quantity: item.quantity,
       isVeg: Boolean(menu.is_veg),
+      addons,
+      spiceLevel: item.spiceLevel,
       notes: item.notes
     };
   });

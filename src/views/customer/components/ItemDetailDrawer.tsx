@@ -1,5 +1,5 @@
 // @ts-nocheck
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { formatCurrency, playSound, vibrateDevice, menuItemImageSource } from '../../../utils/helpers';
 
 const CATEGORY_IMAGE_MAP = {
@@ -26,11 +26,22 @@ const CATEGORY_COPY = {
   desserts: 'Sweet finishes for the table.'
 };
 
-export function ItemDetailDrawer({ item, categories, onClose, onAddToCart }) {
+export function ItemDetailDrawer({ item, categories, addons = [], onClose, onAddToCart }) {
   const [qty, setQty] = useState(1);
   const [spicyLevel, setSpicyLevel] = useState('Mild');
-  const [modifiers, setModifiers] = useState([]);
+  const [selectedAddonIds, setSelectedAddonIds] = useState([]);
   const [customNotes, setCustomNotes] = useState('');
+
+  // Only this dish's add-ons, in the order the owner arranged them.
+  const itemAddons = addons
+    .filter(addon => addon.menuItemId === item?.id && (addon.isActive === 1 || addon.isActive === true))
+    .sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
+
+  // A dish whose add-ons changed since the sheet opened must not keep a stale
+  // selection: it would be priced here and then refused by the server.
+  useEffect(() => {
+    setSelectedAddonIds(current => current.filter(id => itemAddons.some(addon => addon.id === id)));
+  }, [item?.id, itemAddons.length]);
 
   if (!item) return null;
 
@@ -49,17 +60,16 @@ export function ItemDetailDrawer({ item, categories, onClose, onAddToCart }) {
     return CATEGORY_COPY[catName] || 'Freshly prepared by The Taste kitchen.';
   };
 
-  const handleModifierChange = (modName, checked) => {
+  const handleAddonChange = (addonId, checked) => {
     playSound(620, 60);
-    if (checked) {
-      setModifiers([...modifiers, modName]);
-    } else {
-      setModifiers(modifiers.filter(m => m !== modName));
-    }
+    setSelectedAddonIds(current => (
+      checked ? [...current, addonId] : current.filter(id => id !== addonId)
+    ));
   };
 
-  const extraCheeseCost = modifiers.includes('Extra Cheese') ? 30 : 0;
-  const singleItemPrice = item.price + extraCheeseCost;
+  const selectedAddons = itemAddons.filter(addon => selectedAddonIds.includes(addon.id));
+  const addonsPrice = selectedAddons.reduce((sum, addon) => sum + (Number(addon.price) || 0), 0);
+  const singleItemPrice = item.price + addonsPrice;
   const totalPrice = singleItemPrice * qty;
 
   const handleAdd = () => {
@@ -67,7 +77,8 @@ export function ItemDetailDrawer({ item, categories, onClose, onAddToCart }) {
       item,
       qty,
       spicyLevel,
-      modifiers,
+      addons: selectedAddons.map(addon => ({ id: addon.id, name: addon.name, price: Number(addon.price) || 0 })),
+      addonIds: selectedAddons.map(addon => addon.id),
       customNotes,
       price: singleItemPrice
     });
@@ -149,53 +160,29 @@ export function ItemDetailDrawer({ item, categories, onClose, onAddToCart }) {
               </div>
             </div>
 
-            <div className="aether-drawer-section">
-              <h3>Culinary Modifiers</h3>
-              <div className="aether-modifiers-list">
-                <label className="aether-modifier-item">
-                  <input 
-                    type="checkbox" 
-                    name="modifier" 
-                    value="Extra Cheese" 
-                    checked={modifiers.includes('Extra Cheese')}
-                    onChange={(e) => handleModifierChange('Extra Cheese', e.target.checked)}
-                  />
-                  <span className="aether-checkbox-visual"></span>
-                  <div className="aether-modifier-label">
-                    <strong>Extra Melted Cheese</strong>
-                    <small>Rich visual pull (+{formatCurrency(30)})</small>
-                  </div>
-                </label>
-                <label className="aether-modifier-item">
-                  <input 
-                    type="checkbox" 
-                    name="modifier" 
-                    value="Gluten Free" 
-                    checked={modifiers.includes('Gluten Free')}
-                    onChange={(e) => handleModifierChange('Gluten Free', e.target.checked)}
-                  />
-                  <span className="aether-checkbox-visual"></span>
-                  <div className="aether-modifier-label">
-                    <strong>Gluten Free Preparation</strong>
-                    <small>Organic substitute ingredients</small>
-                  </div>
-                </label>
-                <label className="aether-modifier-item">
-                  <input 
-                    type="checkbox" 
-                    name="modifier" 
-                    value="No Onions" 
-                    checked={modifiers.includes('No Onions')}
-                    onChange={(e) => handleModifierChange('No Onions', e.target.checked)}
-                  />
-                  <span className="aether-checkbox-visual"></span>
-                  <div className="aether-modifier-label">
-                    <strong>No Onions or Garlic</strong>
-                    <small>Classic customization</small>
-                  </div>
-                </label>
+            {itemAddons.length > 0 && (
+              <div className="aether-drawer-section">
+                <h3>Add-ons (Optional)</h3>
+                <div className="aether-modifiers-list">
+                  {itemAddons.map(addon => (
+                    <label className="aether-modifier-item" key={addon.id}>
+                      <input
+                        type="checkbox"
+                        name="addon"
+                        value={addon.id}
+                        checked={selectedAddonIds.includes(addon.id)}
+                        onChange={(e) => handleAddonChange(addon.id, e.target.checked)}
+                      />
+                      <span className="aether-checkbox-visual"></span>
+                      <div className="aether-modifier-label">
+                        <strong>{addon.name}</strong>
+                        {Number(addon.price) > 0 && <small>+{formatCurrency(Number(addon.price))}</small>}
+                      </div>
+                    </label>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
 
             <div className="aether-drawer-section">
               <h3>Special Kitchen Notes</h3>

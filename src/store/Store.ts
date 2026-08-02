@@ -63,19 +63,47 @@ class Store {
     });
   }
 
+  /**
+   * Identity of a cart line.
+   *
+   * Two portions of the same dish are only the same line when they were
+   * ordered the same way: the add-ons and the spice level change what the
+   * kitchen makes and what the customer pays, so they cannot be merged.
+   */
+  cartLineKey({ itemId, addonIds = [], spiceLevel = '', notes = '' }) {
+    return [itemId, [...addonIds].sort((a, b) => a - b).join('+'), spiceLevel, notes].join('|');
+  }
+
   // Cart helper mutators
-  addToCart(item, quantity = 1, notes = '') {
+  addToCart(item, quantity = 1, notes = '', options = {}) {
     const cart = [...this.state.cart];
-    const existing = cart.find(ci => ci.itemId === item.id);
+    const addonIds = Array.isArray(options.addonIds) ? options.addonIds : [];
+    const addons = Array.isArray(options.addons) ? options.addons : [];
+    const spiceLevel = options.spiceLevel || '';
+    const key = this.cartLineKey({ itemId: item.id, addonIds, spiceLevel, notes });
+
+    const existing = cart.find(ci => this.cartLineKey({
+      itemId: ci.itemId,
+      addonIds: ci.addonIds || [],
+      spiceLevel: ci.spiceLevel || '',
+      notes: ci.notes || ''
+    }) === key);
+
     if (existing) {
       existing.quantity += quantity;
     } else {
       cart.push({
         itemId: item.id,
         itemName: item.name,
+        // Unit price including the chosen add-ons. The server re-prices a
+        // public order from its own tables regardless; this is what the
+        // customer is shown and what a staff-taken order bills.
         price: item.price,
         quantity,
-        notes
+        notes,
+        addonIds,
+        addons,
+        spiceLevel
       });
     }
     this.updateState({ cart });

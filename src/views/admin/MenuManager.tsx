@@ -53,6 +53,11 @@ export function MenuManager() {
   const [editingItem, setEditingItem] = useState<MenuItem | null>(null);
   const [imageUploading, setImageUploading] = useState(false);
 
+  // Paid extras for the dish currently open in the modal.
+  const [itemAddons, setItemAddons] = useState<any[]>([]);
+  const [newAddonName, setNewAddonName] = useState('');
+  const [newAddonPrice, setNewAddonPrice] = useState('');
+
   const [categoryModalOpen, setCategoryModalOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
 
@@ -98,14 +103,17 @@ export function MenuManager() {
       price: 100,
       isVeg: 1,
       isAvailable: 1,
+      description: '',
       sortOrder: items.length + 1
     });
+    setItemAddons([]);
     setItemModalOpen(true);
   };
 
   const handleEditItemClick = (item: MenuItem) => {
     playSound(800, 100);
     setEditingItem({ ...item });
+    loadItemAddons(item.id);
     setItemModalOpen(true);
   };
 
@@ -172,6 +180,68 @@ export function MenuManager() {
     showToast('Image cleared — the category default will be shown. Save to apply.', 'info');
   };
 
+  const loadItemAddons = async (menuItemId?: number) => {
+    if (!menuItemId) {
+      setItemAddons([]);
+      return;
+    }
+    try {
+      const rows = await db.menuItemAddons.where('menuItemId').equals(menuItemId).toArray();
+      setItemAddons(rows.sort((a: any, b: any) => (a.sortOrder || 0) - (b.sortOrder || 0)));
+    } catch (err) {
+      console.error('[MenuManager] Could not load add-ons:', err);
+      setItemAddons([]);
+    }
+  };
+
+  const handleAddAddon = async () => {
+    const name = newAddonName.trim();
+    const price = Number(newAddonPrice) || 0;
+    if (!editingItem?.id) {
+      showToast('Save the dish first, then add its extras.', 'warning');
+      return;
+    }
+    if (!name) {
+      showToast('Give the add-on a name', 'warning');
+      return;
+    }
+    if (itemAddons.some(a => a.name.toLowerCase() === name.toLowerCase())) {
+      showToast('That add-on already exists for this dish', 'warning');
+      return;
+    }
+
+    // isSynced: 0 so the sync layer pushes it; the Dexie hook does the upload.
+    await db.menuItemAddons.add({
+      menuItemId: editingItem.id,
+      name,
+      price,
+      isActive: 1,
+      sortOrder: itemAddons.length,
+      updatedAt: new Date().toISOString(),
+      isSynced: 0
+    } as any);
+
+    setNewAddonName('');
+    setNewAddonPrice('');
+    playSound(880, 80);
+    await loadItemAddons(editingItem.id);
+  };
+
+  const handleRemoveAddon = async (addonId: number) => {
+    await db.menuItemAddons.delete(addonId);
+    playSound(400, 80);
+    await loadItemAddons(editingItem?.id);
+  };
+
+  const handleAddonPriceChange = async (addonId: number, price: number) => {
+    await db.menuItemAddons.update(addonId, {
+      price: Number(price) || 0,
+      updatedAt: new Date().toISOString(),
+      isSynced: 0
+    });
+    await loadItemAddons(editingItem?.id);
+  };
+
   const handleSaveItem = async () => {
     if (!editingItem) return;
     const name = editingItem.name.trim();
@@ -189,6 +259,7 @@ export function MenuManager() {
 
     const savedItem = {
       ...editingItem,
+      description: String(editingItem.description || '').trim().slice(0, 280),
       imageUrl: urlIsRemoteSafe ? rawUrl : '',
       imageData: urlIsRemoteSafe
         ? String(editingItem.imageData || '')
@@ -704,6 +775,22 @@ export function MenuManager() {
                 />
               </div>
 
+              <div className="input-group">
+                <label htmlFor="item-description" style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '6px' }}>
+                  Description — shown to customers under the dish name
+                </label>
+                <textarea
+                  id="item-description"
+                  className="input"
+                  rows={2}
+                  maxLength={280}
+                  value={editingItem.description || ''}
+                  onChange={(e) => setEditingItem(prev => prev ? { ...prev, description: e.target.value } : null)}
+                  placeholder="e.g. Crispy fries tossed with our signature masala blend"
+                  style={{ resize: 'vertical', lineHeight: 1.45, padding: '10px 12px' }}
+                />
+              </div>
+
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                 <div className="input-group">
                   <label htmlFor="item-cat" style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '6px' }}>Category</label>
@@ -831,6 +918,75 @@ export function MenuManager() {
                 />
               </div>
             </div>
+
+              {/* Paid extras. Priced by the server at checkout, so what is set
+                  here is what a customer is actually charged. */}
+              <div className="input-group">
+                <label style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '6px' }}>
+                  Add-ons — optional paid extras for this dish
+                </label>
+
+                {!editingItem.id ? (
+                  <p style={{ fontSize: '12px', color: 'var(--text-muted)', margin: 0 }}>
+                    Save the dish first, then reopen it to add extras.
+                  </p>
+                ) : (
+                  <>
+                    {itemAddons.length > 0 && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '10px' }}>
+                        {itemAddons.map(addon => (
+                          <div key={addon.id} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <span style={{ flex: 1, fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>{addon.name}</span>
+                            <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>₹</span>
+                            <input
+                              type="number"
+                              className="input"
+                              aria-label={`Price for ${addon.name}`}
+                              value={addon.price}
+                              onChange={(e) => handleAddonPriceChange(addon.id, Number(e.target.value))}
+                              style={{ width: '90px', fontWeight: 700 }}
+                            />
+                            <button
+                              type="button"
+                              className="btn btn-sm"
+                              onClick={() => handleRemoveAddon(addon.id)}
+                              title={`Remove ${addon.name}`}
+                              style={{ width: '32px', height: '32px', minWidth: '32px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(var(--color-danger-rgb),0.06)', color: '#FF4D4D', border: '1px solid rgba(var(--color-danger-rgb),0.2)' }}
+                            >
+                              <span className="material-symbols-rounded" style={{ fontSize: '16px' }}>delete</span>
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <input
+                        type="text"
+                        className="input"
+                        aria-label="New add-on name"
+                        placeholder="e.g. Extra Cheese"
+                        value={newAddonName}
+                        maxLength={60}
+                        onChange={(e) => setNewAddonName(e.target.value)}
+                        style={{ flex: 1 }}
+                      />
+                      <input
+                        type="number"
+                        className="input"
+                        aria-label="New add-on price"
+                        placeholder="₹0"
+                        value={newAddonPrice}
+                        onChange={(e) => setNewAddonPrice(e.target.value)}
+                        style={{ width: '100px', fontWeight: 700 }}
+                      />
+                      <button type="button" className="btn btn-secondary btn-sm" onClick={handleAddAddon} style={{ whiteSpace: 'nowrap' }}>
+                        Add
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
 
             <div className="modal-footer" style={{ borderTop: '1px solid var(--border-glass)', padding: '16px 20px', display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
               <button className="btn btn-secondary btn-sm" onClick={() => setItemModalOpen(false)}>Cancel</button>

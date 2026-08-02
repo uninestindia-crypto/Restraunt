@@ -13,7 +13,15 @@ function normalizeItemsForPublicOrder(items) {
   return items.map(item => ({
     itemId: Number(item.itemId || item.id),
     quantity: Math.max(1, Math.min(50, Number(item.quantity) || 1)),
-    notes: String(item.notes || '').slice(0, 240)
+    notes: String(item.notes || '').slice(0, 240),
+    // Which add-ons, never what they cost: the Edge Function prices them from
+    // menu_item_addons and rejects any that are inactive or belong to another
+    // dish. Same rule the dish price itself has always followed.
+    addonIds: (Array.isArray(item.addonIds) ? item.addonIds : [])
+      .map(id => Number(id))
+      .filter(id => Number.isFinite(id) && id > 0)
+      .slice(0, 10),
+    spiceLevel: String(item.spiceLevel || '').slice(0, 20)
   })).filter(item => Number.isFinite(item.itemId) && item.itemId > 0);
 }
 
