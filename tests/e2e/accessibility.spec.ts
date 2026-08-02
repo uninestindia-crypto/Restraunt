@@ -19,6 +19,23 @@ function describeViolations(violations) {
     .join('\n');
 }
 
+/**
+ * Wait for the page to stop moving before auditing it.
+ *
+ * Contrast is computed from whatever colour an element happens to have at the
+ * instant of the scan. The app fades its view in and transitions its chips and
+ * buttons, so auditing mid-animation measures a blend that exists for 250ms and
+ * reports it as a violation — a chip that is white-on-terracotta at rest was
+ * being failed as grey-on-salmon.
+ */
+async function settle(page) {
+  await page.waitForFunction(
+    () => document.getAnimations().every((animation) => animation.playState !== 'running'),
+    null,
+    { timeout: 5000 }
+  ).catch(() => {});
+}
+
 test('public ordering page has no critical or serious accessibility violations', async ({ page }) => {
   await page.goto('/#/self-order');
 
@@ -28,6 +45,7 @@ test('public ordering page has no critical or serious accessibility violations',
   await expect(page.locator('#storefront-seo-shell')).toHaveCount(0);
   await expect(page.locator('.storefront-shell')).toBeVisible();
   await expect(page.getByRole('heading', { name: 'The Taste', level: 1 })).toBeVisible();
+  await settle(page);
 
   const results = await new AxeBuilder({ page }).withTags(WCAG).analyze();
   const found = blocking(results.violations);
@@ -37,6 +55,7 @@ test('public ordering page has no critical or serious accessibility violations',
 test('staff sign in has no critical or serious accessibility violations', async ({ page }) => {
   await page.goto('/#/pos');
   await expect(page.getByRole('heading', { name: 'Staff sign in' })).toBeVisible();
+  await settle(page);
 
   const results = await new AxeBuilder({ page }).withTags(WCAG).analyze();
   const found = blocking(results.violations);

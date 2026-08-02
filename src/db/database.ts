@@ -477,6 +477,22 @@ export function generateLocalUuid() {
   });
 }
 
+/**
+ * Step an order number past one the cloud has already taken.
+ *
+ * `TT-20260802-007` → `TT-20260802-008`, keeping the width. A number with no
+ * numeric tail gets a random one so a retry can never repeat the same value.
+ */
+export function bumpOrderNumber(orderNumber, by = 1) {
+  const text = String(orderNumber || '');
+  const match = /^(.*?)(\d+)$/.exec(text);
+  if (!match) {
+    return `${text || 'TT'}-${Math.floor(1000 + Math.random() * 9000)}`;
+  }
+  const [, prefix, digits] = match;
+  return prefix + String(Number(digits) + by).padStart(digits.length, '0');
+}
+
 export function getDisplayToken(orderNumber, fallback = '') {
   const token = String(orderNumber || fallback || '').split('-').pop();
   return token || String(Math.floor(1000 + Math.random() * 9000));
@@ -691,14 +707,56 @@ export async function createOrder(orderData: any, options: any = {}) {
           }
         }
 
-        const { data, error } = await supabase
-          .from('orders')
-          .insert(remoteOrder)
-          .select('id')
-          .single();
+        // Order numbers are handed out per till by counting the day's orders,
+        // but Postgres holds `unique (store_id, order_number)`. Two tills
+        // billing in the same moment compute the same one, and the loser used
+        // to see "Checkout Aborted" with a real customer standing there. A
+        // clash is not an error to show anyone — it just needs another number.
+        let data: any = null;
+        let attempt = 0;
+        while (true) {
+          const result = await supabase
+            .from('orders')
+            .insert(remoteOrder)
+            .select('id')
+            .single();
 
-        if (error) {
-          throw new Error(error.message);
+          if (!result.error) {
+            data = result.data;
+            break;
+          }
+
+          const conflict = String(result.error.code || '') === '23505'
+            || /duplicate key|already exists/i.test(result.error.message || '');
+          const onOrderNumber = /order_number/i.test(result.error.message || '');
+
+          // The same order submitted twice is already banked: that is a
+          // success, not a clash to work around.
+          if (conflict && !onOrderNumber) {
+            const existing = await supabase
+              .from('orders')
+              .select('id')
+              .eq('store_id', storeId)
+              .eq('client_order_id', clientOrderId)
+              .maybeSingle();
+            if (existing.data) {
+              data = existing.data;
+              break;
+            }
+          }
+
+          if (!conflict || !onOrderNumber || attempt >= 4) {
+            throw new Error(result.error.message);
+          }
+
+          attempt += 1;
+          // Bump the sequence rather than recomputing it: recomputing counts
+          // the same local rows and would hand back the number that was just
+          // refused. Stepping past it converges on the first free one.
+          remoteOrder.order_number = bumpOrderNumber(remoteOrder.order_number, 1);
+          remoteOrder.display_token = getDisplayToken(remoteOrder.order_number, idempotencyKey);
+          orderData = { ...orderData, orderNumber: remoteOrder.order_number, displayToken: remoteOrder.display_token };
+          console.warn(`[Database] Order number was taken by another till; retrying as ${remoteOrder.order_number}.`);
         }
 
         if (data) {

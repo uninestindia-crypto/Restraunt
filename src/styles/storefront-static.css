@@ -17,12 +17,18 @@
   text-align: center;
   background: #040406;
   color: #F9FAFB;
-  transition: opacity 0.4s ease;
+  /* Visibility is delayed by the length of the fade so the splash still fades
+     rather than vanishing, and is then genuinely gone. */
+  transition: opacity 0.4s ease, visibility 0s linear 0.4s;
 }
 
 #loading-screen.hide {
   opacity: 0;
   pointer-events: none;
+  /* A faded-but-present overlay is still real to a screen reader, and its light
+     text is still measured — against whatever now shows through it, which is
+     how the pre-rendered page reported cream-on-cream. */
+  visibility: hidden;
 }
 
 .loading-brand {
