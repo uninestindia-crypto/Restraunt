@@ -1370,10 +1370,36 @@ class SyncService {
     }
   }
 
+  /**
+   * Mark a row as still owed to the cloud.
+   *
+   * `pushUnsynced()` retries exactly the rows flagged `isSynced: 0`, so a push
+   * that was skipped (disconnected) or that failed has to leave the row flagged
+   * or it is never retried — the edit stays on this device, invisible, and the
+   * next cloud read replaces it with the server's older copy. That is how a
+   * checkout's stock deduction, a price change or a table status could be lost
+   * with nothing on screen. Orders already did this; everything else did not.
+   *
+   * The `isSyncingFromServer` guard stops this bookkeeping write from firing
+   * the Dexie hook that would schedule yet another push.
+   */
+  async markPushPending(store, id) {
+    if (id === undefined || id === null) return;
+    this.isSyncingFromServer = true;
+    try {
+      await store.update(id, { isSynced: 0 });
+    } catch (dbErr) {
+      console.error(`[Sync db] Could not flag row ${id} for a later push:`, dbErr);
+    } finally {
+      this.isSyncingFromServer = false;
+    }
+  }
+
   // Active sync-up method for Menu Items
   async syncUpItem(item) {
     if (!this.isConnected || !supabase) {
       console.warn(`[Sync cache] Skipping item sync for "${item?.name}": offline or disconnected.`);
+      await this.markPushPending(db.menuItems, item.id);
       return;
     }
     try {
@@ -1400,6 +1426,7 @@ class SyncService {
       console.log(`[Sync cache] Menu item "${item.name}" successfully replicated to cloud and updated in cache.`);
     } catch (e) {
       console.error(`[Sync net] Cloud replication failed for item "${item.name}":`, e);
+      await this.markPushPending(db.menuItems, item.id);
     }
   }
 
@@ -1407,6 +1434,7 @@ class SyncService {
   async syncUpCategory(category) {
     if (!this.isConnected || !supabase) {
       console.warn(`[Sync cache] Skipping category sync for "${category?.name}": offline or disconnected.`);
+      await this.markPushPending(db.menuCategories, category.id);
       return;
     }
     try {
@@ -1433,6 +1461,7 @@ class SyncService {
       console.log(`[Sync cache] Category "${category.name}" successfully replicated to cloud and updated in cache.`);
     } catch (e) {
       console.error(`[Sync net] Cloud replication failed for category "${category.name}":`, e);
+      await this.markPushPending(db.menuCategories, category.id);
     }
   }
 
@@ -1440,6 +1469,7 @@ class SyncService {
   async syncUpStaff(staff) {
     if (!this.isConnected || !supabase) {
       console.warn(`[Sync cache] Skipping staff sync for "${staff?.name}": offline or disconnected.`);
+      await this.markPushPending(db.staff, staff.id);
       return;
     }
     try {
@@ -1464,6 +1494,7 @@ class SyncService {
       console.log(`[Sync cache] Staff member "${staff.name}" successfully replicated to cloud and updated in cache.`);
     } catch (e) {
       console.error(`[Sync net] Cloud replication failed for staff "${staff.name}":`, e);
+      await this.markPushPending(db.staff, staff.id);
     }
   }
 
@@ -1471,6 +1502,7 @@ class SyncService {
   async syncUpTable(table) {
     if (!this.isConnected || !supabase) {
       console.warn(`[Sync cache] Skipping table sync for ${table?.number || table?.id}: offline or disconnected.`);
+      await this.markPushPending(tableStore(), table.id);
       return;
     }
     try {
@@ -1492,6 +1524,7 @@ class SyncService {
       console.log(`[Sync cache] Table ${table.number} successfully replicated to cloud.`);
     } catch (e) {
       console.error(`[Sync net] Cloud replication failed for table ${table?.number || table?.id}:`, e);
+      await this.markPushPending(tableStore(), table.id);
     }
   }
 
@@ -1499,6 +1532,7 @@ class SyncService {
   async syncUpInventory(inv) {
     if (!this.isConnected || !supabase) {
       console.warn(`[Sync cache] Skipping inventory sync for "${inv?.name}": offline or disconnected.`);
+      await this.markPushPending(db.inventory, inv.id);
       return;
     }
     try {
@@ -1520,6 +1554,7 @@ class SyncService {
       console.log(`[Sync cache] Inventory item "${inv.name}" successfully replicated to cloud.`);
     } catch (e) {
       console.error(`[Sync net] Cloud replication failed for inventory "${inv?.name}":`, e);
+      await this.markPushPending(db.inventory, inv.id);
     }
   }
 
@@ -1527,6 +1562,7 @@ class SyncService {
   async syncUpSupplier(sup) {
     if (!this.isConnected || !supabase) {
       console.warn(`[Sync cache] Skipping supplier sync for "${sup?.name}": offline or disconnected.`);
+      await this.markPushPending(db.suppliers, sup.id);
       return;
     }
     try {
@@ -1548,6 +1584,7 @@ class SyncService {
       console.log(`[Sync cache] Supplier "${sup.name}" successfully replicated to cloud.`);
     } catch (e) {
       console.error(`[Sync net] Cloud replication failed for supplier "${sup?.name}":`, e);
+      await this.markPushPending(db.suppliers, sup.id);
     }
   }
 
@@ -1555,6 +1592,7 @@ class SyncService {
   async syncUpShift(shift) {
     if (!this.isConnected || !supabase) {
       console.warn(`[Sync cache] Skipping shift sync for ${shift?.id}: offline or disconnected.`);
+      await this.markPushPending(db.shifts, shift.id);
       return;
     }
     try {
@@ -1576,6 +1614,7 @@ class SyncService {
       console.log(`[Sync cache] Shift ${shift.id} successfully replicated to cloud.`);
     } catch (e) {
       console.error(`[Sync net] Cloud replication failed for shift ${shift?.id}:`, e);
+      await this.markPushPending(db.shifts, shift.id);
     }
   }
 
@@ -1583,6 +1622,7 @@ class SyncService {
   async syncUpActivity(log) {
     if (!this.isConnected || !supabase) {
       console.warn(`[Sync cache] Skipping activity log sync for ${log?.id}: offline or disconnected.`);
+      await this.markPushPending(db.activityLog, log.id);
       return;
     }
     try {
@@ -1604,6 +1644,7 @@ class SyncService {
       console.log(`[Sync cache] Activity log ${log.id} successfully replicated to cloud.`);
     } catch (e) {
       console.error(`[Sync net] Cloud replication failed for activity log ${log?.id}:`, e);
+      await this.markPushPending(db.activityLog, log.id);
     }
   }
 
@@ -1611,6 +1652,7 @@ class SyncService {
   async syncUpCustomer(cust) {
     if (!this.isConnected || !supabase) {
       console.warn(`[Sync cache] Skipping customer sync for "${cust?.name}": offline or disconnected.`);
+      await this.markPushPending(db.customers, cust.id);
       return;
     }
     try {
@@ -1632,6 +1674,7 @@ class SyncService {
       console.log(`[Sync cache] Customer "${cust.name}" successfully replicated to cloud.`);
     } catch (e) {
       console.error(`[Sync net] Cloud replication failed for customer "${cust?.name}":`, e);
+      await this.markPushPending(db.customers, cust.id);
     }
   }
 
@@ -1639,6 +1682,7 @@ class SyncService {
   async syncUpRecipe(recipe) {
     if (!this.isConnected || !supabase) {
       console.warn(`[Sync cache] Skipping recipe sync for ${recipe?.id}: offline or disconnected.`);
+      await this.markPushPending(db.recipes, recipe.id);
       return;
     }
     try {
@@ -1660,6 +1704,7 @@ class SyncService {
       console.log(`[Sync cache] Recipe ${recipe.id} (menuItemId: ${recipe.menuItemId}) successfully replicated to cloud.`);
     } catch (e) {
       console.error(`[Sync net] Cloud replication failed for recipe ${recipe?.id}:`, e);
+      await this.markPushPending(db.recipes, recipe.id);
     }
   }
 
