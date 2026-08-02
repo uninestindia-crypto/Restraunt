@@ -1705,7 +1705,8 @@
 
   .store-section-head h2,
   .store-checkout-head h1 {
-    font-size: 1.65rem;
+    font-size: 1.42rem;
+    line-height: 1.2;
   }
 
   .store-menu-head {
@@ -1732,7 +1733,7 @@
 
   .store-menu-item {
     display: grid;
-    grid-template-columns: 116px 1fr;
+    grid-template-columns: 108px 1fr;
   }
 
   .store-menu-item-image {
@@ -1740,13 +1741,39 @@
     aspect-ratio: auto;
   }
 
+  /* No forced height: the row is as tall as its content, which is what lets a
+     phone show a browsable list rather than three dishes and a scroll. */
   .store-menu-item-body {
-    min-height: 174px;
-    padding: 14px;
+    min-height: 0;
+    padding: 12px 14px;
+    gap: 8px;
+  }
+
+  .store-menu-item h3 {
+    font-size: 0.98rem;
+    line-height: 1.3;
   }
 
   .store-menu-item p {
-    font-size: 0.82rem;
+    margin-top: 4px;
+    font-size: 0.78rem;
+    line-height: 1.42;
+    /* Two lines, so one long dish description cannot make its row twice the
+       height of its neighbours. */
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .store-menu-item-footer > strong {
+    font-size: 1.05rem;
+  }
+
+  .store-add-btn {
+    min-height: 34px;
+    padding: 0 16px;
+    font-size: 0.78rem;
   }
 
   .store-cart-row {
@@ -1797,15 +1824,23 @@
     grid-template-columns: 96px 1fr;
   }
 
+  /* Price and Add stay on one line. Stacking them put a full-width button
+     under every dish, which is what made a phone show three rows per screen
+     instead of five. The 44px target is kept — only the width is given up. */
   .store-menu-item-footer {
-    align-items: flex-start;
-    flex-direction: column;
+    align-items: center;
+    flex-direction: row;
+    gap: 10px;
   }
 
   .store-menu-item-footer .store-stepper,
   .store-add-btn {
-    align-self: stretch;
+    align-self: auto;
     justify-content: center;
+  }
+
+  .store-add-btn {
+    padding: 0 14px;
   }
 }
 
