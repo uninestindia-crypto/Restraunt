@@ -90,6 +90,25 @@ function mapItemToRemote(item: any) {
   };
 }
 
+/**
+ * True when Supabase rejected a write because the schema does not have the
+ * column or table yet — i.e. the app was deployed before its migration ran.
+ *
+ * Publishing a dish must not start failing just because the description column
+ * has not been added: the rest of the row is still valid and still has to
+ * reach the cloud.
+ */
+export function isMissingSchemaError(error: any) {
+  const message = String(error?.message || error || '').toLowerCase();
+  const code = String(error?.code || '');
+  return (
+    code === 'PGRST204' || code === 'PGRST205' || code === '42P01' || code === '42703' ||
+    message.includes('does not exist') ||
+    message.includes('could not find the') ||
+    message.includes('schema cache')
+  );
+}
+
 function mapAddonToRemote(addon: any) {
   return {
     id: addon.id,
@@ -1456,10 +1475,22 @@ class SyncService {
     }
     try {
       const remote = mapItemToRemote(item);
-      
+
       await retryWithBackoff(async () => {
         const { error } = await supabase.from('menu_items').upsert(remote);
-        if (error) throw error;
+        if (!error) return;
+
+        // The description column arrives with a migration. Until it has run,
+        // publish everything else rather than failing the whole dish.
+        if (isMissingSchemaError(error) && 'description' in remote) {
+          console.warn('[Sync] menu_items.description is missing — run the pending migration to publish dish descriptions. Publishing the rest of the dish for now.');
+          const { description, ...withoutDescription } = remote;
+          const { error: retryError } = await supabase.from('menu_items').upsert(withoutDescription);
+          if (retryError) throw retryError;
+          return;
+        }
+
+        throw error;
       }, {
         maxRetries: 3,
         initialDelayMs: 1000,

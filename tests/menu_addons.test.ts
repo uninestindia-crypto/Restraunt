@@ -95,3 +95,40 @@ test('a plain add still merges by dish, as the POS relies on', async () => {
   assert.equal(cart[0].quantity, 3);
   globalStore.clearCart();
 });
+
+/**
+ * Deploying the app before its migration has run must not break the menu.
+ *
+ * `mapItemToRemote` now sends `description`, and the storefront pull now asks
+ * for `menu_item_addons`. On a database that has neither yet, a naive client
+ * would fail every dish publish and retry a missing table on every read.
+ */
+test('a dish still publishes when the description column is missing', () => {
+  const sync = readFileSync('src/services/sync.ts', 'utf8');
+
+  assert.match(sync, /export function isMissingSchemaError/);
+  const body = sync.slice(sync.indexOf('async syncUpItem'), sync.indexOf('async syncUpAddon'));
+  assert.match(body, /if \(isMissingSchemaError\(error\) && 'description' in remote\)/);
+  assert.match(body, /const \{ description, \.\.\.withoutDescription \} = remote;/,
+    'the retry must drop only the unknown column, not the rest of the dish');
+});
+
+test('a table the database does not have yet reads as empty, not as a failure', () => {
+  const cloud = readFileSync('src/services/cloudDb.ts', 'utf8');
+  const body = cloud.slice(cloud.indexOf('async function pullResource'), cloud.indexOf('export interface EnsureFreshResult'));
+
+  assert.match(body, /PGRST205|42P01/);
+  assert.match(body, /is not in the database yet/);
+  // Returning true stops it being retried on every read forever.
+  assert.match(body, /lastPullCounts\[name\] = 0;\s*\n\s*return true;/);
+});
+
+test('the migration only adds — it never rewrites existing rows', () => {
+  assert.match(migration, /add column if not exists description text not null default ''/);
+  assert.match(migration, /create table if not exists public\.menu_item_addons/);
+
+  // No destructive or rewriting statement against existing data.
+  assert.doesNotMatch(migration, /drop table|drop column|truncate/i);
+  assert.doesNotMatch(migration, /^\s*update\s+public\./im);
+  assert.doesNotMatch(migration, /delete\s+from/i);
+});

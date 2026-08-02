@@ -621,6 +621,16 @@ async function pullResource(name: string, options: any) {
     lastPullCounts[name] = await resource.hydrate(rows);
     return true;
   } catch (error: any) {
+    // A table the schema does not have yet (its migration has not run) is not a
+    // failed read — there is simply nothing of it to show. Treating it as a
+    // failure would retry it on every single read, forever.
+    const message = String(error?.message || error || '').toLowerCase();
+    const code = String(error?.code || '');
+    if (code === 'PGRST205' || code === '42P01' || message.includes('does not exist') || message.includes('schema cache')) {
+      console.warn(`[CloudDB] ${resource.table} is not in the database yet — run the pending migration to enable it.`);
+      lastPullCounts[name] = 0;
+      return true;
+    }
     console.error(`[CloudDB] Failed to read ${resource.table} from cloud:`, error?.message || error);
     return false;
   }
