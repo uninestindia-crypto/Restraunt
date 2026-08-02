@@ -9,9 +9,11 @@ export function CategorySlider({
   onSearchQueryChange 
 }) {
   return (
-    <div>
+    /* Search and categories travel together: once the list is scrolling, the
+       two controls that change what is in it have to stay reachable. */
+    <div className="store-menu-toolbar">
       {/* Dynamic Search Bar */}
-      <div className="store-search-container" style={{ marginBottom: '20px', position: 'relative', width: '100%' }}>
+      <div className="store-search-container" style={{ position: 'relative', width: '100%' }}>
         <span 
           className="material-symbols-rounded" 
           style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', fontSize: '20px', color: 'var(--text-secondary)', pointerEvents: 'none' }}
@@ -39,7 +41,7 @@ export function CategorySlider({
         ) : null}
       </div>
 
-      {/* Horizontal Sticky Scroll Category Slider */}
+      {/* Horizontal Scroll Category Slider */}
       <div className="store-category-strip scrollbar-none" aria-label="Menu categories">
         {categories.map(cat => {
           const active = cat.id === activeCategoryId && !searchQuery;

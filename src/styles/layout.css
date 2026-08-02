@@ -875,7 +875,12 @@
   }
   to {
     opacity: 1;
-    transform: translateY(0);
+    /* `none`, not `translateY(0)`: this animation runs with `forwards`, so the
+       final frame is retained — and any transform, even an identity one, makes
+       the element a containing block for its fixed and sticky descendants.
+       That is what stopped the storefront's search and category bar from
+       sticking, no matter what the bar itself declared. Visually identical. */
+    transform: none;
   }
 }
 
