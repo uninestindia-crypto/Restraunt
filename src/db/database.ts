@@ -968,7 +968,12 @@ export async function updatePayment(id: number, paymentMethod: string, paymentSt
 
   if (result > 0) {
     try {
-      const order = await getOrder(id);
+      // Read the local row, NOT getOrder(): when online getOrder() is a
+      // read-through that overwrites the cache with the server's copy, which
+      // would undo the payment just recorded and then push the *stale* payment
+      // status back to the cloud — the till would show the bill settled while
+      // the cloud kept it unpaid.
+      const order = await db.orders.get(id);
       if (order) {
         if (navigator.onLine) {
           const { syncService } = await import('../services/sync');
@@ -1002,7 +1007,10 @@ export async function updateOrderFields(id, fields) {
 
   if (result > 0) {
     try {
-      const order = await getOrder(id);
+      // Local row only — see updatePayment: a read-through here would replace
+      // the fields just written (a delivery assignment, a prep estimate) with
+      // the server's older copy and then push that back.
+      const order = await db.orders.get(id);
       if (order) {
         if (navigator.onLine) {
           const { syncService } = await import('../services/sync');

@@ -514,3 +514,51 @@ test('an item created offline is not pruned by a read that cannot see it yet', a
   const created = await db.menuItems.get(99);
   assert.ok(created, 'a dish created offline must survive until it has been pushed');
 });
+
+/**
+ * Recording a payment must not be undone by the read-through in getOrder().
+ *
+ * updatePayment wrote the payment locally and then read the order back with
+ * getOrder(), which is a *cloud* read: it replaced the row it had just written
+ * with the server's older copy, and pushed that copy back up. The till showed
+ * the bill settled while Supabase — and every other device — kept it unpaid.
+ * updateOrderStatus already had this fixed; the payment path did not.
+ */
+test('recording a payment survives the push and reaches the cloud', async () => {
+  await reset();
+
+  const { updatePayment } = await import('../src/db/database');
+
+  const localId = await db.orders.add({
+    clientOrderId: 'pay-order-1',
+    orderNumber: 'TT-20260730-031',
+    status: 'ready',
+    items: '[]',
+    subtotal: 400, tax: 20, total: 420,
+    paymentMethod: null,
+    paymentStatus: 'unpaid',
+    createdAt: '2026-07-30T13:00:00.000Z',
+    updatedAt: '2026-07-30T13:00:00.000Z',
+    syncStatus: 'synced',
+    isSynced: 1
+  } as any);
+
+  // The cloud still has it unpaid — the state a read-through would restore.
+  cloudRows.orders = [{
+    id: 700,
+    client_order_id: 'pay-order-1',
+    order_number: 'TT-20260730-031',
+    status: 'ready',
+    items: [],
+    total: 420,
+    payment_status: 'unpaid',
+    created_at: '2026-07-30T13:00:00.000Z',
+    updated_at: '2026-07-30T13:00:00.000Z'
+  }];
+
+  await updatePayment(localId, 'cash', 'paid', { paymentVerifiedBy: 'Aarav' });
+
+  const settled = await db.orders.get(localId);
+  assert.equal(settled.paymentStatus, 'paid', 'the recorded payment must not be reverted');
+  assert.equal(settled.paymentMethod, 'cash');
+});
