@@ -835,11 +835,15 @@ export function CustomerApp({ app }) {
           {customerPage === 'home' && <>
           {/* Hero Section */}
           <section className="store-hero" aria-label="The Taste storefront">
-            <div className="store-hero-bg" aria-hidden="true"></div>
-
             <div className="store-hero-content">
               <p className="store-kicker"><span aria-hidden="true">✦</span> {modeStr}</p>
               <h1>{storeSettings.name}</h1>
+              {/* Where the food comes from, at the top where a customer looks
+                  for it, rather than buried beside the menu heading. */}
+              <a className="store-location-chip" href="#menu">
+                <span className="material-symbols-rounded" aria-hidden="true">location_on</span>
+                {displayAddress}
+              </a>
               <p className="store-hero-copy">{storefrontCopy.heroCopy}</p>
               <div className="store-hero-actions">
                 <a className="store-primary-action" href="#menu">

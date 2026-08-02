@@ -45,17 +45,16 @@
   100% { transform: scale(1); }
 }
 
+/* The design opens on the ordering surface — location, modes, dishes — rather
+   than on a full-bleed photograph. The brand line stays (it carries the H1 and
+   the copy crawlers read), it just sits on the page's own cream. */
 .store-hero {
   position: relative;
-  min-height: min(620px, 72svh);
-  padding: 24px 24px 54px;
+  padding: 8px 24px 18px;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
-  isolation: isolate;
-  background: #251c16;
-  color: #fff;
-  overflow: hidden;
+  background: var(--store-soft);
+  color: var(--store-ink);
 }
 
 .store-hero-bg {
@@ -591,16 +590,43 @@
 .store-hero-content {
   width: min(1180px, 100%);
   margin: 0 auto;
-  padding: 64px 0 20px;
+  padding: 28px 0 8px;
   max-width: none;
   align-self: stretch;
+}
+
+/* Address chip, straight under the brand line. */
+.store-location-chip {
+  margin-top: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px 7px 10px;
+  border: 1px solid var(--store-line);
+  border-radius: 99px;
+  background: var(--store-panel);
+  color: var(--store-muted);
+  font-size: 0.84rem;
+  font-weight: 600;
+  text-decoration: none;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+}
+
+.store-location-chip .material-symbols-rounded {
+  font-size: 18px;
+  color: var(--color-primary);
+}
+
+.store-location-chip:hover {
+  border-color: rgba(var(--color-primary-rgb), 0.35);
+  color: var(--store-ink);
 }
 
 .store-kicker,
 .store-section-head p,
 .store-checkout-head p {
   margin: 0 0 10px;
-  color: #BDEEDB;
+  color: var(--store-green);
   font-size: 0.78rem;
   line-height: 1.35;
   font-weight: 900;
@@ -611,19 +637,19 @@
 .store-hero h1 {
   margin: 0;
   max-width: 12ch;
-  color: #fff;
-  font-size: 4rem;
-  line-height: 1.02;
+  color: var(--store-ink);
+  font-size: 3.2rem;
+  line-height: 1.04;
   font-weight: 900;
   letter-spacing: -0.03em;
 }
 
 .store-hero-copy {
-  margin: 18px 0 0;
+  margin: 14px 0 0;
   max-width: 500px;
-  color: rgba(255, 255, 255, 0.85);
-  font-size: 1.1rem;
-  line-height: 1.7;
+  color: var(--store-muted);
+  font-size: 1.02rem;
+  line-height: 1.6;
 }
 
 .store-hero-actions {
@@ -691,27 +717,29 @@
 
 .store-proof div {
   padding: 14px;
-  border: 1px solid rgba(255, 255, 255, 0.16);
+  border: 1px solid var(--store-line);
   border-radius: 8px;
-  background: rgba(0, 0, 0, 0.20);
+  /* Was a 20% black scrim for legibility over the hero photograph; on the
+     cream page that rendered as three grey slabs. */
+  background: var(--store-panel);
 }
 
 .store-proof dt {
-  color: #fff;
+  color: var(--store-ink);
   font-size: 1.2rem;
   font-weight: 900;
 }
 
 .store-proof dd {
   margin: 2px 0 0;
-  color: rgba(255, 255, 255, 0.70);
+  color: var(--store-muted);
   font-size: 0.82rem;
   font-weight: 700;
 }
 
 .store-service-band {
   width: min(1180px, calc(100% - 32px));
-  margin: -28px auto 0;
+  margin: 22px auto 0;
   position: relative;
   z-index: 4;
   display: grid;
@@ -751,8 +779,8 @@
   border-color: var(--color-primary);
   border-width: 2px;
   padding: 19px 23px; /* absorb the extra border so the box stays the same size */
-  background: rgba(var(--color-primary-rgb), 0.04);
-  box-shadow: 0 20px 40px rgba(var(--color-primary-rgb), 0.15);
+  background: var(--store-accent-surface);
+  box-shadow: 0 12px 28px rgba(var(--color-primary-rgb), 0.14);
 }
 
 .store-service-option .material-symbols-rounded {
@@ -1632,17 +1660,15 @@
 
 @media (max-width: 720px) {
   .store-hero {
-    min-height: 468px;
-    padding: 14px 16px 28px;
+    padding: 6px 16px 14px;
   }
 
-  .store-hero-bg {
-    background-image:
-      linear-gradient(90deg, rgba(10, 8, 7, 0.96) 0%, rgba(10, 8, 7, 0.84) 48%, rgba(10, 8, 7, 0.36) 100%),
-      linear-gradient(180deg, rgba(10, 8, 7, 0.28), rgba(10, 8, 7, 0.34)),
-      url('/assets/the-taste-hero.jpg');
-    background-size: auto 100%;
-    background-position: 78% bottom;
+  .store-hero h1 {
+    font-size: 2.35rem;
+  }
+
+  .store-hero-copy {
+    font-size: 0.95rem;
   }
 
   .store-nav {
@@ -1701,7 +1727,7 @@
   .store-service-band {
     grid-template-columns: 1fr;
     width: calc(100% - 24px);
-    margin-top: -22px;
+    margin-top: 18px;
   }
 
   .store-section,
@@ -2859,18 +2885,12 @@
   transition-duration: 0.01ms !important;
 }
 
+/* Rounded corners and a drop shadow lifted the dark photographic hero off the
+   page. The hero is now the page's own cream, so both just left a grey wash
+   under the brand line. */
 .store-hero {
-  border-radius: 0 0 36px 36px;
-  overflow: hidden;
-  box-shadow: 0 26px 80px rgba(50, 24, 14, 0.16);
-}
-
-.store-hero-bg::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(180deg, rgba(255,255,255,0.035), transparent 35%, rgba(0,0,0,0.14));
-  pointer-events: none;
+  border-radius: 0;
+  box-shadow: none;
 }
 
 .store-nav {
@@ -2883,18 +2903,19 @@
 
 .store-kicker {
   width: fit-content;
-  padding: 7px 11px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  padding: 7px 12px;
+  border: 1px solid rgba(var(--color-primary-rgb), 0.18);
   border-radius: 999px;
-  background: rgba(20, 12, 9, 0.32);
-  backdrop-filter: blur(10px);
+  background: var(--store-accent-surface);
 }
 
 .store-hero h1 {
   max-width: 760px;
   text-wrap: balance;
   letter-spacing: -0.045em;
-  text-shadow: 0 4px 30px rgba(0,0,0,0.28);
+  /* The shadow existed to lift white type off a photograph; on cream it just
+     smudges the letterforms. */
+  text-shadow: none;
 }
 
 .store-hero-copy {
@@ -2902,16 +2923,18 @@
 }
 
 .store-primary-action {
-  box-shadow: 0 12px 32px rgba(229, 75, 32, 0.34);
+  /* A 34%-opacity glow read as a lift against the dark hero. On the cream page
+     it pooled into a dirty band between the button and the mode tiles. */
+  box-shadow: 0 8px 20px rgba(var(--color-primary-rgb), 0.18);
 }
 
 .store-service-band {
-  border: 1px solid rgba(74, 40, 25, 0.1);
-  box-shadow: 0 20px 55px rgba(70, 34, 18, 0.12);
+  border: none;
+  box-shadow: none;
 }
 
 .store-service-option.is-active {
-  background: linear-gradient(145deg, rgba(229,75,32,0.12), rgba(229,75,32,0.04));
+  background: var(--store-accent-surface);
 }
 
 .store-section-head h2 {
@@ -2946,7 +2969,7 @@
   }
 
   .store-hero {
-    border-radius: 0 0 26px 26px;
+    border-radius: 0;
   }
 }
 
