@@ -68,17 +68,17 @@
    ══════════════════════════════════════════════════════════ */
 /* The public site is a warm light theme scoped to .storefront-shell, not the
    dark operator palette. These surfaces render outside that scope, so they
-   restate the same tokens — including the AA-compliant accent (#b9472a rather
+   restate the same tokens — including the AA-compliant accent (#bb4726 rather
    than the brighter --color-primary, which fails contrast under white text). */
 .storefront-seo-shell,
 .static-page {
   --store-ink: #211814;
   --store-body: #4a3a33;
   --store-muted: #6b5a52;
-  --store-soft: #f7f1e8;
-  --store-panel: #fffdf9;
+  --store-soft: #fdf7f0;
+  --store-panel: #ffffff;
   --store-line: rgba(72, 44, 31, 0.14);
-  --store-accent: #b9472a;
+  --store-accent: #bb4726;
 }
 
 .storefront-seo-shell {
@@ -553,9 +553,9 @@
 .storefront-error {
   --store-ink: #211814;
   --store-body: #4a3a33;
-  --store-soft: #f7f1e8;
+  --store-soft: #fdf7f0;
   --store-line: rgba(72, 44, 31, 0.14);
-  --store-accent: #b9472a;
+  --store-accent: #bb4726;
   min-height: 100vh;
   padding: 80px 24px;
   text-align: center;

@@ -5,15 +5,20 @@
 .store-success-shell {
   --store-ink: #211814;
   --store-muted: #74645c;
-  --store-soft: #f7f1e8;
-  --store-panel: #fffdf9;
+  /* Sampled from the storefront mockup: a clean warm cream rather than the
+     dustier beige this started with, and cards in true white so a dish photo
+     sits on paper instead of on tinted card. */
+  --store-soft: #fdf7f0;
+  --store-panel: #ffffff;
+  /* The tinted surface behind an icon or a mode tile. */
+  --store-accent-surface: #fae8df;
   --store-line: rgba(72, 44, 31, 0.11);
-  --store-accent: #b9472a;
+  --store-accent: #bb4726;
   --store-green: #315f4e;
   --store-gold: #b68a47;
-  --color-primary: #b9472a;
+  --color-primary: #bb4726;
   --color-primary-hover: #96371f;
-  --color-primary-rgb: 185, 71, 42;
+  --color-primary-rgb: 187, 71, 38;
   --store-header-height: 72px;
   min-height: 100%;
   /* The window is what actually scrolls this page: the shell's height follows
@@ -48,7 +53,7 @@
   flex-direction: column;
   justify-content: space-between;
   isolation: isolate;
-  background: #171412;
+  background: #251c16;
   color: #fff;
   overflow: hidden;
 }
@@ -758,7 +763,7 @@
   align-items: center;
   justify-content: center;
   border-radius: 12px;
-  background: rgba(var(--color-primary-rgb), 0.08);
+  background: var(--store-accent-surface);
   color: var(--color-primary);
   transition: all 0.3s ease;
 }
