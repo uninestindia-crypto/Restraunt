@@ -826,7 +826,22 @@ class SyncService {
           await this.syncUpOrder(order);
         }
 
-        const staffOrders = unsyncedOrders.filter(order => !needsServerValidation(order));
+        // Reconnect replays every queued order at once, which is the widest
+        // path for a stale copy to overwrite newer cloud state — the one that
+        // brought cancelled tickets back onto the kitchen board. Each is
+        // compared with the cloud first, exactly as a single push is.
+        const candidateOrders = unsyncedOrders.filter(order => !needsServerValidation(order));
+        const staffOrders = [];
+        for (const order of candidateOrders) {
+          const comparison = await this.serverOrderIsNewer(order);
+          if (comparison.serverWins) {
+            await this.adoptServerOrder(order, comparison.row);
+            console.warn(`[Sync] Dropped a stale queued copy of order ${order.orderNumber || order.id}; the cloud's is newer.`);
+            continue;
+          }
+          staffOrders.push(order);
+        }
+
         const remoteOrders = staffOrders.map(mapOrderToRemote);
         
         if (remoteOrders.length > 0) try {
@@ -1371,6 +1386,62 @@ class SyncService {
    * tell a definitive server refusal (roll the local write back) apart from a
    * transient network failure (keep it and retry later).
    */
+  /**
+   * Decide whether this device's copy of an order may overwrite the cloud's.
+   *
+   * `syncUpOrder` upserts the whole row, so any queued push carrying an older
+   * copy silently reverts newer state. That is how a cancelled ticket came back
+   * on the kitchen board seconds after it was cleared: another till — or this
+   * one, replaying a queued write — still held the order as active and pushed
+   * that copy over the cancellation.
+   *
+   * The cloud wins when its row is newer, and always when it has reached a
+   * terminal state. Cancelled and completed are final, which is exactly what
+   * the order-status trigger enforces server-side.
+   */
+  async serverOrderIsNewer(order) {
+    if (!order?.clientOrderId || !supabase) return { serverWins: false, row: null };
+
+    try {
+      const { data, error } = await supabase
+        .from('orders')
+        .select('*')
+        .eq('store_id', getStoreId())
+        .eq('client_order_id', order.clientOrderId)
+        .maybeSingle();
+
+      if (error || !data) return { serverWins: false, row: null };
+
+      const serverAt = Date.parse(data.updated_at || '') || 0;
+      const localAt = Date.parse(order.updatedAt || '') || 0;
+      const terminal = ['cancelled', 'completed'];
+      const serverTerminal = terminal.includes(String(data.status || ''));
+      const localTerminal = terminal.includes(String(order.status || ''));
+
+      if (serverTerminal && !localTerminal) return { serverWins: true, row: data };
+      return { serverWins: serverAt > localAt, row: data };
+    } catch (e) {
+      // A failed comparison must not block the push: losing a write is worse
+      // than risking one, and the server's trigger is the final word anyway.
+      console.warn('[Sync] Could not compare the cloud copy of an order:', e);
+      return { serverWins: false, row: null };
+    }
+  }
+
+  /** Take the cloud's copy of an order and stop trying to push this one. */
+  async adoptServerOrder(order, row) {
+    const local = mapOrderToLocal(row);
+    local.id = order.id;
+    this.isSyncingFromServer = true;
+    try {
+      await db.orders.put(local);
+    } catch (dbErr) {
+      console.error(`[Sync db] Could not adopt the cloud copy of order ${order.id}:`, dbErr);
+    } finally {
+      this.isSyncingFromServer = false;
+    }
+  }
+
   async syncUpOrder(order): Promise<SyncOutcome> {
     if (!this.isConnected || !supabase) {
       console.warn(`[Sync cache] Skipping order sync for ${order?.orderNumber || order?.id}: offline or disconnected.`);
@@ -1395,8 +1466,16 @@ class SyncService {
         return { success: true, rejected: false, offline: false };
       }
 
+      // Never push over a newer cloud copy — see serverOrderIsNewer.
+      const comparison = await this.serverOrderIsNewer(order);
+      if (comparison.serverWins) {
+        await this.adoptServerOrder(order, comparison.row);
+        console.warn(`[Sync] Cloud holds a newer copy of order ${order.orderNumber || order.id}; keeping it and dropping this device's stale copy.`);
+        return { success: true, rejected: false, offline: false };
+      }
+
       const remote = mapOrderToRemote(order);
-      
+
       await retryWithBackoff(async () => {
         const { error } = await supabase.from('orders').upsert(remote, { onConflict: 'store_id,client_order_id' });
         if (error) throw error;
