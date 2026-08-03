@@ -27,7 +27,7 @@ const ROLES = {
   kitchen: { label: 'Kitchen', color: '#F59E0B' },
   waiter: { label: 'Waiter', color: 'var(--color-info)' },
   delivery: { label: 'Delivery', color: '#06B6D4' },
-  temporary_staff: { label: 'Temporary Staff', color: '#E11D48' },
+  temporary_staff: { label: 'Express Only', color: '#E11D48' },
 };
 
 export class StaffView {
@@ -83,7 +83,7 @@ export class StaffView {
                 <option value="kitchen">Kitchen Staff</option>
                 <option value="waiter">Waiter</option>
                 <option value="delivery">Delivery Staff</option>
-                <option value="temporary_staff">Temporary Staff</option>
+                <option value="temporary_staff">Express Only — Express Panel access</option>
                 <option value="manager">Manager</option>
                 ${isDeveloper ? '<option value="owner">Owner</option>' : ''}
               </select>

@@ -30,9 +30,13 @@ function StaffManager() {
     kitchen: { label: 'Kitchen', color: '#F59E0B', icon: 'restaurant' },
     waiter: { label: 'Waiter', color: 'var(--color-info)', icon: 'room_service' },
     delivery: { label: 'Delivery', color: '#06B6D4', icon: 'delivery_dining' },
+    // Reaches the Express Panel and the Help Center, and nothing else — in the
+    // router, in the sidebar, and in the database's own policies.
+    temporary_staff: { label: 'Express Only', color: '#E11D48', icon: 'bolt' },
   };
 
   const routes = [
+    { name: 'Express Panel', roles: ['owner', 'manager', 'cashier', 'waiter', 'kitchen', 'temporary_staff'] },
     { name: 'POS', roles: ['owner', 'manager', 'cashier', 'waiter'] },
     { name: 'Kitchen', roles: ['owner', 'manager', 'cashier', 'kitchen'] },
     { name: 'Tables', roles: ['owner', 'manager', 'cashier', 'waiter', 'kitchen'] },
