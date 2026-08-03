@@ -24,10 +24,15 @@
   /* The window is what actually scrolls this page: the shell's height follows
      its content, so `overflow-y: auto` only ever created a scrollport that
      never moved — and that dead scrollport is what every `position: sticky`
-     inside it was anchored to. `clip` still contains horizontal overflow (the
-     carousels) without becoming a scroll container. */
-  overflow-y: visible;
-  overflow-x: clip;
+     inside it was anchored to.
+     
+     No clipping here either. `overflow-x: clip` looks harmless but makes the
+     shell a containing block for fixed descendants, which pinned the bottom
+     navigation to the foot of the page instead of the viewport — you had to
+     scroll to the end of the menu to reach it. The carousels inside already
+     scroll within themselves, so there is nothing left for the shell to
+     contain. */
+  overflow: visible;
   background: var(--store-soft);
   color: var(--store-ink);
   font-family: var(--font-sans);
@@ -958,8 +963,13 @@
   position: sticky;
   top: var(--store-header-height, 72px);
   z-index: 99;
-  margin: 0 -16px;
-  padding: 12px 16px 0;
+  /* Bleed to the edge of the screen by exactly the section's own inset, never
+     by a fixed 16px: on a 320px phone the section is inset 12px, so pulling out
+     16px pushed the sticky bar 4px past each edge and gave the whole page a
+     horizontal wobble. */
+  --store-toolbar-bleed: min(16px, max(0px, (100vw - 100%) / 2));
+  margin-inline: calc(-1 * var(--store-toolbar-bleed));
+  padding: 12px var(--store-toolbar-bleed) 0;
   /* Opaque: the dish list scrolls underneath it. */
   background: var(--store-soft);
   backdrop-filter: blur(20px);
@@ -971,8 +981,9 @@
 .store-category-strip {
   display: flex;
   gap: 10px;
-  margin: 12px -16px 0;
-  padding: 0 16px 12px;
+  /* Scrolls edge to edge inside the bar, matching its bleed. */
+  margin: 12px calc(-1 * var(--store-toolbar-bleed, 16px)) 0;
+  padding: 0 var(--store-toolbar-bleed, 16px) 12px;
   overflow-x: auto;
   scrollbar-width: none;
 }

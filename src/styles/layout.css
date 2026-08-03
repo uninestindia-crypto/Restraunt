@@ -875,11 +875,6 @@
   }
   to {
     opacity: 1;
-    /* `none`, not `translateY(0)`: this animation runs with `forwards`, so the
-       final frame is retained — and any transform, even an identity one, makes
-       the element a containing block for its fixed and sticky descendants.
-       That is what stopped the storefront's search and category bar from
-       sticking, no matter what the bar itself declared. Visually identical. */
     transform: none;
   }
 }
@@ -966,8 +961,16 @@
 
 /* ── View Transitions ── */
 
+/* Deliberately no `forwards`. The animation interpolates transform, so a
+   retained final frame keeps an identity *matrix* on the element — `transform:
+   none` in the keyframe is not enough — and that matrix makes the element a
+   containing block for every fixed and sticky descendant. It is what pinned
+   the storefront's bottom navigation to the foot of the page instead of the
+   viewport. Without `forwards` the element simply returns to its own styles,
+   which are already opacity 1 and no transform: identical to look at, and it
+   leaves nothing behind. */
 .view-enter {
-  animation: slideUp 450ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: slideUp 450ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 /* ── Interactive Table Cards Floor Layout ── */

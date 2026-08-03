@@ -166,9 +166,39 @@ test('storefront does not scroll horizontally on a small phone', async ({ page }
   await page.goto('/#/self-order');
   await expect(page.getByRole('heading', { name: 'The Taste', level: 1 })).toBeVisible();
 
+  // The menu renders after the heading, and it carries the full-bleed sticky
+  // toolbar and the carousels — the parts most able to push the page sideways.
+  // Measuring on the heading alone passed while the page really did overflow.
+  await expect(page.locator('.store-menu-item').first()).toBeVisible();
+  await settle(page);
+
   const { scrollW, clientW } = await page.evaluate(() => ({
     scrollW: document.documentElement.scrollWidth,
     clientW: document.documentElement.clientWidth,
   }));
   expect(scrollW).toBeLessThanOrEqual(clientW);
+});
+
+test('the customer navigation bar stays on screen instead of sinking to the page foot', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/#/self-order');
+  await expect(page.locator('.store-menu-item').first()).toBeVisible();
+  await settle(page);
+
+  // `position: fixed` is only relative to the viewport while no ancestor has a
+  // transform, filter or clip — an identity matrix left behind by a finished
+  // animation is enough to re-anchor it to the page, which put the bar below
+  // the fold at the very bottom of the menu.
+  const onScreen = async () => page.evaluate(() => {
+    const nav = document.querySelector('.customer-bottom-nav');
+    if (!nav) return null;
+    const rect = nav.getBoundingClientRect();
+    return rect.bottom <= window.innerHeight + 1 && rect.top >= 0;
+  });
+
+  expect(await onScreen()).toBe(true);
+
+  await page.evaluate(() => window.scrollTo(0, 1500));
+  await page.waitForTimeout(400);
+  expect(await onScreen()).toBe(true);
 });
