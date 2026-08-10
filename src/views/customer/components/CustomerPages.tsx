@@ -96,7 +96,9 @@ export function AccountPage({ onBack, customer, orders = [], favorites = [], add
         <div>
           <small>{hasCustomer ? `${customer.tier || 'Taste'} Rewards member` : 'Guest customer'}</small>
           <h2>{customer?.name || 'Sign in to continue'}</h2>
-          <p>{hasCustomer ? `${orders.length} order${orders.length === 1 ? '' : 's'} found${latestOrder ? ` · Last order ${formatCurrency(latestOrder.total || 0)}` : ''}` : 'Order history, favourites, saved addresses, preferences, and rewards unlock after sign in.'}</p>
+          <p>{hasCustomer || orders.length
+            ? `${orders.length} order${orders.length === 1 ? '' : 's'} found${latestOrder ? ` · Last order ${formatCurrency(latestOrder.total || 0)}` : ''}`
+            : 'Order history, favourites, saved addresses, preferences, and rewards unlock after sign in.'}</p>
         </div>
         <button type="button" onClick={hasCustomer ? onRewards : onSignIn}>{hasCustomer ? 'View rewards' : 'Sign in'} <Icon>arrow_forward</Icon></button>
       </section>
@@ -114,10 +116,15 @@ export function AccountPage({ onBack, customer, orders = [], favorites = [], add
         ))}
       </section>
 
-      {hasCustomer && (
+      {/* A guest who ordered on this device can see what they ordered. Hiding it
+          behind sign-in meant someone who checked out as a guest lost every
+          trace of their order the moment they left the confirmation screen —
+          what they bought, what they paid, and where it had got to. Rewards,
+          saved addresses and preferences still need an account. */}
+      {(hasCustomer || orders.length > 0) && (
         <section className="customer-account-sections">
           <article className="customer-account-section customer-account-section-wide">
-            <div className="customer-section-title"><div><small>Recent orders</small><h2>Order again in seconds</h2></div><Icon>receipt_long</Icon></div>
+            <div className="customer-section-title"><div><small>Recent orders</small><h2>{hasCustomer ? 'Order again in seconds' : 'Your orders on this device'}</h2></div><Icon>receipt_long</Icon></div>
             {orders.length ? (
               <div className="customer-order-list">
                 {orders.slice(0, 4).map(order => (
@@ -137,6 +144,7 @@ export function AccountPage({ onBack, customer, orders = [], favorites = [], add
             )}
           </article>
 
+          {hasCustomer && (<>
           <article className="customer-account-section">
             <div className="customer-section-title"><div><small>Smart favourites</small><h2>Dishes you return to</h2></div><Icon>favorite</Icon></div>
             {favorites.length ? (
@@ -180,6 +188,7 @@ export function AccountPage({ onBack, customer, orders = [], favorites = [], add
               {offers.slice(0, 3).map(offer => <button type="button" key={offer.id || offer.code} onClick={onOpenMenu}><span>{offer.title}</span><small>{offer.displayValue}</small></button>)}
             </div>
           </article>
+          </>)}
         </section>
       )}
     </main>

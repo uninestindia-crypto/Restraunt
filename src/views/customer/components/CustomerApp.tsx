@@ -93,6 +93,46 @@ function CustomerShellNav({ activePage, cartCount, loggedInCustomer, onNavigate,
   );
 }
 
+/**
+ * A guest's own contact details, kept on their own device.
+ *
+ * Someone who orders without signing in is identified only by the phone number
+ * they typed, and that lived in React state alone — so reloading the page, or
+ * simply coming back later to see what they ordered, left the app with no
+ * phone number to match on and their order history came up empty. This is the
+ * same device that placed the order; remembering the number is what lets them
+ * see it again.
+ */
+const GUEST_CONTACT_KEY = 'taste_guest_contact';
+
+function readGuestContact() {
+  try {
+    const stored = JSON.parse(localStorage.getItem(GUEST_CONTACT_KEY) || 'null');
+    if (!stored || typeof stored !== 'object') return null;
+    return { name: String(stored.name || ''), phone: String(stored.phone || '') };
+  } catch {
+    return null;
+  }
+}
+
+function rememberGuestContact(name, phone) {
+  const cleanPhone = String(phone || '').trim();
+  if (!cleanPhone) return;
+  try {
+    localStorage.setItem(GUEST_CONTACT_KEY, JSON.stringify({ name: String(name || '').trim(), phone: cleanPhone }));
+  } catch (error) {
+    console.warn('[CustomerApp] Could not remember the guest contact:', error);
+  }
+}
+
+function forgetGuestContact() {
+  try {
+    localStorage.removeItem(GUEST_CONTACT_KEY);
+  } catch (error) {
+    console.warn('[CustomerApp] Could not clear the guest contact:', error);
+  }
+}
+
 export function CustomerApp({ app }) {
   // Navigation & View states
   const [state, setState] = useState('menu'); // 'menu' | 'cart' | 'checkout' | 'success'
@@ -281,6 +321,16 @@ export function CustomerApp({ app }) {
       cleanupTelemetry();
     };
   }, [applyLocalCatalogue]);
+
+  // Restore a guest's own details before the first insights load, so their
+  // orders are still theirs after a reload.
+  useEffect(() => {
+    if (loggedInCustomer) return;
+    const remembered = readGuestContact();
+    if (!remembered?.phone) return;
+    setCustomerPhone(current => current || remembered.phone);
+    setCustomerName(current => current || remembered.name);
+  }, [loggedInCustomer]);
 
   useEffect(() => {
     loadCustomerInsights();
@@ -614,6 +664,7 @@ export function CustomerApp({ app }) {
       setLoggedInCustomer(null);
       setCustomerName('');
       setCustomerPhone('');
+      forgetGuestContact();
       await loadData();
     }
   };
@@ -750,6 +801,7 @@ export function CustomerApp({ app }) {
       };
 
       await afterOrderCreated(order);
+      rememberGuestContact(customerName, customerPhone);
       await loadCustomerInsights();
       setState('success');
       playSound(900, 90);
