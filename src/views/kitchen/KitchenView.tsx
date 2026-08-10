@@ -688,6 +688,28 @@ export class KitchenView {
         </div>
       </div>
 
+      ${order.lastSyncError ? `
+      <!-- The server refused the last change to this ticket. A toast is gone in
+           four seconds; the reason has to stay on the card the operator is
+           looking at, or it reads as "delete does nothing". -->
+      <div class="kds-refusal" role="status" style="
+        margin: 8px 0 0;
+        padding: 8px 10px;
+        border-radius: 8px;
+        background: rgba(var(--color-danger-rgb), 0.10);
+        border: 1px solid rgba(var(--color-danger-rgb), 0.35);
+        color: var(--color-danger);
+        font-size: 0.68rem;
+        font-weight: 700;
+        line-height: 1.4;
+        display: flex;
+        gap: 6px;
+        align-items: flex-start;
+      ">
+        <span class="material-symbols-rounded" style="font-size: 14px; flex: 0 0 auto;">error</span>
+        <span>${escapeHtml(order.lastSyncError)}${(order.paymentStatus === 'paid') ? ' — a paid ticket has to be served and closed, or refunded before it can be voided.' : ''}</span>
+      </div>` : ''}
+
       <!-- Prep Limit Badge -->
       ${order.status === 'preparing' && prepLimit ? `
         <div style="

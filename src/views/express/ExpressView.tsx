@@ -1782,6 +1782,21 @@ export class ExpressView {
             ${itemsHtml}
           </div>
 
+          ${order.lastSyncError ? `
+          <!-- The server refused the last change to this ticket. A toast is gone
+               in four seconds; the reason stays here, or "delete" reads as doing
+               nothing at all. -->
+          <div class="kds-refusal" role="status" style="
+            padding:7px 9px;
+            border-radius:8px;
+            background:rgba(var(--color-danger-rgb),0.10);
+            border:1px solid rgba(var(--color-danger-rgb),0.35);
+            color:var(--color-danger);
+            font-size:10px;
+            font-weight:700;
+            line-height:1.4;
+          ">${escapeHtml(order.lastSyncError)}${order.paymentStatus === 'paid' ? ' — a paid ticket has to be served and closed, or refunded before it can be voided.' : ''}</div>` : ''}
+
           ${order.notes ? `<div style="font-size:10px; color:var(--color-warning); font-style:italic;">Notes: ${escapeHtml(order.notes)}</div>` : ''}
 
           <div style="margin-top:4px; display:flex; gap:6px;">

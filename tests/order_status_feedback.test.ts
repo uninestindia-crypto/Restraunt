@@ -38,7 +38,14 @@ test('a refused status transition is rolled back instead of left diverged', () =
 
   // The rollback restores the snapshot taken before the optimistic write.
   assert.match(source, /previous = \{\};/);
-  assert.match(source, /await db\.orders\.update\(id, \{ \.\.\.previous, syncStatus: 'synced', isSynced: 1 \}\)/);
+  assert.match(
+    source,
+    /await db\.orders\.update\(id, \{\s*\.\.\.previous,\s*syncStatus: 'synced',\s*isSynced: 1,/,
+    'a refusal must restore the previous state'
+  );
+  // And the reason has to survive on the row, so the board can show why the
+  // ticket came back instead of the change appearing to do nothing.
+  assert.match(source, /lastSyncError: outcome\.error \|\| 'The server refused this change\.'/);
 });
 
 test('a transient network failure keeps the local change queued', () => {
@@ -114,4 +121,37 @@ test('the outcome reporter surfaces the database message and distinguishes offli
   // Prefer the trigger's own human-readable text over a generic message.
   assert.match(source, /outcome\?\.error \|\| 'The server refused this change\.'/);
   assert.match(source, /saved offline, will sync when reconnected/);
+});
+
+/**
+ * "I delete the order and nothing happens."
+ *
+ * When Postgres refuses a cancellation — a paid ticket that has not been
+ * refunded, or a caller whose cloud role may not cancel — the local change is
+ * rolled back and the card returns. That is correct, but the only explanation
+ * was a toast that clears in seconds, so the button read as broken. The reason
+ * now stays on the ticket itself.
+ */
+test('a refused ticket carries its reason on the card', () => {
+  for (const path of ['src/views/kitchen/KitchenView.tsx', 'src/views/express/ExpressView.tsx']) {
+    const view = readFileSync(path, 'utf8');
+    assert.match(view, /order\.lastSyncError \?/, `${path} must render the refusal`);
+    assert.match(view, /kds-refusal/, `${path} must mark the refusal up as its own element`);
+    assert.match(
+      view,
+      /paymentStatus === 'paid'/,
+      `${path} must explain the paid-ticket case, which is the one with no obvious way out`
+    );
+    assert.match(view, /escapeHtml\(order\.lastSyncError\)/, `${path} must escape the server's message`);
+  }
+});
+
+test('a refusal is cleared once a change succeeds', () => {
+  const db = readFileSync('src/db/database.ts', 'utf8');
+  const sync = readFileSync('src/services/sync.ts', 'utf8');
+
+  // Retrying clears it optimistically...
+  assert.match(db, /syncStatus: 'pending',\s*\n\s*lastSyncError: '',/);
+  // ...and a successful push clears it for good, so a stale banner cannot stick.
+  assert.match(sync, /syncStatus: 'synced',\s*\n\s*\/\/[^\n]*\n\s*lastSyncError: '',/);
 });

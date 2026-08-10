@@ -972,6 +972,7 @@ export async function updateOrderStatus(
       status,
       updatedAt: new Date().toISOString(),
       syncStatus: 'pending',
+      lastSyncError: '',
       isSynced: 0
     };
     if (status === 'completed') {
@@ -1020,7 +1021,14 @@ export async function updateOrderStatus(
 
     if (outcome?.rejected) {
       if (previous) {
-        await db.orders.update(id, { ...previous, syncStatus: 'synced', isSynced: 1 });
+        await db.orders.update(id, {
+          ...previous,
+          syncStatus: 'synced',
+          isSynced: 1,
+          // Kept on the row so the board can show *why* the ticket came back,
+          // instead of the change appearing to do nothing.
+          lastSyncError: outcome.error || 'The server refused this change.'
+        });
       }
       console.warn(`[Database] Server refused status ${status} for order ${id}; local change rolled back.`);
       return { applied: false, synced: false, error: outcome.error };

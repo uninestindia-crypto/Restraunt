@@ -1490,6 +1490,8 @@ class SyncService {
         await db.orders.update(order.id, {
           isSynced: 1,
           syncStatus: 'synced',
+          // Clear any refusal shown on the ticket: it no longer applies.
+          lastSyncError: '',
           lastSyncedAt: new Date().toISOString()
         });
       } catch (dbErr) {
