@@ -13,7 +13,7 @@ import { db } from '../../db/database';
 import { ensureFresh } from '../../services/cloudDb';
 import { escapeHtml, showToast, playSound, vibrateDevice } from '../../utils/helpers';
 import { logShiftStarted, logShiftEnded } from '../../utils/activityLogger';
-import { lookupAuthUser } from '../../services/staffAdmin';
+import { lookupAuthUser, syncStaffViaAdminFunction } from '../../services/staffAdmin';
 import { authService } from '../../services/auth';
 
 // Roles that require a verified Supabase Auth account (operational backend access)
@@ -307,7 +307,7 @@ export class StaffView {
         await db.staff.update(this.editingStaffId, updateData);
         showToast('Staff member updated!', 'success');
       } else {
-        await db.staff.add({
+        const localId = await db.staff.add({
           name, role, phone, allowExpress,
           cloudUserId,
           isActive: true,
@@ -315,7 +315,36 @@ export class StaffView {
           isSynced: 0,
           _platform: 'nextgenos'
         });
-        showToast('Staff member added!', 'success');
+
+        // An account is only real once the cloud has it: the staff row and the
+        // membership that gives it a role are both written by the admin
+        // function. Waiting for the background sync to get round to it is what
+        // made "Staff member added!" a promise the app could not keep — the
+        // person then signed in and was refused. So it is done here, and the
+        // message tells the truth either way.
+        //
+        // The device-local key is deliberately not sent: it is a Dexie
+        // auto-increment, and on a second device it collides with a different
+        // person's cloud row. The server allocates the real one.
+        const created = await db.staff.get(localId);
+        const result = await syncStaffViaAdminFunction({ ...created, id: null });
+
+        if (result.success) {
+          const serverId = result.data?.staffId;
+          if (serverId && serverId !== localId) {
+            await db.staff.delete(localId);
+            await db.staff.put({ ...created, id: serverId, isSynced: 1 });
+          } else {
+            await db.staff.update(localId, { isSynced: 1 });
+          }
+          showToast('Staff member added and active in the cloud.', 'success');
+        } else {
+          showToast(
+            `Saved on this device, but the cloud refused it: ${result.message || 'unknown error'}. They cannot sign in until this is resolved.`,
+            'error',
+            10000
+          );
+        }
       }
 
       resetModal();
