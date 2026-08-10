@@ -1365,9 +1365,10 @@
   min-height: 66px;
   padding: 10px 18px;
   border-bottom: 1px solid var(--store-line);
-  background: rgba(255, 247, 239, 0.92);
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
+  /* Opaque for the same reason as the checkout footer: the blur that was meant
+     to obscure what passes underneath does not apply here, so a 92% tint let
+     the form scroll visibly through the bar. */
+  background: var(--store-soft);
   display: grid;
   grid-template-columns: auto auto 1fr;
   align-items: center;
@@ -1531,15 +1532,33 @@
   position: sticky;
   bottom: 0;
   z-index: 9;
-  padding: 14px 18px 18px;
+  padding: 14px 18px calc(18px + env(safe-area-inset-bottom, 0px));
   border-top: 1px solid var(--store-line);
-  background: rgba(255, 247, 239, 0.94);
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
+  /* Opaque, not a 94% tint over a blur: the blur does not apply in this
+     stacking context, so the form scrolled through the bar and the total and
+     the Place Order button sat on top of half-legible address fields. */
+  background: var(--store-panel);
+  box-shadow: 0 -10px 30px rgba(39, 28, 21, 0.06);
   display: grid;
   grid-template-columns: 1fr minmax(220px, 320px);
   gap: 16px;
   align-items: center;
+}
+
+/* A phone cannot hold the total and the button side by side: the 220px floor
+   on the button squeezed the amount into ~118px. They stack instead. */
+@media (max-width: 560px) {
+  .store-checkout-footer {
+    grid-template-columns: 1fr;
+    gap: 10px;
+    text-align: left;
+  }
+}
+
+/* The footer sits over the form, so the form has to be able to scroll clear of
+   it — otherwise the last fields can never be reached. */
+.store-checkout-shell {
+  padding-bottom: 150px;
 }
 
 .store-checkout-footer div {
@@ -1937,13 +1956,33 @@
   pointer-events: auto;
 }
 
+/* The dish sheet mounts as a sibling of .storefront-shell, not inside it, so it
+   inherits none of the storefront's tokens. That is why it rendered as an
+   invisible panel: its background asked for `--bg-surface-glass`, which is
+   referenced here and defined nowhere, and every inner rule was painting
+   operator-theme colours over a see-through sheet. It carries the storefront
+   palette itself, the same way the pre-rendered shell restates it. */
+.aether-drawer-overlay {
+  --store-ink: #211814;
+  --store-muted: #74645c;
+  --store-soft: #fdf7f0;
+  --store-panel: #ffffff;
+  --store-line: rgba(72, 44, 31, 0.14);
+  --color-primary: #bb4726;
+  --color-primary-rgb: 187, 71, 38;
+  --text-primary: var(--store-ink);
+  --text-secondary: var(--store-muted);
+  --text-muted: var(--store-muted);
+  --border-subtle: var(--store-line);
+  --border-active: var(--store-line);
+  color: var(--store-ink);
+}
+
 .aether-drawer-sheet {
   width: 100%;
   max-width: 500px;
-  background: var(--bg-surface-glass);
-  backdrop-filter: var(--glass-backdrop-filter);
-  -webkit-backdrop-filter: var(--glass-backdrop-filter);
-  border: 1px solid var(--border-active);
+  background: var(--store-panel);
+  border: 1px solid var(--store-line);
   border-bottom: none;
   border-radius: var(--radius-xl) var(--radius-xl) 0 0;
   box-shadow: var(--shadow-occlusion);
@@ -2124,14 +2163,14 @@
   gap: 12px;
   padding: 12px;
   border-radius: var(--radius-md);
-  background: rgba(255, 255, 255, 0.015);
-  border: 1px solid var(--border-subtle);
+  background: var(--store-soft);
+  border: 1px solid var(--store-line);
   cursor: pointer;
   transition: all var(--duration-fast);
 }
 
 .aether-modifier-item:hover {
-  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(var(--color-primary-rgb), 0.35);
 }
 
 .aether-modifier-item input[type="checkbox"] {
@@ -2184,7 +2223,7 @@
 
 .aether-textarea {
   width: 100%;
-  background: rgba(0, 0, 0, 0.2);
+  background: var(--store-soft);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
   padding: 10px 12px;
@@ -2202,17 +2241,15 @@
   align-items: center;
   gap: 16px;
   padding: 16px var(--space-3) calc(env(safe-area-inset-bottom, 16px) + 8px);
-  border-top: 1px solid var(--border-active);
-  background: rgba(18, 18, 22, 0.85);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  border-top: 1px solid var(--store-line);
+  background: var(--store-panel);
 }
 
 .aether-drawer-quantity-stepper {
   display: flex;
   align-items: center;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid var(--border-subtle);
+  background: var(--store-soft);
+  border: 1px solid var(--store-line);
   border-radius: var(--radius-full);
   padding: 4px;
 }
