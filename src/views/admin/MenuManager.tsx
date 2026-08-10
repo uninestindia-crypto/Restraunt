@@ -58,6 +58,11 @@ export function MenuManager() {
   const [newAddonName, setNewAddonName] = useState('');
   const [newAddonPrice, setNewAddonPrice] = useState('');
 
+  // Photos that exist only on this device, and why the last publish failed.
+  const [pendingPhotos, setPendingPhotos] = useState(0);
+  const [publishError, setPublishError] = useState('');
+  const [publishing, setPublishing] = useState(false);
+
   const [categoryModalOpen, setCategoryModalOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
 
@@ -73,6 +78,8 @@ export function MenuManager() {
       if (publish.published > 0) {
         showToast(`Published ${publish.published} dish photo${publish.published > 1 ? 's' : ''} to all devices.`, 'success');
       }
+      setPendingPhotos(publish.pending);
+      setPublishError(publish.pending > 0 ? publish.reason : '');
       const catsList = await db.menuCategories.orderBy('sortOrder').toArray();
       const itemsList = await db.menuItems.orderBy('sortOrder').toArray();
       setCategories(catsList);
@@ -242,6 +249,23 @@ export function MenuManager() {
     await loadItemAddons(editingItem?.id);
   };
 
+  const handlePublishPhotos = async () => {
+    setPublishing(true);
+    try {
+      const result = await publishPendingMenuImages();
+      setPendingPhotos(result.pending);
+      setPublishError(result.pending > 0 ? result.reason : '');
+      if (result.published > 0) {
+        showToast(`Published ${result.published} photo${result.published > 1 ? 's' : ''} — every device sees them now.`, 'success');
+      } else if (result.reason) {
+        showToast(result.reason, 'error', 9000);
+      }
+      await loadData();
+    } finally {
+      setPublishing(false);
+    }
+  };
+
   const handleSaveItem = async () => {
     if (!editingItem) return;
     const name = editingItem.name.trim();
@@ -279,6 +303,14 @@ export function MenuManager() {
     } else {
       await db.menuItems.put(savedItem);
       showToast('Item updated successfully!', 'success');
+    }
+
+    // The upload at pick time may have been refused before the cloud session
+    // was ready; saving is a natural second attempt.
+    if (hasUnpublishedImage(savedItem)) {
+      const retry = await publishPendingMenuImages();
+      setPendingPhotos(retry.pending);
+      setPublishError(retry.pending > 0 ? retry.reason : '');
     }
 
     setItemModalOpen(false);
@@ -559,7 +591,38 @@ export function MenuManager() {
       <div id="crud-content">
         {activeTab === 'items' ? (
           <div style={{ padding: '0 24px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
-            
+
+            {/* Photos that never reached the cloud. Without this the menu looks
+                correct on the device that took the picture and stays unchanged
+                on the storefront and every other till, with nothing to say so
+                and no way to retry. */}
+            {pendingPhotos > 0 && (
+              <div style={{
+                display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '12px',
+                padding: '12px 16px', borderRadius: 'var(--radius-md)',
+                background: 'rgba(var(--color-warning-rgb), 0.10)',
+                border: '1px solid rgba(var(--color-warning-rgb), 0.35)'
+              }}>
+                <span className="material-symbols-rounded" style={{ fontSize: '20px', color: 'var(--color-warning)' }}>cloud_off</span>
+                <div style={{ flex: 1, minWidth: '220px' }}>
+                  <strong style={{ display: 'block', fontSize: '13px', color: 'var(--text-primary)' }}>
+                    {pendingPhotos} dish photo{pendingPhotos > 1 ? 's are' : ' is'} only on this device
+                  </strong>
+                  <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                    {publishError || 'Customers and other tills still see the old picture until these are published.'}
+                  </span>
+                </div>
+                <button
+                  className="btn btn-primary btn-sm"
+                  onClick={handlePublishPhotos}
+                  disabled={publishing}
+                  style={{ whiteSpace: 'nowrap' }}
+                >
+                  {publishing ? 'Publishing…' : 'Publish now'}
+                </button>
+              </div>
+            )}
+
             {/* Control Bar: Search & Filters */}
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px', justifyContent: 'space-between', alignItems: 'center' }}>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center', flex: 1 }}>

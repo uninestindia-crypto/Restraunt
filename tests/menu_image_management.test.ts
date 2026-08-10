@@ -160,3 +160,32 @@ test('menuItemImageSource rejects local values that are not real image data', ()
   // The allow-list must stay in step with the sanitizer used at render time.
   assert.equal(safeImageUrl(PNG_DATA_URL), PNG_DATA_URL);
 });
+
+/**
+ * "The photo updated on the POS but the storefront still shows the old one."
+ *
+ * A photo that Storage refuses stays in the device-local `imageData` field,
+ * which is never published — so the menu looks correct on the device that took
+ * the picture and is unchanged everywhere else. The per-item badge says which
+ * dish is affected; this is the summary and the way to retry it.
+ */
+test('unpublished photos are surfaced with a way to publish them', () => {
+  const source = read('src/views/admin/MenuManager.tsx');
+
+  assert.match(source, /pendingPhotos > 0 && \(/, 'the menu must show that photos are stuck');
+  assert.match(source, /only on this device/);
+  assert.match(source, /Publish now/);
+  assert.match(source, /const handlePublishPhotos = async \(\)/);
+
+  // The operator is told the actual refusal, not a generic failure.
+  assert.match(source, /\{publishError \|\|/);
+  assert.match(source, /showToast\(result\.reason, 'error', 9000\)/);
+});
+
+test('saving a dish retries a photo the cloud refused earlier', () => {
+  const source = read('src/views/admin/MenuManager.tsx');
+  const start = source.indexOf('const handleSaveItem');
+  const save = source.slice(start, source.indexOf('const handleToggleAvailable', start) + 1 || start + 4000);
+  assert.match(save, /if \(hasUnpublishedImage\(savedItem\)\)/);
+  assert.match(save, /await publishPendingMenuImages\(\)/);
+});
