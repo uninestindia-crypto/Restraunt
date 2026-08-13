@@ -1,6 +1,19 @@
 # NextGenOS Developer & AI Agent Rules
 
-All development agents (including AI assistants) modifying the codebase at `d:\Zeaul\Restraunt` must strictly adhere to the rules and standards established in the workspace skill: [SKILL.md](file:///d:/Zeaul/Restraunt/.agents/skills/tier-1-engineering-standards/SKILL.md).
+All development agents (including AI assistants) modifying this codebase must strictly adhere to the rules and standards established in the workspace skill: [tier-1-engineering-standards](./skills/tier-1-engineering-standards/SKILL.md).
+
+## The workspace skills, and what each one governs
+
+| Skill | Governs | Load it |
+|---|---|---|
+| [`tier-1-engineering-standards`](./skills/tier-1-engineering-standards/SKILL.md) | Architecture: component modularity, sync safety, server-side trust boundaries | Before any structural change |
+| [`founder-mode`](./skills/founder-mode/SKILL.md) | Process: phases, evidence gates, test rings, tiers, release and rollback | Before any substantial feature, migration, role change, or release; and whenever asked "is it ready?" |
+| [`taste-os-design`](./skills/taste-os-design/SKILL.md) | Design: the two themes, type, space, colour, motion, components, accessibility, copy | Before the first line of markup or CSS |
+| [`supabase`](./skills/supabase/SKILL.md), [`supabase-postgres-best-practices`](./skills/supabase-postgres-best-practices/SKILL.md) | Database: RLS, indexing, pagination, locks | Before designing a migration or a query |
+
+**Precedence.** This file and `tier-1-engineering-standards` outrank the others on anything they
+cover. `founder-mode` supplies the process and defers to `taste-os-design` at its taste gate and to
+the Supabase skills for database design.
 
 ## Critical Directives
 
