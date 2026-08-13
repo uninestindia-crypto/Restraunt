@@ -16,13 +16,20 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npm run launch:verify
+
+      # Before launch:verify, not after: that script ends with `playwright test`, so installing
+      # the browsers afterwards left every one of the 90 E2E tests failing to launch. The step
+      # order only started mattering once `npm audit` stopped failing earlier in the chain.
       - run: npx playwright install --with-deps chromium
-      - run: npm run test:e2e
+
+      # db:validate -> typecheck -> test -> audit -> build -> playwright
+      - run: npm run launch:verify
+
       - name: Lighthouse public ordering smoke
         run: |
-          npm run build
-          nohup npx vite preview --host 127.0.0.1 --port 4173 > /tmp/the-taste-preview.log 2>&1 &
+          # launch:verify already built into dist/. Serve that, the same way `npm run preview`
+          # does — this project is a Next static export and has no Vite to preview with.
+          nohup npx serve dist -l 4173 > /tmp/the-taste-preview.log 2>&1 &
           for i in {1..30}; do curl -fsS http://127.0.0.1:4173 >/dev/null && break; sleep 1; done
           npx lighthouse http://127.0.0.1:4173/#/self-order --chrome-flags="--headless --no-sandbox" --only-categories=performance,accessibility,best-practices,seo --output=json --output-path=./lighthouse-report.json
       - uses: actions/upload-artifact@v4
