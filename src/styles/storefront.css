@@ -14,6 +14,11 @@
   --store-accent-surface: #fae8df;
   --store-line: rgba(72, 44, 31, 0.11);
   --store-accent: #bb4726;
+  /* The accent is legible on paper (5.2:1) and on the cream page (4.9:1), but
+     on the accent surface itself it lands at 4.4:1 — under the 4.5:1 that small
+     text needs. This is the same terracotta taken one step darker, for label
+     text sitting on that tint. */
+  --store-accent-ink: #a63c1e;
   --store-green: #315f4e;
   --store-gold: #b68a47;
   --color-primary: #bb4726;
@@ -157,8 +162,12 @@
 
 .customer-bottom-nav button.is-active,
 .customer-bottom-nav button.has-cart {
-  background: rgba(185,71,42,.1);
-  color: var(--store-accent);
+  /* Opaque, not a 10% tint. The bar itself is translucent with a backdrop
+     blur, so a translucent pill composited whatever happened to be scrolling
+     underneath — the label's contrast changed with the page behind it. A solid
+     surface makes it the same everywhere. */
+  background: var(--store-accent-surface);
+  color: var(--store-accent-ink);
 }
 
 .store-brand,
