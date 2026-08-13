@@ -1,4 +1,3 @@
-// @ts-nocheck
 import React, { useState, useEffect } from 'react';
 import { db } from '../../../db/database';
 import { globalStore } from '../../../store/Store';
@@ -294,7 +293,7 @@ export function LoyaltyDrawer({ loggedInCustomer, customerPhone, customerName, o
   };
 
   return (
-    <div className="aether-drawer-overlay is-open" onClick={(e) => e.target.classList.contains('aether-drawer-overlay') && onClose()}>
+    <div className="aether-drawer-overlay is-open" onClick={(e) => (e.target as HTMLElement).classList.contains('aether-drawer-overlay') && onClose()}>
       <div className="aether-drawer-sheet crm-drawer">
         <div className="aether-drawer-handle"></div>
         <button 

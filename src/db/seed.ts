@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { db, generateLocalUuid, getDisplayToken } from './database';
 
 /**
@@ -6,7 +5,7 @@ import { db, generateLocalUuid, getDisplayToken } from './database';
  * Cloud-first: If Supabase has data, pull from cloud instead of seeding locally.
  * This ensures new devices always get the real production data.
  */
-export async function seedDatabase(options = {}) {
+export async function seedDatabase(options: { publicOnly?: boolean } = {}) {
   const { publicOnly = false } = options;
 
   // Staff startup remains cloud-first for cross-device consistency. Public
@@ -74,7 +73,7 @@ export async function seedDatabase(options = {}) {
     ? [db.menuCategories, db.menuItems, db.settings]
     : [db.menuCategories, db.menuItems, db.settings, db.inventory, db.suppliers, db.customers, db.orders];
 
-  await db.transaction('rw', ...seedStores, async () => {
+  await (db.transaction as any)('rw', ...seedStores, async () => {
     // ── Categories ──────────────────────────────────────────────
     const categories = [
       { name: 'Fries', icon: '🍟', sortOrder: 1, isActive: 1, isSynced: 0 },

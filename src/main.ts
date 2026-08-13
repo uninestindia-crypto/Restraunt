@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * ═══════════════════════════════════════════════════
  *  NextGenOS Restaurant Operating System
@@ -35,6 +34,19 @@ import { showToast, escapeHtml, safeCurrencySymbol } from './utils/helpers';
 import { printConsoleSignature, injectBuildGlobal, performVersionGate, checkForUpdateAndGate } from './utils/watermark';
 import { initModalA11y } from './utils/modalA11y';
 class App {
+  // Fields these methods assign. Type-only: `declare` emits nothing, so the
+  // runtime shape of the class is unchanged.
+  declare activityEvents: any;
+  declare authServicePromise: any;
+  declare deferredInstallPrompt: any;
+  declare inactivityTimeout: any;
+  declare initialized: any;
+  declare loginScreen: any;
+  declare resetInactivityTimer: any;
+  declare sidebar: any;
+  declare syncServicePromise: any;
+  declare syncStarted: any;
+
   constructor() {
     this.deferredInstallPrompt = null;
     this.initialized = false;
@@ -701,10 +713,10 @@ class App {
       const overlay = document.getElementById('sidebar-overlay');
 
       if (hash === '#/self-order') {
-        if (header) header.style.display = 'none';
+        if (header) (header as HTMLElement).style.display = 'none';
         if (sidebar) sidebar.style.display = 'none';
       } else {
-        if (header) header.style.display = 'flex';
+        if (header) (header as HTMLElement).style.display = 'flex';
         if (sidebar) sidebar.style.display = '';
       }
 
@@ -749,7 +761,7 @@ class App {
 
     // Setup automatic Service Worker updates
     const schedulePwaRegistration = (callback) => {
-      if ('requestIdleCallback' in window) {
+      if (typeof (window as any).requestIdleCallback === 'function') {
         window.requestIdleCallback(callback, { timeout: 8000 });
       } else {
         window.setTimeout(callback, 5000);
@@ -778,7 +790,7 @@ class App {
             onOfflineReady: () => {
               console.log('[PWA] Platform is offline-ready and assets are fully cached.');
             },
-            onRegisteredSW(swUrl, r) {
+            onRegistered(swUrl, r) {
               if (r) {
                 // Periodically check for service worker updates every 10 minutes
                 setInterval(() => {
@@ -829,7 +841,7 @@ class App {
     const reloadBtn = banner.querySelector('.pwa-update-btn');
     reloadBtn.addEventListener('click', () => {
       banner.classList.add('loading');
-      reloadBtn.disabled = true;
+      (reloadBtn as HTMLButtonElement).disabled = true;
       reloadBtn.textContent = 'Updating...';
       // Clear stale auth state before the new service worker activates,
       // so the next boot starts clean with the version gate.
@@ -1012,7 +1024,7 @@ class App {
     }
 
     document.addEventListener('click', (e) => {
-      if (!widget.contains(e.target)) {
+      if (!widget.contains(e.target as Node)) {
         widget.classList.remove('is-expanded');
       }
     });

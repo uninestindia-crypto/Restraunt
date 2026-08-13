@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * ═══════════════════════════════════════════════════
  *  NextGenOS Restaurant Operating System
@@ -15,6 +14,12 @@ import { inventoryService } from '../../services/inventory';
 import { escapeHtml, showToast, playSound, vibrateDevice } from '../../utils/helpers';
 
 export class InventoryView {
+  // Fields these methods assign. Type-only: `declare` emits nothing, so the
+  // runtime shape of the class is unchanged.
+  declare app: any;
+  declare container: any;
+  declare tab: any;
+
   constructor(app) { this.app = app; this.container = null; this.tab = 'stock'; }
 
   async mount(container) {
@@ -130,18 +135,18 @@ export class InventoryView {
 
     document.getElementById('inv-save').addEventListener('click', async () => {
       if (this.tab === 'stock') {
-        const name = document.getElementById('inv-name')?.value.trim();
-        const unit = document.getElementById('inv-unit')?.value;
-        const quantity = parseFloat(document.getElementById('inv-qty')?.value) || 0;
-        const minThreshold = parseFloat(document.getElementById('inv-min')?.value) || 0;
-        const maxCapacity = parseFloat(document.getElementById('inv-max')?.value) || 100;
+        const name = (document.getElementById('inv-name') as HTMLInputElement | null)?.value.trim();
+        const unit = (document.getElementById('inv-unit') as HTMLInputElement | null)?.value;
+        const quantity = parseFloat((document.getElementById('inv-qty') as HTMLInputElement | null)?.value) || 0;
+        const minThreshold = parseFloat((document.getElementById('inv-min') as HTMLInputElement | null)?.value) || 0;
+        const maxCapacity = parseFloat((document.getElementById('inv-max') as HTMLInputElement | null)?.value) || 100;
         if (!name) { showToast('Name is required', 'error'); return; }
         await inventoryService.addItem({ name, unit, quantity, minThreshold, maxCapacity });
       } else {
-        const name = document.getElementById('sup-name')?.value.trim();
-        const phone = document.getElementById('sup-phone')?.value.trim();
-        const email = document.getElementById('sup-email')?.value.trim();
-        const category = document.getElementById('sup-category')?.value;
+        const name = (document.getElementById('sup-name') as HTMLInputElement | null)?.value.trim();
+        const phone = (document.getElementById('sup-phone') as HTMLInputElement | null)?.value.trim();
+        const email = (document.getElementById('sup-email') as HTMLInputElement | null)?.value.trim();
+        const category = (document.getElementById('sup-category') as HTMLInputElement | null)?.value;
         if (!name) { showToast('Name is required', 'error'); return; }
         await inventoryService.addSupplier({ name, phone, email, category });
       }

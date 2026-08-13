@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * ExpressView — Combined POS + Kitchen operations panel
  * Designed for maximum speed and ease of use for all staff members.
@@ -17,6 +16,29 @@ import { generateUPIQR } from '../../services/upi';
 import { orderNotificationService } from '../../services/orderNotification';
 
 export class ExpressView {
+  // Fields these methods assign. Type-only: `declare` emits nothing, so the
+  // runtime shape of the class is unchanged.
+  declare customerPhone: any;
+  declare items: any;
+
+  // Fields these methods assign. Type-only: `declare` emits nothing, so the
+  // runtime shape of the class is unchanged.
+  declare activeOrders: any;
+  declare activeTab: any;
+  declare app: any;
+  declare cart: any;
+  declare categories: any;
+  declare container: any;
+  declare filteredItems: any;
+  declare kdsFilter: any;
+  declare kdsLoading: any;
+  declare onSyncDataChanged: any;
+  declare orderType: any;
+  declare refreshInterval: any;
+  declare selectedCategory: any;
+  declare selectedTableId: any;
+  declare tables: any;
+
   constructor(app) {
     this.app = app;
     this.container = null;
@@ -1825,8 +1847,8 @@ export class ExpressView {
     // Bind click events on KDS card action buttons
     kdsFeed.querySelectorAll('.kds-action-btn').forEach(btn => {
       btn.addEventListener('click', async (e) => {
-        const action = btn.dataset.action;
-        const orderId = parseInt(btn.dataset.orderId);
+        const action = (btn as HTMLElement).dataset.action;
+        const orderId = parseInt((btn as HTMLElement).dataset.orderId);
 
         playSound(900, 80);
         vibrateDevice([40]);
@@ -1995,13 +2017,13 @@ export class ExpressView {
     // Read phone
     const phoneInput = document.getElementById('express-cust-phone');
     if (phoneInput) {
-      this.customerPhone = phoneInput.value.trim();
+      this.customerPhone = (phoneInput as HTMLInputElement).value.trim();
     }
 
     // Read table
     const tableSelect = document.getElementById('express-table-select');
-    if (tableSelect && tableSelect.value) {
-      this.selectedTableId = parseInt(tableSelect.value);
+    if (tableSelect && (tableSelect as HTMLInputElement).value) {
+      this.selectedTableId = parseInt((tableSelect as HTMLInputElement).value);
     }
 
     const orderData = {
@@ -2099,9 +2121,9 @@ export class ExpressView {
 
       // Clear input fields
       const phoneInput = document.getElementById('express-cust-phone');
-      if (phoneInput) phoneInput.value = '';
+      if (phoneInput) (phoneInput as HTMLInputElement).value = '';
       const tableSelect = document.getElementById('express-table-select');
-      if (tableSelect) tableSelect.value = '';
+      if (tableSelect) (tableSelect as HTMLInputElement).value = '';
 
       // Reload KDS & Tables
       await this.loadKitchenOrders({ fromCloud: true, wait: true });
@@ -2156,7 +2178,7 @@ export class ExpressView {
 
         // Clear search
         const searchInput = document.getElementById('express-item-search');
-        if (searchInput) searchInput.value = '';
+        if (searchInput) (searchInput as HTMLInputElement).value = '';
 
         this.filterMenuItems();
         this.updateProductsGrid();
@@ -2167,7 +2189,7 @@ export class ExpressView {
     const searchInput = document.getElementById('express-item-search');
     if (searchInput) {
       searchInput.addEventListener('input', (e) => {
-        const query = e.target.value;
+        const query = (e.target as HTMLInputElement).value;
         this.filterMenuItems(query);
         this.updateProductsGrid();
       });
@@ -2177,17 +2199,17 @@ export class ExpressView {
     const prodGrid = document.getElementById('express-products-grid');
     if (prodGrid) {
       prodGrid.addEventListener('error', (event) => {
-        const image = event.target?.closest?.('img[data-express-image]');
+        const image = (event.target as HTMLElement | null)?.closest?.('img[data-express-image]');
         if (!image) return;
-        image.style.display = 'none';
-        if (image.nextElementSibling) image.nextElementSibling.style.display = 'flex';
+        (image as HTMLElement).style.display = 'none';
+        if (image.nextElementSibling) (image.nextElementSibling as HTMLElement).style.display = 'flex';
       }, true);
 
       prodGrid.addEventListener('click', (e) => {
-        const card = e.target.closest('.express-product-card');
+        const card = (e.target as HTMLElement).closest('.express-product-card');
         if (!card) return;
 
-        const itemId = parseInt(card.dataset.itemId);
+        const itemId = parseInt((card as HTMLElement).dataset.itemId);
         const item = this.items.find(i => i.id === itemId);
         if (item) {
           this.addToCart(item);
@@ -2298,9 +2320,9 @@ export class ExpressView {
     if (cartList) {
       // Steppers (+ and -) click
       cartList.querySelectorAll('.step-circle').forEach(btn => {
-        btn.onclick = (e) => {
+        (btn as HTMLElement).onclick = (e) => {
           e.stopPropagation();
-          const index = parseInt(btn.dataset.index);
+          const index = parseInt((btn as HTMLElement).dataset.index);
           if (btn.classList.contains('step-inc')) {
             this.updateQuantity(index, 1);
           } else {

@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Order Notification Service
  * Plays configurable ringtone melodies and shows system notifications
@@ -296,7 +295,8 @@ class OrderNotificationService {
           icon: '/icons/icon-192.png',
           tag: 'new-order-alert',
           requireInteraction: true,
-          vibrate: [200, 100, 200, 100, 200],
+          // @ts-expect-error - `vibrate` ships in Chromium but is absent from lib.dom
+      vibrate: [200, 100, 200, 100, 200],
         });
       } catch (e) {
         console.warn('[OrderNotif] System notification failed:', e);

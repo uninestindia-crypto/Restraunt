@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * MenuGrid — Category tabs + searchable item grid
  */
@@ -7,6 +6,17 @@ import { getCategories, getAllItems, getItemsByCategory, searchItems } from '../
 import { formatCurrencyShort, debounce, escapeHtml, safeImageUrl, menuItemImageSource } from '../../utils/helpers';
 
 export class MenuGrid {
+  // Fields these methods assign. Type-only: `declare` emits nothing, so the
+  // runtime shape of the class is unchanged.
+  declare addedIndicators: any;
+  declare categories: any;
+  declare container: any;
+  declare filteredItems: any;
+  declare items: any;
+  declare onAddItem: any;
+  declare searchQuery: any;
+  declare selectedCategory: any;
+
   constructor({ container, onAddItem }) {
     this.container = container;
     this.onAddItem = onAddItem;
@@ -175,13 +185,13 @@ export class MenuGrid {
       }, 200);
 
       searchInput.addEventListener('input', (e) => {
-        debouncedSearch(e.target.value);
+        debouncedSearch((e.target as HTMLInputElement).value);
       });
 
       // Clear search on Escape
       searchInput.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
-          searchInput.value = '';
+          (searchInput as HTMLInputElement).value = '';
           this.searchQuery = '';
           this.filterItems();
           this.updateGrid();
@@ -194,16 +204,16 @@ export class MenuGrid {
     const tabsContainer = document.getElementById('category-tabs');
     if (tabsContainer) {
       tabsContainer.addEventListener('click', (e) => {
-        const tab = e.target.closest('.tab');
+        const tab = (e.target as HTMLElement).closest('.tab');
         if (!tab) return;
 
-        const categoryId = parseInt(tab.dataset.categoryId, 10);
+        const categoryId = parseInt((tab as HTMLElement).dataset.categoryId, 10);
         this.selectedCategory = categoryId;
         this.searchQuery = '';
 
         // Clear search input
         const searchInput = document.getElementById('menu-search');
-        if (searchInput) searchInput.value = '';
+        if (searchInput) (searchInput as HTMLInputElement).value = '';
 
         this.filterItems();
         this.updateGrid();
@@ -218,17 +228,17 @@ export class MenuGrid {
     const gridContainer = document.getElementById('menu-grid-container');
     if (gridContainer) {
       gridContainer.addEventListener('error', (event) => {
-        const image = event.target?.closest?.('img[data-menu-image]');
+        const image = (event.target as HTMLElement | null)?.closest?.('img[data-menu-image]');
         if (!image) return;
-        image.style.display = 'none';
-        if (image.nextElementSibling) image.nextElementSibling.style.display = 'flex';
+        (image as HTMLElement).style.display = 'none';
+        if (image.nextElementSibling) (image.nextElementSibling as HTMLElement).style.display = 'flex';
       }, true);
 
       gridContainer.addEventListener('click', (e) => {
-        const itemEl = e.target.closest('.menu-item');
+        const itemEl = (e.target as HTMLElement).closest('.menu-item');
         if (!itemEl || itemEl.classList.contains('sold-out')) return;
 
-        const itemId = parseInt(itemEl.dataset.itemId, 10);
+        const itemId = parseInt((itemEl as HTMLElement).dataset.itemId, 10);
         const item = this.items.find(i => i.id === itemId);
         if (item && this.onAddItem) {
           this.onAddItem(item);
@@ -238,10 +248,10 @@ export class MenuGrid {
       // Keyboard support
       gridContainer.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' || e.key === ' ') {
-          const itemEl = e.target.closest('.menu-item');
+          const itemEl = (e.target as HTMLElement).closest('.menu-item');
           if (itemEl && !itemEl.classList.contains('sold-out')) {
             e.preventDefault();
-            itemEl.click();
+            (itemEl as HTMLElement).click();
           }
         }
       });

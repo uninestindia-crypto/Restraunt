@@ -1,10 +1,14 @@
-// @ts-nocheck
 /**
  * Global reactive state store utilizing a publish-subscribe pattern.
  * Enables decoupling views from state mutations and synchronizes state updates.
  */
 
 class Store {
+  // Fields these methods assign. Type-only: `declare` emits nothing, so the
+  // runtime shape of the class is unchanged.
+  declare listeners: any;
+  declare state: any;
+
   constructor() {
     this.state = {
       cart: [],
@@ -75,7 +79,7 @@ class Store {
   }
 
   // Cart helper mutators
-  addToCart(item, quantity = 1, notes = '', options = {}) {
+  addToCart(item, quantity = 1, notes = '', options: Record<string, any> = {}) {
     const cart = [...this.state.cart];
     const addonIds = Array.isArray(options.addonIds) ? options.addonIds : [];
     const addons = Array.isArray(options.addons) ? options.addons : [];

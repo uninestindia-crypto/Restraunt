@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * ═══════════════════════════════════════════════════
  *  NextGenOS Restaurant Operating System
@@ -79,7 +78,7 @@ class AnalyticsService {
   async getTopItems(daysBack = 6, limit = 10) {
     const { start, end } = this.getDateRange(daysBack);
     const orders = await this.getCompletedOrders(start, end);
-    const map = {};
+    const map: Record<string, { qty: number; revenue: number }> = {};
     orders.forEach(o => {
       const items = parseOrderItems(o.items);
       items.forEach(item => {

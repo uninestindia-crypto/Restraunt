@@ -1,7 +1,6 @@
-// @ts-nocheck
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { createRoot } from 'react-dom/client';
-import { db, getOrder, getOrders, getSetting, updateOrderFields, updatePayment } from '../../db/database';
+import { db, getOrder, getOrders, getSetting, updateOrderFields, updatePayment, type Order } from '../../db/database';
 import { ensureFresh } from '../../services/cloudDb';
 import { ReceiptBuilder } from '../../services/receipt';
 import { printerService } from '../../services/printer';
@@ -9,37 +8,12 @@ import { sendBillOnWhatsApp } from '../../services/whatsapp';
 import { authService } from '../../services/auth';
 import { formatCurrency, formatDateTime, parseOrderItems, playSound, showToast, vibrateDevice } from '../../utils/helpers';
 
-interface OrderItem {
-  id?: number;
-  orderNumber: string;
-  createdAt: string;
-  completedAt?: string;
-  type: 'dinein' | 'takeaway' | 'delivery';
-  total: number;
-  subtotal: number;
-  tax: number;
-  deliveryFee?: number;
-  paymentMethod?: string;
-  paymentStatus?: string;
-  status: string;
-  deliveryStatus?: string;
-  deliveryStaffId?: number;
-  deliveryStaffName?: string;
-  deliveryNotes?: string;
-  customerName?: string;
-  customerPhone?: string;
-  deliveryAddress?: string;
-  deliveryLandmark?: string;
-  paymentReference?: string;
-  paymentVerifiedAt?: string;
-  paymentVerifiedBy?: string;
-}
 
 export function OrderHistoryComponent() {
-  const [orders, setOrders] = useState<OrderItem[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
   const [deliveryStaff, setDeliveryStaff] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedOrder, setSelectedOrder] = useState<OrderItem | null>(null);
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
 
   // Delivery assign modal select state
@@ -88,7 +62,7 @@ export function OrderHistoryComponent() {
     return orders.find(o => o.id === selectedOrder.id) || selectedOrder;
   }, [orders, selectedOrder]);
 
-  const handlePrintReceipt = async (order: OrderItem) => {
+  const handlePrintReceipt = async (order: Order) => {
     if (!printerService.isConnected) {
       showToast('Printer is not connected', 'warning', 4000);
       return;
@@ -112,14 +86,14 @@ export function OrderHistoryComponent() {
     }
   };
 
-  const handleWhatsApp = async (order: OrderItem) => {
+  const handleWhatsApp = async (order: Order) => {
     const inputPhone = prompt('Enter customer WhatsApp number:', order.customerPhone || '');
     if (inputPhone === null) return;
     await sendBillOnWhatsApp(order, inputPhone);
     showToast('Opening WhatsApp...', 'success');
   };
 
-  const markPaid = async (order: OrderItem, method: string) => {
+  const markPaid = async (order: Order, method: string) => {
     const reference = method === 'upi' ? (prompt('Enter UPI reference/UTR (optional):', order.paymentReference || '') || '') : '';
     const staff = authService.getCurrentStaff();
     await updatePayment(order.id!, method, 'paid', {
@@ -132,7 +106,7 @@ export function OrderHistoryComponent() {
     loadData();
   };
 
-  const assignDelivery = async (order: OrderItem) => {
+  const assignDelivery = async (order: Order) => {
     if (!selectedStaffId) {
       showToast('Select delivery staff first', 'warning');
       return;
@@ -149,7 +123,7 @@ export function OrderHistoryComponent() {
     loadData();
   };
 
-  const markOutForDelivery = async (order: OrderItem) => {
+  const markOutForDelivery = async (order: Order) => {
     if (!order.deliveryStaffId) {
       showToast('Assign delivery staff before dispatch', 'warning');
       return;
@@ -162,7 +136,7 @@ export function OrderHistoryComponent() {
     loadData();
   };
 
-  const markDelivered = async (order: OrderItem) => {
+  const markDelivered = async (order: Order) => {
     const updates = {
       deliveryStatus: 'delivered',
       deliveredAt: new Date().toISOString(),
@@ -182,7 +156,7 @@ export function OrderHistoryComponent() {
     loadData();
   };
 
-  const markDeliveryFailed = async (order: OrderItem) => {
+  const markDeliveryFailed = async (order: Order) => {
     const reason = prompt('Reason for failed delivery:', order.deliveryNotes || '') || '';
     await updateOrderFields(order.id!, {
       deliveryStatus: 'failed',
@@ -192,7 +166,7 @@ export function OrderHistoryComponent() {
     loadData();
   };
 
-  const handleVoidOrder = async (order: OrderItem) => {
+  const handleVoidOrder = async (order: Order) => {
     const staff = authService.getCurrentStaff();
     const role = staff?.role?.toLowerCase() || '';
     const canVoid = ['developer', 'owner', 'manager'].includes(role);
@@ -206,7 +180,7 @@ export function OrderHistoryComponent() {
     }
   };
 
-  const executeVoid = async (order: OrderItem, authorizedStaff: any) => {
+  const executeVoid = async (order: Order, authorizedStaff: any) => {
     try {
       await updateOrderFields(order.id!, {
         status: 'cancelled',
@@ -234,12 +208,12 @@ export function OrderHistoryComponent() {
   };
 
   // Badges rendering
-  const renderTypeBadge = (order: OrderItem) => {
+  const renderTypeBadge = (order: Order) => {
     const labels = { dinein: 'Dine-In', takeaway: 'Pickup', delivery: 'Delivery' };
     return <span className="badge badge-primary">{labels[order.type] || order.type}</span>;
   };
 
-  const renderPaymentBadge = (order: OrderItem) => {
+  const renderPaymentBadge = (order: Order) => {
     const paid = order.paymentStatus === 'paid';
     const pending = order.paymentStatus === 'pending';
     const label = `${(order.paymentMethod || 'unpaid').toUpperCase()} / ${(order.paymentStatus || 'unpaid').toUpperCase()}`;
@@ -252,7 +226,7 @@ export function OrderHistoryComponent() {
     return <span className={`badge ${cls}`}>{status || 'pending'}</span>;
   };
 
-  const renderDeliveryBadge = (order: OrderItem) => {
+  const renderDeliveryBadge = (order: Order) => {
     if (order.type !== 'delivery') return <span style={{ color: 'var(--text-muted)', fontSize: 'var(--text-xs)' }}>Not delivery</span>;
     const status = order.deliveryStatus || 'pending';
     const cls = status === 'delivered' ? 'badge-success' : status === 'failed' ? 'badge-danger' : 'badge-warning';
@@ -464,6 +438,12 @@ export function OrderHistoryComponent() {
 }
 
 export class OrderHistory {
+  // Fields these methods assign. Type-only: `declare` emits nothing, so the
+  // runtime shape of the class is unchanged.
+  declare app: any;
+  declare container: any;
+  declare root: any;
+
   constructor(app) {
     this.app = app;
     this.container = null;

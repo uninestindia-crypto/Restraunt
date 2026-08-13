@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * ═══════════════════════════════════════════════════
  *  NextGenOS Restaurant Operating System
@@ -19,6 +18,12 @@ const TIER_BADGES = {
 };
 
 export class AICommandCenter {
+  // Fields these methods assign. Type-only: `declare` emits nothing, so the
+  // runtime shape of the class is unchanged.
+  declare app: any;
+  declare container: any;
+  declare messages: any;
+
   constructor(app) {
     this.app = app;
     this.container = null;
@@ -95,9 +100,9 @@ export class AICommandCenter {
     const sendBtn = document.getElementById('ai-send');
 
     const handleSend = () => {
-      const query = input.value.trim();
+      const query = (input as HTMLInputElement).value.trim();
       if (!query) return;
-      input.value = '';
+      (input as HTMLInputElement).value = '';
       playSound(700, 80);
       this.handleQuery(query);
     };
@@ -162,12 +167,12 @@ export class AICommandCenter {
         this.handleQuery(chip.textContent.trim());
       });
       chip.addEventListener('mouseenter', () => {
-        chip.style.background = 'rgba(108,92,231,0.15)';
-        chip.style.borderColor = 'rgba(108,92,231,0.4)';
+        (chip as HTMLElement).style.background = 'rgba(108,92,231,0.15)';
+        (chip as HTMLElement).style.borderColor = 'rgba(108,92,231,0.4)';
       });
       chip.addEventListener('mouseleave', () => {
-        chip.style.background = 'rgba(108,92,231,0.08)';
-        chip.style.borderColor = 'rgba(108,92,231,0.2)';
+        (chip as HTMLElement).style.background = 'rgba(108,92,231,0.08)';
+        (chip as HTMLElement).style.borderColor = 'rgba(108,92,231,0.2)';
       });
     });
 

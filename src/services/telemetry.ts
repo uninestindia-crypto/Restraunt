@@ -1,8 +1,13 @@
-// @ts-nocheck
 import { getSupabaseClient } from './supabaseClient';
 import { db } from '../db/database';
 
 class TelemetryService {
+  // Fields these methods assign. Type-only: `declare` emits nothing, so the
+  // runtime shape of the class is unchanged.
+  declare isProcessing: any;
+  declare queuedErrors: any;
+  declare storeId: any;
+
   constructor() {
     this.queuedErrors = [];
     this.isProcessing = false;

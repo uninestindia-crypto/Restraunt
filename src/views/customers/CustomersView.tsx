@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * ═══════════════════════════════════════════════════
  *  NextGenOS Restaurant Operating System
@@ -21,6 +20,12 @@ const TIERS = {
 };
 
 export class CustomersView {
+  // Fields these methods assign. Type-only: `declare` emits nothing, so the
+  // runtime shape of the class is unchanged.
+  declare app: any;
+  declare container: any;
+  declare searchQuery: any;
+
   constructor(app) { this.app = app; this.container = null; this.searchQuery = ''; }
 
   async mount(container) {
@@ -93,22 +98,22 @@ export class CustomersView {
       if (e.target === modal) closeModal();
     });
     document.getElementById('cust-save').addEventListener('click', async () => {
-      const name = document.getElementById('cust-name').value.trim();
-      const phone = document.getElementById('cust-phone').value.trim();
-      const birthday = document.getElementById('cust-birthday').value;
+      const name = (document.getElementById('cust-name') as HTMLInputElement).value.trim();
+      const phone = (document.getElementById('cust-phone') as HTMLInputElement).value.trim();
+      const birthday = (document.getElementById('cust-birthday') as HTMLInputElement).value;
       if (!name || !phone) { showToast('Name and phone required', 'error'); return; }
       await db.customers.add({ name, phone, birthday, totalSpent: 0, visitCount: 0, loyaltyPoints: 0, tier: 'bronze', lastVisit: null, createdAt: new Date().toISOString(), isSynced: 0, _platform: 'nextgenos' });
       modal.style.display = 'none';
-      document.getElementById('cust-name').value = '';
-      document.getElementById('cust-phone').value = '';
-      document.getElementById('cust-birthday').value = '';
+      (document.getElementById('cust-name') as HTMLInputElement).value = '';
+      (document.getElementById('cust-phone') as HTMLInputElement).value = '';
+      (document.getElementById('cust-birthday') as HTMLInputElement).value = '';
       playSound(900, 100);
       vibrateDevice([40]);
       showToast('Customer added!', 'success');
       await this.loadCustomers();
     });
     document.getElementById('customer-search').addEventListener('input', async (e) => {
-      this.searchQuery = e.target.value.toLowerCase();
+      this.searchQuery = (e.target as HTMLInputElement).value.toLowerCase();
       await this.loadCustomers();
     });
   }

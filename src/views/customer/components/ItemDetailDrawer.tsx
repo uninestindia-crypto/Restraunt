@@ -1,4 +1,3 @@
-// @ts-nocheck
 import React, { useState, useEffect } from 'react';
 import { formatCurrency, playSound, vibrateDevice, menuItemImageSource } from '../../../utils/helpers';
 
@@ -87,7 +86,7 @@ export function ItemDetailDrawer({ item, categories, addons = [], onClose, onAdd
   const isVeg = item.isVeg ? 'veg' : 'nonveg';
 
   return (
-    <div className="aether-drawer-overlay is-open" onClick={(e) => e.target.classList.contains('aether-drawer-overlay') && onClose()}>
+    <div className="aether-drawer-overlay is-open" onClick={(e) => (e.target as HTMLElement).classList.contains('aether-drawer-overlay') && onClose()}>
       <div className="aether-drawer-sheet">
         <div className="aether-drawer-handle"></div>
         <button 
@@ -110,7 +109,7 @@ export function ItemDetailDrawer({ item, categories, addons = [], onClose, onAdd
               <h2>{item.name}</h2>
               <span className="aether-drawer-price">{formatCurrency(item.price)}</span>
             </div>
-            <p class="aether-drawer-desc">{getItemDescription()}</p>
+            <p className="aether-drawer-desc">{getItemDescription()}</p>
 
             <div className="aether-drawer-section">
               <h3>Spicy Level</h3>
@@ -188,7 +187,7 @@ export function ItemDetailDrawer({ item, categories, addons = [], onClose, onAdd
               <h3>Special Kitchen Notes</h3>
               <textarea 
                 className="aether-textarea" 
-                rows="2" 
+                rows={2} 
                 placeholder="E.g. Make it extra crispy, packing sauce separately..."
                 value={customNotes}
                 onChange={(e) => setCustomNotes(e.target.value)}

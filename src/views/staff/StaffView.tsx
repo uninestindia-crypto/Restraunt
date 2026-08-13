@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * ═══════════════════════════════════════════════════
  *  NextGenOS Restaurant Operating System
@@ -31,6 +30,14 @@ const ROLES = {
 };
 
 export class StaffView {
+  // Fields these methods assign. Type-only: `declare` emits nothing, so the
+  // runtime shape of the class is unchanged.
+  declare app: any;
+  declare container: any;
+  declare editingStaffId: any;
+  declare tab: any;
+  declare verifiedCloudUser: any;
+
   constructor(app) {
     this.app = app;
     this.container = null;
@@ -131,7 +138,7 @@ export class StaffView {
 
   /** Show/hide the cloud verification section based on selected role */
   updateCloudSectionVisibility() {
-    const role = document.getElementById('staff-role')?.value;
+    const role = (document.getElementById('staff-role') as HTMLInputElement | null)?.value;
     const cloudSection = document.getElementById('staff-cloud-section');
     if (cloudSection) {
       cloudSection.style.display = CLOUD_REQUIRED_ROLES.includes(role) ? 'block' : 'none';
@@ -143,7 +150,7 @@ export class StaffView {
     this.verifiedCloudUser = null;
     const emailEl = document.getElementById('staff-cloud-email');
     const statusEl = document.getElementById('staff-cloud-status');
-    if (emailEl) emailEl.value = '';
+    if (emailEl) (emailEl as HTMLInputElement).value = '';
     if (statusEl) statusEl.innerHTML = '';
   }
 
@@ -174,9 +181,9 @@ export class StaffView {
 
     // Auto-fill name field if empty
     const nameEl = document.getElementById('staff-name');
-    if (nameEl && !nameEl.value.trim() && data.email) {
+    if (nameEl && !(nameEl as HTMLInputElement).value.trim() && data.email) {
       const emailName = data.email.split('@')[0].replace(/[._-]/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-      nameEl.value = emailName;
+      (nameEl as HTMLInputElement).value = emailName;
     }
 
     this.verifiedCloudUser = {
@@ -209,9 +216,9 @@ export class StaffView {
       this.editingStaffId = null;
       this.resetCloudVerification();
       document.getElementById('staff-modal-title').textContent = 'Add Staff';
-      ['staff-name', 'staff-phone'].forEach(id => document.getElementById(id).value = '');
-      document.getElementById('staff-role').value = 'cashier';
-      document.getElementById('staff-allow-express').checked = false;
+      ['staff-name', 'staff-phone'].forEach(id => (document.getElementById(id) as HTMLInputElement).value = '');
+      (document.getElementById('staff-role') as HTMLInputElement).value = 'cashier';
+      (document.getElementById('staff-allow-express') as HTMLInputElement).checked = false;
       this.updateCloudSectionVisibility();
     };
 
@@ -233,14 +240,14 @@ export class StaffView {
     document.getElementById('staff-role')?.addEventListener('change', () => {
       this.updateCloudSectionVisibility();
       // Reset verification when role changes
-      if (!CLOUD_REQUIRED_ROLES.includes(document.getElementById('staff-role').value)) {
+      if (!CLOUD_REQUIRED_ROLES.includes((document.getElementById('staff-role') as HTMLInputElement).value)) {
         this.resetCloudVerification();
       }
     });
 
     // Verify cloud account button
     document.getElementById('staff-verify-btn')?.addEventListener('click', async () => {
-      const email = document.getElementById('staff-cloud-email')?.value?.trim();
+      const email = (document.getElementById('staff-cloud-email') as HTMLInputElement | null)?.value?.trim();
       if (!email || !email.includes('@')) {
         showToast('Enter a valid email address to verify', 'warning');
         return;
@@ -248,7 +255,7 @@ export class StaffView {
 
       const verifyBtn = document.getElementById('staff-verify-btn');
       const statusEl = document.getElementById('staff-cloud-status');
-      verifyBtn.disabled = true;
+      (verifyBtn as HTMLButtonElement).disabled = true;
       verifyBtn.innerHTML = '<span class="material-symbols-rounded" style="font-size:14px;animation:spin 1s linear infinite;">progress_activity</span> Checking…';
       statusEl.innerHTML = '';
 
@@ -258,17 +265,17 @@ export class StaffView {
       } catch (err) {
         this.showCloudStatus({ success: false, message: 'Network error: ' + err.message });
       } finally {
-        verifyBtn.disabled = false;
+        (verifyBtn as HTMLButtonElement).disabled = false;
         verifyBtn.innerHTML = '<span class="material-symbols-rounded" style="font-size:14px;">search</span> Verify';
       }
     });
 
     // Save staff member
     document.getElementById('staff-save').addEventListener('click', async () => {
-      const name = document.getElementById('staff-name').value.trim();
-      const role = document.getElementById('staff-role').value;
-      const phone = document.getElementById('staff-phone').value.trim();
-      const allowExpress = document.getElementById('staff-allow-express').checked ? 1 : 0;
+      const name = (document.getElementById('staff-name') as HTMLInputElement).value.trim();
+      const role = (document.getElementById('staff-role') as HTMLInputElement).value;
+      const phone = (document.getElementById('staff-phone') as HTMLInputElement).value.trim();
+      const allowExpress = (document.getElementById('staff-allow-express') as HTMLInputElement).checked ? 1 : 0;
       
       if (!name) { showToast('Name is required', 'error'); return; }
       
@@ -302,7 +309,7 @@ export class StaffView {
       const cloudUserId = this.verifiedCloudUser?.authUserId || null;
 
       if (isEdit) {
-        const updateData = { name, role, phone, allowExpress, isSynced: 0 };
+        const updateData: Record<string, any> = { name, role, phone, allowExpress, isSynced: 0 };
         if (cloudUserId) updateData.cloudUserId = cloudUserId;
         await db.staff.update(this.editingStaffId, updateData);
 
@@ -440,7 +447,7 @@ export class StaffView {
 
       content.querySelectorAll('.edit-staff-btn').forEach(btn => {
         btn.addEventListener('click', async () => {
-          const id = parseInt(btn.dataset.id);
+          const id = parseInt((btn as HTMLElement).dataset.id);
           const staffMember = await db.staff.get(id);
           if (!staffMember) return;
 
@@ -448,10 +455,10 @@ export class StaffView {
           this.editingStaffId = id;
           this.resetCloudVerification();
           document.getElementById('staff-modal-title').textContent = 'Edit Staff Member';
-          document.getElementById('staff-name').value = staffMember.name || '';
-          document.getElementById('staff-role').value = staffMember.role || 'cashier';
-          document.getElementById('staff-phone').value = staffMember.phone || '';
-          document.getElementById('staff-allow-express').checked = staffMember.allowExpress === 1 || staffMember.allowExpress === true;
+          (document.getElementById('staff-name') as HTMLInputElement).value = staffMember.name || '';
+          (document.getElementById('staff-role') as HTMLInputElement).value = staffMember.role || 'cashier';
+          (document.getElementById('staff-phone') as HTMLInputElement).value = staffMember.phone || '';
+          (document.getElementById('staff-allow-express') as HTMLInputElement).checked = staffMember.allowExpress === 1 || staffMember.allowExpress === true;
 
           // If already linked to a cloud user, pre-populate the verification
           if (staffMember.cloudUserId) {
@@ -478,7 +485,7 @@ export class StaffView {
 
       content.querySelectorAll('.delete-staff-btn').forEach(btn => {
         btn.addEventListener('click', async () => {
-          const id = parseInt(btn.dataset.id);
+          const id = parseInt((btn as HTMLElement).dataset.id);
           const staffMember = await db.staff.get(id);
           if (!staffMember) return;
 

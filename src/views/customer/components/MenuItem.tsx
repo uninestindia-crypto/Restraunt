@@ -1,4 +1,3 @@
-// @ts-nocheck
 import React from 'react';
 import { globalStore } from '../../../store/Store';
 import { formatCurrency, escapeHtml, menuItemImageSource } from '../../../utils/helpers';

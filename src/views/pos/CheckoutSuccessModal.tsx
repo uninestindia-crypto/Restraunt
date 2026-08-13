@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * CheckoutSuccessModal — Visual Monospaced Receipt + Print Fallbacks + WhatsApp Bill Share
  */
@@ -10,6 +9,13 @@ import { ReceiptBuilder } from '../../services/receipt';
 import { getSetting } from '../../db/database';
 
 export class CheckoutSuccessModal {
+  // Fields these methods assign. Type-only: `declare` emits nothing, so the
+  // runtime shape of the class is unchanged.
+  declare customerPhone: any;
+  declare onClose: any;
+  declare order: any;
+  declare overlay: any;
+
   constructor({ order, onClose }) {
     this.order = order;
     this.onClose = onClose;
@@ -197,8 +203,8 @@ export class CheckoutSuccessModal {
 
     // Send WhatsApp button
     document.getElementById('btn-success-whatsapp')?.addEventListener('click', async () => {
-      const phone = waPhone ? waPhone.value.trim() : '';
-      if (!phone || phone.length !== 10 || isNaN(phone)) {
+      const phone = waPhone ? (waPhone as HTMLInputElement).value.trim() : '';
+      if (!phone || phone.length !== 10 || Number.isNaN(Number(phone))) {
         showToast('Please enter a valid 10-digit customer mobile number', 'warning');
         return;
       }
@@ -308,7 +314,7 @@ export class CheckoutSuccessModal {
         'upiName'
       ];
 
-      const settings = {};
+      const settings: Record<string, any> = {};
       for (const key of settingsKeys) {
         settings[key] = await getSetting(key);
       }

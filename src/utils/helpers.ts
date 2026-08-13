@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Format an amount as Indian Rupees with 2 decimal places.
  * @param {number} amount
@@ -205,7 +204,7 @@ export function playSound(frequency = 800, duration = 150, type = 'sine') {
     const gain = ctx.createGain();
     oscillator.connect(gain);
     gain.connect(ctx.destination);
-    oscillator.type = type;
+    oscillator.type = type as OscillatorType;
     oscillator.frequency.value = frequency;
     gain.gain.value = 0.3;
     gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + duration / 1000);

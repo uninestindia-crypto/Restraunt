@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { formatDate, formatTime } from '../utils/helpers';
 
 const ESC = 0x1B;
@@ -12,6 +11,11 @@ const encoder = new TextEncoder();
  * Builds raw byte arrays for thermal printers using chainable methods.
  */
 export class ReceiptBuilder {
+  // Fields these methods assign. Type-only: `declare` emits nothing, so the
+  // runtime shape of the class is unchanged.
+  declare buffer: any;
+  declare paperWidth: any;
+
   /**
    * @param {number} paperWidth - Character width (32 for 58mm, 48 for 80mm)
    */

@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * POS View — Main order-taking screen
  * Split layout: Menu (left) + Cart (right)
@@ -18,6 +17,23 @@ import { logOrderPlaced, logActivity } from '../../utils/activityLogger';
 import { showToast, formatCurrencyShort, playSound, vibrateDevice } from '../../utils/helpers';
 
 export class PosView {
+  // Fields these methods assign. Type-only: `declare` emits nothing, so the
+  // runtime shape of the class is unchanged.
+  declare cart: any;
+  declare channel: any;
+  declare container: any;
+  declare customerName: any;
+  declare customerPhone: any;
+  declare orderType: any;
+
+  // Fields these methods assign. Type-only: `declare` emits nothing, so the
+  // runtime shape of the class is unchanged.
+  declare app: any;
+  declare cartPanel: any;
+  declare menuGrid: any;
+  declare paymentModal: any;
+  declare selectedTableId: any;
+
   constructor(app) {
     this.app = app;
     this.container = null;
@@ -275,7 +291,7 @@ export class PosView {
     this.paymentModal.show();
   }
 
-  async finalizeOrder(orderData, paymentMethod, splitDetails = {}) {
+  async finalizeOrder(orderData, paymentMethod, splitDetails: Record<string, any> = {}) {
     try {
       orderData.paymentMethod = paymentMethod;
       orderData.paymentStatus = splitDetails.remainingAmount > 0 ? 'partial' : 'paid';
@@ -291,15 +307,15 @@ export class PosView {
 
       // Read customer phone from cart input
       const phoneInput = document.getElementById('cart-customer-phone');
-      if (phoneInput && phoneInput.value.trim()) {
-        orderData.customerPhone = phoneInput.value.trim();
-        phoneInput.value = '';
+      if (phoneInput && (phoneInput as HTMLInputElement).value.trim()) {
+        orderData.customerPhone = (phoneInput as HTMLInputElement).value.trim();
+        (phoneInput as HTMLInputElement).value = '';
       }
 
       // Read table selection
       const tableSelect = document.getElementById('cart-table-select');
-      if (tableSelect && tableSelect.value) {
-        orderData.tableId = parseInt(tableSelect.value);
+      if (tableSelect && (tableSelect as HTMLInputElement).value) {
+        orderData.tableId = parseInt((tableSelect as HTMLInputElement).value);
         this.selectedTableId = orderData.tableId;
       }
 

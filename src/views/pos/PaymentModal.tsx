@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * PaymentModal — UPI QR code + Cash payment
  */
@@ -8,6 +7,24 @@ import { generateUPIQR, buildUPILink } from '../../services/upi';
 import { getSetting } from '../../db/database';
 
 export class PaymentModal {
+  // Fields these methods assign. Type-only: `declare` emits nothing, so the
+  // runtime shape of the class is unchanged.
+  declare splitMode: any;
+
+  // Fields these methods assign. Type-only: `declare` emits nothing, so the
+  // runtime shape of the class is unchanged.
+  declare _escHandler: any;
+  declare cashReceived: any;
+  declare currencySymbol: any;
+  declare customAmount: any;
+  declare isProcessing: any;
+  declare onClose: any;
+  declare onConfirmPayment: any;
+  declare order: any;
+  declare overlay: any;
+  declare qrAmount: any;
+  declare selectedMethod: any;
+
   constructor({ order, onConfirmPayment, onClose }) {
     this.order = order;
     this.onConfirmPayment = onConfirmPayment;
@@ -197,7 +214,7 @@ export class PaymentModal {
 
   renderQuickAmounts() {
     const total = this.order.total;
-    const amounts = new Set();
+    const amounts = new Set<number>();
     amounts.add(Math.ceil(total));
     amounts.add(Math.ceil(total / 10) * 10);
     amounts.add(Math.ceil(total / 50) * 50);
@@ -242,7 +259,7 @@ export class PaymentModal {
 
       // Set deep link
       if (deeplink) {
-        deeplink.href = upiLink;
+        (deeplink as HTMLAnchorElement).href = upiLink;
       }
     } catch (error) {
       console.error('QR generation failed:', error);
@@ -297,15 +314,15 @@ export class PaymentModal {
     const methodsContainer = document.getElementById('payment-methods');
     if (methodsContainer) {
       methodsContainer.addEventListener('click', (e) => {
-        const btn = e.target.closest('.payment-tab-btn');
+        const btn = (e.target as HTMLElement).closest('.payment-tab-btn');
         if (!btn) return;
 
-        const method = btn.dataset.method;
+        const method = (btn as HTMLElement).dataset.method;
         this.selectedMethod = method;
 
         // Update active state
         methodsContainer.querySelectorAll('.payment-tab-btn').forEach(b => {
-          b.classList.toggle('active', b.dataset.method === method);
+          b.classList.toggle('active', (b as HTMLElement).dataset.method === method);
         });
 
         // Show/hide views
@@ -328,7 +345,7 @@ export class PaymentModal {
     const cashInput = document.getElementById('cash-received-input');
     if (cashInput) {
       cashInput.addEventListener('input', (e) => {
-        this.cashReceived = e.target.value;
+        this.cashReceived = (e.target as HTMLInputElement).value;
         this.updateChangeDisplay();
       });
     }
@@ -341,7 +358,7 @@ export class PaymentModal {
           const amount = btn.dataset.amount;
           const input = document.getElementById('cash-received-input');
           if (input) {
-            input.value = amount;
+            (input as HTMLInputElement).value = amount;
             this.cashReceived = amount;
             this.updateChangeDisplay();
           }
@@ -386,7 +403,7 @@ export class PaymentModal {
     if (customQrInput) {
       let debounceTimer = null;
       customQrInput.addEventListener('input', (e) => {
-        this.customAmount = e.target.value;
+        this.customAmount = (e.target as HTMLInputElement).value;
 
         // Update remaining display
         const remainingDisplay = document.getElementById('custom-remaining-display');
@@ -474,7 +491,7 @@ export class PaymentModal {
 
     const confirmBtn = document.getElementById('btn-confirm-payment');
     const btnText = document.getElementById('confirm-btn-text');
-    if (confirmBtn) confirmBtn.disabled = true;
+    if (confirmBtn) (confirmBtn as HTMLButtonElement).disabled = true;
     if (btnText) btnText.textContent = 'Processing...';
 
     try {
@@ -491,7 +508,7 @@ export class PaymentModal {
       console.error('Payment confirmation failed:', error);
       showToast('Payment failed: ' + error.message, 'error');
       this.isProcessing = false;
-      if (confirmBtn) confirmBtn.disabled = false;
+      if (confirmBtn) (confirmBtn as HTMLButtonElement).disabled = false;
       if (btnText) btnText.textContent = 'Confirm Payment';
     }
   }

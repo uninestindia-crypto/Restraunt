@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * HelpView — Premium Help Center & User Documentation System (React Refactor)
  */
@@ -480,6 +479,12 @@ function HelpCenterComponent() {
 }
 
 export class HelpView {
+  // Fields these methods assign. Type-only: `declare` emits nothing, so the
+  // runtime shape of the class is unchanged.
+  declare app: any;
+  declare container: any;
+  declare root: any;
+
   constructor(app) {
     this.app = app;
     this.container = null;

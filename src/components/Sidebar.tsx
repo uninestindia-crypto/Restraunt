@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * ═══════════════════════════════════════════════════
  *  NextGenOS Restaurant Operating System
@@ -54,6 +53,11 @@ const NAV_GROUPS = [
 ];
 
 export class Sidebar {
+  // Fields these methods assign. Type-only: `declare` emits nothing, so the
+  // runtime shape of the class is unchanged.
+  declare activeHash: any;
+  declare container: any;
+
   constructor() {
     this.container = null;
     this.activeHash = window.location.hash || '#/pos';

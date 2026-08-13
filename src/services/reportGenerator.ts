@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { db, getSetting } from '../db/database';
 import { parseOrderItems } from '../utils/helpers';
 
@@ -42,7 +41,7 @@ function compileMetrics(orders) {
     paidCount: 0,
     unpaidCount: 0,
     avgOrderValue: 0,
-    itemMap: {}
+    itemMap: {} as Record<string, { name: string; quantity: number; revenue: number; category: string }>
   };
 
   for (const order of orders) {

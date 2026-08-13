@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * ═══════════════════════════════════════════════════
  *  NextGenOS Restaurant Operating System
@@ -14,6 +13,13 @@ import { signUpCustomer } from '../services/supabaseClient';
 import { showToast, playSound, vibrateDevice } from '../utils/helpers';
 
 export class CustomerLoginScreen {
+  // Fields these methods assign. Type-only: `declare` emits nothing, so the
+  // runtime shape of the class is unchanged.
+  declare _keyHandler: any;
+  declare container: any;
+  declare onLoginSuccess: any;
+  declare options: any;
+
   constructor(onLoginSuccess, options = {}) {
     this.onLoginSuccess = onLoginSuccess;
     this.options = options;
@@ -575,8 +581,8 @@ export class CustomerLoginScreen {
     const errEl = document.getElementById('login-error');
     const btnCloud = document.getElementById('btn-cloud-login');
 
-    const email = emailEl?.value.trim();
-    const password = passwordEl?.value;
+    const email = (emailEl as HTMLInputElement | null)?.value.trim();
+    const password = (passwordEl as HTMLInputElement | null)?.value;
 
     if (!email || !password) {
       showToast('Email and password are required', 'warning');
@@ -586,7 +592,7 @@ export class CustomerLoginScreen {
     try {
       if (errEl) errEl.textContent = '';
       if (btnCloud) {
-        btnCloud.disabled = true;
+        (btnCloud as HTMLButtonElement).disabled = true;
         btnCloud.textContent = 'Authenticating...';
       }
 
@@ -606,7 +612,7 @@ export class CustomerLoginScreen {
       vibrateDevice([100]);
       if (errEl) errEl.textContent = err.message || 'Invalid email or password.';
       if (btnCloud) {
-        btnCloud.disabled = false;
+        (btnCloud as HTMLButtonElement).disabled = false;
         btnCloud.textContent = 'Sign In & Order';
       }
     }
@@ -619,9 +625,9 @@ export class CustomerLoginScreen {
     const errEl = document.getElementById('login-error');
     const btnSignup = document.getElementById('btn-submit-signup');
 
-    const name = nameEl?.value.trim();
-    const email = emailEl?.value.trim();
-    const password = passwordEl?.value;
+    const name = (nameEl as HTMLInputElement | null)?.value.trim();
+    const email = (emailEl as HTMLInputElement | null)?.value.trim();
+    const password = (passwordEl as HTMLInputElement | null)?.value;
 
     if (!name || !email || !password) {
       showToast('All fields are required', 'warning');
@@ -635,7 +641,7 @@ export class CustomerLoginScreen {
     try {
       if (errEl) errEl.textContent = '';
       if (btnSignup) {
-        btnSignup.disabled = true;
+        (btnSignup as HTMLButtonElement).disabled = true;
         btnSignup.textContent = 'Creating Account...';
       }
 
@@ -673,7 +679,7 @@ export class CustomerLoginScreen {
       vibrateDevice([100]);
       if (errEl) errEl.textContent = err.message || 'Signup failed. Please try again.';
       if (btnSignup) {
-        btnSignup.disabled = false;
+        (btnSignup as HTMLButtonElement).disabled = false;
         btnSignup.textContent = 'Register & Order';
       }
     }

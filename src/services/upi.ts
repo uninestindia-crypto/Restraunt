@@ -1,4 +1,3 @@
-// @ts-nocheck
 import QRCode from 'qrcode';
 import { getSetting } from '../db/database';
 

@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * ═══════════════════════════════════════════════════
  *  NextGenOS Restaurant Operating System
@@ -22,6 +21,11 @@ const STATUS_CONFIG = {
 const STATUS_CYCLE = ['available', 'occupied', 'reserved', 'cleaning'];
 
 export class TablesView {
+  // Fields these methods assign. Type-only: `declare` emits nothing, so the
+  // runtime shape of the class is unchanged.
+  declare app: any;
+  declare container: any;
+
   constructor(app) { this.app = app; this.container = null; }
 
   async mount(container) {
@@ -90,9 +94,9 @@ export class TablesView {
     document.getElementById('tbl-close-icon')?.addEventListener('click', closeModal);
     modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
     document.getElementById('tbl-save').addEventListener('click', async () => {
-      const number = parseInt(document.getElementById('tbl-number').value) || 0;
-      const capacity = parseInt(document.getElementById('tbl-capacity').value) || 2;
-      const floorSection = document.getElementById('tbl-section').value.trim() || 'Main';
+      const number = parseInt((document.getElementById('tbl-number') as HTMLInputElement).value) || 0;
+      const capacity = parseInt((document.getElementById('tbl-capacity') as HTMLInputElement).value) || 2;
+      const floorSection = (document.getElementById('tbl-section') as HTMLInputElement).value.trim() || 'Main';
       if (!number) { showToast('Table number required', 'error'); return; }
       await tableService.addTable({ number, capacity, floorSection });
       document.getElementById('table-modal').style.display = 'none';
@@ -142,7 +146,7 @@ export class TablesView {
     // Click to cycle status
     grid.querySelectorAll('.table-card').forEach(card => {
       card.addEventListener('click', async () => {
-        const id = parseInt(card.dataset.id);
+        const id = parseInt((card as HTMLElement).dataset.id);
         const table = await db.table('tables').get(id);
         if (!table) return;
         const idx = STATUS_CYCLE.indexOf(table.status || 'available');

@@ -1,4 +1,3 @@
-// @ts-nocheck
 import React from 'react';
 
 /**
@@ -18,6 +17,9 @@ export class StorefrontErrorBoundary extends React.Component {
   static getDerivedStateFromError(error) {
     return { error };
   }
+
+  declare props: { children?: any };
+  declare state: { error: any };
 
   componentDidCatch(error, info) {
     console.error('[Storefront] Render failed:', error, info?.componentStack);

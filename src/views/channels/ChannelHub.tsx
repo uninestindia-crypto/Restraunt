@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * ═══════════════════════════════════════════════════
  *  NextGenOS Restaurant Operating System
@@ -21,6 +20,11 @@ const CHANNELS = [
 ];
 
 export class ChannelHub {
+  // Fields these methods assign. Type-only: `declare` emits nothing, so the
+  // runtime shape of the class is unchanged.
+  declare app: any;
+  declare container: any;
+
   constructor(app) { this.app = app; this.container = null; }
 
   async mount(container) {

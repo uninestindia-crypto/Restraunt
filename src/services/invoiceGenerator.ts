@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { escapeHtml, parseOrderItems, safeCurrencySymbol, safeImageUrl } from '../utils/helpers';
 
 export class InvoiceGenerator {

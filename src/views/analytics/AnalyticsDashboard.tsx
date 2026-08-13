@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * ═══════════════════════════════════════════════════
  *  NextGenOS Restaurant Operating System
@@ -13,6 +12,12 @@ import { analyticsService } from '../../services/analytics';
 import { formatCurrency, showToast, playSound, escapeHtml } from '../../utils/helpers';
 
 export class AnalyticsDashboard {
+  // Fields these methods assign. Type-only: `declare` emits nothing, so the
+  // runtime shape of the class is unchanged.
+  declare app: any;
+  declare container: any;
+  declare period: any;
+
   constructor(app) {
     this.app = app;
     this.container = null;
@@ -311,11 +316,11 @@ export class AnalyticsDashboard {
   renderChart(trend) {
     const canvas = document.getElementById('revenue-chart');
     if (!canvas) return;
-    const ctx = canvas.getContext('2d');
+    const ctx = (canvas as HTMLCanvasElement).getContext('2d');
     const dpr = window.devicePixelRatio || 1;
     const rect = canvas.getBoundingClientRect();
-    canvas.width = rect.width * dpr;
-    canvas.height = rect.height * dpr;
+    (canvas as HTMLCanvasElement).width = rect.width * dpr;
+    (canvas as HTMLCanvasElement).height = rect.height * dpr;
     ctx.scale(dpr, dpr);
     const W = rect.width, H = rect.height;
     ctx.clearRect(0, 0, W, H);
@@ -392,7 +397,7 @@ export class AnalyticsDashboard {
     `).join('') : '<div style="color:var(--text-muted);font-size:var(--text-xs);padding:20px 0;text-align:center;">No sales data available</div>';
   }
 
-  renderPayments(payments, totalRevenue) {
+  renderPayments(payments: Record<string, { total: number; count: number }>, totalRevenue) {
     const container = document.getElementById('payment-breakdown');
     if (!container) return;
     const entries = Object.entries(payments);
@@ -413,7 +418,7 @@ export class AnalyticsDashboard {
     }).join('') : '<div style="color:var(--text-muted);font-size:var(--text-xs);text-align:center;">No data</div>';
   }
 
-  renderOrderTypes(types, totalOrders) {
+  renderOrderTypes(types: Record<string, { count: number }>, totalOrders) {
     const container = document.getElementById('order-type-split');
     if (!container) return;
     const icons = { takeaway: '🥡', dinein: '🍽️', delivery: '🛵' };

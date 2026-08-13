@@ -172,8 +172,9 @@ test('the express-only role can open the one screen it exists for', () => {
 
 test('changing a role is confirmed by the cloud before the operator is told it worked', () => {
   const view = read('src/views/staff/StaffView.tsx');
-  // Anchored on the save branch, not on the earlier `isEdit` lookup above it.
-  const start = view.indexOf('const updateData = { name, role, phone');
+  // Anchored on the save branch, not on the earlier `isEdit` lookup above it. Matched
+  // loosely so a type annotation on the payload does not read as a missing edit branch.
+  const start = view.search(/const updateData(?::[^=]+)? = \{ name, role, phone/);
   assert.ok(start > -1, 'StaffView must still have an edit branch in the save handler');
   const edit = view.slice(start, view.indexOf('const localId = await db.staff.add(', start));
 

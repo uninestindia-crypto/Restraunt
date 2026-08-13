@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { getSupabaseClient } from './supabaseClient';
 
 function normalizeItemsForPublicOrder(items) {
@@ -49,7 +48,7 @@ export function buildPublicOrderPayload(order) {
   };
 }
 
-export function mapRemotePublicOrder(row, fallback = {}) {
+export function mapRemotePublicOrder(row, fallback: Record<string, any> = {}) {
   if (!row) return fallback;
   return {
     ...fallback,

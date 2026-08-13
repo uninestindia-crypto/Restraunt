@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { db, getOrder, updateOrderFields } from '../db/database';
 import { parseOrderItems } from '../utils/helpers';
 import { getSupabaseClient } from './supabaseClient';
@@ -53,7 +52,7 @@ export const RETENTION_PREFERENCES = [
   { key: 'abandoned_cart', label: 'Cart reminders', icon: 'shopping_cart_checkout', channel: 'retention' },
 ];
 
-export function getOrderTrackingState(order = {}) {
+export function getOrderTrackingState(order: Record<string, any> = {}) {
   const status = String(order.status || 'pending').toLowerCase();
   const deliveryStatus = String(order.deliveryStatus || 'none').toLowerCase();
   const isDelivery = order.type === 'delivery';
@@ -83,7 +82,7 @@ export function getOrderTrackingState(order = {}) {
 }
 
 export function buildCustomerFavoritesFromOrders(orders = []) {
-  const frequency = new Map();
+  const frequency = new Map<string, { itemId: any; itemName: string; count: number; source: string }>();
   for (const order of orders) {
     for (const item of parseOrderItems(order.items)) {
       const itemId = item.itemId || item.id || item.menuItemId || item.name || item.itemName;
@@ -215,7 +214,7 @@ export async function saveCustomerReview({ order, rating, comment = '', customer
   }
 }
 
-export function injectCustomerStructuredData(settings = {}) {
+export function injectCustomerStructuredData(settings: Record<string, any> = {}) {
   if (typeof document === 'undefined') return;
   const id = 'customer-platform-structured-data';
   document.getElementById(id)?.remove();

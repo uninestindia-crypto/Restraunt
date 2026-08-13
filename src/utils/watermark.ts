@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * ═══════════════════════════════════════════════════
  *  NextGenOS Restaurant Operating System
@@ -162,7 +161,7 @@ export async function checkForUpdateAndGate() {
       const loadingScreenText = document.querySelector('.loading-tagline');
       if (loadingScreenText) {
         loadingScreenText.textContent = 'Updating platform to latest version...';
-        loadingScreenText.style.color = '#FF6B35';
+        (loadingScreenText as HTMLElement).style.color = '#FF6B35';
       }
 
       clearStaleState();

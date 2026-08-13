@@ -1,4 +1,3 @@
-// @ts-nocheck
 import React, { useState, useEffect, useMemo } from 'react';
 import { formatCurrency, playSound, vibrateDevice } from '../../utils/helpers';
 

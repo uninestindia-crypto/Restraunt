@@ -57,7 +57,15 @@ export interface OrderItem {
   name?: string;
   price: number;
   quantity: number;
+  /**
+   * Legacy alias for `quantity` on rows written by older builds. Read it only as a fallback —
+   * `quantity` is the field. Reading `qty` alone silently counts every line as one, which is
+   * exactly what made the dashboard's top-items chart wrong.
+   */
+  qty?: number;
   notes?: string;
+  addonIds?: number[];
+  spiceLevel?: string;
 }
 
 export interface Order {
@@ -125,6 +133,9 @@ export interface Customer {
   id?: number;
   phone: string;
   name: string;
+  email?: string;
+  /** Used by the loyalty screen for a birthday offer. Local only. */
+  birthday?: string;
   authUserId?: string;
   totalSpent: number;
   visitCount: number;
@@ -133,17 +144,30 @@ export interface Customer {
   lastVisit?: string;
   createdAt: string;
   isSynced?: number;
+  /** Provenance marker written by this app's own writes. */
+  _platform?: string;
 }
 
 export interface Staff {
   id?: number;
   name: string;
   role: string;
+  /** Contact number captured by the staff screen. Local only — the cloud has no column for it. */
+  phone?: string;
   cloudUserId?: string;
   isActive: number | boolean;
   createdAt: string;
+  updatedAt?: string;
   allowExpress?: number | boolean;
   isSynced?: number;
+  /** Provenance marker written by this app's own writes. */
+  _platform?: string;
+  /**
+   * Legacy local sign-in fields, still written by the seed for a fresh device. Cloud staff
+   * authentication does not use them and no screen reads them.
+   */
+  pin?: string;
+  pinHash?: string;
 }
 
 export interface Shift {
@@ -161,6 +185,8 @@ export interface InventoryItem {
   unit: string;
   quantity: number;
   minThreshold: number;
+  /** Full-stock reference for the level bar. Falls back to 100 when unset. */
+  maxCapacity?: number;
   categoryTag?: string;
   isSynced?: number;
 }
@@ -169,6 +195,7 @@ export interface Supplier {
   id?: number;
   name: string;
   phone: string;
+  email?: string;
   category?: string;
   isSynced?: number;
 }
@@ -202,7 +229,10 @@ export interface Reservation {
 export interface ActivityLogEntry {
   id?: number;
   staffId: number;
+  /** Denormalised so the log still reads correctly after a staff member is removed. */
+  staffName?: string;
   action: string;
+  details?: string;
   timestamp: string;
   isSynced?: number;
 }
@@ -853,7 +883,7 @@ export async function createOrder(orderData: any, options: any = {}) {
  *   a re-read right after a staff action).
  * @returns {Promise<Array>} Orders
  */
-export async function getOrders(status, forceRefresh = false) {
+export async function getOrders(status?: string, forceRefresh = false) {
   await refreshFromCloud(['orders'], { force: forceRefresh });
 
   try {

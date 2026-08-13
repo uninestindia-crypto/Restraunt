@@ -1,4 +1,3 @@
-// @ts-nocheck
 import React, { useState, useEffect, useRef } from 'react';
 import { db, getSetting, setSetting } from '../../db/database';
 import { ensureFresh } from '../../services/cloudDb';

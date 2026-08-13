@@ -1,6 +1,5 @@
-// @ts-nocheck
 import React, { useState, useEffect, useMemo } from 'react';
-import { db } from '../../db/database';
+import { db, type MenuCategory, type MenuItem } from '../../db/database';
 import { ensureFresh } from '../../services/cloudDb';
 import { formatCurrency, showToast, playSound, vibrateDevice, menuItemImageSource } from '../../utils/helpers';
 import { compressImage, formatBytes } from '../../utils/imageProcessing';
@@ -14,31 +13,11 @@ import {
 /** Cloud `menu_items.image_url` is a varchar(500); anything longer must stay local. */
 const MAX_REMOTE_IMAGE_URL_LENGTH = 500;
 
-interface Category {
-  id?: number;
-  name: string;
-  sortOrder: number;
-  isActive: number;
-  icon?: string;
-  isSynced?: number;
-}
 
-interface MenuItem {
-  id?: number;
-  name: string;
-  categoryId: number;
-  price: number;
-  isVeg: number;
-  isAvailable: number;
-  sortOrder: number;
-  imageUrl?: string;
-  imageData?: string;
-  isSynced?: number;
-}
 
 export function MenuManager() {
   const [activeTab, setActiveTab] = useState<'items' | 'categories'>('items');
-  const [categories, setCategories] = useState<Category[]>([]);
+  const [categories, setCategories] = useState<MenuCategory[]>([]);
   const [items, setItems] = useState<MenuItem[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -64,7 +43,7 @@ export function MenuManager() {
   const [publishing, setPublishing] = useState(false);
 
   const [categoryModalOpen, setCategoryModalOpen] = useState(false);
-  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+  const [editingCategory, setEditingCategory] = useState<MenuCategory | null>(null);
 
   const loadData = async () => {
     try {
@@ -331,7 +310,7 @@ export function MenuManager() {
     setCategoryModalOpen(true);
   };
 
-  const handleEditCategoryClick = (cat: Category) => {
+  const handleEditCategoryClick = (cat: MenuCategory) => {
     playSound(800, 100);
     setEditingCategory({ ...cat });
     setCategoryModalOpen(true);
@@ -946,7 +925,7 @@ export function MenuManager() {
                   <select
                     id="item-veg"
                     className="input"
-                    value={editingItem.isVeg}
+                    value={String(Number(editingItem.isVeg))}
                     onChange={(e) => setEditingItem(prev => prev ? { ...prev, isVeg: Number(e.target.value) } : null)}
                     style={{ fontWeight: 700 }}
                   >
@@ -960,7 +939,7 @@ export function MenuManager() {
                   <select
                     id="item-avail"
                     className="input"
-                    value={editingItem.isAvailable}
+                    value={String(Number(editingItem.isAvailable))}
                     onChange={(e) => setEditingItem(prev => prev ? { ...prev, isAvailable: Number(e.target.value) } : null)}
                     style={{ fontWeight: 700 }}
                   >
@@ -1100,7 +1079,7 @@ export function MenuManager() {
                   <select
                     id="cat-active"
                     className="input"
-                    value={editingCategory.isActive}
+                    value={String(Number(editingCategory.isActive))}
                     onChange={(e) => setEditingCategory(prev => prev ? { ...prev, isActive: Number(e.target.value) } : null)}
                     style={{ fontWeight: 700 }}
                   >

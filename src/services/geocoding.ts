@@ -1,10 +1,9 @@
-// @ts-nocheck
 
 /**
  * Request device geolocation coordinates
  * @returns {Promise<{latitude: number, longitude: number}>}
  */
-export function getCurrentCoordinates() {
+export function getCurrentCoordinates(): Promise<{ latitude: number; longitude: number; accuracy?: number }> {
   return new Promise((resolve, reject) => {
     if (!navigator.geolocation) {
       reject(new Error('Geolocation is not supported by this browser.'));

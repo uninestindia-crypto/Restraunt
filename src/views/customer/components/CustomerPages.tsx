@@ -1,4 +1,3 @@
-// @ts-nocheck
 import React from 'react';
 import { formatCurrency, formatDateTime, parseOrderItems } from '../../../utils/helpers';
 // Shared with the statically exported /offers, /about, /catering and /support
@@ -69,7 +68,7 @@ export function SupportPage({ onBack, supportPhone = '' }) {
   return <main className="customer-page"><CustomerPageHeader eyebrow={page.eyebrow} title={page.title} copy={page.copy} onBack={onBack} /><section className="customer-faq-list">{page.faqs.map(([q, a]) => <details key={q}><summary>{q}<Icon>add</Icon></summary><p>{a}</p></details>)}</section>{links ? <div className="customer-support-actions"><a href={links.telephone}><Icon>call</Icon> Call us</a><a href={links.whatsapp}><Icon>chat</Icon> WhatsApp</a></div> : <p>Contact details will appear here once the restaurant publishes them.</p>}</main>;
 }
 
-function EmptyAccountCard({ icon, title, copy, action, onAction }) {
+function EmptyAccountCard({ icon, title, copy, action = null, onAction = null }) {
   return <article className="customer-account-empty"><Icon>{icon}</Icon><h3>{title}</h3><p>{copy}</p>{action && <button type="button" onClick={onAction}>{action}</button>}</article>;
 }
 

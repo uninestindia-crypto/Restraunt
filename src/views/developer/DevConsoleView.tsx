@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * ═══════════════════════════════════════════════════
  *  NextGenOS Restaurant Operating System
@@ -33,6 +32,14 @@ const FEATURE_FLAGS = [
 ];
 
 export class DevConsoleView {
+  // Fields these methods assign. Type-only: `declare` emits nothing, so the
+  // runtime shape of the class is unchanged.
+  declare activeTab: any;
+  declare app: any;
+  declare auditPage: any;
+  declare auditPageSize: any;
+  declare container: any;
+
   constructor(app) {
     this.app = app;
     this.container = null;
@@ -393,9 +400,9 @@ export class DevConsoleView {
       if (e.target.id === 'add-setting-btn') {
         const keyEl = document.getElementById('new-setting-key');
         const valEl = document.getElementById('new-setting-val');
-        if (keyEl?.value?.trim()) {
-          await setSetting(keyEl.value.trim(), valEl?.value || '');
-          showToast(`Setting "${keyEl.value}" added`, 'success');
+        if ((keyEl as HTMLInputElement | null)?.value?.trim()) {
+          await setSetting((keyEl as HTMLInputElement).value.trim(), (valEl as HTMLInputElement | null)?.value || '');
+          showToast(`Setting "${(keyEl as HTMLInputElement).value}" added`, 'success');
           await this.renderTabContent();
           this.bindTabEvents();
         }

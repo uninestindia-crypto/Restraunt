@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Client-side image optimisation for admin uploads.
  *
@@ -20,8 +19,8 @@ export function formatBytes(bytes) {
   return `${(value / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-export function fileToDataUrl(file) {
-  return new Promise((resolve, reject) => {
+export function fileToDataUrl(file): Promise<string> {
+  return new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(String(reader.result || ''));
     reader.onerror = () => reject(reader.error || new Error('Could not read the selected file.'));
@@ -29,7 +28,13 @@ export function fileToDataUrl(file) {
   });
 }
 
-async function loadBitmap(file) {
+type DecodedImage = CanvasImageSource & {
+  width?: number; height?: number;
+  naturalWidth?: number; naturalHeight?: number;
+  close?: () => void;
+};
+
+async function loadBitmap(file): Promise<DecodedImage> {
   if (typeof createImageBitmap === 'function') {
     try {
       return await createImageBitmap(file);
@@ -68,7 +73,7 @@ function drawScaled(source, width, height) {
   return canvas;
 }
 
-function canvasToBlob(canvas, mimeType, quality) {
+function canvasToBlob(canvas, mimeType, quality): Promise<Blob> {
   return new Promise((resolve, reject) => {
     canvas.toBlob(
       blob => (blob ? resolve(blob) : reject(new Error('Image encoding failed.'))),
@@ -83,7 +88,10 @@ function canvasToBlob(canvas, mimeType, quality) {
  *
  * @returns {Promise<{blob: Blob, dataUrl: string, width: number, height: number, bytes: number, type: string, originalBytes: number}>}
  */
-export async function compressImage(file, options = {}) {
+export async function compressImage(
+  file,
+  options: { maxDimension?: number; maxBytes?: number; mimeType?: string } = {}
+) {
   const {
     maxDimension = 1280,
     maxBytes = 400 * 1024,

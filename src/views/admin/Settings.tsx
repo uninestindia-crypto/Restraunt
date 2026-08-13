@@ -1,4 +1,3 @@
-// @ts-nocheck
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { db, getSetting, setSetting } from '../../db/database';
 import { escapeHtml, showToast, playSound, vibrateDevice, safeCurrencySymbol } from '../../utils/helpers';
@@ -719,7 +718,7 @@ export function SettingsView() {
                   </div>
                   <div className="input-group">
                     <label>Order Number Prefix</label>
-                    <input type="text" className="input" value={config.orderNumberPrefix} onChange={(e) => handleConfigChange('orderNumberPrefix', e.target.value)} placeholder="TT" maxLength="4" />
+                    <input type="text" className="input" value={config.orderNumberPrefix} onChange={(e) => handleConfigChange('orderNumberPrefix', e.target.value)} placeholder="TT" maxLength={4} />
                   </div>
                 </div>
 

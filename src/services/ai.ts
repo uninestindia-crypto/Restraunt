@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * ═══════════════════════════════════════════════════
  *  NextGenOS Restaurant Operating System
@@ -41,6 +40,11 @@ const INTENTS = [
 ];
 
 class AIService {
+  // Fields these methods assign. Type-only: `declare` emits nothing, so the
+  // runtime shape of the class is unchanged.
+  declare _configLoaded: any;
+  declare conversationHistory: any;
+
   constructor() {
     this.conversationHistory = [];
     this._configLoaded = false;
@@ -252,7 +256,7 @@ Current business data:
     const weekRevenue = weekOrders.reduce((s, o) => s + (o.total || 0), 0);
 
     // Top sellers
-    const itemMap = {};
+    const itemMap: Record<string, any> = {};
     weekOrders.forEach(o => {
       this.parseItems(o).forEach(item => {
         const name = item.itemName || item.name;
@@ -267,7 +271,7 @@ Current business data:
       .join(', ');
 
     // Payment breakdown
-    const paymentMap = {};
+    const paymentMap: Record<string, any> = {};
     weekOrders.forEach(o => {
       const m = o.paymentMethod || 'unknown';
       paymentMap[m] = (paymentMap[m] || 0) + 1;
@@ -355,7 +359,7 @@ Current business data:
 
   async getBestSellers() {
     const orders = await this.getOrdersInRange(6);
-    const itemMap = {};
+    const itemMap: Record<string, any> = {};
     orders.forEach(o => {
       this.parseItems(o).forEach(item => {
         const name = item.itemName || item.name;
@@ -384,7 +388,7 @@ Current business data:
 
   async getWorstSellers() {
     const orders = await this.getOrdersInRange(6);
-    const itemMap = {};
+    const itemMap: Record<string, any> = {};
     orders.forEach(o => {
       this.parseItems(o).forEach(item => {
         const name = item.itemName || item.name;
@@ -421,11 +425,12 @@ Current business data:
     const yesterdayOrders = (await db.orders.where('createdAt').between(yStart, tStart).toArray())
       .filter(o => o.paymentStatus === 'paid');
     const yRevenue = yesterdayOrders.reduce((s, o) => s + (o.total || 0), 0);
-    const growth = yRevenue > 0 ? ((revenue - yRevenue) / yRevenue * 100).toFixed(1) : 0;
+    const growth = yRevenue > 0 ? ((revenue - yRevenue) / yRevenue * 100) : 0;
+    const growthText = growth.toFixed(1);
     const growthIcon = growth > 0 ? '📈' : growth < 0 ? '📉' : '➡️';
 
     // Top item today
-    const itemMap = {};
+    const itemMap: Record<string, any> = {};
     todayOrders.forEach(o => {
       this.parseItems(o).forEach(item => {
         const name = item.itemName || item.name;
@@ -439,7 +444,7 @@ Current business data:
     text += `💰 Revenue: **${this.formatCurrency(revenue)}**\n`;
     text += `📦 Orders: **${count}**\n`;
     text += `🧾 Avg Bill: **${this.formatCurrency(avg)}**\n`;
-    text += `${growthIcon} vs Yesterday: **${growth > 0 ? '+' : ''}${growth}%**\n`;
+    text += `${growthIcon} vs Yesterday: **${growth > 0 ? '+' : ''}${growthText}%**\n`;
     if (topItem) text += `🏆 Top Item: **${topItem[0]}** (${topItem[1]} sold)\n`;
 
     if (count === 0) text = `📋 **Today's Summary**\n\nNo orders yet today. The day is young! 🌅`;
@@ -452,7 +457,7 @@ Current business data:
 
   async getPeakHours() {
     const orders = await this.getOrdersInRange(6);
-    const hourMap = {};
+    const hourMap: Record<string, any> = {};
     for (let h = 0; h < 24; h++) hourMap[h] = { orders: 0, revenue: 0 };
 
     orders.forEach(o => {
@@ -526,7 +531,7 @@ Current business data:
 
   async getPaymentSplit() {
     const orders = await this.getOrdersInRange(6);
-    const split = {};
+    const split: Record<string, any> = {};
     orders.forEach(o => {
       const m = o.paymentMethod || 'unknown';
       if (!split[m]) split[m] = { count: 0, total: 0 };
@@ -557,7 +562,7 @@ Current business data:
 
   async generatePromo() {
     const orders = await this.getOrdersInRange(6);
-    const itemMap = {};
+    const itemMap: Record<string, any> = {};
     orders.forEach(o => {
       this.parseItems(o).forEach(item => {
         const name = item.itemName || item.name;
@@ -587,12 +592,13 @@ Current business data:
     const weekOrders = await this.getOrdersInRange(6);
     const todayRev = todayOrders.reduce((s, o) => s + (o.total || 0), 0);
     const avgRev = weekOrders.length > 0 ? weekOrders.reduce((s, o) => s + (o.total || 0), 0) / 7 : 0;
-    const deviation = avgRev > 0 ? ((todayRev - avgRev) / avgRev * 100).toFixed(1) : 0;
+    const deviation = avgRev > 0 ? ((todayRev - avgRev) / avgRev * 100) : 0;
+    const deviationText = deviation.toFixed(1);
 
     let text = `🔍 **Anomaly Detection**\n\n`;
     if (Math.abs(deviation) > 30) {
       text += `⚠️ **Significant deviation detected!**\n\n`;
-      text += `Today's revenue (${this.formatCurrency(todayRev)}) is **${deviation > 0 ? '+' : ''}${deviation}%** `;
+      text += `Today's revenue (${this.formatCurrency(todayRev)}) is **${deviation > 0 ? '+' : ''}${deviationText}%** `;
       text += deviation > 0 ? `above` : `below`;
       text += ` your weekly average (${this.formatCurrency(avgRev)}).\n`;
     } else {

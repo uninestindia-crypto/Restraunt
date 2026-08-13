@@ -1,4 +1,3 @@
-// @ts-nocheck
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { db, getCategories, getItemsByCategory, createOrder, getNextOrderNumber, getSetting, generateLocalUuid } from '../../../db/database';
 import { globalStore } from '../../../store/Store';
@@ -140,7 +139,7 @@ export function CustomerApp({ app }) {
   const [categories, setCategories] = useState([]);
   const [activeCategoryId, setActiveCategoryId] = useState(null);
   const [items, setItems] = useState([]);
-  const [menuByCategory, setMenuByCategory] = useState(new Map());
+  const [menuByCategory, setMenuByCategory] = useState(new Map<any, any>());
   const [addons, setAddons] = useState([]);
   const [tables, setTables] = useState([]);
   const [detectedTable, setDetectedTable] = useState(null);
@@ -266,7 +265,7 @@ export function CustomerApp({ app }) {
    */
   const applyLocalCatalogue = useCallback(async () => {
     const refreshedCats = await getCategories();
-    const refreshedMap = new Map();
+    const refreshedMap = new Map<any, any>();
     for (const category of refreshedCats) {
       refreshedMap.set(category.id, await getItemsByCategory(category.id));
     }
@@ -390,9 +389,9 @@ export function CustomerApp({ app }) {
       const allOrders = await db.orders.toArray();
       const matchingOrders = allOrders
         .filter(order => String(order.customerPhone || '').trim() === normalizedPhone)
-        .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+        .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
 
-      const addressSet = new Set();
+      const addressSet = new Set<string>();
 
       for (const order of matchingOrders) {
         if (order.deliveryAddress) {
@@ -442,7 +441,7 @@ export function CustomerApp({ app }) {
 
     // Marketing copy is owner-editable from the admin panel; the pre-rendered
     // HTML ships the defaults and the app layers any overrides on top.
-    const storedCopy = {};
+    const storedCopy: Record<string, any> = {};
     await Promise.all(
       Object.values(STOREFRONT_SETTING_KEYS).map(async key => {
         storedCopy[key] = await getSetting(key);
@@ -493,7 +492,7 @@ export function CustomerApp({ app }) {
       setSelectedTableId(String(detTable.id));
     }
 
-    const map = new Map();
+    const map = new Map<any, any>();
     for (const category of loadedCats) {
       map.set(category.id, await getItemsByCategory(category.id));
     }
@@ -1157,7 +1156,7 @@ export function CustomerApp({ app }) {
                       <textarea 
                         id="self-delivery-address" 
                         className="input store-input" 
-                        rows="3" 
+                        rows={3} 
                         value={deliveryAddress} 
                         onChange={(e) => handleAddressInputChange(e.target.value)} 
                         placeholder="House/flat, street, area"
@@ -1202,8 +1201,8 @@ export function CustomerApp({ app }) {
                                 gap: '8px',
                                 transition: 'background 0.2s ease'
                               }}
-                              onMouseEnter={(e) => e.target.style.background = 'rgba(var(--color-primary-rgb), 0.08)'}
-                              onMouseLeave={(e) => e.target.style.background = 'none'}
+                              onMouseEnter={(e) => (e.target as HTMLElement).style.background = 'rgba(var(--color-primary-rgb), 0.08)'}
+                              onMouseLeave={(e) => (e.target as HTMLElement).style.background = 'none'}
                             >
                               <span className="material-symbols-rounded" style={{ color: 'var(--color-primary)', fontSize: '18px', flexShrink: 0 }}>location_on</span>
                               <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.description}</span>

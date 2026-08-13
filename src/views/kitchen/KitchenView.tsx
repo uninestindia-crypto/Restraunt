@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * KitchenView — Kitchen Display System (KDS)
  * Kanban-style board for managing order preparation
@@ -10,6 +9,15 @@ import { orderNotificationService } from '../../services/orderNotification';
 import { authService } from '../../services/auth';
 
 export class KitchenView {
+  // Fields these methods assign. Type-only: `declare` emits nothing, so the
+  // runtime shape of the class is unchanged.
+  declare app: any;
+  declare container: any;
+  declare loading: any;
+  declare onSyncDataChanged: any;
+  declare orders: any;
+  declare refreshInterval: any;
+
   constructor(app) {
     this.app = app;
     this.container = null;
@@ -245,7 +253,7 @@ export class KitchenView {
     });
   }
 
-  showPrepTimeModal() {
+  showPrepTimeModal(): Promise<number | null> {
     return new Promise((resolve) => {
       // Create overlay element
       const overlay = document.createElement('div');
@@ -463,9 +471,9 @@ export class KitchenView {
     });
 
     // Update headers
-    countNew.textContent = newCount;
-    countPreparing.textContent = prepCount;
-    countReady.textContent = readyCount;
+    countNew.textContent = String(newCount);
+    countPreparing.textContent = String(prepCount);
+    countReady.textContent = String(readyCount);
 
     // Show empty states if columns are empty
     this.checkEmptyState(listNew, 'No new orders');
@@ -822,8 +830,8 @@ export class KitchenView {
     card.querySelectorAll('.action-btn').forEach(btn => {
       btn.addEventListener('click', async (e) => {
         e.stopPropagation();
-        const action = btn.dataset.action;
-        const orderId = parseInt(btn.dataset.id);
+        const action = (btn as HTMLElement).dataset.action;
+        const orderId = parseInt((btn as HTMLElement).dataset.id);
         
         playSound(900, 80);
         vibrateDevice([40]);

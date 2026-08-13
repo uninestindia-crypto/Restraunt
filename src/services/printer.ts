@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Web Bluetooth and Native Capacitor BLE thermal printer service.
  * Connects to BLE-based ESC/POS thermal printers and writes raw byte data.
@@ -15,6 +14,15 @@ async function getBleClient() {
 }
 
 class PrinterService {
+  // Fields these methods assign. Type-only: `declare` emits nothing, so the
+  // runtime shape of the class is unchanged.
+  declare _isConnected: any;
+  declare characteristic: any;
+  declare device: any;
+  declare nativeConnection: any;
+  declare onStatusChange: any;
+  declare server: any;
+
   constructor() {
     this.device = null;
     this.server = null;

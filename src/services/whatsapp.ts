@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * ═══════════════════════════════════════════════════
  *  The Taste POS — WhatsApp Integration Service
@@ -16,7 +15,7 @@ import { getSetting } from '../db/database';
  * @param {Object} settings - Restaurant profile settings
  * @returns {string} Formatted WhatsApp message
  */
-export function formatWhatsAppBill(order, settings = {}) {
+export function formatWhatsAppBill(order, settings: Record<string, any> = {}) {
   const restaurantName = settings.restaurantName || 'THE TASTE';
   const restaurantAddress = settings.restaurantAddress || '';
   const restaurantPhone = settings.restaurantPhone || '';

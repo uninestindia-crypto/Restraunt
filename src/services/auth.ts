@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { db } from '../db/database';
 import {
   CloudStaffAccessError,
@@ -15,6 +14,12 @@ const LOCKOUT_MAX_ATTEMPTS = 5;
 const LOCKOUT_DURATION_MS = 5 * 60 * 1000;
 const DEFAULT_STORE_ID = 'the-taste';
 class AuthService {
+  // Fields these methods assign. Type-only: `declare` emits nothing, so the
+  // runtime shape of the class is unchanged.
+  declare currentStaff: any;
+  declare isAuthenticated: any;
+  declare sessionTimeout: any;
+
   constructor() {
     this.currentStaff = null;
     this.isAuthenticated = false;
@@ -203,7 +208,7 @@ class AuthService {
 
       const hydratedStaff = await db.staff.get(staff.id);
       if (hydratedStaff && isActiveFlag(hydratedStaff.isActive)) {
-        staff = hydratedStaff;
+        staff = hydratedStaff as typeof staff;
       }
 
       this.currentStaff = staff;

@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Simple hash-based SPA router with Role-Based Access Control (RBAC)
  */
@@ -6,6 +5,15 @@
 import { checkForUpdateAndGate } from './utils/watermark';
 
 export class Router {
+  // Fields these methods assign. Type-only: `declare` emits nothing, so the
+  // runtime shape of the class is unchanged.
+  declare container: any;
+  declare currentHash: any;
+  declare currentView: any;
+  declare onAuthRequired: any;
+  declare onNavigate: any;
+  declare routes: any;
+
   /**
    * The screen a role starts on.
    *

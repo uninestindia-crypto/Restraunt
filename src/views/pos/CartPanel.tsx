@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * CartPanel — Order cart sidebar with items, totals, and actions
  */
@@ -7,6 +6,19 @@ import { formatCurrencyShort, formatCurrency, escapeHtml } from '../../utils/hel
 import { getSetting } from '../../db/database';
 
 export class CartPanel {
+  // Fields these methods assign. Type-only: `declare` emits nothing, so the
+  // runtime shape of the class is unchanged.
+  declare cart: any;
+  declare container: any;
+  declare gstPercent: any;
+  declare onClearCart: any;
+  declare onOrderTypeChange: any;
+  declare onPlaceOrder: any;
+  declare onRemoveItem: any;
+  declare onUpdateQuantity: any;
+  declare orderType: any;
+  declare taxLabel: any;
+
   constructor({ container, cart, orderType, onUpdateQuantity, onRemoveItem, onClearCart, onPlaceOrder, onOrderTypeChange }) {
     this.container = container;
     this.cart = cart || [];
@@ -212,15 +224,15 @@ export class CartPanel {
     const typeSelector = document.getElementById('order-type-selector');
     if (typeSelector) {
       typeSelector.addEventListener('click', (e) => {
-        const btn = e.target.closest('.order-type-btn');
+        const btn = (e.target as HTMLElement).closest('.order-type-btn');
         if (!btn) return;
 
-        const type = btn.dataset.type;
+        const type = (btn as HTMLElement).dataset.type;
         this.orderType = type;
 
         // Update active state
         typeSelector.querySelectorAll('.order-type-btn').forEach(b => {
-          b.classList.toggle('active', b.dataset.type === type);
+          b.classList.toggle('active', (b as HTMLElement).dataset.type === type);
         });
 
         if (this.onOrderTypeChange) this.onOrderTypeChange(type);
@@ -237,22 +249,22 @@ export class CartPanel {
     // Remove old listeners by cloning (simpler than tracking)
     const newContainer = container.cloneNode(true);
     container.parentNode.replaceChild(newContainer, container);
-    newContainer.id = 'cart-items-container';
+    (newContainer as HTMLElement).id = 'cart-items-container';
 
     // Quantity steppers
     newContainer.addEventListener('click', (e) => {
-      const minusBtn = e.target.closest('.stepper-minus');
-      const plusBtn = e.target.closest('.stepper-plus');
-      const deleteBtn = e.target.closest('.cart-item-delete');
+      const minusBtn = (e.target as HTMLElement).closest('.stepper-minus');
+      const plusBtn = (e.target as HTMLElement).closest('.stepper-plus');
+      const deleteBtn = (e.target as HTMLElement).closest('.cart-item-delete');
 
       if (minusBtn) {
-        const index = parseInt(minusBtn.dataset.index, 10);
+        const index = parseInt((minusBtn as HTMLElement).dataset.index, 10);
         if (this.onUpdateQuantity) this.onUpdateQuantity(index, -1);
       } else if (plusBtn) {
-        const index = parseInt(plusBtn.dataset.index, 10);
+        const index = parseInt((plusBtn as HTMLElement).dataset.index, 10);
         if (this.onUpdateQuantity) this.onUpdateQuantity(index, 1);
       } else if (deleteBtn) {
-        const index = parseInt(deleteBtn.dataset.index, 10);
+        const index = parseInt((deleteBtn as HTMLElement).dataset.index, 10);
         if (this.onRemoveItem) this.onRemoveItem(index);
       }
     });
@@ -262,10 +274,10 @@ export class CartPanel {
     if (bottomContainer) {
       const newBottom = bottomContainer.cloneNode(true);
       bottomContainer.parentNode.replaceChild(newBottom, bottomContainer);
-      newBottom.id = 'cart-bottom-container';
+      (newBottom as HTMLElement).id = 'cart-bottom-container';
 
-      const placeOrderBtn = newBottom.querySelector('#btn-place-order');
-      const clearCartBtn = newBottom.querySelector('#btn-clear-cart');
+      const placeOrderBtn = (newBottom as HTMLElement).querySelector('#btn-place-order');
+      const clearCartBtn = (newBottom as HTMLElement).querySelector('#btn-clear-cart');
 
       if (placeOrderBtn) {
         placeOrderBtn.addEventListener('click', () => {

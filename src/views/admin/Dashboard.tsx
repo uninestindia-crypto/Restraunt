@@ -1,4 +1,3 @@
-// @ts-nocheck
 import React, { useState, useEffect, useMemo } from 'react';
 import { db, getTodayStats } from '../../db/database';
 import { ensureFresh } from '../../services/cloudDb';
@@ -95,8 +94,12 @@ export function Dashboard() {
         }
         if (Array.isArray(items)) {
           for (const item of items) {
-            const name = item.name || 'Unknown';
-            itemCounts[name] = (itemCounts[name] || 0) + (item.qty || 1);
+            const name = item.name || item.itemName || 'Unknown';
+            // The field is `quantity`; `qty` is only ever a legacy alias on older rows.
+            // Reading `qty` alone made every line count as one, so an order of ten
+            // samosas moved this chart by one — the top-items list was a list of the
+            // most frequently *ordered* dishes, not the most *sold*.
+            itemCounts[name] = (itemCounts[name] || 0) + (Number(item.quantity ?? item.qty) || 1);
           }
         }
       }
