@@ -10,7 +10,11 @@ declare const Deno: {
 };
 
 const DEFAULT_STORE_ID = "the-taste";
-const STAFF_ROLES = ["developer", "owner", "manager", "cashier", "kitchen", "waiter", "delivery"];
+// Kept in step with the CHECK constraint on staff.role and with STAFF_ROLES in
+// src/services/authGuards.ts. A role missing here is rejected before the
+// database is ever asked, which reads as "the account was created but does not
+// work".
+const STAFF_ROLES = ["developer", "owner", "manager", "cashier", "kitchen", "waiter", "delivery", "temporary_staff"];
 
 type StaffAdminPayload = {
   action?: string;

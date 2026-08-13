@@ -1,16 +1,24 @@
 // @ts-nocheck
 import { getSupabaseClient } from './supabaseClient';
+import { normalizeStaffRole } from './authGuards';
 
 const DEFAULT_STORE_ID = 'the-taste';
-const STAFF_ROLES = ['developer', 'owner', 'manager', 'cashier', 'kitchen', 'waiter', 'delivery'];
 
 function getStoreId() {
   return localStorage.getItem('store_id') || DEFAULT_STORE_ID;
 }
 
+/**
+ * The role list lives in authGuards and nowhere else.
+ *
+ * This module used to keep its own copy, which had fallen a role behind, and an
+ * unrecognised role was quietly rewritten to 'cashier'. So an owner who picked
+ * "Express Only" saved a cashier to the cloud — the screen said the account was
+ * created, and the account came back as a cashier. Anything this function
+ * cannot name is now reported rather than substituted.
+ */
 function normalizeRole(role) {
-  const value = String(role || '').trim().toLowerCase();
-  return STAFF_ROLES.includes(value) ? value : 'cashier';
+  return normalizeStaffRole(role);
 }
 
 function isActive(value) {
@@ -62,6 +70,9 @@ export async function syncStaffViaAdminFunction(staff) {
   const mapped = mapStaffForAdminFunction(staff);
   if (!mapped.name) {
     return { success: false, message: 'Staff name is required.' };
+  }
+  if (!mapped.role) {
+    return { success: false, message: `"${String(staff?.role || '')}" is not a staff role this app can assign.` };
   }
   return invokeStaffAdmin('upsert-staff', { staff: mapped });
 }

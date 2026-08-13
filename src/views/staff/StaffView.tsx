@@ -305,7 +305,26 @@ export class StaffView {
         const updateData = { name, role, phone, allowExpress, isSynced: 0 };
         if (cloudUserId) updateData.cloudUserId = cloudUserId;
         await db.staff.update(this.editingStaffId, updateData);
-        showToast('Staff member updated!', 'success');
+
+        // A role lives in the cloud membership, not in this device's cache: it
+        // is what the person's next sign-in reads, and what RLS asks about on
+        // every query. Saying "updated" on the strength of the local write
+        // meant a re-assigned role could be refused by the cloud in the
+        // background and then quietly reverted by the next roster refresh —
+        // the operator saw the new role, the member kept the old one.
+        const updated = await db.staff.get(this.editingStaffId);
+        const result = await syncStaffViaAdminFunction(updated);
+
+        if (result.success) {
+          await db.staff.update(this.editingStaffId, { isSynced: 1 });
+          showToast(`Staff member updated. Role is now ${ROLES[role]?.label || role} in the cloud.`, 'success');
+        } else {
+          showToast(
+            `Saved on this device, but the cloud refused it: ${result.message || 'unknown error'}. Their role is unchanged until this is resolved.`,
+            'error',
+            10000
+          );
+        }
       } else {
         const localId = await db.staff.add({
           name, role, phone, allowExpress,

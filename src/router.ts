@@ -6,6 +6,28 @@
 import { checkForUpdateAndGate } from './utils/watermark';
 
 export class Router {
+  /**
+   * The screen a role starts on.
+   *
+   * Every role except cashier, manager and owner works somewhere other than
+   * #/pos, which is the app's default route — so without this they signed in,
+   * were bounced off the default, and only then found their way home.
+   */
+  static homeRouteFor(role) {
+    switch (String(role || '').toLowerCase()) {
+      case 'developer': return '#/developer';
+      case 'kitchen': return '#/kitchen';
+      case 'waiter': return '#/tables';
+      case 'delivery': return '#/orders';
+      case 'temporary_staff': return '#/pos-kitchen';
+      case 'customer': return '#/self-order';
+      case 'owner':
+      case 'manager':
+      case 'cashier': return '#/pos';
+      default: return '#/self-order';
+    }
+  }
+
   constructor() {
     this.routes = {};
     this.currentView = null;
@@ -111,33 +133,34 @@ export class Router {
       const staffRole = currentStaff?.role?.toLowerCase();
       if (!staffRole || !allowedRoles.includes(staffRole)) {
         console.warn(`[Router] Access to "${path}" denied for role "${staffRole}". Required: [${allowedRoles.join(', ')}]`);
+
+        const home = Router.homeRouteFor(staffRole);
+
+        // Landing on the app's default route is not an attempt to break in.
+        // Every role that does not start on #/pos was being met with "Access
+        // denied: Insufficient permissions" the moment they signed in, which is
+        // what made every role except cashier look broken. Only a deliberate
+        // navigation to a forbidden page is worth an error.
+        if (!this.currentHash) {
+          this.navigate(home);
+          return;
+        }
+
         const { showToast } = await import('./utils/helpers');
         showToast('Access denied: Insufficient permissions', 'error');
-        
-        // Redirect to a safe default view based on their role
-        if (staffRole === 'kitchen') {
-          this.navigate('#/kitchen');
-        } else if (staffRole === 'waiter') {
-          this.navigate('#/tables');
-        } else if (staffRole === 'delivery') {
-          this.navigate('#/orders');
-        } else if (staffRole === 'customer') {
-          this.navigate('#/self-order');
-        } else if (staffRole === 'developer') {
-          this.navigate('#/developer');
-        } else if (['owner', 'manager', 'cashier'].includes(staffRole)) {
-          this.navigate('#/pos');
-        } else {
-          this.navigate('#/self-order');
-        }
+        this.navigate(home);
         return;
       }
 
       // Explicit administrative access check for Express Panel
       if (path === '#/pos-kitchen') {
         const isOwnerOrDev = staffRole === 'owner' || staffRole === 'developer';
+        // The express-only role exists to use this screen; requiring the
+        // allow-express flag on top of it bounced those accounts straight back
+        // out to the customer storefront.
+        const isExpressOnly = staffRole === 'temporary_staff';
         const hasExpressAccess = currentStaff?.allowExpress === 1 || currentStaff?.allowExpress === true;
-        if (!isOwnerOrDev && !hasExpressAccess) {
+        if (!isOwnerOrDev && !isExpressOnly && !hasExpressAccess) {
           console.warn(`[Router] Access to "#/pos-kitchen" denied: Express Panel permission not granted for "${currentStaff?.name}".`);
           const { showToast } = await import('./utils/helpers');
           showToast('Access denied: Express Panel permission not granted by administrator', 'error');
