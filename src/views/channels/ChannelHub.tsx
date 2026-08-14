@@ -16,7 +16,7 @@ const CHANNELS = [
   { id: 'pos', name: 'POS Counter', icon: 'point_of_sale', status: 'active', color: 'var(--color-primary-on-surface)' },
   { id: 'kiosk', name: 'Self-Order Kiosk', icon: 'touch_app', status: 'active', color: 'var(--color-success-on-surface)' },
   { id: 'qr', name: 'QR Table Order', icon: 'qr_code_scanner', status: 'coming', color: 'var(--color-info)' },
-  { id: 'whatsapp', name: 'WhatsApp Orders', icon: 'chat', status: 'coming', color: '#25D366' },
+  { id: 'whatsapp', name: 'WhatsApp Orders', icon: 'chat', status: 'coming', color: 'var(--brand-whatsapp)' },
 ];
 
 export class ChannelHub {
@@ -58,7 +58,7 @@ export class ChannelHub {
           <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px;">
             ${channelData.map(ch => `
               <div style="padding:20px;background:rgba(255,255,255,0.01);border:1px solid var(--border-glass);border-radius:16px;position:relative;overflow:hidden;">
-                ${ch.status === 'coming' ? `<div style="position:absolute;top:10px;right:10px;font-size:0.55rem;padding:2px 8px;border-radius:6px;font-weight:700;color:#A29BFE;background:rgba(108,92,231,0.1);border:1px solid rgba(108,92,231,0.2);">Coming Soon</div>` : `<div style="position:absolute;top:12px;right:12px;width:8px;height:8px;border-radius:50%;background:var(--color-success);box-shadow:0 0 6px rgba(var(--color-success-rgb),0.5);"></div>`}
+                ${ch.status === 'coming' ? `<div style="position:absolute;top:10px;right:10px;font-size:0.55rem;padding:2px 8px;border-radius:6px;font-weight:700;color:var(--nextgenos-lilac);background:rgba(108,92,231,0.1);border:1px solid rgba(108,92,231,0.2);">Coming Soon</div>` : `<div style="position:absolute;top:12px;right:12px;width:8px;height:8px;border-radius:50%;background:var(--color-success);box-shadow:0 0 6px rgba(var(--color-success-rgb),0.5);"></div>`}
                 <div style="width:44px;height:44px;border-radius:12px;background:rgba(${ch.status === 'active' ? '255,107,53' : '148,163,184'},0.08);display:flex;align-items:center;justify-content:center;margin-bottom:14px;">
                   <span class="material-symbols-rounded" style="font-size:24px;color:${ch.color};">${ch.icon}</span>
                 </div>
@@ -81,7 +81,7 @@ export class ChannelHub {
                   const items = parseOrderItems(o.items);
                   const channel = o.channel || 'pos';
                   const chCfg = CHANNELS.find(c => c.id === channel) || CHANNELS[0];
-                  const statusColor = o.status === 'completed' ? 'var(--color-success-on-surface)' : o.status === 'preparing' ? '#F59E0B' : o.status === 'ready' ? 'var(--color-info)' : 'var(--text-muted)';
+                  const statusColor = o.status === 'completed' ? 'var(--color-success-on-surface)' : o.status === 'preparing' ? 'var(--color-warning)' : o.status === 'ready' ? 'var(--color-info)' : 'var(--text-muted)';
                   const timeAgo = this.timeAgo(o.createdAt);
                   const orderToken = o.displayToken || String(o.orderNumber || '').split('-').pop() || '—';
                   return `

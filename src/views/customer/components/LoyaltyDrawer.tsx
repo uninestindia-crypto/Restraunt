@@ -169,7 +169,7 @@ export function LoyaltyDrawer({ loggedInCustomer, customerPhone, customerName, o
           existing.name = nameToUse;
           existing.isSynced = 0;
           await db.customers.put(existing);
-          showToast('Account activated & synced with existing profile!', 'success');
+          showToast('Account activated & synced with existing profile', 'success');
           setCustomer(existing);
           setOrders([]);
           onProfileLoaded(existing.name, existing.phone);
@@ -179,7 +179,7 @@ export function LoyaltyDrawer({ loggedInCustomer, customerPhone, customerName, o
       }
 
       await db.customers.add(newProfile);
-      showToast('Welcome to TasteRewards!', 'success');
+      showToast('Welcome to TasteRewards', 'success');
       setCustomer(newProfile);
       setOrders([]);
       onProfileLoaded(newProfile.name, newProfile.phone);
@@ -232,7 +232,7 @@ export function LoyaltyDrawer({ loggedInCustomer, customerPhone, customerName, o
         await db.customers.update(customer.id, { phone: linkPhone, isSynced: 0 });
       }
 
-      showToast('Phone number linked successfully!', 'success');
+      showToast('Phone number linked successfully', 'success');
       setCustomer(updatedCustomer);
       onProfileLoaded(updatedCustomer.name, updatedCustomer.phone);
 
@@ -279,17 +279,17 @@ export function LoyaltyDrawer({ loggedInCustomer, customerPhone, customerName, o
     globalStore.updateState({ cart: cartItems });
     playSound(900, 100);
     vibrateDevice([40, 20, 40]);
-    showToast('Cart loaded with past items!', 'success');
+    showToast('Cart loaded with past items', 'success');
     onClose();
     // Signal CustomerApp to transition state to 'cart'
     window.dispatchEvent(new CustomEvent('switch-store-state', { detail: { state: 'cart' } }));
   };
 
   const tierGradients = {
-    bronze: 'linear-gradient(135deg, #8C7853 0%, #4E3E28 100%)',
-    silver: 'linear-gradient(135deg, #BDC3C7 0%, #2C3E50 100%)',
-    gold: 'linear-gradient(135deg, #F39C12 0%, #F1C40F 100%)',
-    platinum: 'linear-gradient(135deg, #34495E 0%, #2C3E50 100%)'
+    bronze: 'linear-gradient(135deg, var(--tier-bronze) 0%, var(--tier-bronze-deep) 100%)',
+    silver: 'linear-gradient(135deg, var(--tier-silver) 0%, var(--chart-slate) 100%)',
+    gold: 'linear-gradient(135deg, var(--tier-amber-deep) 0%, var(--tier-amber) 100%)',
+    platinum: 'linear-gradient(135deg, var(--panel-slate) 0%, var(--chart-slate) 100%)'
   };
 
   return (

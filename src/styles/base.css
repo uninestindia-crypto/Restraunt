@@ -82,7 +82,7 @@ body {
   border: 1.5px solid rgba(15, 23, 42, 0.12);
   color: var(--text-primary);
   box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.02);
-  transition: all var(--transition-fast) ease;
+  transition: transform, opacity, background-color, border-color, color, box-shadow var(--transition-fast);
 }
 
 :root[data-theme="light"] .input:focus {
@@ -134,7 +134,7 @@ body {
     border: 1.5px solid rgba(15, 23, 42, 0.12);
     color: var(--text-primary);
     box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.02);
-    transition: all var(--transition-fast) ease;
+    transition: transform, opacity, background-color, border-color, color, box-shadow var(--transition-fast);
   }
 
   :root[data-theme="system"] .input:focus {
@@ -190,6 +190,63 @@ h1, h2, h3, h4, h5, h6 {
 ::placeholder {
   color: var(--text-muted);
   opacity: 1;
+}
+
+/* ══════════════════════════════════════════════════
+   REDUCED TRANSPARENCY — global guard
+   An OS accessibility setting, not a preference. This app leans on
+   backdrop-filter materials for its chrome — sidebar, storefront headers,
+   bottom bar — which is exactly the case this setting exists for: a
+   translucent surface has no fixed contrast, because it composites
+   whatever happens to scroll behind it.
+   ══════════════════════════════════════════════════ */
+@media (prefers-reduced-transparency: reduce) {
+  *,
+  *::before,
+  *::after {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
+  .glass,
+  .card-glass,
+  .app-header,
+  .sidebar,
+  .modal,
+  .customer-bottom-nav,
+  .store-header,
+  .store-subheader,
+  .store-checkout-footer {
+    background: var(--bg-surface) !important;
+  }
+}
+
+/* ══════════════════════════════════════════════════
+   INCREASED CONTRAST — global guard
+   Raise every separator from a hairline to something visible, and give
+   controls a real border rather than letting a fill imply one.
+   ══════════════════════════════════════════════════ */
+@media (prefers-contrast: more) {
+  :root {
+    --border-color: rgba(255, 255, 255, 0.28);
+    --border-active: rgba(255, 255, 255, 0.55);
+    --border-glass: rgba(255, 255, 255, 0.28);
+    --store-line: rgba(72, 44, 31, 0.42);
+    /* Metadata stops being subordinate when legibility is the priority. */
+    --text-muted: var(--text-secondary);
+  }
+
+  .btn,
+  .input,
+  .card,
+  .chip,
+  .badge {
+    border: 1px solid var(--border-active);
+  }
+
+  :focus-visible {
+    outline-width: 3px;
+  }
 }
 
 /* ══════════════════════════════════════════════════

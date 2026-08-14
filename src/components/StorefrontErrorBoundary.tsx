@@ -37,8 +37,8 @@ export class StorefrontErrorBoundary extends React.Component {
         <span className="material-symbols-rounded" aria-hidden="true">restaurant</span>
         <h1>We could not load the menu</h1>
         <p>
-          Something went wrong while showing this page. Your cart is safe — reloading usually
-          fixes it.
+          This page stopped responding while loading. Your cart is saved on this device —
+          reloading picks up where you left off.
         </p>
         <div className="storefront-error-actions">
           <button type="button" onClick={this.handleReload}>Reload the page</button>

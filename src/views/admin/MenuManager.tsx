@@ -278,10 +278,10 @@ export function MenuManager() {
 
     if (!savedItem.id) {
       await db.menuItems.add(savedItem);
-      showToast('Item created successfully!', 'success');
+      showToast('Item created successfully', 'success');
     } else {
       await db.menuItems.put(savedItem);
-      showToast('Item updated successfully!', 'success');
+      showToast('Item updated successfully', 'success');
     }
 
     // The upload at pick time may have been refused before the cloud session
@@ -344,10 +344,10 @@ export function MenuManager() {
 
     if (!savedCategory.id) {
       await db.menuCategories.add(savedCategory);
-      showToast('Category created!', 'success');
+      showToast('Category created', 'success');
     } else {
       await db.menuCategories.put(savedCategory);
-      showToast('Category updated!', 'success');
+      showToast('Category updated', 'success');
     }
 
     setCategoryModalOpen(false);
@@ -422,7 +422,7 @@ export function MenuManager() {
           font-size: var(--text-xs);
           font-weight: 700;
           cursor: pointer;
-          transition: all 0.2s;
+          transition: transform, opacity, background-color, border-color, color, box-shadow 0.2s;
           display: flex;
           align-items: center;
           gap: 6px;
@@ -448,7 +448,7 @@ export function MenuManager() {
           border: 1px solid var(--border-color);
           border-radius: 12px;
           overflow: hidden;
-          transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+          transition: transform, opacity, background-color, border-color, color, box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1);
           display: flex;
           flex-direction: column;
           position: relative;
@@ -508,7 +508,7 @@ export function MenuManager() {
           text-transform: uppercase;
           letter-spacing: 0.02em;
           background: rgba(var(--color-warning-rgb), 0.92);
-          color: #1a1205;
+          color: var(--panel-ink-warm);
           border: 1px solid rgba(0, 0, 0, 0.12);
           cursor: help;
         }
@@ -529,7 +529,7 @@ export function MenuManager() {
           justify-content: center;
           color: #fff;
           cursor: pointer;
-          transition: all 0.2s;
+          transition: transform, opacity, background-color, border-color, color, box-shadow 0.2s;
         }
         .btn-avail-toggle:hover {
           background: var(--color-primary);
@@ -549,7 +549,7 @@ export function MenuManager() {
           display: flex;
           justify-content: space-between;
           align-items: center;
-          transition: all 0.2s;
+          transition: transform, opacity, background-color, border-color, color, box-shadow 0.2s;
         }
         .category-card:hover {
           border-color: var(--border-active);
@@ -717,7 +717,7 @@ export function MenuManager() {
                             <button
                               onClick={() => handleDeleteItemClick(item.id!)}
                               className="btn btn-sm"
-                              style={{ width: '28px', height: '28px', minWidth: '28px', minHeight: '28px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(var(--color-danger-rgb),0.06)', color: '#FF4D4D', border: '1px solid rgba(var(--color-danger-rgb),0.2)' }}
+                              style={{ width: '28px', height: '28px', minWidth: '28px', minHeight: '28px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(var(--color-danger-rgb),0.06)', color: 'var(--alert-red)', border: '1px solid rgba(var(--color-danger-rgb),0.2)' }}
                               title="Delete Item"
                             >
                               <span className="material-symbols-rounded" style={{ fontSize: '16px' }}>delete</span>
@@ -781,7 +781,7 @@ export function MenuManager() {
                         
                         <div style={{ display: 'flex', gap: '6px' }}>
                           <button onClick={() => handleEditCategoryClick(cat)} className="btn btn-secondary btn-sm" style={{ padding: '4px 10px', height: '30px', display: 'flex', alignItems: 'center', gap: '4px' }}>Edit</button>
-                          <button onClick={() => handleDeleteCategoryClick(cat.id!)} className="btn btn-sm" style={{ padding: '4px 10px', height: '30px', background: 'rgba(var(--color-danger-rgb),0.06)', color: '#FF4D4D', border: '1px solid rgba(var(--color-danger-rgb),0.2)' }}>Delete</button>
+                          <button onClick={() => handleDeleteCategoryClick(cat.id!)} className="btn btn-sm" style={{ padding: '4px 10px', height: '30px', background: 'rgba(var(--color-danger-rgb),0.06)', color: 'var(--alert-red)', border: '1px solid rgba(var(--color-danger-rgb),0.2)' }}>Delete</button>
                         </div>
                       </div>
                     </div>
@@ -993,7 +993,7 @@ export function MenuManager() {
                               className="btn btn-sm"
                               onClick={() => handleRemoveAddon(addon.id)}
                               title={`Remove ${addon.name}`}
-                              style={{ width: '32px', height: '32px', minWidth: '32px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(var(--color-danger-rgb),0.06)', color: '#FF4D4D', border: '1px solid rgba(var(--color-danger-rgb),0.2)' }}
+                              style={{ width: '32px', height: '32px', minWidth: '32px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(var(--color-danger-rgb),0.06)', color: 'var(--alert-red)', border: '1px solid rgba(var(--color-danger-rgb),0.2)' }}
                             >
                               <span className="material-symbols-rounded" style={{ fontSize: '16px' }}>delete</span>
                             </button>

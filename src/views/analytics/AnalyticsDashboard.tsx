@@ -41,9 +41,9 @@ export class AnalyticsDashboard {
             <h2 style="font-family:'Plus Jakarta Sans',sans-serif;font-size:var(--text-lg);font-weight:800;color:var(--text-primary);letter-spacing:-0.02em;margin:0;">Smart Analytics</h2>
           </div>
           <div style="display:flex;gap:6px;" id="analytics-tabs">
-            <button class="tab analytics-period-tab active" data-days="0" style="padding:6px 14px;border-radius:8px;font-size:0.75rem;font-weight:700;font-family:'Plus Jakarta Sans',sans-serif;cursor:pointer;transition:all 0.2s;background:var(--gradient-primary);color:white;border:none;">Today</button>
-            <button class="tab analytics-period-tab" data-days="6" style="padding:6px 14px;border-radius:8px;font-size:0.75rem;font-weight:700;font-family:'Plus Jakarta Sans',sans-serif;cursor:pointer;transition:all 0.2s;background:rgba(255,255,255,0.03);color:var(--text-secondary);border:1px solid var(--border-glass);">This Week</button>
-            <button class="tab analytics-period-tab" data-days="29" style="padding:6px 14px;border-radius:8px;font-size:0.75rem;font-weight:700;font-family:'Plus Jakarta Sans',sans-serif;cursor:pointer;transition:all 0.2s;background:rgba(255,255,255,0.03);color:var(--text-secondary);border:1px solid var(--border-glass);">This Month</button>
+            <button class="tab analytics-period-tab active" data-days="0" style="padding:6px 14px;border-radius:8px;font-size:0.75rem;font-weight:700;font-family:'Plus Jakarta Sans',sans-serif;cursor:pointer;transition: transform, opacity, background-color, border-color, color, box-shadow 0.2s;background:var(--gradient-primary);color:white;border:none;">Today</button>
+            <button class="tab analytics-period-tab" data-days="6" style="padding:6px 14px;border-radius:8px;font-size:0.75rem;font-weight:700;font-family:'Plus Jakarta Sans',sans-serif;cursor:pointer;transition: transform, opacity, background-color, border-color, color, box-shadow 0.2s;background:rgba(255,255,255,0.03);color:var(--text-secondary);border:1px solid var(--border-glass);">This Week</button>
+            <button class="tab analytics-period-tab" data-days="29" style="padding:6px 14px;border-radius:8px;font-size:0.75rem;font-weight:700;font-family:'Plus Jakarta Sans',sans-serif;cursor:pointer;transition: transform, opacity, background-color, border-color, color, box-shadow 0.2s;background:rgba(255,255,255,0.03);color:var(--text-secondary);border:1px solid var(--border-glass);">This Month</button>
           </div>
         </div>
 
@@ -111,7 +111,7 @@ export class AnalyticsDashboard {
                 background:rgba(255,255,255,0.02);
                 border-radius:12px;
                 cursor:pointer;
-                transition:all 0.2s;
+                transition: transform, opacity, background-color, border-color, color, box-shadow 0.2s;
               ">
                 <span class="material-symbols-rounded" style="font-size:18px;color:var(--color-success-on-surface);">today</span>
                 Download Today's Report
@@ -130,7 +130,7 @@ export class AnalyticsDashboard {
                 background:rgba(255,255,255,0.02);
                 border-radius:12px;
                 cursor:pointer;
-                transition:all 0.2s;
+                transition: transform, opacity, background-color, border-color, color, box-shadow 0.2s;
               ">
                 <span class="material-symbols-rounded" style="font-size:18px;color: var(--color-primary-on-surface);">date_range</span>
                 Download Weekly Report
@@ -149,7 +149,7 @@ export class AnalyticsDashboard {
                 background:rgba(255,255,255,0.02);
                 border-radius:12px;
                 cursor:pointer;
-                transition:all 0.2s;
+                transition: transform, opacity, background-color, border-color, color, box-shadow 0.2s;
               ">
                 <span class="material-symbols-rounded" style="font-size:18px;color:var(--color-info);">calendar_month</span>
                 Download Monthly Report
@@ -225,7 +225,7 @@ export class AnalyticsDashboard {
           if (blob && filename) {
             // Trigger local download
             downloadReport(blob, filename);
-            showToast(`${filename} downloaded!`, 'success');
+            showToast(`${filename} downloaded`, 'success');
             
             // Check Google Drive connection and auto-upload toggle
             const driveUpload = await import('../../services/driveUpload');
@@ -243,7 +243,7 @@ export class AnalyticsDashboard {
               try {
                 const uploadResult = await driveUpload.uploadToDrive(blob, filename);
                 if (uploadResult.success) {
-                  showToast('Backup successfully uploaded to Google Drive! ☁️', 'success');
+                  showToast('Backup successfully uploaded to Google Drive. ☁️', 'success');
                   if (statusEl) {
                     statusEl.innerHTML = `✅ Report backed up to Google Drive folder: <strong>TheTaste Reports</strong>`;
                   }
@@ -303,7 +303,7 @@ export class AnalyticsDashboard {
       { label: "TOTAL REVENUE", value: formatCurrency(stats.revenue), color: 'var(--color-success-on-surface)', glow: 'rgba(var(--color-success-rgb),0.25)' },
       { label: "TOTAL ORDERS", value: stats.orders, color: 'var(--color-primary)', glow: 'rgba(var(--color-primary-rgb),0.25)' },
       { label: "AVG BILL VALUE", value: formatCurrency(stats.avg), color: 'var(--color-info)', glow: 'rgba(var(--color-info-rgb),0.25)' },
-      { label: "GROWTH RATE", value: `${growth > 0 ? '+' : ''}${growth.toFixed(1)}%`, color: '#A29BFE', glow: 'rgba(108,92,231,0.25)' },
+      { label: "GROWTH RATE", value: `${growth > 0 ? '+' : ''}${growth.toFixed(1)}%`, color: 'var(--nextgenos-lilac)', glow: 'rgba(108,92,231,0.25)' },
     ];
     container.innerHTML = kpis.map(k => `
       <div class="card card-glass" style="padding:20px;background:rgba(255,255,255,0.01);border:1px solid var(--border-glass);border-radius:16px;display:flex;flex-direction:column;gap:8px;">
@@ -356,7 +356,7 @@ export class AnalyticsDashboard {
     ctx.beginPath();
     ctx.moveTo(points[0].x, points[0].y);
     points.slice(1).forEach(p => ctx.lineTo(p.x, p.y));
-    ctx.strokeStyle = '#FF6B35';
+    ctx.strokeStyle = 'var(--brand-orange-legacy)';
     ctx.lineWidth = 2.5;
     ctx.lineJoin = 'round';
     ctx.stroke();
@@ -365,11 +365,11 @@ export class AnalyticsDashboard {
     points.forEach(p => {
       ctx.beginPath();
       ctx.arc(p.x, p.y, 4, 0, Math.PI * 2);
-      ctx.fillStyle = '#FF6B35';
+      ctx.fillStyle = 'var(--brand-orange-legacy)';
       ctx.fill();
       ctx.beginPath();
       ctx.arc(p.x, p.y, 2, 0, Math.PI * 2);
-      ctx.fillStyle = '#0F0F1A';
+      ctx.fillStyle = 'var(--panel-ink-violet)';
       ctx.fill();
 
       ctx.fillStyle = 'rgba(148,163,184,0.6)';
@@ -411,7 +411,7 @@ export class AnalyticsDashboard {
             <span style="color:var(--text-primary);font-weight:700;">${formatCurrency(data.total)}</span>
           </div>
           <div style="height:6px;background:rgba(0,0,0,0.25);border-radius:99px;overflow:hidden;">
-            <div style="height:100%;background:linear-gradient(90deg,var(--color-primary),#FF8960);width:${pct}%;border-radius:99px;transition:width 0.5s ease;"></div>
+            <div style="height:100%;background:linear-gradient(90deg,var(--color-primary),var(--color-primary-on-surface));width:${pct}%;border-radius:99px;transition:width 0.5s ease;"></div>
           </div>
         </div>
       `;
@@ -422,7 +422,7 @@ export class AnalyticsDashboard {
     const container = document.getElementById('order-type-split');
     if (!container) return;
     const icons = { takeaway: '🥡', dinein: '🍽️', delivery: '🛵' };
-    const colors = { takeaway: '#FF6B35', dinein: '#10B981', delivery: '#3B82F6' };
+    const colors = { takeaway: 'var(--brand-orange-legacy)', dinein: 'var(--color-success)', delivery: 'var(--color-info)' };
     const entries = Object.entries(types);
     container.innerHTML = entries.length > 0 ? entries.map(([type, data]) => {
       const pct = totalOrders > 0 ? (data.count / totalOrders * 100).toFixed(0) : 0;
@@ -433,7 +433,7 @@ export class AnalyticsDashboard {
             <span style="color:var(--text-primary);font-weight:700;">${data.count} (${pct}%)</span>
           </div>
           <div style="height:6px;background:rgba(0,0,0,0.25);border-radius:99px;overflow:hidden;">
-            <div style="height:100%;background:${colors[type] || '#FF6B35'};width:${pct}%;border-radius:99px;transition:width 0.5s ease;"></div>
+            <div style="height:100%;background:${colors[type] || 'var(--brand-orange-legacy)'};width:${pct}%;border-radius:99px;transition:width 0.5s ease;"></div>
           </div>
         </div>
       `;

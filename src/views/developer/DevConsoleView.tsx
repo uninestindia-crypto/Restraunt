@@ -98,7 +98,7 @@ export class DevConsoleView {
           padding: 8px 16px; border-radius: 8px; border: 1px solid transparent;
           background: transparent; color: var(--text-muted); cursor: pointer;
           font-size: 0.8rem; font-weight: 600; font-family: 'Inter', sans-serif;
-          transition: all 0.2s; white-space: nowrap;
+          transition: transform, opacity, background-color, border-color, color, box-shadow 0.2s; white-space: nowrap;
         }
         .dev-tab:hover { background: rgba(var(--color-success-rgb),0.06); color: var(--text-primary); }
         .dev-tab.active {
@@ -131,20 +131,20 @@ export class DevConsoleView {
         .dev-toggle {
           position: relative; width: 40px; height: 22px; border-radius: 11px;
           background: rgba(255,255,255,0.08); border: 1px solid var(--border-glass);
-          cursor: pointer; transition: all 0.2s; flex-shrink: 0;
+          cursor: pointer; transition: transform, opacity, background-color, border-color, color, box-shadow 0.2s; flex-shrink: 0;
         }
         .dev-toggle.on { background: rgba(var(--color-success-rgb),0.3); border-color: rgba(var(--color-success-rgb),0.5); }
         .dev-toggle::after {
           content: ''; position: absolute; top: 2px; left: 2px;
           width: 16px; height: 16px; border-radius: 50%;
-          background: var(--text-muted); transition: all 0.2s;
+          background: var(--text-muted); transition: transform, opacity, background-color, border-color, color, box-shadow 0.2s;
         }
         .dev-toggle.on::after { left: 20px; background: var(--color-success); }
         .dev-btn {
           padding: 8px 18px; border-radius: 8px; border: 1px solid rgba(var(--color-success-rgb),0.25);
           background: rgba(var(--color-success-rgb),0.08); color: var(--color-success-on-surface); cursor: pointer;
           font-size: 0.8rem; font-weight: 600; font-family: 'Inter', sans-serif;
-          transition: all 0.2s;
+          transition: transform, opacity, background-color, border-color, color, box-shadow 0.2s;
         }
         .dev-btn:hover { background: rgba(var(--color-success-rgb),0.15); }
         .dev-audit-row {
@@ -211,7 +211,7 @@ export class DevConsoleView {
       </div>
 
       <div class="dev-card">
-        <h3><span class="material-symbols-rounded" style="font-size:18px;color:#6C5CE7;">database</span> Database</h3>
+        <h3><span class="material-symbols-rounded" style="font-size:18px;color:var(--role-manager);">database</span> Database</h3>
         <div class="dev-row"><span class="dev-key">IndexedDB Usage</span><span class="dev-val">${usedMB} MB / ${quotaMB} MB</span></div>
         <div class="dev-row"><span class="dev-key">Staff Records</span><span class="dev-val">${staffCount}</span></div>
         <div class="dev-row"><span class="dev-key">Orders</span><span class="dev-val">${orderCount}</span></div>

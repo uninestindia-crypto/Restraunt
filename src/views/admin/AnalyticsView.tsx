@@ -270,7 +270,7 @@ export function AnalyticsView() {
           font-size: 11px;
           font-weight: 700;
           cursor: pointer;
-          transition: all 0.2s;
+          transition: transform, opacity, background-color, border-color, color, box-shadow 0.2s;
         }
         .btn-range-v2:hover:not(.active) {
           background: var(--bg-card-hover);
@@ -288,7 +288,7 @@ export function AnalyticsView() {
           border-radius: var(--radius-md);
           padding: 22px 20px;
           box-shadow: var(--shadow-sm);
-          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+          transition: transform, opacity, background-color, border-color, color, box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
           display: flex;
           flex-direction: column;
           position: relative;
@@ -461,8 +461,8 @@ export function AnalyticsView() {
                   <stop offset="100%" stopColor="var(--color-primary)" stopOpacity="0"/>
                 </linearGradient>
                 <linearGradient id="lineGradAnalytics" x1="0" y1="0" x2="1" y2="0">
-                  <stop offset="0%" stopColor="#FF5E36"/>
-                  <stop offset="100%" stopColor="#FF8960"/>
+                  <stop offset="0%" stopColor="var(--color-primary)"/>
+                  <stop offset="100%" stopColor="var(--color-primary-on-surface)"/>
                 </linearGradient>
                 <filter id="glowAnalytics" x="-20%" y="-20%" width="140%" height="140%">
                   <feGaussianBlur stdDeviation="3" result="blur" />

@@ -48,6 +48,12 @@ or paint. Everything else risks jank on the low-end Android phones guests actual
 | `filter` (sparingly) | `background-color` on large surfaces |
 | `clip-path` | `backdrop-filter` (never animate this) |
 
+**One recorded exception.** `.sidebar` animates `width`, which is a layout property. Collapsing
+the sidebar has to reflow the content beside it, and no compositable property does that — a
+`transform` would slide the sidebar over the content instead of making room. It is one element, on
+one user-initiated toggle, never during a scroll. Any *new* layout animation needs the same written
+justification or it is a finding.
+
 **Never `transition: all`.** It animates properties you did not intend, including ones that trigger
 layout, and it cannot be audited. Name the properties:
 

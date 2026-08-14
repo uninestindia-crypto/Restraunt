@@ -27,10 +27,10 @@ interface BrandingConfig {
 export function BrandingView() {
   const [config, setConfig] = useState<BrandingConfig>({
     brandLogoBase64: '',
-    brandAccentColor: '#FF5E36',
-    brandSecondaryColor: '#FF8960',
-    brandBgGradientStart: '#040406',
-    brandBgGradientEnd: '#0B0B0F',
+    brandAccentColor: 'var(--color-primary)',
+    brandSecondaryColor: 'var(--color-primary-on-surface)',
+    brandBgGradientStart: 'var(--bg-primary)',
+    brandBgGradientEnd: 'var(--bg-surface)',
     brandSocialInstagram: '',
     brandSocialFacebook: '',
     brandSocialGoogleMaps: '',
@@ -133,9 +133,9 @@ export function BrandingView() {
     if (!ctx) return;
     const url = `${window.location.origin}/#/self-order`;
 
-    ctx.fillStyle = '#FFFFFF';
+    ctx.fillStyle = 'var(--text-on-fill)';
     ctx.fillRect(0, 0, 136, 136);
-    ctx.fillStyle = '#000000';
+    ctx.fillStyle = 'var(--ink-black)';
 
     const size = 136;
     const modules = 21;
@@ -143,16 +143,16 @@ export function BrandingView() {
 
     const drawFinder = (x: number, y: number) => {
       ctx.fillRect(x, y, moduleSize * 7, moduleSize * 7);
-      ctx.fillStyle = '#FFFFFF';
+      ctx.fillStyle = 'var(--text-on-fill)';
       ctx.fillRect(x + moduleSize, y + moduleSize, moduleSize * 5, moduleSize * 5);
-      ctx.fillStyle = '#000000';
+      ctx.fillStyle = 'var(--ink-black)';
       ctx.fillRect(x + moduleSize * 2, y + moduleSize * 2, moduleSize * 3, moduleSize * 3);
     };
 
     drawFinder(0, 0);
-    ctx.fillStyle = '#000000';
+    ctx.fillStyle = 'var(--ink-black)';
     drawFinder(moduleSize * 14, 0);
-    ctx.fillStyle = '#000000';
+    ctx.fillStyle = 'var(--ink-black)';
     drawFinder(0, moduleSize * 14);
 
     const hash = url.split('').reduce((a, c) => ((a << 5) - a + c.charCodeAt(0)) | 0, 0);
@@ -221,7 +221,7 @@ export function BrandingView() {
     link.download = 'self-order-qr-code.png';
     link.href = canvas.toDataURL('image/png');
     link.click();
-    showToast('QR Code downloaded!', 'success');
+    showToast('QR Code downloaded', 'success');
   };
 
   const handleSave = async () => {
@@ -268,7 +268,7 @@ export function BrandingView() {
       );
       await setSetting(STOREFRONT_SETTING_KEYS.featuredItemIds, copy.featuredItemIds);
 
-      showToast('Branding settings saved! 🎨', 'success');
+      showToast('Branding settings saved. 🎨', 'success');
     } catch (err: any) {
       showToast('Save failed: ' + err.message, 'error');
     }
@@ -665,8 +665,8 @@ export function BrandingView() {
         <div style={{
           width: '100%',
           borderRadius: '24px',
-          background: '#040406',
-          border: '12px solid #1e1e24',
+          background: 'var(--bg-primary)',
+          border: '12px solid var(--panel-raised)',
           boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.6)',
           overflow: 'hidden',
           display: 'flex',
@@ -678,7 +678,7 @@ export function BrandingView() {
           {/* Mock Kiosk Header Bar */}
           <div style={{
             height: '4px',
-            background: '#040406',
+            background: 'var(--bg-primary)',
             width: '100%',
             display: 'flex',
             justifyContent: 'center',
@@ -695,7 +695,7 @@ export function BrandingView() {
             flex: 1,
             display: 'flex',
             flexDirection: 'column',
-            background: `linear-gradient(135deg, ${config.brandBgGradientStart || '#040406'}, ${config.brandBgGradientEnd || '#0B0B0F'})`,
+            background: `linear-gradient(135deg, ${config.brandBgGradientStart || 'var(--bg-primary)'}, ${config.brandBgGradientEnd || 'var(--bg-surface)'})`,
             padding: '16px 12px',
             color: '#fff',
             overflow: 'hidden',
@@ -730,7 +730,7 @@ export function BrandingView() {
               <div style={{ fontSize: '14px', fontWeight: 800, fontFamily: 'var(--font-display)', color: config.brandAccentColor, lineHeight: 1.2 }}>
                 {config.brandKioskWelcome || 'Welcome!'}
               </div>
-              <div style={{ fontSize: '9px', color: config.brandSecondaryColor || '#FF8960', fontWeight: 600, marginTop: '2px' }}>
+              <div style={{ fontSize: '9px', color: config.brandSecondaryColor || 'var(--color-primary-on-surface)', fontWeight: 600, marginTop: '2px' }}>
                 {config.restaurantTagline || 'Order Fresh Chinese & Fast Food'}
               </div>
             </div>
@@ -767,7 +767,7 @@ export function BrandingView() {
                     borderRadius: '6px',
                     whiteSpace: 'nowrap',
                     background: active ? config.brandAccentColor : 'rgba(255,255,255,0.03)',
-                    color: active ? '#fff' : '#94A3B8',
+                    color: active ? '#fff' : 'var(--text-secondary)',
                     border: active ? 'none' : '1px solid rgba(255,255,255,0.04)'
                   }}>{cat}</span>
                 );
@@ -791,10 +791,10 @@ export function BrandingView() {
                   <div style={{ width: '40px', height: '40px', borderRadius: '6px', background: 'rgba(255,255,255,0.05)', flexShrink: 0 }} />
                   <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontSize: '9px', fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: '#F9FAFB' }}>{dish.name}</span>
+                      <span style={{ fontSize: '9px', fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--text-primary)' }}>{dish.name}</span>
                       <span style={{ fontSize: '8px', fontWeight: 800, color: config.brandSecondaryColor }}>{dish.price}</span>
                     </div>
-                    <span style={{ fontSize: '7px', color: '#94A3B8', marginTop: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{dish.desc}</span>
+                    <span style={{ fontSize: '7px', color: 'var(--text-secondary)', marginTop: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{dish.desc}</span>
                   </div>
                 </div>
               ))}
@@ -819,7 +819,7 @@ export function BrandingView() {
             <div style={{
               textAlign: 'center',
               fontSize: '6px',
-              color: '#575765',
+              color: 'var(--legacy-grey)',
               marginTop: '6px',
               fontWeight: 600
             }}>

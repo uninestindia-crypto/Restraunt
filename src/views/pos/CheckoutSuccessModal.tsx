@@ -158,7 +158,7 @@ export class CheckoutSuccessModal {
               Print (Thermal)
             </button>
             <button class="btn btn-secondary" id="btn-success-browser-print">
-              <span class="material-symbols-rounded" style="font-size: 18px; color:#60A5FA;">print</span>
+              <span class="material-symbols-rounded" style="font-size: 18px; color:var(--chart-blue);">print</span>
               Standard (A4)
             </button>
           </div>
@@ -238,7 +238,7 @@ export class CheckoutSuccessModal {
         };
         const receiptData = ReceiptBuilder.orderReceipt(this.order, settings);
         await printerService.print(receiptData);
-        showToast('Thermal receipt printed!', 'success');
+        showToast('Thermal receipt printed', 'success');
       } catch (err) {
         console.error('Success print failed:', err);
         showToast('Print failed: ' + err.message, 'error');
@@ -256,7 +256,7 @@ export class CheckoutSuccessModal {
   async browserPrint() {
     const printWindow = window.open('', '_blank');
     if (!printWindow) {
-      showToast('Popup blocker active! Please allow popups to print.', 'warning');
+      showToast('Popup blocker active. Please allow popups to print.', 'warning');
       return;
     }
     printWindow.opener = null;
@@ -267,8 +267,8 @@ export class CheckoutSuccessModal {
         <head>
           <title>Generating Invoice...</title>
           <style>
-            body { font-family: system-ui, sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; background: #f8fafc; color: #64748b; }
-            .loader { border: 3px solid #e2e8f0; border-top: 3px solid var(--color-primary); border-radius: 50%; width: 24px; height: 24px; animation: spin 0.8s linear infinite; margin-right: 12px; }
+            body { font-family: system-ui, sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; background: var(--chart-paper); color: var(--chart-slate-light); }
+            .loader { border: 3px solid var(--chart-mist); border-top: 3px solid var(--color-primary); border-radius: 50%; width: 24px; height: 24px; animation: spin 0.8s linear infinite; margin-right: 12px; }
             @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
           </style>
         </head>

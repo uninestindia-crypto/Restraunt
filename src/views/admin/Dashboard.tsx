@@ -206,7 +206,7 @@ export function Dashboard() {
           border-radius: var(--radius-md);
           padding: 22px 24px;
           box-shadow: var(--shadow-sm);
-          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+          transition: transform, opacity, background-color, border-color, color, box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
           display: flex;
           flex-direction: column;
           position: relative;
@@ -308,8 +308,8 @@ export function Dashboard() {
                 <stop offset="100%" stopColor="var(--color-primary)" stopOpacity="0"/>
               </linearGradient>
               <linearGradient id="lineGradDashboard" x1="0" y1="0" x2="1" y2="0">
-                <stop offset="0%" stopColor="#FF5E36"/>
-                <stop offset="100%" stopColor="#FF8960"/>
+                <stop offset="0%" stopColor="var(--color-primary)"/>
+                <stop offset="100%" stopColor="var(--color-primary-on-surface)"/>
               </linearGradient>
               <filter id="glowDashboard" x="-20%" y="-20%" width="140%" height="140%">
                 <feGaussianBlur stdDeviation="3" result="blur" />
@@ -420,7 +420,7 @@ export function Dashboard() {
                         <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-primary)', fontWeight: 800, flexShrink: 0, marginLeft: '8px' }}>×{item.qty}</span>
                       </div>
                       <div style={{ height: '5px', background: 'var(--bg-secondary)', borderRadius: 'var(--radius-full)', overflow: 'hidden', border: '1px solid var(--border-glass)' }}>
-                        <div style={{ height: '100%', width: `${widthPercent}%`, background: 'linear-gradient(90deg, var(--color-warning), #FBBF24)', borderRadius: 'var(--radius-full)', transition: 'width 0.6s ease' }} />
+                        <div style={{ height: '100%', width: `${widthPercent}%`, background: 'linear-gradient(90deg, var(--color-warning), var(--chart-amber))', borderRadius: 'var(--radius-full)', transition: 'width 0.6s ease' }} />
                       </div>
                     </div>
                   </div>

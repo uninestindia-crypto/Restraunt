@@ -21,12 +21,12 @@ const CLOUD_REQUIRED_ROLES = ['owner', 'manager', 'cashier', 'kitchen', 'waiter'
 const ROLES = {
   developer: { label: 'Developer', color: 'var(--nextgenos-purple-on-surface)' },
   owner: { label: 'Owner', color: 'var(--color-primary-on-surface)' },
-  manager: { label: 'Manager', color: '#6C5CE7' },
+  manager: { label: 'Manager', color: 'var(--role-manager)' },
   cashier: { label: 'Cashier', color: 'var(--color-success-on-surface)' },
-  kitchen: { label: 'Kitchen', color: '#F59E0B' },
+  kitchen: { label: 'Kitchen', color: 'var(--color-warning)' },
   waiter: { label: 'Waiter', color: 'var(--color-info)' },
-  delivery: { label: 'Delivery', color: '#06B6D4' },
-  temporary_staff: { label: 'Express Only', color: '#E11D48' },
+  delivery: { label: 'Delivery', color: 'var(--role-delivery)' },
+  temporary_staff: { label: 'Express Only', color: 'var(--role-express)' },
 };
 
 export class StaffView {
@@ -80,7 +80,7 @@ export class StaffView {
         <div class="modal" style="max-width:420px;">
           <div class="modal-header">
             <h3 id="staff-modal-title">Add Staff</h3>
-            <button class="btn-icon" id="staff-close-icon"><span class="material-symbols-rounded">close</span></button>
+            <button class="btn-icon" id="staff-close-icon" aria-label="Close"><span class="material-symbols-rounded">close</span></button>
           </div>
           <div class="modal-body" style="display:flex;flex-direction:column;gap:14px;">
             <div class="input-group">
@@ -432,12 +432,12 @@ export class StaffView {
               </div>
               <div style="position:absolute;right:16px;top:50%;transform:translateY(-50%);display:flex;align-items:center;gap:6px;">
                 ${canManageThis ? `
-                <button class="btn-icon edit-staff-btn" data-id="${escapeHtml(String(s.id ?? ''))}" style="width:30px;height:30px;min-width:30px;border-radius:6px;">
+                <button class="btn-icon edit-staff-btn" aria-label="Edit ${escapeHtml(s.name)}" data-id="${escapeHtml(String(s.id ?? ''))}" style="width:30px;height:30px;min-width:30px;border-radius:6px;">
                   <span class="material-symbols-rounded" style="font-size:16px;">edit</span>
                 </button>
                 ` : ''}
                 ${isDeletable ? `
-                  <button class="btn-icon delete-staff-btn" data-id="${escapeHtml(String(s.id ?? ''))}" style="color:var(--color-danger);width:30px;height:30px;min-width:30px;border-radius:6px;">
+                  <button class="btn-icon delete-staff-btn" aria-label="Remove ${escapeHtml(s.name)}" data-id="${escapeHtml(String(s.id ?? ''))}" style="color:var(--color-danger);width:30px;height:30px;min-width:30px;border-radius:6px;">
                     <span class="material-symbols-rounded" style="font-size:16px;">delete</span>
                   </button>
                 ` : ''}
@@ -493,7 +493,7 @@ export class StaffView {
             await db.staff.delete(id);
             playSound(900, 100);
             vibrateDevice([40]);
-            showToast('Staff member removed successfully!', 'success');
+            showToast('Staff member removed successfully', 'success');
             await this.loadData();
           }
         });

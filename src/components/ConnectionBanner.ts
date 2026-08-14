@@ -1,0 +1,197 @@
+/**
+ * The connection strip — what the app knows, and how long ago it knew it.
+ *
+ * This product is online-first over a cache: reads go to Supabase and fall back to the last known
+ * rows when the network is not there. That fallback was invisible. The data layer queued writes
+ * correctly, served stale rows correctly, and the screen said nothing — so a cashier could not tell
+ * a working till from a diverging one, and a guest could not tell a live menu from a remembered one.
+ *
+ * This is the missing half. It is a *state*, not an event, so it is a persistent strip rather than
+ * a toast: it appears when something is true, and it leaves by itself when that stops being true.
+ * The disappearance is the confirmation — there is no separate "back online" toast, because the
+ * user did not do anything to be congratulated for.
+ *
+ * `03-components.md` §10 in the taste-os-design skill is the spec this implements.
+ */
+
+import { db } from '../db/database';
+
+/** Stores whose unsynced rows represent real work a person did. */
+const OUTBOX_STORES = ['orders', 'menuItems', 'menuCategories', 'customers', 'inventory', 'tables'];
+
+const POLL_MS = 5000;
+
+type Mode = 'hidden' | 'offline' | 'stale' | 'pending' | 'blocked';
+
+let host: HTMLElement | null = null;
+let timer: any = null;
+let lastRendered = '';
+
+function isOnline() {
+  return typeof navigator === 'undefined' || navigator.onLine !== false;
+}
+
+/** How long ago the cloud last answered, in the words a person would use. */
+function agoLabel(at: number) {
+  if (!at) return '';
+  const mins = Math.floor((Date.now() - at) / 60000);
+  if (mins < 1) return 'just now';
+  if (mins === 1) return '1 min ago';
+  if (mins < 60) return `${mins} min ago`;
+  const hrs = Math.round(mins / 60);
+  return hrs === 1 ? '1 hr ago' : `${hrs} hr ago`;
+}
+
+async function countOutbox() {
+  let pending = 0;
+  let blocked = 0;
+  for (const store of OUTBOX_STORES) {
+    const table = (db as any)[store];
+    if (!table) continue;
+    try {
+      const rows = await table.filter((r: any) => r && r.isSynced === 0).toArray();
+      pending += rows.length;
+      // A row carrying a refusal will never drain on its own. It is a different message,
+      // because the operator has to do something about it.
+      blocked += rows.filter((r: any) => String(r.lastSyncError || '').trim()).length;
+    } catch {
+      // A store missing on this schema version is not an error worth surfacing here.
+    }
+  }
+  return { pending, blocked };
+}
+
+async function readState() {
+  const { pending, blocked } = await countOutbox();
+
+  let lastPull = 0;
+  let connected = false;
+  try {
+    const { syncService } = await import('../services/sync');
+    lastPull = syncService?.lastFullPullTime || 0;
+    connected = syncService?.isConnected === true;
+  } catch {
+    // Sync not loaded yet on a public page — offline/online is still meaningful.
+  }
+
+  const offline = !isOnline();
+  const stale = !offline && !connected;
+
+  let mode: Mode = 'hidden';
+  if (blocked > 0) mode = 'blocked';
+  else if (offline) mode = 'offline';
+  else if (stale) mode = 'stale';
+  else if (pending > 0) mode = 'pending';
+
+  return { mode, pending, blocked, lastPull };
+}
+
+function copyFor(mode: Mode, pending: number, blocked: number, lastPull: number) {
+  const asOf = lastPull ? ` Showing what we had ${agoLabel(lastPull)}.` : '';
+  const queued =
+    pending === 0 ? '' : pending === 1 ? ' 1 change is waiting to sync.' : ` ${pending} changes are waiting to sync.`;
+
+  switch (mode) {
+    case 'offline':
+      // Says what is true, what still works, and what is queued — in that order.
+      return {
+        tone: 'warn',
+        icon: 'cloud_off',
+        text: `You're offline. Orders still work and will send when you're back.${asOf}${queued}`
+      };
+    case 'stale':
+      return {
+        tone: 'warn',
+        icon: 'cloud_alert',
+        text: `Can't reach the cloud right now.${asOf}${queued}`
+      };
+    case 'pending':
+      return {
+        tone: 'info',
+        icon: 'cloud_sync',
+        text: `Syncing.${queued}`.replace('Syncing. ', 'Syncing — ')
+      };
+    case 'blocked':
+      return {
+        tone: 'error',
+        icon: 'error',
+        text:
+          blocked === 1
+            ? "1 change was refused by the cloud and won't send on its own. Open Settings to see why."
+            : `${blocked} changes were refused by the cloud and won't send on their own. Open Settings to see why.`
+      };
+    default:
+      return null;
+  }
+}
+
+async function render() {
+  if (!host) return;
+  const { mode, pending, blocked, lastPull } = await readState();
+  const copy = copyFor(mode, pending, blocked, lastPull);
+
+  // Nothing to say: leave by itself. The absence is the confirmation.
+  if (!copy) {
+    if (lastRendered) {
+      host.innerHTML = '';
+      host.hidden = true;
+      lastRendered = '';
+    }
+    return;
+  }
+
+  const key = `${copy.tone}|${copy.text}`;
+  if (key === lastRendered) return;
+  lastRendered = key;
+
+  host.hidden = false;
+  host.innerHTML = `
+    <div class="connection-strip connection-strip--${copy.tone}" role="status" aria-live="polite">
+      <span class="material-symbols-rounded" aria-hidden="true">${copy.icon}</span>
+      <span class="connection-strip-text">${copy.text}</span>
+    </div>
+  `;
+}
+
+/**
+ * Mount the strip. Idempotent: calling it twice reuses the same host, so a route change that
+ * re-runs setup does not stack two banners.
+ */
+export function mountConnectionBanner(parent: HTMLElement | null = document.body) {
+  if (!parent) return;
+
+  if (!host || !host.isConnected) {
+    host = document.getElementById('connection-banner-host');
+    if (!host) {
+      host = document.createElement('div');
+      host.id = 'connection-banner-host';
+      host.hidden = true;
+      parent.insertBefore(host, parent.firstChild);
+    }
+  }
+
+  render();
+
+  if (!timer) {
+    timer = setInterval(render, POLL_MS);
+    window.addEventListener('online', render);
+    window.addEventListener('offline', render);
+  }
+}
+
+export function unmountConnectionBanner() {
+  if (timer) {
+    clearInterval(timer);
+    timer = null;
+    window.removeEventListener('online', render);
+    window.removeEventListener('offline', render);
+  }
+  if (host) {
+    host.remove();
+    host = null;
+  }
+  lastRendered = '';
+}
+
+/** Exposed for tests: the copy rules, without the DOM or the database. */
+export const __test__ = { copyFor, agoLabel };

@@ -28,6 +28,78 @@
   --font-sidebar: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 
   /* ── NextGenOS Platform Brand ────────────────── */
+  /* WhatsApp brand green. A third-party mark, fixed by their brand, never
+     themed — named so nobody "fixes" it to the success colour. */
+  --brand-whatsapp: #25D366;
+
+  /* Loyalty tier metals, second set (customer-facing drawer). */
+  --tier-platinum: #E5E4E2;
+  --tier-silver-alt: #C0C0C0;
+  --tier-bronze-alt: #CD7F32;
+  --tier-amber: #F1C40F;
+  --tier-amber-deep: #F39C12;
+
+  /* Deep panel grounds used by the developer console and AI surfaces. */
+  --panel-ink: #12121a;
+  --panel-ink-violet: #0F0F1A;
+  --panel-ink-warm: #1a1205;
+  --panel-raised: #1e1e24;
+  --panel-indigo: #6366F1;
+  --panel-violet: #6D28D9;
+  --panel-slate: #34495E;
+  /* The pre-remediation muted grey. Kept only so an existing gradient stop
+     does not shift; never use it for text — it measures 2.8:1. */
+  --legacy-grey: #575765;
+
+  /* Role identity colours. These are used by the staff screens to tint a
+     person's avatar and badge; they are identities, not statuses, which is
+     why they are not the success/warning/danger palette. */
+  --role-manager: #6c5ce7;
+  --role-kitchen: #f59e0b;
+  --role-delivery: #06b6d4;
+  --role-express: #e11d48;
+
+  /* Chart and gradient stops. Named because a chart that reaches past the
+     token layer cannot follow the theme. */
+  --chart-ink-deep: #020617;
+  --chart-ink: #0f172a;
+  --chart-slate: #2c3e50;
+  --chart-slate-light: #64748b;
+  --chart-mist: #e2e8f0;
+  --chart-paper: #f8fafc;
+  --chart-blue: #60a5fa;
+  --chart-amber: #fbbf24;
+  --chart-amber-deep: #d97706;
+  --chart-green-deep: #059669;
+
+  /* Alert reds used by the KDS ageing rail, kept distinct from --color-danger
+     so a late ticket does not read as a failed action. */
+  --alert-red: #ff4d4d;
+  --alert-red-soft: #ff6b6b;
+  --alert-amber: #ffa200;
+  --alert-gold: #ffd700;
+
+  /* True black, for the few places a shadow or overlay genuinely needs it. */
+  --ink-black: #000000;
+
+  /* ── Tokens for colours that were living as raw hex in the view layer ──
+     Each of these appeared in components with no name and no theme response.
+     Naming them is what lets them be checked for contrast once, here, rather
+     than never. */
+  /* White text on a saturated fill — the single most repeated literal. */
+  --text-on-fill: #ffffff;
+  /* The AI/assistant lilac, used across the command centre and channel hub. */
+  --nextgenos-lilac: #a29bfe;
+  /* The pre-2026 brand orange, still present in the sign-in and analytics
+     chrome. New surfaces use --color-primary. */
+  --brand-orange-legacy: #ff6b35;
+  /* Loyalty tiers. Metals, deliberately not the status palette: a tier is an
+     identity, not a state. */
+  --tier-gold: #d4af37;
+  --tier-silver: #bdc3c7;
+  --tier-bronze: #8c7853;
+  --tier-bronze-deep: #4e3e28;
+
   --nextgenos-purple: #8B5CF6;
   --nextgenos-purple-rgb: 139, 92, 246;
   /* Purple as *text*. The lifted tint reads on obsidian; light mode needs the

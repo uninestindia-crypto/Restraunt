@@ -164,7 +164,7 @@ export class ExpressView {
           channel: newestOrder?.channel,
           source: newestOrder?.source,
         });
-        showToast('New Order Received in Kitchen!', 'warning');
+        showToast('New Order Received in Kitchen', 'warning');
       }
 
       this.activeOrders = nextActiveOrders;
@@ -364,7 +364,7 @@ export class ExpressView {
         <div class="modal upi-modal-card">
           <h3 style="font-family:var(--font-display); font-weight:700; color:var(--text-primary); margin-bottom:12px;">Scan UPI QR</h3>
           <p style="font-size:var(--text-sm); color:var(--text-secondary); margin-bottom:16px;">Scan to collect <strong id="upi-modal-amount" style="color: var(--color-primary-on-surface);">₹0.00</strong></p>
-          <div style="display:flex; justify-content:center; background:#ffffff; padding:16px; border-radius:12px; margin-bottom:20px; width:220px; margin-left:auto; margin-right:auto;">
+          <div style="display:flex; justify-content:center; background:var(--text-on-fill); padding:16px; border-radius:12px; margin-bottom:20px; width:220px; margin-left:auto; margin-right:auto;">
             <canvas id="express-upi-canvas" style="width:200px; height:200px;"></canvas>
           </div>
           <div style="display:flex; flex-direction:column; gap:10px;">
@@ -443,7 +443,7 @@ export class ExpressView {
           font-size: var(--text-xs);
           white-space: nowrap;
           cursor: pointer;
-          transition: all var(--transition-normal);
+          transition: transform, opacity, background-color, border-color, color, box-shadow var(--transition-normal);
           -webkit-tap-highlight-color: transparent;
         }
 
@@ -461,7 +461,7 @@ export class ExpressView {
 
         .mode-btn.active {
           background: var(--color-primary-fill);
-          color: #ffffff;
+          color: var(--text-on-fill);
           box-shadow: 0 4px 12px rgba(var(--color-primary-rgb), 0.28);
         }
 
@@ -478,13 +478,13 @@ export class ExpressView {
           padding: 0 6px;
           border-radius: var(--radius-full);
           background: var(--color-danger);
-          color: #ffffff;
+          color: var(--text-on-fill);
           font-size: 10px;
           font-weight: 800;
         }
 
         .mode-btn.active .mode-badge {
-          background: #ffffff;
+          background: var(--text-on-fill);
           color: var(--color-primary-on-surface);
         }
 
@@ -505,7 +505,7 @@ export class ExpressView {
           border-radius: 50%;
           background: var(--color-success);
           box-shadow: 0 0 8px var(--color-success);
-          transition: all var(--transition-fast);
+          transition: transform, opacity, background-color, border-color, color, box-shadow var(--transition-fast);
         }
 
         .kds-live-state.is-syncing .kds-live-dot {
@@ -551,7 +551,7 @@ export class ExpressView {
           border: 1px solid var(--border-glass);
           border-radius: var(--radius-lg);
           box-shadow: var(--shadow-sm);
-          transition: all var(--transition-normal);
+          transition: transform, opacity, background-color, border-color, color, box-shadow var(--transition-normal);
         }
 
         .pos-panel {
@@ -595,7 +595,7 @@ export class ExpressView {
           font-size: var(--text-xs);
           font-weight: 600;
           cursor: pointer;
-          transition: all var(--transition-fast);
+          transition: transform, opacity, background-color, border-color, color, box-shadow var(--transition-fast);
         }
 
         .category-chip:hover {
@@ -610,7 +610,7 @@ export class ExpressView {
 
         .category-chip.active {
           background: var(--color-primary-fill);
-          color: #ffffff;
+          color: var(--text-on-fill);
           border-color: var(--color-primary);
           box-shadow: 0 4px 12px rgba(var(--color-primary-rgb), 0.25);
         }
@@ -774,7 +774,7 @@ export class ExpressView {
           background: var(--bg-secondary);
           border: 1px solid var(--border-glass);
           border-radius: var(--radius-sm);
-          transition: all var(--transition-fast);
+          transition: transform, opacity, background-color, border-color, color, box-shadow var(--transition-fast);
         }
 
         .express-cart-row:hover {
@@ -829,14 +829,14 @@ export class ExpressView {
           cursor: pointer;
           font-weight: 700;
           font-size: var(--text-sm);
-          transition: all var(--transition-fast);
+          transition: transform, opacity, background-color, border-color, color, box-shadow var(--transition-fast);
           box-shadow: var(--shadow-sm);
         }
 
         .step-circle:hover {
           background: var(--color-primary);
           border-color: var(--color-primary);
-          color: #ffffff;
+          color: var(--text-on-fill);
         }
 
         .step-circle:active {
@@ -908,7 +908,7 @@ export class ExpressView {
           font-weight: 600;
           cursor: pointer;
           border-radius: var(--radius-full);
-          transition: all var(--transition-normal);
+          transition: transform, opacity, background-color, border-color, color, box-shadow var(--transition-normal);
         }
 
         .type-btn:hover {
@@ -922,7 +922,7 @@ export class ExpressView {
 
         .type-btn.active {
           background: var(--color-primary-fill);
-          color: #ffffff;
+          color: var(--text-on-fill);
           box-shadow: var(--shadow-sm);
         }
 
@@ -936,7 +936,7 @@ export class ExpressView {
           color: var(--text-primary);
           font-size: 11px;
           padding: 0 10px;
-          transition: all var(--transition-fast);
+          transition: transform, opacity, background-color, border-color, color, box-shadow var(--transition-fast);
         }
 
         .meta-dropdown {
@@ -1008,9 +1008,9 @@ export class ExpressView {
           align-items: center;
           justify-content: center;
           gap: 6px;
-          color: #ffffff;
+          color: var(--text-on-fill);
           cursor: pointer;
-          transition: all var(--transition-fast);
+          transition: transform, opacity, background-color, border-color, color, box-shadow var(--transition-fast);
           box-shadow: var(--shadow-sm);
         }
 
@@ -1029,7 +1029,7 @@ export class ExpressView {
         }
 
         .btn-cash {
-          background: linear-gradient(135deg, var(--color-success) 0%, #059669 100%);
+          background: linear-gradient(135deg, var(--color-success) 0%, var(--chart-green-deep) 100%);
           box-shadow: 0 4px 12px rgba(var(--color-success-rgb), 0.2);
         }
 
@@ -1038,7 +1038,7 @@ export class ExpressView {
         }
 
         .btn-upi {
-          background: linear-gradient(135deg, var(--nextgenos-purple) 0%, #6D28D9 100%);
+          background: linear-gradient(135deg, var(--nextgenos-purple) 0%, var(--panel-violet) 100%);
           box-shadow: 0 4px 12px rgba(var(--nextgenos-purple-rgb), 0.2);
         }
 
@@ -1067,7 +1067,7 @@ export class ExpressView {
           font-size: 11px;
           padding: 0 10px 0 32px;
           font-weight: 500;
-          transition: all var(--transition-fast);
+          transition: transform, opacity, background-color, border-color, color, box-shadow var(--transition-fast);
         }
 
         .compact-search input:focus {
@@ -1110,7 +1110,7 @@ export class ExpressView {
           padding: 6px 12px;
           cursor: pointer;
           border-radius: var(--radius-full);
-          transition: all var(--transition-fast);
+          transition: transform, opacity, background-color, border-color, color, box-shadow var(--transition-fast);
         }
 
         .kds-filter-btn:hover {
@@ -1144,7 +1144,7 @@ export class ExpressView {
           display: flex;
           flex-direction: column;
           gap: 10px;
-          transition: all var(--transition-normal);
+          transition: transform, opacity, background-color, border-color, color, box-shadow var(--transition-normal);
           box-shadow: var(--shadow-sm);
         }
 
@@ -1242,7 +1242,7 @@ export class ExpressView {
           border-radius: 50%;
           cursor: pointer;
           position: relative;
-          transition: all var(--transition-fast);
+          transition: transform, opacity, background-color, border-color, color, box-shadow var(--transition-fast);
           outline: none;
           background: transparent;
         }
@@ -1258,7 +1258,7 @@ export class ExpressView {
           top: 50%;
           left: 50%;
           transform: translate(-50%, -50%);
-          color: #ffffff;
+          color: var(--text-on-fill);
           font-size: 10px;
           font-weight: 800;
         }
@@ -1271,27 +1271,27 @@ export class ExpressView {
           font-family: var(--font-display);
           font-weight: 700;
           font-size: var(--text-xs);
-          color: #ffffff;
+          color: var(--text-on-fill);
           display: flex;
           align-items: center;
           justify-content: center;
           gap: 6px;
           cursor: pointer;
-          transition: all var(--transition-fast);
+          transition: transform, opacity, background-color, border-color, color, box-shadow var(--transition-fast);
         }
 
         .kds-btn-prepare {
-          background: linear-gradient(135deg, var(--color-primary) 0%, #FF8960 100%);
+          background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-on-surface) 100%);
           box-shadow: 0 4px 10px rgba(var(--color-primary-rgb), 0.2);
         }
 
         .kds-btn-ready {
-          background: linear-gradient(135deg, var(--color-warning) 0%, #D97706 100%);
+          background: linear-gradient(135deg, var(--color-warning) 0%, var(--chart-amber-deep) 100%);
           box-shadow: 0 4px 10px rgba(var(--color-warning-rgb), 0.2);
         }
 
         .kds-btn-complete {
-          background: linear-gradient(135deg, var(--color-success) 0%, #059669 100%);
+          background: linear-gradient(135deg, var(--color-success) 0%, var(--chart-green-deep) 100%);
           box-shadow: 0 4px 10px rgba(var(--color-success-rgb), 0.2);
         }
 
@@ -1391,7 +1391,7 @@ export class ExpressView {
           }
 
           :root[data-theme="light"] .express-cart-section {
-            background: #ffffff !important;
+            background: var(--text-on-fill) !important;
           }
 
           /* Mobile Cart Bar */
@@ -1412,8 +1412,8 @@ export class ExpressView {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            background: linear-gradient(135deg, var(--color-primary) 0%, #ff8960 100%);
-            color: #ffffff;
+            background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-on-surface) 100%);
+            color: var(--text-on-fill);
             padding: 14px 20px;
             border-radius: var(--radius-lg);
             box-shadow: 0 8px 24px rgba(var(--color-primary-rgb), 0.35);
@@ -1431,7 +1431,7 @@ export class ExpressView {
           }
 
           .mobile-cart-badge {
-            background: #ffffff;
+            background: var(--text-on-fill);
             color: var(--color-primary-on-surface);
             width: 22px;
             height: 22px;
@@ -2004,7 +2004,7 @@ export class ExpressView {
   // --- Order Placement Finalization ---
   async handleCheckout(paymentMethod) {
     if (this.cart.length === 0) {
-      showToast('Add items to order first!', 'warning');
+      showToast('Add items to order first', 'warning');
       return;
     }
 

@@ -554,7 +554,7 @@ class App {
         try {
           showToast('Connecting to printer...', 'info');
           await printerService.connect();
-          showToast('Printer connected!', 'success');
+          showToast('Printer connected', 'success');
         } catch (err) {
           if (err.name !== 'NotFoundError') { // User cancelled picker
             showToast('Failed to connect printer: ' + err.message, 'error');
@@ -742,7 +742,7 @@ class App {
             this.deferredInstallPrompt.prompt();
             const { outcome } = await this.deferredInstallPrompt.userChoice;
             if (outcome === 'accepted') {
-              showToast('App installed! Find it on your home screen.', 'success', 5000);
+              showToast('App installed. Find it on your home screen.', 'success', 5000);
               installBtn.style.display = 'none';
             }
             this.deferredInstallPrompt = null;
@@ -753,7 +753,7 @@ class App {
 
     // App installed
     window.addEventListener('appinstalled', () => {
-      showToast('The Taste Restaurant OS installed successfully!', 'success');
+      showToast('The Taste Restaurant OS installed successfully', 'success');
       this.deferredInstallPrompt = null;
       const installBtn = document.getElementById('btn-install-app');
       if (installBtn) installBtn.style.display = 'none';
@@ -873,6 +873,13 @@ class App {
   }
 
   setupSync() {
+    // The header dot says connected or not. The strip says what that means for
+    // the work in front of the operator: what is queued, and how old the data
+    // on screen is. Both, because the dot is easy to miss during a rush.
+    import('./components/ConnectionBanner')
+      .then(({ mountConnectionBanner }) => mountConnectionBanner(document.body))
+      .catch(err => console.warn('[App] Connection strip unavailable:', err));
+
     const dot = document.getElementById('sync-status-dot');
     const text = document.getElementById('sync-status-text');
     const btn = document.getElementById('sync-status-btn');
@@ -936,7 +943,7 @@ class App {
     };
 
     window.addEventListener('online', () => {
-      showToast('Back online!', 'success');
+      showToast('Back online', 'success');
     });
     window.addEventListener('offline', updateStatus);
   }

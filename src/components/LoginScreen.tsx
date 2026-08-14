@@ -37,7 +37,7 @@ function StaffLogin({ onClose, onLoginSuccess }: StaffLoginProps) {
 
       playSound(900, 100);
       vibrateDevice([40, 20, 40]);
-      showToast(`Welcome, ${staff.name}!`, 'success');
+      showToast(`Welcome, ${staff.name}`, 'success');
       onLoginSuccess(staff);
     } catch (loginError) {
       playSound(200, 200);
@@ -67,17 +67,17 @@ function StaffLogin({ onClose, onLoginSuccess }: StaffLoginProps) {
   return (
     <div className="login-screen" style={{ position: 'fixed', inset: 0, zIndex: 9998, display: 'flex', background: 'var(--bg-primary)', overflow: 'auto' }}>
       <section aria-label="The Taste staff sign in" style={{ width: '100%', minHeight: '100%', display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', alignItems: 'stretch' }}>
-        <aside className="login-brand-panel" style={{ padding: 'clamp(32px, 6vw, 72px)', background: 'linear-gradient(135deg, #0f172a, #020617)', color: '#fff' }}>
+        <aside className="login-brand-panel" style={{ padding: 'clamp(32px, 6vw, 72px)', background: 'linear-gradient(135deg, var(--chart-ink), var(--chart-ink-deep))', color: '#fff' }}>
           <img src="/assets/the-taste-logo.png" width="64" height="64" alt="The Taste" style={{ borderRadius: 16, background: '#fff', objectFit: 'contain' }} />
           <h1 style={{ margin: '24px 0 6px', fontSize: 'clamp(2rem, 5vw, 3.5rem)', letterSpacing: '-0.04em' }}>The Taste</h1>
-          <p style={{ margin: 0, color: '#94a3b8', fontWeight: 700 }}>Restaurant Operating System</p>
+          <p style={{ margin: 0, color: 'var(--text-secondary)', fontWeight: 700 }}>Restaurant Operating System</p>
           <div style={{ display: 'grid', gap: 24, marginTop: 52, maxWidth: 520 }}>
             {featureRows.map(([icon, title, description]) => (
               <div key={title} style={{ display: 'grid', gridTemplateColumns: '44px 1fr', gap: 16, alignItems: 'start' }}>
-                <span className="material-symbols-rounded" aria-hidden="true" style={{ color: '#ff6b35', fontSize: 26 }}>{icon}</span>
+                <span className="material-symbols-rounded" aria-hidden="true" style={{ color: 'var(--brand-orange-legacy)', fontSize: 26 }}>{icon}</span>
                 <div>
                   <h2 style={{ margin: '0 0 4px', fontSize: 16 }}>{title}</h2>
-                  <p style={{ margin: 0, color: '#94a3b8', lineHeight: 1.5, fontSize: 14 }}>{description}</p>
+                  <p style={{ margin: 0, color: 'var(--text-secondary)', lineHeight: 1.5, fontSize: 14 }}>{description}</p>
                 </div>
               </div>
             ))}

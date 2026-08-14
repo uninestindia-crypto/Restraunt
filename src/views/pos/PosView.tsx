@@ -243,7 +243,7 @@ export class PosView {
 
   async handlePlaceOrder() {
     if (this.cart.length === 0) {
-      showToast('Cart is empty! Add items first.', 'warning');
+      showToast('Cart is empty. Add items first.', 'warning');
       return;
     }
 
@@ -396,7 +396,7 @@ export class PosView {
       const splitInfo = splitDetails.splitMode && splitDetails.splitMode !== 'full'
         ? ` (${splitDetails.splitMode === 'half' ? 'Half' : 'Custom'}: ₹${splitDetails.paidAmount})`
         : '';
-      showToast(`Order #${orderData.orderNumber} confirmed! ${paymentMethod === 'upi' ? '(UPI)' : '(Cash)'}${splitInfo}`, 'success', 4000);
+      showToast(`Order #${orderData.orderNumber} confirmed. ${paymentMethod === 'upi' ? '(UPI)' : '(Cash)'}${splitInfo}`, 'success', 4000);
 
       // Close payment modal & show success bill window
       if (this.paymentModal) {
@@ -433,7 +433,7 @@ export class PosView {
 
       const receiptData = ReceiptBuilder.orderReceipt(order, settings);
       await printerService.print(receiptData);
-      showToast('Receipt printed!', 'success');
+      showToast('Receipt printed', 'success');
     } catch (error) {
       console.error('Print failed:', error);
       showToast('Print failed: ' + error.message, 'warning');

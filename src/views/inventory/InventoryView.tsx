@@ -55,7 +55,7 @@ export class InventoryView {
         <div class="modal" style="max-width:400px;">
           <div class="modal-header">
             <h3 id="inv-modal-title">Add Item</h3>
-            <button class="btn-icon" id="inv-close-icon"><span class="material-symbols-rounded">close</span></button>
+            <button class="btn-icon" id="inv-close-icon" aria-label="Close"><span class="material-symbols-rounded">close</span></button>
           </div>
           <div class="modal-body" id="inv-modal-fields" style="display:flex;flex-direction:column;gap:14px;"></div>
           <div class="modal-footer">
@@ -152,7 +152,7 @@ export class InventoryView {
       }
       modal.style.display = 'none';
       playSound(900, 100); vibrateDevice([40]);
-      showToast('Saved!', 'success');
+      showToast('Saved', 'success');
       await this.loadData();
     });
 

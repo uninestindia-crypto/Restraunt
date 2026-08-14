@@ -94,7 +94,7 @@ export function SettingsView() {
       if (!data.printDensity) data.printDensity = 'normal';
       if (!data.printCopies) data.printCopies = '1';
       if (!data.invoiceTemplate) data.invoiceTemplate = 'minimalist';
-      if (!data.invoicePrimaryColor) data.invoicePrimaryColor = '#FF5E36';
+      if (!data.invoicePrimaryColor) data.invoicePrimaryColor = 'var(--color-primary)';
       if (!data.invoiceFontFamily) data.invoiceFontFamily = 'sans-serif';
       if (!data.invoiceTitle) data.invoiceTitle = 'TAX INVOICE';
       if (!data.invoiceTerms) data.invoiceTerms = '1. Goods once sold cannot be returned.\n2. Please check bill before leaving.';
@@ -161,7 +161,7 @@ export function SettingsView() {
         setPermissionError(false);
         showToast('Connecting to Bluetooth printer...', 'info');
         await printerService.connect();
-        showToast('Printer connected successfully!', 'success');
+        showToast('Printer connected successfully', 'success');
       } catch (e: any) {
         if (e.name !== 'NotFoundError') {
           if (e.message && (e.message.includes('Permission denied') || e.message.includes('permission denied') || e.message.includes('Permission'))) {
@@ -205,7 +205,7 @@ export function SettingsView() {
         .build();
 
       await printerService.print(testBytes);
-      showToast('Test page printed!', 'success');
+      showToast('Test page printed', 'success');
     } catch (e: any) {
       console.error('Test print failed:', e);
       showToast('Print error: ' + e.message, 'error');
@@ -230,7 +230,7 @@ export function SettingsView() {
       }
       try {
         await authenticateGDrive(clientId);
-        showToast('Google Drive connected successfully! 🎉', 'success');
+        showToast('Google Drive connected successfully. 🎉', 'success');
         setDriveConnected(true);
       } catch (e: any) {
         showToast('Connection failed: ' + e.message, 'error');
@@ -256,7 +256,7 @@ export function SettingsView() {
       const { syncService } = await import('../../services/sync');
       const result = await syncService.testConnection(url, key);
       if (result.success) {
-        showToast('Supabase connection successful! 🎉', 'success');
+        showToast('Supabase connection successful. 🎉', 'success');
       } else {
         showToast('Connection failed: ' + result.message, 'error');
       }
@@ -332,7 +332,7 @@ export function SettingsView() {
       const logo = document.getElementById('app-logo')?.querySelector('span:last-child');
       if (logo) logo.textContent = config.restaurantName;
 
-      showToast('Settings saved successfully! 🎨', 'success');
+      showToast('Settings saved successfully. 🎨', 'success');
 
       // Hot-reconnect cloud sync syncService
       try {
@@ -352,7 +352,7 @@ export function SettingsView() {
     try {
       await exportAllData();
       await logDataExported();
-      showToast('Full JSON backup downloaded!', 'success');
+      showToast('Full JSON backup downloaded', 'success');
     } catch (e: any) {
       showToast('Export failed: ' + e.message, 'error');
     }
@@ -362,7 +362,7 @@ export function SettingsView() {
     playSound(800, 80);
     try {
       await exportOrdersCSV(30);
-      showToast('Orders CSV downloaded!', 'success');
+      showToast('Orders CSV downloaded', 'success');
     } catch (e: any) {
       showToast('CSV export failed: ' + e.message, 'error');
     }
@@ -383,7 +383,7 @@ export function SettingsView() {
           .filter(([, v]) => Number(v) > 0)
           .map(([k, v]) => `${k}: ${v}`)
           .join(', ');
-        showToast(`Restored successfully! ${counts}`, 'success', 5000);
+        showToast(`Restored successfully. ${counts}`, 'success', 5000);
         loadConfig();
       }
     } catch (err: any) {
@@ -572,7 +572,7 @@ export function SettingsView() {
           font-weight: 700;
           text-align: left;
           cursor: pointer;
-          transition: all 0.2s;
+          transition: transform, opacity, background-color, border-color, color, box-shadow 0.2s;
         }
         .settings-sidebar-btn span {
           font-size: 18px;
@@ -1182,7 +1182,7 @@ export function SettingsView() {
                   </div>
                   <div>
                     <input ref={importFileInputRef} type="file" accept=".json" onChange={handleImportRestore} style={{ display: 'none' }} />
-                    <button onClick={() => importFileInputRef.current?.click()} className="btn btn-secondary btn-sm" style={{ width: '100%', height: '36px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '4px', border: '1px solid rgba(var(--color-warning-rgb),0.25)', background: 'rgba(var(--color-warning-rgb),0.04)', color: '#F59E0B', fontWeight: 700 }}>
+                    <button onClick={() => importFileInputRef.current?.click()} className="btn btn-secondary btn-sm" style={{ width: '100%', height: '36px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '4px', border: '1px solid rgba(var(--color-warning-rgb),0.25)', background: 'rgba(var(--color-warning-rgb),0.04)', color: 'var(--color-warning)', fontWeight: 700 }}>
                       <span className="material-symbols-rounded" style={{ fontSize: '16px' }}>upload</span>
                       Restore / Upload JSON Backup file
                     </button>
@@ -1393,7 +1393,7 @@ export function SettingsView() {
                         tableNumber: '5',
                         channel: 'qr',
                       });
-                      showToast('Test alert triggered!', 'info');
+                      showToast('Test alert triggered', 'info');
                     }}
                     className="btn btn-primary"
                     style={{

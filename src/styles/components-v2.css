@@ -1088,7 +1088,7 @@ textarea.input {
   inset: 0;
   background: rgba(255,255,255,0.08);
   border-radius: 24px;
-  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: transform, opacity, background-color, border-color, color, box-shadow 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   border: 1px solid var(--border-glass);
 }
 
@@ -1106,7 +1106,7 @@ textarea.input {
   height: 18px;
   background: white;
   border-radius: 50%;
-  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: transform, opacity, background-color, border-color, color, box-shadow 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   box-shadow: var(--shadow-sm);
 }
 
@@ -1350,7 +1350,7 @@ textarea.input {
   border: 1.5px solid var(--border-glass);
   background: rgba(255, 255, 255, 0.01);
   color: var(--text-secondary);
-  transition: all var(--transition-normal);
+  transition: transform, opacity, background-color, border-color, color, box-shadow var(--transition-normal);
   cursor: pointer;
 }
 
@@ -1397,7 +1397,7 @@ textarea.input {
   border: 1.5px solid var(--border-glass);
   background: rgba(255, 255, 255, 0.01);
   color: var(--text-secondary);
-  transition: all var(--transition-fast);
+  transition: transform, opacity, background-color, border-color, color, box-shadow var(--transition-fast);
 }
 
 .split-tab-btn:hover {
@@ -1531,3 +1531,73 @@ textarea.input {
 
 
 
+
+/* ══════════════════════════════════════════════════
+   CONNECTION STRIP
+   A state, not an event: low-profile, persistent while true, and it leaves
+   by itself. Sits above everything so it is never the thing that scrolls
+   away at the moment it matters.
+   ══════════════════════════════════════════════════ */
+#connection-banner-host {
+  position: sticky;
+  top: 0;
+  z-index: 900;
+}
+
+#connection-banner-host[hidden] {
+  display: none;
+}
+
+.connection-strip {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  min-height: 40px;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--text-primary);
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-active);
+}
+
+.connection-strip .material-symbols-rounded {
+  font-size: 18px;
+  flex: 0 0 auto;
+}
+
+.connection-strip-text {
+  min-width: 0;
+}
+
+/* The tone is carried by the leading rail and the glyph, never by colour
+   alone — the sentence already says what is true. */
+.connection-strip--info {
+  box-shadow: inset 3px 0 0 var(--color-info);
+}
+.connection-strip--info .material-symbols-rounded {
+  color: var(--color-info);
+}
+
+.connection-strip--warn {
+  box-shadow: inset 3px 0 0 var(--color-warning);
+}
+.connection-strip--warn .material-symbols-rounded {
+  color: var(--color-warning);
+}
+
+.connection-strip--error {
+  box-shadow: inset 3px 0 0 var(--color-danger);
+}
+.connection-strip--error .material-symbols-rounded {
+  color: var(--color-danger);
+}
+
+/* On the storefront the strip sits on the warm ground, not the obsidian one. */
+.storefront-shell .connection-strip,
+.store-checkout-shell .connection-strip {
+  background: var(--store-panel);
+  color: #2b1a12;
+  border-bottom: 1px solid var(--store-line);
+}

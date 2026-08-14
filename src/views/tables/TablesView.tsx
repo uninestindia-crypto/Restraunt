@@ -58,7 +58,7 @@ export class TablesView {
         <div class="modal" style="max-width:360px;">
           <div class="modal-header">
             <h3>Add Table</h3>
-            <button class="btn-icon" id="tbl-close-icon"><span class="material-symbols-rounded">close</span></button>
+            <button class="btn-icon" id="tbl-close-icon" aria-label="Close"><span class="material-symbols-rounded">close</span></button>
           </div>
           <div class="modal-body" style="display:flex;flex-direction:column;gap:14px;">
             <div class="input-group">
@@ -101,7 +101,7 @@ export class TablesView {
       await tableService.addTable({ number, capacity, floorSection });
       document.getElementById('table-modal').style.display = 'none';
       playSound(900, 100); vibrateDevice([40]);
-      showToast('Table added!', 'success');
+      showToast('Table added', 'success');
       await this.loadTables();
     });
   }

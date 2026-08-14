@@ -26,12 +26,12 @@ function StaffManager() {
     owner: { label: 'Owner', color: 'var(--color-primary-on-surface)', icon: 'shield_person' },
     manager: { label: 'Manager', color: 'var(--nextgenos-purple-on-surface)', icon: 'manage_accounts' },
     cashier: { label: 'Cashier', color: 'var(--color-success-on-surface)', icon: 'point_of_sale' },
-    kitchen: { label: 'Kitchen', color: '#F59E0B', icon: 'restaurant' },
+    kitchen: { label: 'Kitchen', color: 'var(--color-warning)', icon: 'restaurant' },
     waiter: { label: 'Waiter', color: 'var(--color-info)', icon: 'room_service' },
-    delivery: { label: 'Delivery', color: '#06B6D4', icon: 'delivery_dining' },
+    delivery: { label: 'Delivery', color: 'var(--role-delivery)', icon: 'delivery_dining' },
     // Reaches the Express Panel and the Help Center, and nothing else — in the
     // router, in the sidebar, and in the database's own policies.
-    temporary_staff: { label: 'Express Only', color: '#E11D48', icon: 'bolt' },
+    temporary_staff: { label: 'Express Only', color: 'var(--role-express)', icon: 'bolt' },
   };
 
   const routes = [
@@ -382,7 +382,7 @@ function AdminConsoleShell({ app }) {
                   display: 'inline-flex',
                   alignItems: 'center',
                   background: isActive ? 'var(--gradient-primary)' : 'var(--bg-surface)',
-                  color: isActive ? '#ffffff' : 'var(--text-primary)',
+                  color: isActive ? 'var(--text-on-fill)' : 'var(--text-primary)',
                   border: isActive ? '1px solid transparent' : '1px solid var(--border-color)',
                   padding: '10px 20px',
                   borderRadius: 'var(--radius-md)',
@@ -394,7 +394,7 @@ function AdminConsoleShell({ app }) {
                   transform: isActive ? 'scale(1.02)' : 'none',
                 }}
               >
-                <span className="material-symbols-rounded" style={{ fontSize: '18px', marginRight: '6px', color: isActive ? '#ffffff' : 'var(--text-secondary)' }}>{tab.icon}</span>
+                <span className="material-symbols-rounded" style={{ fontSize: '18px', marginRight: '6px', color: isActive ? 'var(--text-on-fill)' : 'var(--text-secondary)' }}>{tab.icon}</span>
                 {tab.label}
               </button>
             );
@@ -418,7 +418,7 @@ function AdminConsoleShell({ app }) {
           }}
           onMouseEnter={(e) => {
             e.currentTarget.style.background = 'var(--color-danger)';
-            e.currentTarget.style.color = '#ffffff';
+            e.currentTarget.style.color = 'var(--text-on-fill)';
             e.currentTarget.style.borderColor = 'transparent';
             e.currentTarget.style.boxShadow = '0 0 12px rgba(var(--color-danger-rgb), 0.25)';
           }}

@@ -195,8 +195,8 @@ export class CustomerLoginScreen {
             justify-content: space-between;
             width: 45%;
             padding: 56px 48px;
-            background: linear-gradient(135deg, #0F172A 0%, #020617 100%);
-            color: #FFFFFF;
+            background: linear-gradient(135deg, var(--chart-ink) 0%, var(--chart-ink-deep) 100%);
+            color: var(--text-on-fill);
             position: relative;
             overflow: hidden;
             border-right: 1px solid var(--border-color);
@@ -261,7 +261,7 @@ export class CustomerLoginScreen {
           font-family: var(--font-display);
           font-size: 2.25rem;
           font-weight: 800;
-          background: linear-gradient(135deg, #FFFFFF 0%, #E2E8F0 100%);
+          background: linear-gradient(135deg, var(--text-on-fill) 0%, var(--chart-mist) 100%);
           -webkit-background-clip: text;
           -webkit-text-fill-color: transparent;
           background-clip: text;
@@ -270,7 +270,7 @@ export class CustomerLoginScreen {
         }
         .brand-panel-tagline {
           font-size: 0.8rem;
-          color: #94A3B8;
+          color: var(--text-secondary);
           text-transform: uppercase;
           font-weight: 700;
           letter-spacing: 0.08em;
@@ -309,11 +309,11 @@ export class CustomerLoginScreen {
         .feature-title {
           font-size: 0.95rem;
           font-weight: 700;
-          color: #FFFFFF;
+          color: var(--text-on-fill);
         }
         .feature-desc {
           font-size: 0.8125rem;
-          color: #94A3B8;
+          color: var(--text-secondary);
           line-height: 1.45;
         }
         
@@ -323,7 +323,7 @@ export class CustomerLoginScreen {
           display: flex;
           justify-content: space-between;
           font-size: 0.72rem;
-          color: #64748B;
+          color: var(--chart-slate-light);
           border-top: 1px solid rgba(255, 255, 255, 0.05);
           padding-top: 16px;
           margin-top: 24px;
@@ -351,7 +351,7 @@ export class CustomerLoginScreen {
           -webkit-backdrop-filter: var(--glass-backdrop-filter);
           box-shadow: var(--shadow-xl);
           position: relative;
-          animation: loginSlideUp var(--transition-normal) ease;
+          animation: loginSlideUp var(--transition-normal);
         }
         
         @keyframes loginSlideUp {
@@ -376,7 +376,7 @@ export class CustomerLoginScreen {
           color: var(--text-secondary) !important;
           background: var(--bg-secondary) !important;
           cursor: pointer;
-          transition: all var(--transition-fast) ease;
+          transition: transform, opacity, background-color, border-color, color, box-shadow var(--transition-fast);
         }
         .home-nav-btn:hover {
           color: var(--text-primary) !important;
@@ -393,7 +393,7 @@ export class CustomerLoginScreen {
           width: 64px;
           height: 64px;
           border-radius: var(--radius-md);
-          background: #FFFFFF;
+          background: var(--text-on-fill);
           display: inline-flex;
           align-items: center;
           justify-content: center;
@@ -471,7 +471,7 @@ export class CustomerLoginScreen {
           color: var(--text-primary);
           font-size: var(--text-sm);
           font-family: var(--font-sans);
-          transition: all var(--transition-fast) ease;
+          transition: transform, opacity, background-color, border-color, color, box-shadow var(--transition-fast);
         }
         
         .login-input:focus {
@@ -498,7 +498,7 @@ export class CustomerLoginScreen {
           text-align: center;
           margin: 16px 0 0;
           cursor: pointer;
-          transition: opacity var(--transition-fast) ease;
+          transition: opacity var(--transition-fast);
         }
         .login-toggle-link:hover {
           opacity: 0.8;
@@ -601,7 +601,7 @@ export class CustomerLoginScreen {
       if (staff) {
         playSound(900, 100);
         vibrateDevice([40, 20, 40]);
-        showToast(`Welcome to The Taste, ${staff.name}!`, 'success');
+        showToast(`Welcome to The Taste, ${staff.name}`, 'success');
         this.destroy();
         if (this.onLoginSuccess) this.onLoginSuccess(staff);
       } else {
@@ -668,7 +668,7 @@ export class CustomerLoginScreen {
           }
         }
 
-        showToast(`Registration successful! Welcome to The Taste, ${name}!`, 'success');
+        showToast(`Registration successful. Welcome to The Taste, ${name}`, 'success');
         this.destroy();
         if (this.onLoginSuccess) this.onLoginSuccess(staff);
       } else {

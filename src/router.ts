@@ -208,7 +208,7 @@ export class Router {
         this.container.innerHTML = `
           <div class="empty-state" style="height: 80vh;">
             <span class="material-symbols-rounded">error</span>
-            <p>Something went wrong loading this page.</p>
+            <p>This screen could not finish loading. Nothing you had open was lost.</p>
             <button class="btn btn-primary" id="route-error-home" style="margin-top: 16px;">
               Go to POS
             </button>

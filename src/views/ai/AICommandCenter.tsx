@@ -64,7 +64,7 @@ export class AICommandCenter {
         <!-- Header -->
         <div style="display:flex;align-items:center;gap:12px;padding:16px 24px;background:var(--glass-bg);backdrop-filter:blur(20px);border-bottom:1px solid var(--border-glass);z-index:10;">
           <div style="width:40px;height:40px;border-radius:12px;background:rgba(108,92,231,0.1);border:1px solid rgba(108,92,231,0.25);display:flex;align-items:center;justify-content:center;">
-            <span class="material-symbols-rounded" style="font-size:22px;color:#A29BFE;filter:drop-shadow(0 0 6px rgba(108,92,231,0.4));">smart_toy</span>
+            <span class="material-symbols-rounded" style="font-size:22px;color:var(--nextgenos-lilac);filter:drop-shadow(0 0 6px rgba(108,92,231,0.4));">smart_toy</span>
           </div>
           <div>
             <h2 style="font-family:'Plus Jakarta Sans',sans-serif;font-size:var(--text-lg);font-weight:800;color:var(--text-primary);letter-spacing:-0.02em;margin:0;">AI Command Center</h2>
@@ -86,7 +86,7 @@ export class AICommandCenter {
         <div style="padding:16px 24px;background:rgba(17,17,30,0.95);backdrop-filter:blur(16px);border-top:1px solid var(--border-glass);">
           <div style="display:flex;gap:10px;max-width:800px;margin:0 auto;">
             <input type="text" id="ai-input" placeholder="Ask anything about your business..." style="flex:1;padding:12px 16px;background:rgba(255,255,255,0.03);border:1px solid var(--border-glass);border-radius:12px;color:var(--text-primary);font-size:var(--text-sm);font-family:'Inter',sans-serif;outline:none;transition:border-color 0.2s;">
-            <button id="ai-send" style="width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,#6C5CE7,#A29BFE);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform 0.15s,box-shadow 0.2s;box-shadow:0 4px 15px rgba(108,92,231,0.3);flex-shrink:0;">
+            <button id="ai-send" aria-label="Send message" style="width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,var(--role-manager),var(--nextgenos-lilac));border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform 0.15s,box-shadow 0.2s;box-shadow:0 4px 15px rgba(108,92,231,0.3);flex-shrink:0;">
               <span class="material-symbols-rounded" style="font-size:20px;color:white;">send</span>
             </button>
           </div>
@@ -119,7 +119,7 @@ export class AICommandCenter {
     const div = document.createElement('div');
     div.style.cssText = 'display:flex;justify-content:flex-end;animation:slideUp 0.3s ease;';
     div.innerHTML = `
-      <div style="max-width:75%;padding:12px 16px;background:linear-gradient(135deg,var(--color-primary),#FF8960);border-radius:16px 16px 4px 16px;color:white;font-size:var(--text-sm);font-weight:500;line-height:1.5;box-shadow:0 4px 15px rgba(255,107,53,0.2);">${this.escapeHtml(text)}</div>
+      <div style="max-width:75%;padding:12px 16px;background:linear-gradient(135deg,var(--color-primary),var(--color-primary-on-surface));border-radius:16px 16px 4px 16px;color:white;font-size:var(--text-sm);font-weight:500;line-height:1.5;box-shadow:0 4px 15px rgba(255,107,53,0.2);">${this.escapeHtml(text)}</div>
     `;
     container.appendChild(div);
     this.scrollToBottom();
@@ -138,7 +138,7 @@ export class AICommandCenter {
 
     const chipsHTML = suggestions.length > 0 ? `
       <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;">
-        ${suggestions.map(s => `<button class="ai-chip" style="padding:6px 14px;border-radius:20px;background:rgba(108,92,231,0.08);border:1px solid rgba(108,92,231,0.2);color:#A29BFE;font-size:0.75rem;font-weight:600;cursor:pointer;transition:all 0.2s;font-family:'Inter',sans-serif;">${this.escapeHtml(s)}</button>`).join('')}
+        ${suggestions.map(s => `<button class="ai-chip" style="padding:6px 14px;border-radius:20px;background:rgba(108,92,231,0.08);border:1px solid rgba(108,92,231,0.2);color:var(--nextgenos-lilac);font-size:0.75rem;font-weight:600;cursor:pointer;transition: transform, opacity, background-color, border-color, color, box-shadow 0.2s;font-family:'Inter',sans-serif;">${this.escapeHtml(s)}</button>`).join('')}
       </div>
     ` : '';
 
@@ -187,9 +187,9 @@ export class AICommandCenter {
     div.style.cssText = 'display:flex;justify-content:flex-start;animation:slideUp 0.3s ease;';
     div.innerHTML = `
       <div style="padding:12px 18px;background:rgba(255,255,255,0.02);border:1px solid var(--border-glass);border-radius:4px 16px 16px 16px;display:flex;gap:5px;align-items:center;">
-        <span style="width:7px;height:7px;border-radius:50%;background:#A29BFE;animation:bounce 1.4s infinite;animation-delay:0s;opacity:0.7;"></span>
-        <span style="width:7px;height:7px;border-radius:50%;background:#A29BFE;animation:bounce 1.4s infinite;animation-delay:0.2s;opacity:0.7;"></span>
-        <span style="width:7px;height:7px;border-radius:50%;background:#A29BFE;animation:bounce 1.4s infinite;animation-delay:0.4s;opacity:0.7;"></span>
+        <span style="width:7px;height:7px;border-radius:50%;background:var(--nextgenos-lilac);animation:bounce 1.4s infinite;animation-delay:0s;opacity:0.7;"></span>
+        <span style="width:7px;height:7px;border-radius:50%;background:var(--nextgenos-lilac);animation:bounce 1.4s infinite;animation-delay:0.2s;opacity:0.7;"></span>
+        <span style="width:7px;height:7px;border-radius:50%;background:var(--nextgenos-lilac);animation:bounce 1.4s infinite;animation-delay:0.4s;opacity:0.7;"></span>
       </div>
     `;
     container.appendChild(div);

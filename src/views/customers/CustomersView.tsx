@@ -13,10 +13,10 @@ import { ensureFresh } from '../../services/cloudDb';
 import { escapeHtml, formatCurrency, showToast, playSound, vibrateDevice } from '../../utils/helpers';
 
 const TIERS = {
-  bronze: { label: 'Bronze', icon: '🥉', color: '#CD7F32', min: 0 },
-  silver: { label: 'Silver', icon: '🥈', color: '#C0C0C0', min: 500 },
-  gold: { label: 'Gold', icon: '🥇', color: '#FFD700', min: 2000 },
-  platinum: { label: 'Platinum', icon: '💎', color: '#E5E4E2', min: 5000 },
+  bronze: { label: 'Bronze', icon: '🥉', color: 'var(--tier-bronze-alt)', min: 0 },
+  silver: { label: 'Silver', icon: '🥈', color: 'var(--tier-silver-alt)', min: 500 },
+  gold: { label: 'Gold', icon: '🥇', color: 'var(--alert-gold)', min: 2000 },
+  platinum: { label: 'Platinum', icon: '💎', color: 'var(--tier-platinum)', min: 5000 },
 };
 
 export class CustomersView {
@@ -58,7 +58,7 @@ export class CustomersView {
         <div class="modal" style="max-width:400px;">
           <div class="modal-header">
             <h3>Add Customer</h3>
-            <button class="btn-icon" id="cust-close-icon"><span class="material-symbols-rounded">close</span></button>
+            <button class="btn-icon" id="cust-close-icon" aria-label="Close"><span class="material-symbols-rounded">close</span></button>
           </div>
           <div class="modal-body" style="display:flex;flex-direction:column;gap:14px;">
             <div class="input-group">
@@ -109,7 +109,7 @@ export class CustomersView {
       (document.getElementById('cust-birthday') as HTMLInputElement).value = '';
       playSound(900, 100);
       vibrateDevice([40]);
-      showToast('Customer added!', 'success');
+      showToast('Customer added', 'success');
       await this.loadCustomers();
     });
     document.getElementById('customer-search').addEventListener('input', async (e) => {
@@ -138,8 +138,8 @@ export class CustomersView {
       kpis.innerHTML = [
         { label: 'TOTAL', value: customers.length, color: 'var(--text-primary)' },
         { label: 'ACTIVE (30d)', value: active, color: 'var(--color-success-on-surface)' },
-        { label: 'AVG POINTS', value: avgPoints, color: '#A29BFE' },
-        { label: 'GOLD+', value: topTier, color: '#FFD700' },
+        { label: 'AVG POINTS', value: avgPoints, color: 'var(--nextgenos-lilac)' },
+        { label: 'GOLD+', value: topTier, color: 'var(--alert-gold)' },
       ].map(k => `
         <div class="stats-card">
           <div class="stats-card-label">${k.label}</div>

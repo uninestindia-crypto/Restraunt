@@ -64,7 +64,7 @@ function HelpCenterComponent() {
             <h2>Kitchen Screen Workflow</h2>
             <p>The Kitchen Screen updates instantly as orders are placed. Kitchen staff can see pending tickets grouped by time elapsed:</p>
             <ul>
-              <li><strong>Pending orders</strong> arrive as active cards with color-coded order type badges (Dine In is <span style={{ color: '#60A5FA', fontWeight: 700 }}>Blue</span>, Takeaway is <span style={{ color: '#FFA200', fontWeight: 700 }}>Orange</span>).</li>
+              <li><strong>Pending orders</strong> arrive as active cards with color-coded order type badges (Dine In is <span style={{ color: 'var(--chart-blue)', fontWeight: 700 }}>Blue</span>, Takeaway is <span style={{ color: 'var(--alert-amber)', fontWeight: 700 }}>Orange</span>).</li>
               <li>Tap <strong>"Start Preparing"</strong> to update the ticket status. The card shifts to the Active column, signaling POS that work has started.</li>
               <li>Once ready, tap <strong>"Ready for Pickup"</strong> (or "Deliver"). This notifies waitstaff or dispatch instantly.</li>
             </ul>
@@ -100,10 +100,10 @@ function HelpCenterComponent() {
             <h2>Order Status Lifecycle</h2>
             <p>Every order moves sequentially through these states:</p>
             <div style={{ display: 'flex', gap: '8px', margin: '16px 0', fontSize: '11px', justifyContent: 'space-between', flexWrap: 'wrap' }}>
-              <span style={{ background: 'rgba(var(--color-danger-rgb), 0.1)', border: '1px solid rgba(var(--color-danger-rgb),0.2)', padding: '6px 10px', borderRadius: '4px', color: '#EF4444', fontWeight: 700 }}>1. PENDING (Unpaid/Self)</span>
-              <span style={{ background: 'rgba(var(--color-warning-rgb), 0.1)', border: '1px solid rgba(var(--color-warning-rgb),0.2)', padding: '6px 10px', borderRadius: '4px', color: '#F59E0B', fontWeight: 700 }}>2. PREPARING</span>
+              <span style={{ background: 'rgba(var(--color-danger-rgb), 0.1)', border: '1px solid rgba(var(--color-danger-rgb),0.2)', padding: '6px 10px', borderRadius: '4px', color: 'var(--color-danger)', fontWeight: 700 }}>1. PENDING (Unpaid/Self)</span>
+              <span style={{ background: 'rgba(var(--color-warning-rgb), 0.1)', border: '1px solid rgba(var(--color-warning-rgb),0.2)', padding: '6px 10px', borderRadius: '4px', color: 'var(--color-warning)', fontWeight: 700 }}>2. PREPARING</span>
               <span style={{ background: 'rgba(var(--color-success-rgb), 0.1)', border: '1px solid rgba(var(--color-success-rgb),0.2)', padding: '6px 10px', borderRadius: '4px', color: 'var(--color-success-on-surface)', fontWeight: 700 }}>3. READY</span>
-              <span style={{ background: 'rgba(99, 102, 241, 0.1)', border: '1px solid rgba(99,102,241,0.2)', padding: '6px 10px', borderRadius: '4px', color: '#6366F1', fontWeight: 700 }}>4. COMPLETED / PAID</span>
+              <span style={{ background: 'rgba(99, 102, 241, 0.1)', border: '1px solid rgba(99,102,241,0.2)', padding: '6px 10px', borderRadius: '4px', color: 'var(--panel-indigo)', fontWeight: 700 }}>4. COMPLETED / PAID</span>
             </div>
           </div>
         );
@@ -174,8 +174,8 @@ function HelpCenterComponent() {
               <strong>💡 Sync Status Dot</strong>
               Monitor the cloud icon in the header:
               <br />• <span style={{ color: 'var(--color-success-on-surface)', fontWeight: 700 }}>Green (Cloud Active):</span> Network online, database in sync.
-              <br />• <span style={{ color: '#F59E0B', fontWeight: 700 }}>Orange (Syncing):</span> Pushing offline logs.
-              <br />• <span style={{ color: '#EF4444', fontWeight: 700 }}>Red (Offline):</span> Running on local storage database.
+              <br />• <span style={{ color: 'var(--color-warning)', fontWeight: 700 }}>Orange (Syncing):</span> Pushing offline logs.
+              <br />• <span style={{ color: 'var(--color-danger)', fontWeight: 700 }}>Red (Offline):</span> Running on local storage database.
             </div>
           </div>
         );
@@ -354,7 +354,7 @@ function HelpCenterComponent() {
           font-weight: 600;
           text-align: left;
           cursor: pointer;
-          transition: all var(--transition-fast);
+          transition: transform, opacity, background-color, border-color, color, box-shadow var(--transition-fast);
         }
         .help-nav-btn span {
           font-size: 20px;

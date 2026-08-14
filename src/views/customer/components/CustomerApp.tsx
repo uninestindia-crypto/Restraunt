@@ -253,7 +253,7 @@ export function CustomerApp({ app }) {
     setDeliveryCoordinates({ latitude: suggestion.lat, longitude: suggestion.lon });
     setAddressSuggestions([]);
     playSound(700, 80);
-    showToast('Delivery address selected!', 'success');
+    showToast('Delivery address selected', 'success');
   };
 
   /**
@@ -330,6 +330,20 @@ export function CustomerApp({ app }) {
     setCustomerPhone(current => current || remembered.phone);
     setCustomerName(current => current || remembered.name);
   }, [loggedInCustomer]);
+
+  // A guest on cellular is the normal case, not the edge case. When the menu on
+  // screen is remembered rather than live, or an order is queued, say so — the
+  // strip removes itself the moment that stops being true.
+  useEffect(() => {
+    let dispose: (() => void) | undefined;
+    import('../../../components/ConnectionBanner')
+      .then(({ mountConnectionBanner, unmountConnectionBanner }) => {
+        mountConnectionBanner(document.body);
+        dispose = unmountConnectionBanner;
+      })
+      .catch(() => {});
+    return () => dispose?.();
+  }, []);
 
   useEffect(() => {
     loadCustomerInsights();
@@ -581,7 +595,7 @@ export function CustomerApp({ app }) {
 
     playSound(900, 100);
     vibrateDevice([40, 20, 40]);
-    showToast(`${item.name} added to cart!`, 'success');
+    showToast(`${item.name} added to cart`, 'success');
     setActiveDetailItem(null);
   };
 
@@ -1084,7 +1098,7 @@ export function CustomerApp({ app }) {
             {!loggedInCustomer ? (
               <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', background: 'rgba(212,175,55,0.04)', border: '1px solid rgba(212,175,55,0.12)', padding: '10px 14px', borderRadius: 'var(--radius-md)', marginBottom: '14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px' }}>
                 <span>🔒 Sign in to autofill details and earn points!</span>
-                <button className="btn btn-secondary btn-sm" onClick={handleShowLogin} type="button" style={{ padding: '4px 10px', fontSize: '0.7rem', borderColor: '#D4AF37', color: '#D4AF37', fontWeight: 700, flexShrink: 0 }}>Sign In</button>
+                <button className="btn btn-secondary btn-sm" onClick={handleShowLogin} type="button" style={{ padding: '4px 10px', fontSize: '0.7rem', borderColor: 'var(--tier-gold)', color: 'var(--tier-gold)', fontWeight: 700, flexShrink: 0 }}>Sign In</button>
               </div>
             ) : null}
 

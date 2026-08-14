@@ -123,7 +123,7 @@ export function ItemDetailDrawer({ item, categories, addons = [], onClose, onAdd
                     onChange={() => setSpicyLevel('Mild')} 
                   />
                   <span className="aether-spicy-card">
-                    <span className="material-symbols-rounded" style={{ color: '#10B981' }}>nature</span>
+                    <span className="material-symbols-rounded" style={{ color: 'var(--color-success)' }}>nature</span>
                     <strong>Mild</strong>
                     <small>Default prep</small>
                   </span>
@@ -137,7 +137,7 @@ export function ItemDetailDrawer({ item, categories, addons = [], onClose, onAdd
                     onChange={() => setSpicyLevel('Hot')} 
                   />
                   <span className="aether-spicy-card">
-                    <span className="material-symbols-rounded" style={{ color: '#F59E0B' }}>local_fire_department</span>
+                    <span className="material-symbols-rounded" style={{ color: 'var(--color-warning)' }}>local_fire_department</span>
                     <strong>Hot</strong>
                     <small>Chef spicy</small>
                   </span>
@@ -151,7 +151,7 @@ export function ItemDetailDrawer({ item, categories, addons = [], onClose, onAdd
                     onChange={() => setSpicyLevel('Volcanic')} 
                   />
                   <span className="aether-spicy-card">
-                    <span className="material-symbols-rounded" style={{ color: '#EF4444' }}>volcano</span>
+                    <span className="material-symbols-rounded" style={{ color: 'var(--color-danger)' }}>volcano</span>
                     <strong>Volcanic</strong>
                     <small>Extra high heat</small>
                   </span>

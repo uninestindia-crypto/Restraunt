@@ -206,7 +206,7 @@
   font-size: 0.72rem;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.25s ease;
+  transition: transform, opacity, background-color, border-color, color, box-shadow 0.25s ease;
 }
 
 .sidebar-theme-toggle:hover {

@@ -204,7 +204,7 @@ export class KitchenView {
           to { transform: scale(1); opacity: 1; }
         }
         .prep-modal-card {
-          background: #12121a;
+          background: var(--panel-ink);
           border: 1px solid var(--border-glass);
           box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 40px rgba(var(--color-primary-rgb), 0.15);
           border-radius: var(--radius-xl);
@@ -301,7 +301,7 @@ export class KitchenView {
           color: var(--text-primary);
           border-radius: var(--radius-md);
           cursor: pointer;
-          transition: all var(--transition-fast);
+          transition: transform, opacity, background-color, border-color, color, box-shadow var(--transition-fast);
         `;
         
         btn.onmouseenter = () => {
@@ -342,7 +342,7 @@ export class KitchenView {
         border-radius: var(--radius-md);
         cursor: pointer;
         margin-top: 8px;
-        transition: all var(--transition-fast);
+        transition: transform, opacity, background-color, border-color, color, box-shadow var(--transition-fast);
       `;
       cancelBtn.onmouseenter = () => {
         cancelBtn.style.color = 'var(--text-primary)';
@@ -452,7 +452,7 @@ export class KitchenView {
         channel: newestOrder?.channel,
         source: newestOrder?.source,
       });
-      showToast('New Order Received!', 'warning');
+      showToast('New Order Received', 'warning');
     }
 
     sortedOrders.forEach(order => {
@@ -516,12 +516,12 @@ export class KitchenView {
       flex-direction: column;
       gap: 16px;
       position: relative;
-      transition: all var(--transition-normal);
+      transition: transform, opacity, background-color, border-color, color, box-shadow var(--transition-normal);
     `;
     
     if (order.status !== 'ready') {
       if (elapsedMinutes >= 15) {
-        ageColor = '#EF4444';
+        ageColor = 'var(--color-danger)';
         cardStyle = `
           padding: 20px;
           background: rgba(var(--color-danger-rgb), 0.02);
@@ -533,10 +533,10 @@ export class KitchenView {
           position: relative;
           box-shadow: 0 0 20px rgba(var(--color-danger-rgb), 0.15), inset 0 0 12px rgba(var(--color-danger-rgb), 0.05);
           animation: pulseRed 2s infinite ease-in-out;
-          transition: all var(--transition-normal);
+          transition: transform, opacity, background-color, border-color, color, box-shadow var(--transition-normal);
         `;
       } else if (elapsedMinutes >= 8) {
-        ageColor = '#F59E0B';
+        ageColor = 'var(--color-warning)';
         cardStyle = `
           padding: 20px;
           background: rgba(var(--color-warning-rgb), 0.01);
@@ -547,7 +547,7 @@ export class KitchenView {
           gap: 16px;
           position: relative;
           box-shadow: 0 8px 24px rgba(var(--color-warning-rgb), 0.1);
-          transition: all var(--transition-normal);
+          transition: transform, opacity, background-color, border-color, color, box-shadow var(--transition-normal);
         `;
       }
     }
@@ -569,7 +569,7 @@ export class KitchenView {
           position: relative;
           box-shadow: 0 0 20px rgba(var(--color-danger-rgb), 0.2), inset 0 0 12px rgba(var(--color-danger-rgb), 0.05);
           animation: pulseRed 2s infinite ease-in-out;
-          transition: all var(--transition-normal);
+          transition: transform, opacity, background-color, border-color, color, box-shadow var(--transition-normal);
         `;
       }
     }
@@ -589,7 +589,7 @@ export class KitchenView {
               <span style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 800; color: var(--color-primary-on-surface); font-size: 1.1rem; line-height: 1;">${Math.max(1, Number(item.quantity) || 1)}x</span>
               <span style="color: var(--text-primary); font-weight: 600; font-size: 0.95rem;">${escapeHtml(item.itemName || item.name || 'Item')}</span>
             </div>
-            ${item.notes ? `<div style="font-size: var(--text-xs); color: #FF8960; font-weight: 500; font-style: italic; margin-left: 28px; margin-top: 4px; display: flex; align-items: center; gap: 4px;">
+            ${item.notes ? `<div style="font-size: var(--text-xs); color: var(--color-primary-on-surface); font-weight: 500; font-style: italic; margin-left: 28px; margin-top: 4px; display: flex; align-items: center; gap: 4px;">
               <span class="material-symbols-rounded" style="font-size: 12px;">notes</span>
               ${escapeHtml(item.notes)}
             </div>` : ''}
@@ -619,7 +619,7 @@ export class KitchenView {
       actionBtnHtml = `
         <button class="btn action-btn" data-action="ready" data-id="${orderId}" style="
           color: white; 
-          background: linear-gradient(135deg, var(--color-warning) 0%, #D97706 100%);
+          background: linear-gradient(135deg, var(--color-warning) 0%, var(--chart-amber-deep) 100%);
           border: none;
           box-shadow: 0 4px 15px rgba(var(--color-warning-rgb), 0.35);
           font-family: 'Plus Jakarta Sans', sans-serif;
@@ -633,7 +633,7 @@ export class KitchenView {
           gap: 6px;
           cursor: pointer;
           font-size: var(--text-xs);
-          transition: all var(--transition-fast);
+          transition: transform, opacity, background-color, border-color, color, box-shadow var(--transition-fast);
         ">
           <span class="material-symbols-rounded" style="font-size: 18px;">check_circle</span>
           Food Ready
@@ -645,7 +645,7 @@ export class KitchenView {
       actionBtnHtml = `
         <button class="btn action-btn" data-action="${action}" data-id="${orderId}" style="
           color: white; 
-          background: linear-gradient(135deg, var(--color-success) 0%, #059669 100%);
+          background: linear-gradient(135deg, var(--color-success) 0%, var(--chart-green-deep) 100%);
           border: none;
           box-shadow: 0 4px 15px rgba(var(--color-success-rgb), 0.35);
           font-family: 'Plus Jakarta Sans', sans-serif;
@@ -659,7 +659,7 @@ export class KitchenView {
           gap: 6px;
           cursor: ${order.type === 'delivery' ? 'default' : 'pointer'};
           font-size: var(--text-xs);
-          transition: all var(--transition-fast);
+          transition: transform, opacity, background-color, border-color, color, box-shadow var(--transition-fast);
         ">
           <span class="material-symbols-rounded" style="font-size: 18px;">done_all</span>
           ${label}
@@ -733,7 +733,7 @@ export class KitchenView {
           margin-bottom: 4px;
           ${isOverdue ? `
             background: rgba(var(--color-danger-rgb), 0.15);
-            color: #FF6B6B;
+            color: var(--alert-red-soft);
             border: 1px solid rgba(var(--color-danger-rgb), 0.3);
             box-shadow: 0 0 10px rgba(var(--color-danger-rgb), 0.2);
             animation: pulseGlowRed 1.5s infinite;

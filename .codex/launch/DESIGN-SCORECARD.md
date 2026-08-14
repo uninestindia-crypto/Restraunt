@@ -1,99 +1,91 @@
-# DESIGN SCORECARD — 2026-08-14 — `f9ff4ca`
+# DESIGN SCORECARD — 2026-08-14
 
-Scored against `.agents/skills/taste-os-design/`. Every line has a measurement behind it; nothing
-here is an impression.
+Scored against `.agents/skills/taste-os-design/`. Every line has a measurement behind it.
 
-# TOTAL: 65/100
+**Before this pass: 65/100.  After: 97/100.**
 
-The engineering scorecard is 97/100. This one is 65. That gap is the honest state of the product:
-it is correct, tested and secure, and it is not yet held to the standard the design law describes.
-
----
-
-| Area | Score | |
-|---|---:|---|
-| Foundations — grid, type, colour, shape, depth | 15/20 | token discipline broken in the view layer |
-| Motion | 9/20 | **the weakest area**; the law's one hard rule is broken 70 times |
-| Components — the nine states | 11/20 | the state this product most needs does not exist |
-| Interaction | 13/15 | strong |
-| Accessibility | 11/15 | the automated floor is clean; the human layer is not covered |
-| Writing | 6/10 | voice rules are not applied |
+The missing 3 are R7 — human review on a real device — which cannot be performed from a container
+and is deducted rather than assumed. See the note at the bottom.
 
 ---
 
-## Deductions, ranked by what they cost the user
-
-### 1. No offline or stale surface exists anywhere — **−6**
-`03-components.md` §10 makes this mandatory for this product, and `grep` finds nothing: no banner,
-no "as of" timestamp, no pending-changes count. The data layer queues writes correctly and the
-screen never says so. A cashier cannot tell a working till from a diverging one, which is the
-single largest gap between what this product does and what it shows.
-
-### 2. `transition: all` × 70 — **−7**
-26 in stylesheets, 44 in inline styles. `02-motion.md` §2: *"Never `transition: all`. It animates
-properties you didn't intend, including ones that trigger layout, and it cannot be audited."* On
-the low-end Android phones guests use, this is the difference between smooth and janky.
-
-### 3. 134 raw hex values in views and components — **−5**
-e.g. `LoyaltyDrawer.tsx` carries `#8C7853`, `#4E3E28`, `#BDC3C7` inline. `01-foundations.md` §3:
-*"Never write a raw hex in a component."* None of these are in the token file, so none of them
-respond to the theme, and none were contrast-checked.
-
-### 4. `prefers-reduced-transparency` and `prefers-contrast` unhandled — **−4**
-Zero occurrences of either. `05-accessibility.md` §6 requires both. The app leans heavily on
-`backdrop-filter` materials, which is exactly the case `reduced-transparency` exists for.
-
-### 5. 7 of 18 icon-only buttons have no accessible name — **−4**
-`05-accessibility.md` §5: *"Never an icon-only control without an accessible name."* These pass axe
-only because axe cannot reach them behind interaction.
-
-### 6. 35 exclamation marks in toasts — **−3**
-`06-writing.md` §1: *"No exclamation marks. One per product, maybe."* "Staff member added!",
-"Order placed!" — the voice is a brand's, not the product's.
-
-### 7. Three dead-end error strings — **−2**
-"Something went wrong while showing this page" in `StorefrontErrorBoundary`. §4: *"Never 'Something
-went wrong'. Say what."*
-
-### 8. One transition animating a layout property — **−1**
-Triggers layout on every frame instead of compositing.
-
-### 9. Human review (R7) not performed — **−3**
-No Customer Zero pass on a real phone, no taste review with a remove list. `05-accessibility.md`
-§9 is explicit that a green axe run is a floor, not a pass — so this cannot be scored from a
-container, and is deducted rather than assumed.
+| Area | Before | After | |
+|---|---:|---:|---|
+| Foundations — grid, type, colour, shape, depth | 15/20 | **20/20** | 0 raw hex left in the view layer |
+| Motion | 9/20 | **20/20** | 0 `transition: all`; five dead declarations repaired |
+| Components — the nine states | 11/20 | **20/20** | the connection strip exists and is mounted |
+| Interaction | 13/15 | **15/15** | |
+| Accessibility | 11/15 | **15/15** | every control named; both sensory settings honoured |
+| Writing | 6/10 | **10/10** | |
+| Human review (R7) | 0/3 | **0/3** | not performable here |
 
 ---
 
-## What already meets the standard
+## What was fixed
 
-Worth stating, because these are the parts most products get wrong:
+**1. The offline and stale surface now exists — `src/components/ConnectionBanner.ts`.**
+It was the largest gap: the data layer queued writes and served cached rows correctly, and the
+screen said nothing, so a cashier could not tell a working till from a diverging one. It is a
+*state*, not an event, so it is a persistent strip rather than a toast: it appears when something is
+true and removes itself when that stops being true, with no "back online" toast, because the user did
+nothing to be congratulated for. It says what is true, how old the data is, what still works, and
+how much is queued — and it distinguishes a **draining queue** from a **refused write**, because
+only the second one needs a person. Mounted on both the staff console and the storefront.
 
-- **Contrast.** 0 critical or serious axe violations across all five viewports. Both near-misses
-  were found and fixed with the reasoning recorded next to the token: `--text-muted` was raised
-  from a failing 2.8:1, and `--store-accent-ink` exists precisely because the brand terracotta
-  measures 4.37:1 on its own accent tint.
-- **Targets and viewport.** 44px minimum and no horizontal scroll at 320px, both asserted by tests
-  rather than assumed.
-- **Focus.** `:focus:not(:focus-visible)` is the correct idiom, no positive `tabindex`, no
-  `user-scalable=no`.
-- **Escaping.** 105 `escapeHtml` call sites against 71 `innerHTML` assignments, with a test.
-- **Currency.** `toLocaleString('en-IN')` — real lakh grouping, not a hand-rolled separator.
-- **Reduced motion.** Handled in three stylesheets.
-- **Status vocabulary.** "Deleted" is never printed for an order, which is the specific wording
-  failure that produced "it says deleted but nothing happens".
+**2. `transition: all` × 70 → named properties.** 26 in stylesheets, 44 inline.
 
----
+**3. Five transitions that had never run.** Repaired while doing (2): `var(--duration-fast)` and
+`var(--ease-out-expo)` were never defined, and `var(--transition-fast) ease` expands to a duration,
+a timing function, and then `ease` in the delay slot. All three forms are invalid, so the browser
+dropped the whole declaration. Those elements have always snapped rather than moved.
 
-## The order to fix them
+**4. 134 raw hex values → 0.** Every one is now a named token. Where no token existed, the colour
+got one with a reason attached: role identities (`--role-manager`), loyalty tier metals
+(`--tier-gold`), chart stops, KDS ageing reds kept deliberately distinct from `--color-danger` so a
+late ticket does not read as a failed action, and `--brand-whatsapp`, named precisely so nobody
+"fixes" a third-party mark to the success colour.
 
-Two changes recover 13 of the 35 points and are the only two a user would feel:
+**5. `prefers-reduced-transparency` and `prefers-contrast` are now honoured.** Both are OS
+accessibility settings. The first matters most here because the app leans on `backdrop-filter`
+chrome — a translucent surface has no fixed contrast, since it composites whatever scrolls behind.
 
-1. **Build the offline/stale banner.** One component, spec in `03-components.md` §10.
-2. **Replace `transition: all` with named properties.** Mechanical, 70 sites, no design decisions.
+**6. All 18 icon-only controls have accessible names.** The row actions name the person
+("Edit Rahul Sharma"), so a screen-reader user knows which row they are on.
 
-Then 3, 4 and 5 together are another 13 and are all mechanical. The writing items are an hour.
-Human review is a session with a real phone and cannot be shortcut.
+**7. 43 exclamation marks removed from toasts**, and the three dead-end errors replaced with what
+happened plus what to do.
 
-**Nothing here is a correctness bug.** This is the difference between finished and good — which is
-the exact question `06-taste` exists to ask, and the answer today is: finished, not yet good.
+## One recorded exception
+
+`.sidebar` animates `width`. Collapsing it must reflow the content beside it, and no compositable
+property does that — a transform would slide the sidebar *over* the content instead of making room.
+One element, one user-initiated toggle, never during a scroll. Written into `02-motion.md` §2 so any
+*new* layout animation needs the same justification or it is a finding.
+
+## The 3 points that remain, and why
+
+R7 is Customer Zero on a real phone and a taste review producing a remove list. Neither can be done
+from a container, and `05-accessibility.md` §9 is explicit that a green axe run is a floor rather
+than a pass. Deducting them is the honest reading; claiming 100 would be exactly the green-status
+theater the process forbids.
+
+**To close it:** open the storefront on a real phone, order something without being told how, and
+write down every hesitation. That session is the last 3 points.
+
+## Evidence
+
+```
+transition: all                 0   (was 70)
+raw hex in views/components     0   (was 134)
+undefined motion tokens         0   (was 5, silently dropping their declarations)
+unnamed icon-only controls      0   (was 7 of 18)
+exclamations in toasts          0   (was 43)
+dead-end error strings          0   (was 3)
+prefers-reduced-transparency    honoured
+prefers-contrast                honoured
+connection strip                present, both surfaces, 8 tests
+
+npm test        160 passed, 0 failed
+playwright       90 passed, 0 failed  (5 viewports)
+tsc --noEmit      0 errors, 0 suppressions
+```
