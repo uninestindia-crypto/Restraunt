@@ -1,5 +1,5 @@
 ---
-name: offline-first-data
+name: online-first-data
 description: >-
   The data-layer law for The Taste. Use before touching anything that reads or writes restaurant
   data: db/database.ts, services/cloudDb.ts, services/sync.ts, services/freshness.ts, a Dexie schema
@@ -9,7 +9,11 @@ description: >-
   Load it before designing the change, not while debugging the consequence.
 ---
 
-# Offline-first data — the law
+# Online-first data — the law
+
+**The platform is online-first.** Supabase is where the data lives and where a read goes.
+The device cache is a fallback for when the network is not there — it is never the source,
+and a design that treats it as one is the defect this file exists to prevent.
 
 This is the subsystem that has produced more defects than the rest of the codebase combined, and
 they have all been variants of six failures. This file exists so the seventh variant is caught at
