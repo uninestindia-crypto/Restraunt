@@ -13,13 +13,14 @@ declare const Deno: {
  * ═══════════════════════════════════════════════════
  *  AI Chat Edge Function — Secure Proxy
  *
- *  Proxies AI requests to Groq and Lightning AI.
- *  API keys are stored as Supabase secrets, never exposed to frontend.
+ *  Proxies AI requests to Groq, OpenRouter, and Lightning AI.
+ *  API keys are stored as Supabase secrets, never exposed to the frontend —
+ *  a key in the client bundle is a key anyone can read and spend.
  *  Validates staff authentication before allowing requests.
  *
  *  POST body:
  *  {
- *    tier: "groq" | "lightning",
+ *    tier: "groq" | "openrouter" | "lightning",
  *    messages: [{ role: string, content: string }],
  *    model?: string,
  *    context?: object
@@ -27,8 +28,42 @@ declare const Deno: {
  * ═══════════════════════════════════════════════════
  */
 
+/**
+ * Groq and OpenRouter both speak the OpenAI /chat/completions dialect, so they
+ * share one request path — and, more importantly, the same authentication,
+ * rate limiting, RAG retrieval and audit trail. A second copy of that path
+ * would be a second place for those controls to drift out of step.
+ */
+type OpenAiCompatibleProvider = {
+  label: string;
+  endpoint: string;
+  apiKey?: string;
+  defaultModel: string;
+  allowedModels: Set<string>;
+  /** Provider-specific headers, e.g. OpenRouter's attribution pair. */
+  headers?: Record<string, string>;
+  missingKeyMessage: string;
+};
+
 const DEFAULT_GROQ_MODEL = "llama-3.3-70b-versatile";
 const ALLOWED_GROQ_MODELS = new Set([DEFAULT_GROQ_MODEL, "llama-3.1-8b-instant"]);
+
+/**
+ * An allow-list, not a pass-through. OpenRouter exposes hundreds of models at
+ * wildly different prices, and `model` arrives in the request body — which the
+ * client controls. Without this, any staff session could bill the restaurant
+ * for the most expensive model on the catalogue.
+ *
+ * To add one: put it here, deploy, done. Do not read it from the body.
+ */
+const DEFAULT_OPENROUTER_MODEL = "meta-llama/llama-3.3-70b-instruct";
+const ALLOWED_OPENROUTER_MODELS = new Set([
+  DEFAULT_OPENROUTER_MODEL,
+  "meta-llama/llama-3.1-8b-instruct",
+  "google/gemini-2.0-flash-001",
+  "anthropic/claude-3.5-haiku",
+  "openai/gpt-4o-mini",
+]);
 const MAX_MESSAGES = 12;
 const MAX_TOKENS = 1500;
 const RATE_LIMIT_PER_MINUTE = 15;
@@ -56,8 +91,35 @@ Deno.serve(async (req: Request) => {
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   const groqApiKey = Deno.env.get("GROQ_API_KEY");
+  const openRouterApiKey = Deno.env.get("OPENROUTER_API_KEY");
   const lightningApiKey = Deno.env.get("LIGHTNING_API_KEY");
   const lightningEndpoint = Deno.env.get("LIGHTNING_ENDPOINT");
+
+  const PROVIDERS: Record<string, OpenAiCompatibleProvider> = {
+    groq: {
+      label: "Groq",
+      endpoint: "https://api.groq.com/openai/v1/chat/completions",
+      apiKey: groqApiKey,
+      defaultModel: DEFAULT_GROQ_MODEL,
+      allowedModels: ALLOWED_GROQ_MODELS,
+      missingKeyMessage: "Groq API key is not configured. Set the GROQ_API_KEY secret.",
+    },
+    openrouter: {
+      label: "OpenRouter",
+      endpoint: "https://openrouter.ai/api/v1/chat/completions",
+      apiKey: openRouterApiKey,
+      defaultModel: DEFAULT_OPENROUTER_MODEL,
+      allowedModels: ALLOWED_OPENROUTER_MODELS,
+      // OpenRouter attributes usage to an app via these two headers. Optional to
+      // the API, and useful on the dashboard for telling this restaurant's spend
+      // apart from anything else sharing the key.
+      headers: {
+        "HTTP-Referer": Deno.env.get("OPENROUTER_SITE_URL") || "https://thetaste.in",
+        "X-Title": "The Taste Restaurant OS",
+      },
+      missingKeyMessage: "OpenRouter API key is not configured. Set the OPENROUTER_API_KEY secret.",
+    },
+  };
 
   if (!supabaseUrl || !serviceRoleKey) {
     return bad("AI chat function is not configured.", 500);
@@ -129,10 +191,24 @@ Deno.serve(async (req: Request) => {
     return bad("Rate limit exceeded. Please wait a moment.", 429);
   }
 
-  // ── Tier 2: Groq AI ──
-  if (tier === "groq") {
-    if (!groqApiKey) {
-      return bad("Groq API key is not configured. Set the GROQ_API_KEY secret.", 503);
+  // ── Tier 2: the OpenAI-compatible providers (Groq, OpenRouter) ──
+  if (PROVIDERS[tier]) {
+    // Which provider serves a chat request is an operational question — which
+    // key does this deployment hold? — not a product one. Resolving it here
+    // means switching provider is a secret change, not a rebuild and redeploy
+    // of the web bundle. The client keeps asking for "groq"; if only
+    // OPENROUTER_API_KEY is set, OpenRouter answers, and the response says so
+    // in its `tier` field rather than quietly pretending otherwise.
+    const configured = Object.keys(PROVIDERS).filter((name) => PROVIDERS[name].apiKey);
+    const resolvedTier = PROVIDERS[tier].apiKey ? tier : configured[0];
+
+    if (!resolvedTier) {
+      return bad(PROVIDERS[tier].missingKeyMessage, 503);
+    }
+
+    const provider = PROVIDERS[resolvedTier];
+    if (resolvedTier !== tier) {
+      console.log(`[ai-chat] "${tier}" has no key configured; serving with ${provider.label}.`);
     }
 
     const messages = Array.isArray(payload.messages) ? payload.messages.slice(-MAX_MESSAGES) : [];
@@ -201,14 +277,17 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    const model = ALLOWED_GROQ_MODELS.has(payload.model || "") ? payload.model! : DEFAULT_GROQ_MODEL;
+    // `payload.model` is client-controlled, so an unlisted value silently falls
+    // back rather than being forwarded.
+    const model = provider.allowedModels.has(payload.model || "") ? payload.model! : provider.defaultModel;
 
     try {
-      const groqResponse = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      const providerResponse = await fetch(provider.endpoint, {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${groqApiKey}`,
+          Authorization: `Bearer ${provider.apiKey}`,
           "Content-Type": "application/json",
+          ...(provider.headers || {}),
         },
         body: JSON.stringify({
           model,
@@ -218,22 +297,22 @@ Deno.serve(async (req: Request) => {
         }),
       });
 
-      if (!groqResponse.ok) {
-        const errText = await groqResponse.text();
-        console.error(`[ai-chat] Groq API error ${groqResponse.status}: ${errText.slice(0, 300)}`);
-        return bad(`Groq API returned ${groqResponse.status}`, 502);
+      if (!providerResponse.ok) {
+        const errText = await providerResponse.text();
+        console.error(`[ai-chat] ${provider.label} API error ${providerResponse.status}: ${errText.slice(0, 300)}`);
+        return bad(`${provider.label} API returned ${providerResponse.status}`, 502);
       }
 
-      const groqData = await groqResponse.json();
-      const content = groqData.choices?.[0]?.message?.content || "";
-      const usage = groqData.usage || {};
+      const providerData = await providerResponse.json();
+      const content = providerData.choices?.[0]?.message?.content || "";
+      const usage = providerData.usage || {};
 
       // Audit the AI request
       await serviceClient.from("audit_events").insert({
         store_id: membership.store_id || "the-taste",
         actor_staff_id: membership.staff_id,
         actor_auth_user_id: user.id,
-        action: "ai_chat_groq",
+        action: `ai_chat_${resolvedTier}`,
         target_table: "ai",
         details: {
           model,
@@ -245,14 +324,14 @@ Deno.serve(async (req: Request) => {
 
       return jsonResponse({
         ok: true,
-        tier: "groq",
+        tier: resolvedTier,
         content,
         model,
         usage,
       });
     } catch (err) {
-      console.error("[ai-chat] Groq request failed:", err);
-      return bad(err instanceof Error ? err.message : "Groq request failed", 502);
+      console.error(`[ai-chat] ${provider.label} request failed:`, err);
+      return bad(err instanceof Error ? err.message : `${provider.label} request failed`, 502);
     }
   }
 
@@ -313,5 +392,5 @@ Deno.serve(async (req: Request) => {
     }
   }
 
-  return bad(`Unsupported AI tier: "${tier}". Use "groq" or "lightning".`);
+  return bad(`Unsupported AI tier: "${tier}". Use "groq", "openrouter", or "lightning".`);
 });

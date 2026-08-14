@@ -41,6 +41,33 @@ warning rather than fail, so an unconfigured repo does not go permanently red.
 | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Web build | The project's API settings. Public by design. |
 | `PRODUCTION_URL` | Smoke check | e.g. `https://thetaste.in` |
 
+## AI provider secrets (Supabase, not GitHub)
+
+These are Edge Function secrets — **Supabase dashboard → Edge Functions → Secrets**, or
+`supabase secrets set`. They never appear in the web bundle: a key the browser can read is a key
+anyone can spend.
+
+| Secret | For |
+|---|---|
+| `OPENROUTER_API_KEY` | OpenRouter chat |
+| `OPENROUTER_SITE_URL` | Optional. Attribution on the OpenRouter dashboard; defaults to `https://thetaste.in` |
+| `GROQ_API_KEY` | Groq chat |
+| `LIGHTNING_API_KEY`, `LIGHTNING_ENDPOINT` | Forecasting and anomaly detection |
+
+```bash
+supabase secrets set OPENROUTER_API_KEY=sk-or-v1-... --project-ref scxfkjtrrfgpusyigntx
+npx supabase functions deploy ai-chat --project-ref scxfkjtrrfgpusyigntx
+```
+
+**Switching provider needs no web deploy.** The client asks for `tier: "groq"`; the function serves
+with whichever provider actually has a key, and reports which one answered in its `tier` field and
+in the audit row. Set `OPENROUTER_API_KEY`, redeploy `ai-chat`, and the app is on OpenRouter.
+
+**Models are an allow-list**, in `supabase/functions/ai-chat/index.ts`. `model` arrives in the
+request body, which the client controls, and OpenRouter's catalogue spans two orders of magnitude in
+price — forwarding it unchecked would let any staff session pick the dearest model on the menu. To
+add one, edit `ALLOWED_OPENROUTER_MODELS` and redeploy.
+
 Two environments gate the sensitive jobs: `production` (functions, web) and `production-database`
 (migrations). Add required reviewers to either in **Settings → Environments** if you want a human
 approval step before a deploy runs.
