@@ -141,7 +141,7 @@ export class PosView {
     }
   }
 
-  updateMobileCartBar() {
+  async updateMobileCartBar() {
     const bar = document.getElementById('mobile-cart-toggle');
     if (!bar) return;
 
@@ -154,8 +154,12 @@ export class PosView {
     const count = this.cart.reduce((sum, item) => sum + item.quantity, 0);
     const subtotal = this.cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
     
-    // Fallback to cached taxPercent
-    const gstPercent = parseFloat(localStorage.getItem('gstPercent') || '5');
+    // The same source the bill uses. This read used to be
+    // `localStorage.getItem('gstPercent')` — a key nothing in the codebase ever
+    // writes, so it always returned null and always fell back to 5%. On a store
+    // with any other rate, the floating bar showed a cashier one total while the
+    // order was created with another.
+    const gstPercent = parseFloat(await getSetting('gstPercent') || '5');
     const total = subtotal * (1 + gstPercent / 100);
 
     if (count > 0) {

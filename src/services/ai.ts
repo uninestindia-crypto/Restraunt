@@ -127,8 +127,12 @@ class AIService {
 
       // Tier 3 — Lightning AI: try cloud, fallback to local
       if (intent.tier === 'lightning') {
+        // The Developer Console declares this flag off by default and draws the toggle that way.
+        // Reading it as `!== 'false'` made an unset flag mean *on*, so a console showing AI
+        // Analytics disabled was still calling Lightning. Opt-in means opt-in: only an explicit
+        // 'true' turns it on.
         const analyticsEnabled = await getSetting('enableAIAnalytics');
-        if (analyticsEnabled !== 'false') {
+        if (analyticsEnabled === 'true') {
           try {
             return await this.queryLightning(query, intent);
           } catch (err) {
@@ -280,7 +284,9 @@ Current business data:
       .map(([m, c]) => `${m}:${c}`)
       .join(', ');
 
-    const restaurantName = localStorage.getItem('app_restaurant_name') || await getSetting('restaurantName') || 'The Taste';
+    // Settings are the one source. `app_restaurant_name` was read here but written nowhere, so it
+    // was always null — a first term that could only ever be skipped.
+    const restaurantName = (await getSetting('restaurantName')) || 'The Taste';
     const currency = `${safeCurrencySymbol(localStorage.getItem('app_currency_symbol'), '₹')} ${String(localStorage.getItem('app_currency_code') || 'INR').replace(/[^A-Za-z]/g, '').slice(0, 5) || 'INR'}`;
 
     return {

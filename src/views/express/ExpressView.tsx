@@ -29,6 +29,8 @@ export class ExpressView {
   declare app: any;
   declare cart: any;
   declare categories: any;
+  /** The store's tax rate, read once at mount so the sync render paths can use it. */
+  declare gstPercent: number;
   declare container: any;
   declare filteredItems: any;
   declare kdsFilter: any;
@@ -70,6 +72,13 @@ export class ExpressView {
   async mount(container) {
     this.container = container;
     
+    // The tax rate the bill will actually use. The render paths below are
+    // synchronous, so it is read once here rather than guessed inline — they
+    // used to read `localStorage.getItem('app_gst_percent')`, a key nothing in
+    // this codebase writes, so every displayed total was computed at 5% while
+    // the order was created at the store's real rate.
+    this.gstPercent = parseFloat(await getSetting('gstPercent') || '5') || 0;
+
     // Load static data from Dexie
     this.categories = await getCategories();
     this.items = await getAllItems();
@@ -212,7 +221,7 @@ export class ExpressView {
   }
 
   render() {
-    const gstPercent = parseFloat(localStorage.getItem('app_gst_percent') || '5');
+    const gstPercent = this.gstPercent;
     const subtotal = this.cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
     const total = subtotal * (1 + gstPercent / 100);
     const totalItems = this.cart.reduce((s, i) => s + i.quantity, 0);
@@ -1663,7 +1672,7 @@ export class ExpressView {
 
   renderCheckoutBar() {
     const subtotal = this.cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-    const gstPercent = parseFloat(localStorage.getItem('app_gst_percent') || '5');
+    const gstPercent = this.gstPercent;
     const total = subtotal * (1 + gstPercent / 100);
 
     return `
@@ -1929,7 +1938,7 @@ export class ExpressView {
     // Update Mobile Cart Bar
     const mobileCartWrapper = document.getElementById('mobile-cart-bar-wrapper');
     if (mobileCartWrapper) {
-      const gstPercent = parseFloat(localStorage.getItem('app_gst_percent') || '5');
+      const gstPercent = this.gstPercent;
       const subtotal = this.cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
       const total = subtotal * (1 + gstPercent / 100);
       const totalItems = this.cart.reduce((s, i) => s + i.quantity, 0);
