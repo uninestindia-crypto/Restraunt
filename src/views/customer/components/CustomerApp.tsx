@@ -338,7 +338,7 @@ export function CustomerApp({ app }) {
     let dispose: (() => void) | undefined;
     import('../../../components/ConnectionBanner')
       .then(({ mountConnectionBanner, unmountConnectionBanner }) => {
-        mountConnectionBanner(document.body);
+        mountConnectionBanner(document.body, 'guest');
         dispose = unmountConnectionBanner;
       })
       .catch(() => {});

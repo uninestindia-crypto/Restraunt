@@ -16,8 +16,20 @@
 
 import { db } from '../db/database';
 
-/** Stores whose unsynced rows represent real work a person did. */
-const OUTBOX_STORES = ['orders', 'menuItems', 'menuCategories', 'customers', 'inventory', 'tables'];
+/**
+ * Stores whose unsynced rows represent real work a person did.
+ *
+ * `orders` first and alone for a guest: a customer cannot edit the menu, so counting menu rows on
+ * the storefront reports the device's own scaffolding back to them as pending work. That is how a
+ * guest who had placed one order was told 92 changes were waiting.
+ */
+const OUTBOX_STORES = {
+  staff: ['orders', 'menuItems', 'menuCategories', 'customers', 'inventory', 'tables'],
+  guest: ['orders']
+};
+
+/** Which surface the strip is describing. They have different truths. */
+export type Surface = 'staff' | 'guest';
 
 const POLL_MS = 5000;
 
@@ -26,6 +38,7 @@ type Mode = 'hidden' | 'offline' | 'stale' | 'pending' | 'blocked';
 let host: HTMLElement | null = null;
 let timer: any = null;
 let lastRendered = '';
+let surface: Surface = 'staff';
 
 function isOnline() {
   return typeof navigator === 'undefined' || navigator.onLine !== false;
@@ -42,10 +55,10 @@ function agoLabel(at: number) {
   return hrs === 1 ? '1 hr ago' : `${hrs} hr ago`;
 }
 
-async function countOutbox() {
+async function countOutbox(surface: Surface) {
   let pending = 0;
   let blocked = 0;
-  for (const store of OUTBOX_STORES) {
+  for (const store of OUTBOX_STORES[surface]) {
     const table = (db as any)[store];
     if (!table) continue;
     try {
@@ -61,21 +74,35 @@ async function countOutbox() {
   return { pending, blocked };
 }
 
-async function readState() {
-  const { pending, blocked } = await countOutbox();
+async function readState(surface: Surface) {
+  const { pending, blocked } = await countOutbox(surface);
 
   let lastPull = 0;
-  let connected = false;
+  let reachable = false;
   try {
-    const { syncService } = await import('../services/sync');
-    lastPull = syncService?.lastFullPullTime || 0;
-    connected = syncService?.isConnected === true;
+    // Whether a read actually succeeded is the honest signal, and the only one a guest has:
+    // the storefront never opens a staff sync session, so judging reachability by
+    // `syncService.isConnected` told every customer the cloud was unreachable when it was fine.
+    const { isCloudDataFresh } = await import('../services/cloudDb');
+    reachable = isCloudDataFresh('items') || isCloudDataFresh('categories');
   } catch {
-    // Sync not loaded yet on a public page — offline/online is still meaningful.
+    // cloudDb not loaded yet: say nothing rather than guess.
+    reachable = true;
+  }
+
+  if (surface === 'staff') {
+    try {
+      const { syncService } = await import('../services/sync');
+      lastPull = syncService?.lastFullPullTime || 0;
+      // A staff device additionally has a live channel; either signal counts as reachable.
+      reachable = reachable || syncService?.isConnected === true;
+    } catch {
+      // Sync not loaded yet.
+    }
   }
 
   const offline = !isOnline();
-  const stale = !offline && !connected;
+  const stale = !offline && !reachable;
 
   let mode: Mode = 'hidden';
   if (blocked > 0) mode = 'blocked';
@@ -127,7 +154,7 @@ function copyFor(mode: Mode, pending: number, blocked: number, lastPull: number)
 
 async function render() {
   if (!host) return;
-  const { mode, pending, blocked, lastPull } = await readState();
+  const { mode, pending, blocked, lastPull } = await readState(surface);
   const copy = copyFor(mode, pending, blocked, lastPull);
 
   // Nothing to say: leave by itself. The absence is the confirmation.
@@ -157,8 +184,12 @@ async function render() {
  * Mount the strip. Idempotent: calling it twice reuses the same host, so a route change that
  * re-runs setup does not stack two banners.
  */
-export function mountConnectionBanner(parent: HTMLElement | null = document.body) {
+export function mountConnectionBanner(
+  parent: HTMLElement | null = document.body,
+  as: Surface = 'staff'
+) {
   if (!parent) return;
+  surface = as;
 
   if (!host || !host.isConnected) {
     host = document.getElementById('connection-banner-host');

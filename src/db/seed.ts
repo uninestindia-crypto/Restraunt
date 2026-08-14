@@ -5,6 +5,18 @@ import { db, generateLocalUuid, getDisplayToken } from './database';
  * Cloud-first: If Supabase has data, pull from cloud instead of seeding locally.
  * This ensures new devices always get the real production data.
  */
+/**
+ * Seeded rows are marked `isSynced: 1` — local scaffolding, never outbound.
+ *
+ * They used to be written as unsynced, which meant two things, both wrong. A
+ * fresh device pointed at a real store would have `pushUnsynced()` upload 25
+ * demo orders and a demo menu into production. And every screen counting
+ * pending work counted them: a guest who had placed one order was told 92
+ * changes were waiting to sync.
+ *
+ * A real store's menu arrives from the cloud through hydration. This seed
+ * exists so a device with no cloud at all still has something to show.
+ */
 export async function seedDatabase(options: { publicOnly?: boolean } = {}) {
   const { publicOnly = false } = options;
 
@@ -76,17 +88,17 @@ export async function seedDatabase(options: { publicOnly?: boolean } = {}) {
   await (db.transaction as any)('rw', ...seedStores, async () => {
     // ── Categories ──────────────────────────────────────────────
     const categories = [
-      { name: 'Fries', icon: '🍟', sortOrder: 1, isActive: 1, isSynced: 0 },
-      { name: 'Roll / Wrap', icon: '🌯', sortOrder: 2, isActive: 1, isSynced: 0 },
-      { name: 'Fried Rice', icon: '🍚', sortOrder: 3, isActive: 1, isSynced: 0 },
-      { name: 'Noodles', icon: '🍜', sortOrder: 4, isActive: 1, isSynced: 0 },
-      { name: 'Biryani', icon: '🍲', sortOrder: 5, isActive: 1, isSynced: 0 },
-      { name: 'Soup', icon: '🥣', sortOrder: 6, isActive: 1, isSynced: 0 },
-      { name: 'Veg Chinese', icon: '🥦', sortOrder: 7, isActive: 1, isSynced: 0 },
-      { name: 'Non-Veg Chinese', icon: '🍗', sortOrder: 8, isActive: 1, isSynced: 0 },
-      { name: 'Veg Burger', icon: '🍔', sortOrder: 9, isActive: 1, isSynced: 0 },
-      { name: 'Egg Burger', icon: '🥚', sortOrder: 10, isActive: 1, isSynced: 0 },
-      { name: 'Chicken Burger', icon: '🍔', sortOrder: 11, isActive: 1, isSynced: 0 },
+      { name: 'Fries', icon: '🍟', sortOrder: 1, isActive: 1, isSynced: 1 },
+      { name: 'Roll / Wrap', icon: '🌯', sortOrder: 2, isActive: 1, isSynced: 1 },
+      { name: 'Fried Rice', icon: '🍚', sortOrder: 3, isActive: 1, isSynced: 1 },
+      { name: 'Noodles', icon: '🍜', sortOrder: 4, isActive: 1, isSynced: 1 },
+      { name: 'Biryani', icon: '🍲', sortOrder: 5, isActive: 1, isSynced: 1 },
+      { name: 'Soup', icon: '🥣', sortOrder: 6, isActive: 1, isSynced: 1 },
+      { name: 'Veg Chinese', icon: '🥦', sortOrder: 7, isActive: 1, isSynced: 1 },
+      { name: 'Non-Veg Chinese', icon: '🍗', sortOrder: 8, isActive: 1, isSynced: 1 },
+      { name: 'Veg Burger', icon: '🍔', sortOrder: 9, isActive: 1, isSynced: 1 },
+      { name: 'Egg Burger', icon: '🥚', sortOrder: 10, isActive: 1, isSynced: 1 },
+      { name: 'Chicken Burger', icon: '🍔', sortOrder: 11, isActive: 1, isSynced: 1 },
     ];
 
     const categoryIds = await db.menuCategories.bulkAdd(categories, { allKeys: true });
@@ -110,7 +122,7 @@ export async function seedDatabase(options: { publicOnly?: boolean } = {}) {
         isVeg: isVeg ? 1 : 0,
         isAvailable: 1,
         sortOrder,
-        isSynced: 0
+        isSynced: 1
       });
     };
 
@@ -239,42 +251,42 @@ export async function seedDatabase(options: { publicOnly?: boolean } = {}) {
 
     // ── Inventory Seeding ───────────────────────────────────────
     const inventoryItems = [
-      { name: 'Chicken', unit: 'kg', quantity: 50, minThreshold: 10, maxCapacity: 100, categoryTag: 'Meat', isSynced: 0, _platform: 'nextgenos' },
-      { name: 'Paneer', unit: 'kg', quantity: 30, minThreshold: 5, maxCapacity: 50, categoryTag: 'Dairy', isSynced: 0, _platform: 'nextgenos' },
-      { name: 'Flour', unit: 'kg', quantity: 4, minThreshold: 15, maxCapacity: 100, categoryTag: 'Dry Goods', isSynced: 0, _platform: 'nextgenos' }, // below threshold!
-      { name: 'Oil', unit: 'liters', quantity: 40, minThreshold: 10, maxCapacity: 80, categoryTag: 'Dry Goods', isSynced: 0, _platform: 'nextgenos' },
-      { name: 'Potatoes', unit: 'kg', quantity: 60, minThreshold: 20, maxCapacity: 120, categoryTag: 'Produce', isSynced: 0, _platform: 'nextgenos' },
-      { name: 'Rice', unit: 'kg', quantity: 80, minThreshold: 20, maxCapacity: 150, categoryTag: 'Dry Goods', isSynced: 0, _platform: 'nextgenos' },
-      { name: 'Noodles', unit: 'packs', quantity: 25, minThreshold: 10, maxCapacity: 50, categoryTag: 'Dry Goods', isSynced: 0, _platform: 'nextgenos' },
-      { name: 'Sugar', unit: 'kg', quantity: 12, minThreshold: 5, maxCapacity: 30, categoryTag: 'Dry Goods', isSynced: 0, _platform: 'nextgenos' },
-      { name: 'Coffee', unit: 'kg', quantity: 8, minThreshold: 2, maxCapacity: 15, categoryTag: 'Beverages', isSynced: 0, _platform: 'nextgenos' },
-      { name: 'Milk', unit: 'liters', quantity: 25, minThreshold: 5, maxCapacity: 50, categoryTag: 'Dairy', isSynced: 0, _platform: 'nextgenos' },
-      { name: 'Cheese', unit: 'kg', quantity: 15, minThreshold: 5, maxCapacity: 30, categoryTag: 'Dairy', isSynced: 0, _platform: 'nextgenos' },
-      { name: 'Veggies', unit: 'kg', quantity: 3, minThreshold: 10, maxCapacity: 40, categoryTag: 'Produce', isSynced: 0, _platform: 'nextgenos' } // below threshold!
+      { name: 'Chicken', unit: 'kg', quantity: 50, minThreshold: 10, maxCapacity: 100, categoryTag: 'Meat', isSynced: 1, _platform: 'nextgenos' },
+      { name: 'Paneer', unit: 'kg', quantity: 30, minThreshold: 5, maxCapacity: 50, categoryTag: 'Dairy', isSynced: 1, _platform: 'nextgenos' },
+      { name: 'Flour', unit: 'kg', quantity: 4, minThreshold: 15, maxCapacity: 100, categoryTag: 'Dry Goods', isSynced: 1, _platform: 'nextgenos' }, // below threshold!
+      { name: 'Oil', unit: 'liters', quantity: 40, minThreshold: 10, maxCapacity: 80, categoryTag: 'Dry Goods', isSynced: 1, _platform: 'nextgenos' },
+      { name: 'Potatoes', unit: 'kg', quantity: 60, minThreshold: 20, maxCapacity: 120, categoryTag: 'Produce', isSynced: 1, _platform: 'nextgenos' },
+      { name: 'Rice', unit: 'kg', quantity: 80, minThreshold: 20, maxCapacity: 150, categoryTag: 'Dry Goods', isSynced: 1, _platform: 'nextgenos' },
+      { name: 'Noodles', unit: 'packs', quantity: 25, minThreshold: 10, maxCapacity: 50, categoryTag: 'Dry Goods', isSynced: 1, _platform: 'nextgenos' },
+      { name: 'Sugar', unit: 'kg', quantity: 12, minThreshold: 5, maxCapacity: 30, categoryTag: 'Dry Goods', isSynced: 1, _platform: 'nextgenos' },
+      { name: 'Coffee', unit: 'kg', quantity: 8, minThreshold: 2, maxCapacity: 15, categoryTag: 'Beverages', isSynced: 1, _platform: 'nextgenos' },
+      { name: 'Milk', unit: 'liters', quantity: 25, minThreshold: 5, maxCapacity: 50, categoryTag: 'Dairy', isSynced: 1, _platform: 'nextgenos' },
+      { name: 'Cheese', unit: 'kg', quantity: 15, minThreshold: 5, maxCapacity: 30, categoryTag: 'Dairy', isSynced: 1, _platform: 'nextgenos' },
+      { name: 'Veggies', unit: 'kg', quantity: 3, minThreshold: 10, maxCapacity: 40, categoryTag: 'Produce', isSynced: 1, _platform: 'nextgenos' } // below threshold!
     ];
     await db.inventory.bulkAdd(inventoryItems);
     console.log('[Seed] High-fidelity inventory seeded.');
 
     // ── Suppliers Seeding ────────────────────────────────────────
     const detailedSuppliers = [
-      { name: 'Dairy Farm', phone: '9876543210', email: 'dairy@farm.com', category: 'Dairy', isSynced: 0, _platform: 'nextgenos', createdAt: new Date().toISOString() },
-      { name: 'Meat Kings', phone: '9876543211', email: 'info@meatkings.com', category: 'Meat', isSynced: 0, _platform: 'nextgenos', createdAt: new Date().toISOString() },
-      { name: 'Green Grocery', phone: '9876543212', email: 'order@greengrocery.com', category: 'Produce', isSynced: 0, _platform: 'nextgenos', createdAt: new Date().toISOString() },
-      { name: 'Dry Bulk Co', phone: '9876543213', email: 'sales@drybulk.com', category: 'Dry Goods', isSynced: 0, _platform: 'nextgenos', createdAt: new Date().toISOString() }
+      { name: 'Dairy Farm', phone: '9876543210', email: 'dairy@farm.com', category: 'Dairy', isSynced: 1, _platform: 'nextgenos', createdAt: new Date().toISOString() },
+      { name: 'Meat Kings', phone: '9876543211', email: 'info@meatkings.com', category: 'Meat', isSynced: 1, _platform: 'nextgenos', createdAt: new Date().toISOString() },
+      { name: 'Green Grocery', phone: '9876543212', email: 'order@greengrocery.com', category: 'Produce', isSynced: 1, _platform: 'nextgenos', createdAt: new Date().toISOString() },
+      { name: 'Dry Bulk Co', phone: '9876543213', email: 'sales@drybulk.com', category: 'Dry Goods', isSynced: 1, _platform: 'nextgenos', createdAt: new Date().toISOString() }
     ];
     await db.suppliers.bulkAdd(detailedSuppliers);
     console.log('[Seed] High-fidelity suppliers seeded.');
 
     // ── CRM Customers Seeding ──────────────────────────────────
     const distinctCustomers = [
-      { name: 'Aarav Sharma', phone: '9999911111', totalSpent: 6200, visitCount: 15, loyaltyPoints: 620, tier: 'platinum', lastVisit: new Date().toISOString(), createdAt: new Date().toISOString(), isSynced: 0, _platform: 'nextgenos' },
-      { name: 'Priya Patel', phone: '9999922222', totalSpent: 3500, visitCount: 8, loyaltyPoints: 350, tier: 'gold', lastVisit: new Date().toISOString(), createdAt: new Date().toISOString(), isSynced: 0, _platform: 'nextgenos' },
-      { name: 'Vikram Singh', phone: '9999933333', totalSpent: 1200, visitCount: 4, loyaltyPoints: 120, tier: 'silver', lastVisit: new Date().toISOString(), createdAt: new Date().toISOString(), isSynced: 0, _platform: 'nextgenos' },
-      { name: 'Ananya Iyer', phone: '9999944444', totalSpent: 450, visitCount: 2, loyaltyPoints: 45, tier: 'bronze', lastVisit: new Date().toISOString(), createdAt: new Date().toISOString(), isSynced: 0, _platform: 'nextgenos' },
-      { name: 'Kabir Mehta', phone: '9999955555', totalSpent: 7500, visitCount: 18, loyaltyPoints: 750, tier: 'platinum', lastVisit: new Date().toISOString(), createdAt: new Date().toISOString(), isSynced: 0, _platform: 'nextgenos' },
-      { name: 'Neha Gupta', phone: '9999966666', totalSpent: 2800, visitCount: 7, loyaltyPoints: 280, tier: 'gold', lastVisit: new Date().toISOString(), createdAt: new Date().toISOString(), isSynced: 0, _platform: 'nextgenos' },
-      { name: 'Rahul Verma', phone: '9999977777', totalSpent: 850, visitCount: 3, loyaltyPoints: 85, tier: 'silver', lastVisit: new Date().toISOString(), createdAt: new Date().toISOString(), isSynced: 0, _platform: 'nextgenos' },
-      { name: 'Riya Sen', phone: '9999988888', totalSpent: 150, visitCount: 1, loyaltyPoints: 15, tier: 'bronze', lastVisit: new Date().toISOString(), createdAt: new Date().toISOString(), isSynced: 0, _platform: 'nextgenos' }
+      { name: 'Aarav Sharma', phone: '9999911111', totalSpent: 6200, visitCount: 15, loyaltyPoints: 620, tier: 'platinum', lastVisit: new Date().toISOString(), createdAt: new Date().toISOString(), isSynced: 1, _platform: 'nextgenos' },
+      { name: 'Priya Patel', phone: '9999922222', totalSpent: 3500, visitCount: 8, loyaltyPoints: 350, tier: 'gold', lastVisit: new Date().toISOString(), createdAt: new Date().toISOString(), isSynced: 1, _platform: 'nextgenos' },
+      { name: 'Vikram Singh', phone: '9999933333', totalSpent: 1200, visitCount: 4, loyaltyPoints: 120, tier: 'silver', lastVisit: new Date().toISOString(), createdAt: new Date().toISOString(), isSynced: 1, _platform: 'nextgenos' },
+      { name: 'Ananya Iyer', phone: '9999944444', totalSpent: 450, visitCount: 2, loyaltyPoints: 45, tier: 'bronze', lastVisit: new Date().toISOString(), createdAt: new Date().toISOString(), isSynced: 1, _platform: 'nextgenos' },
+      { name: 'Kabir Mehta', phone: '9999955555', totalSpent: 7500, visitCount: 18, loyaltyPoints: 750, tier: 'platinum', lastVisit: new Date().toISOString(), createdAt: new Date().toISOString(), isSynced: 1, _platform: 'nextgenos' },
+      { name: 'Neha Gupta', phone: '9999966666', totalSpent: 2800, visitCount: 7, loyaltyPoints: 280, tier: 'gold', lastVisit: new Date().toISOString(), createdAt: new Date().toISOString(), isSynced: 1, _platform: 'nextgenos' },
+      { name: 'Rahul Verma', phone: '9999977777', totalSpent: 850, visitCount: 3, loyaltyPoints: 85, tier: 'silver', lastVisit: new Date().toISOString(), createdAt: new Date().toISOString(), isSynced: 1, _platform: 'nextgenos' },
+      { name: 'Riya Sen', phone: '9999988888', totalSpent: 150, visitCount: 1, loyaltyPoints: 15, tier: 'bronze', lastVisit: new Date().toISOString(), createdAt: new Date().toISOString(), isSynced: 1, _platform: 'nextgenos' }
     ];
     await db.customers.bulkAdd(distinctCustomers);
     console.log('[Seed] High-fidelity customers seeded.');
@@ -378,7 +390,7 @@ export async function seedDatabase(options: { publicOnly?: boolean } = {}) {
         tableId: type === 'dinein' ? (1 + (i % 8)) : null,
         createdAt,
         completedAt,
-        isSynced: 0
+        isSynced: 1
       });
     }
 

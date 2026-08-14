@@ -581,7 +581,6 @@
   .customer-account-sections,
   .customer-preference-list { grid-template-columns: 1fr; }
   .customer-order-row { grid-template-columns: 1fr; align-items: start; }
-  .customer-tracking-timeline { grid-template-columns: repeat(3, minmax(0,1fr)); }
   .customer-tracking-summary,
   .customer-tracking-actions { grid-template-columns: 1fr; }
   .customer-contact-panel, .customer-account-panel { align-items: flex-start; flex-direction: column; }
@@ -2433,18 +2432,31 @@
 
 .customer-tracking-timeline {
   display: grid;
-  grid-template-columns: repeat(6, minmax(0,1fr));
+  /* Wraps by available width rather than by breakpoint. The six-column rule used
+     to live here with a three-column override several hundred lines *earlier* in
+     the file — equal specificity, so the later rule won and the media query never
+     applied. On a 360px phone that put six labels in one row: "Received",
+     "Accepted" and "Cooking" overlapped each other and "On the way" broke onto
+     three lines. auto-fit has no ordering to get wrong. */
+  grid-template-columns: repeat(auto-fit, minmax(104px, 1fr));
   gap: 8px;
   margin: 20px 0;
 }
 
 .customer-tracking-step {
   min-height: 92px;
-  padding: 12px 8px;
+  padding: 12px 6px;
   display: grid;
   place-items: center;
   gap: 7px;
   text-align: center;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  hyphens: auto;
+  /* min-width: 0 lets a grid child actually shrink; without it the label sets the
+     track's floor and pushes into the next one. */
+  font-size: 0.78rem;
+  line-height: 1.25;
   color: var(--store-muted, var(--text-secondary));
 }
 
