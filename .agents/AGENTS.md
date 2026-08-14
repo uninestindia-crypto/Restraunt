@@ -9,6 +9,7 @@ All development agents (including AI assistants) modifying this codebase must st
 | [`tier-1-engineering-standards`](./skills/tier-1-engineering-standards/SKILL.md) | Architecture: component modularity, sync safety, server-side trust boundaries | Before any structural change |
 | [`founder-mode`](./skills/founder-mode/SKILL.md) | Process: phases, evidence gates, test rings, tiers, release and rollback | Before any substantial feature, migration, role change, or release; and whenever asked "is it ready?" |
 | [`taste-os-design`](./skills/taste-os-design/SKILL.md) | Design: the two themes, type, space, colour, motion, components, accessibility, copy | Before the first line of markup or CSS |
+| [`offline-first-data`](./skills/offline-first-data/SKILL.md) | Data: the online-first read contract, the write-and-reconcile contract, Dexie versions, the push queue | Before touching `db/`, `cloudDb`, `sync`, a schema version, or an RLS policy |
 | [`supabase`](./skills/supabase/SKILL.md), [`supabase-postgres-best-practices`](./skills/supabase-postgres-best-practices/SKILL.md) | Database: RLS, indexing, pagination, locks | Before designing a migration or a query |
 
 **Precedence.** This file and `tier-1-engineering-standards` outrank the others on anything they
