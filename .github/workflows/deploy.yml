@@ -1,0 +1,282 @@
+name: Deploy
+
+# ═══════════════════════════════════════════════════════════════════════
+# A release here is up to three independent artifacts, and only one of them
+# ships itself. That asymmetry is why fixes have repeatedly landed on main
+# and been reported as still broken: the bundle went out, the migration and
+# the Edge Function did not.
+#
+#   1. Edge Functions — a human ran `supabase functions deploy`, or nobody did
+#   2. Web bundle     — Vercel, if the Git integration is actually connected
+#   3. Migrations     — a human, in the SQL editor
+#
+# This workflow automates 1 and 2 and deliberately does NOT automate 3.
+#
+# Why migrations stay manual: this repository has no down-migrations. Every
+# migration is forward-only against a production database holding real orders,
+# and `trg_prevent_delete_orders` exists precisely because that data is not
+# casually recoverable. Auto-applying schema changes on every merge, with no
+# rehearsed rollback, is the single most dangerous thing this pipeline could
+# do. It gets a separate manual job that makes you type the word.
+#
+# Ordering, when a release needs more than one: migrations first, then
+# functions, then the bundle. The new bundle must never be the first thing to
+# ask for a column or a function that does not exist yet.
+# ═══════════════════════════════════════════════════════════════════════
+
+on:
+  # Only after Launch Readiness has actually passed on main. Deploying a
+  # commit whose tests never ran is how a bad build reaches a dinner service.
+  workflow_run:
+    workflows: ["Launch Readiness"]
+    branches: [main]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      deploy_functions:
+        description: "Deploy Edge Functions"
+        type: boolean
+        default: true
+      deploy_web:
+        description: "Deploy the web bundle to Vercel production"
+        type: boolean
+        default: true
+      confirm_migrations:
+        description: "To apply migrations, type the Supabase project ref. Leave blank to skip. Forward-only — take a backup first."
+        type: string
+        default: ""
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  # ── Gate ────────────────────────────────────────────────────────────
+  gate:
+    name: Verify the commit is releasable
+    runs-on: ubuntu-latest
+    # A workflow_run trigger fires on failure too. Only a green Launch
+    # Readiness may proceed; a manual dispatch is an explicit human decision.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
+    outputs:
+      sha: ${{ steps.resolve.outputs.sha }}
+      has_supabase: ${{ steps.secrets.outputs.has_supabase }}
+      has_vercel: ${{ steps.secrets.outputs.has_vercel }}
+    steps:
+      - id: resolve
+        run: |
+          SHA="${{ github.event.workflow_run.head_sha || github.sha }}"
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+          echo "Releasing $SHA"
+
+      # Absent credentials are a configuration gap, not a build failure. The
+      # job reports what is missing and skips, rather than going red every
+      # time and training everyone to ignore this pipeline.
+      - id: secrets
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          if [ -n "$SUPABASE_ACCESS_TOKEN" ] && [ -n "$SUPABASE_PROJECT_REF" ]; then
+            echo "has_supabase=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_supabase=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::SUPABASE_ACCESS_TOKEN or SUPABASE_PROJECT_REF is not set — Edge Functions will not deploy."
+          fi
+
+          if [ -n "$VERCEL_TOKEN" ]; then
+            echo "has_vercel=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_vercel=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::VERCEL_TOKEN is not set — the web bundle will not deploy."
+          fi
+
+  # ── 1. Edge Functions ───────────────────────────────────────────────
+  functions:
+    name: Edge Functions
+    needs: gate
+    if: >-
+      needs.gate.outputs.has_supabase == 'true' &&
+      (github.event_name != 'workflow_dispatch' || inputs.deploy_functions)
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.gate.outputs.sha }}
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      # All four every time. Deploying only what changed sounds thriftier and
+      # gets it wrong the first time someone edits _shared/cors.ts, which every
+      # function imports and no per-function diff would flag.
+      - name: Deploy
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+        run: |
+          set -euo pipefail
+          for fn in staff-admin public-order ai-chat ingest-document; do
+            echo "::group::deploy $fn"
+            supabase functions deploy "$fn" --project-ref "$PROJECT_REF"
+            echo "::endgroup::"
+          done
+
+      # "The command exited 0" is not proof the function is reachable. An
+      # unauthenticated call must come back 401 — a 404 means it is not there.
+      - name: Verify each function answers
+        env:
+          PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+        run: |
+          set -euo pipefail
+          fail=0
+          for fn in staff-admin public-order ai-chat ingest-document; do
+            code=$(curl -s -o /dev/null -w "%{http_code}" -X POST \
+              -H "Content-Type: application/json" -d '{}' \
+              --max-time 30 "https://$PROJECT_REF.supabase.co/functions/v1/$fn" || echo 000)
+            if [ "$code" = "404" ] || [ "$code" = "000" ]; then
+              echo "::error::$fn is not reachable (HTTP $code)"
+              fail=1
+            else
+              echo "$fn reachable (HTTP $code)"
+            fi
+          done
+          exit $fail
+
+  # ── 2. Web bundle ───────────────────────────────────────────────────
+  web:
+    name: Web bundle
+    needs: [gate, functions]
+    # Runs even when the functions job was skipped for want of a token, but
+    # never when it actually failed — a bundle that calls a function the
+    # server rejects is worse than not shipping.
+    if: >-
+      always() &&
+      needs.gate.outputs.has_vercel == 'true' &&
+      needs.functions.result != 'failure' &&
+      (github.event_name != 'workflow_dispatch' || inputs.deploy_web)
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.gate.outputs.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+
+      - name: Deploy to production
+        id: deploy
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+        run: |
+          set -euo pipefail
+          url=$(npx vercel@latest deploy --prod --yes --token "$VERCEL_TOKEN" | tail -1)
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+          echo "Deployed to $url"
+
+      # The money path, against what was just published. This is the step that
+      # would have caught "main is green but production is serving last week's
+      # bundle", which is exactly the state this repo was in when the workflow
+      # was written.
+      - name: Smoke the deployment
+        env:
+          URL: ${{ steps.deploy.outputs.url }}
+          PROD: ${{ secrets.PRODUCTION_URL }}
+        run: |
+          set -euo pipefail
+          check() {
+            local target="$1" label="$2"
+            code=$(curl -s -o /tmp/page.html -w "%{http_code}" --max-time 30 "$target" || echo 000)
+            [ "$code" = "200" ] || { echo "::error::$label returned HTTP $code"; return 1; }
+            grep -qi "the taste" /tmp/page.html || { echo "::error::$label did not render the storefront"; return 1; }
+            echo "$label OK"
+          }
+
+          check "$URL" "deployment"
+          check "$URL/menu" "menu page"
+
+          # The alias can take a moment to move; only assert it when one is set.
+          if [ -n "${PROD:-}" ]; then
+            sleep 20
+            check "$PROD" "production domain"
+          else
+            echo "::warning::PRODUCTION_URL is not set — the live domain was not verified."
+          fi
+
+  # ── 3. Migrations — manual only, on purpose ─────────────────────────
+  # Not part of the automatic path. There are no down-migrations in this
+  # repository: every migration is forward-only against real order history.
+  # Applying schema changes needs a human who has read the SQL, taken a
+  # backup, and is watching. Run this from the Actions tab and type the
+  # project ref to confirm.
+  migrations:
+    name: Migrations (manual)
+    if: github.event_name == 'workflow_dispatch' && inputs.confirm_migrations != ''
+    runs-on: ubuntu-latest
+    environment: production-database
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Refuse unless the confirmation matches the project
+        env:
+          TYPED: ${{ inputs.confirm_migrations }}
+          PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+        run: |
+          if [ "$TYPED" != "$PROJECT_REF" ]; then
+            echo "::error::Confirmation did not match the project ref. Nothing was applied."
+            exit 1
+          fi
+
+      - name: Validate before touching anything
+        run: npm ci && npm run db:validate
+
+      - name: Apply
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+          PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+        run: supabase db push --project-ref "$PROJECT_REF"
+
+  # ── Report ──────────────────────────────────────────────────────────
+  report:
+    name: What actually shipped
+    needs: [gate, functions, web]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Summarise
+        run: |
+          {
+            echo "## Deploy — \`${{ needs.gate.outputs.sha }}\`"
+            echo
+            echo "| Artifact | Result |"
+            echo "|---|---|"
+            echo "| Edge Functions | ${{ needs.functions.result || 'skipped' }} |"
+            echo "| Web bundle | ${{ needs.web.result || 'skipped' }} |"
+            echo "| Migrations | manual — run this workflow from the Actions tab |"
+            echo
+            if [ "${{ needs.gate.outputs.has_supabase }}" != "true" ]; then
+              echo "> Edge Functions did not deploy: \`SUPABASE_ACCESS_TOKEN\` / \`SUPABASE_PROJECT_REF\` are not set."
+            fi
+            if [ "${{ needs.gate.outputs.has_vercel }}" != "true" ]; then
+              echo "> The web bundle did not deploy: \`VERCEL_TOKEN\` is not set."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
