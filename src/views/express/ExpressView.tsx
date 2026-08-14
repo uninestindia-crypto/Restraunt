@@ -11,6 +11,7 @@ import { deductInventoryForOrder } from '../../services/inventoryHook';
 import { tableService } from '../../services/tables';
 import { logOrderPlaced, logActivity } from '../../utils/activityLogger';
 import { showToast, formatCurrencyShort, formatCurrency, playSound, vibrateDevice, escapeHtml, safeImageUrl, menuItemImageSource, formatTime, parseOrderItems, reportStatusChange } from '../../utils/helpers';
+import { dishImageHtml } from '../../components/DishImage';
 import { CheckoutSuccessModal } from '../pos/CheckoutSuccessModal';
 import { generateUPIQR } from '../../services/upi';
 import { orderNotificationService } from '../../services/orderNotification';
@@ -1606,34 +1607,6 @@ export class ExpressView {
     `).join('');
   }
 
-  getMenuItemImage(item) {
-    const source = menuItemImageSource(item);
-    if (source) {
-      // Device-local images are inlined; safeImageUrl still vets them downstream.
-      if (/^data:image\//i.test(source)) return source;
-      try {
-        const url = new URL(String(source), window.location.origin);
-        return ['http:', 'https:'].includes(url.protocol) ? url.href : '';
-      } catch (_error) {
-        return '';
-      }
-    }
-    const cat = this.categories.find(c => c.id === item.categoryId);
-    const catName = cat ? cat.name.toLowerCase() : '';
-    const defaultImgMap = {
-      momos: '/assets/dish-momos.jpg',
-      starters: '/assets/dish-starters.jpg',
-      noodles: '/assets/dish-noodles.jpg',
-      rice: '/assets/dish-rice.jpg',
-      'main course': '/assets/dish-main.jpg',
-      burgers: '/assets/dish-burgers.jpg',
-      sides: '/assets/dish-sides.jpg',
-      beverages: '/assets/dish-beverages.jpg',
-      desserts: '/assets/dish-desserts.jpg'
-    };
-    return defaultImgMap[catName] || '/assets/dish-starters.jpg';
-  }
-
   renderProducts() {
     if (this.filteredItems.length === 0) {
       return `<div class="cart-empty-text">No items found.</div>`;
@@ -1645,12 +1618,9 @@ export class ExpressView {
         ? '<span class="badge-veg"></span>'
         : '<span class="badge-nonveg"></span>';
 
-      const resolvedImage = safeImageUrl(this.getMenuItemImage(item));
-      const fallbackEmoji = item.icon || this.getCategoryIcon(item.categoryId) || '🍽️';
-      
-      const imageContent = resolvedImage
-        ? `<img data-express-image src="${resolvedImage}" alt="${escapeHtml(item.name)}"><span class="fallback-emoji" style="display:none; width:100%; height:100%; align-items:center; justify-content:center;">${escapeHtml(fallbackEmoji)}</span>`
-        : `<span class="fallback-emoji" style="width:100%; height:100%; display:flex; align-items:center; justify-content:center;">${escapeHtml(fallbackEmoji)}</span>`;
+      // The tinted panel rather than an unrelated stock plate: an express operator
+      // needs to see which dishes still have no picture.
+      const imageContent = dishImageHtml(item, escapeHtml);
 
       return `
         <div class="express-product-card" data-item-id="${itemId}">

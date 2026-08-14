@@ -3,6 +3,7 @@ import { db, type MenuCategory, type MenuItem } from '../../db/database';
 import { ensureFresh } from '../../services/cloudDb';
 import { formatCurrency, showToast, playSound, vibrateDevice, menuItemImageSource } from '../../utils/helpers';
 import { compressImage, formatBytes } from '../../utils/imageProcessing';
+import { DishImage } from '../../components/DishImage';
 import {
   hasUnpublishedImage,
   publishPendingMenuImages,
@@ -357,18 +358,6 @@ export function MenuManager() {
     loadData();
   };
 
-  const defaultImgMap: Record<string, string> = {
-    momos: '/assets/dish-momos.jpg',
-    starters: '/assets/dish-starters.jpg',
-    noodles: '/assets/dish-noodles.jpg',
-    rice: '/assets/dish-rice.jpg',
-    'main course': '/assets/dish-main.jpg',
-    burgers: '/assets/dish-burgers.jpg',
-    sides: '/assets/dish-sides.jpg',
-    beverages: '/assets/dish-beverages.jpg',
-    desserts: '/assets/dish-desserts.jpg'
-  };
-
   // Filter items logic
   const filteredItems = useMemo(() => {
     return items.filter(item => {
@@ -663,14 +652,13 @@ export function MenuManager() {
                   const vegClass = item.isVeg === 1 ? 'veg' : 'nonveg';
                   const vegLabel = item.isVeg === 1 ? 'Veg' : 'Non-Veg';
                   
-                  const resolvedImg = menuItemImageSource(item) || defaultImgMap[(catName || '').toLowerCase()] || '/assets/dish-starters.jpg';
                   const photoPending = hasUnpublishedImage(item);
 
                   return (
                     <div key={item.id} className="dish-card">
                       {/* Thumbnail Container */}
                       <div className="dish-thumbnail-container">
-                        <img src={resolvedImg} className="dish-thumbnail" alt={item.name} />
+                        <DishImage item={item} variant="card" className="dish-thumbnail" />
                         
                         <span className={`dish-type-badge ${vegClass}`}>
                           {vegLabel}
@@ -868,12 +856,9 @@ export function MenuManager() {
                   Dish Image — any photo, resized automatically
                 </label>
                 <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
-                  <img
-                    id="item-image-preview"
-                    src={menuItemImageSource(editingItem) || defaultImgMap[(categories.find(c => c.id === Number(editingItem.categoryId))?.name || '').toLowerCase()] || '/assets/dish-starters.jpg'}
-                    style={{ width: '60px', height: '60px', borderRadius: '10px', objectFit: 'cover', border: '1px solid var(--border-glass)', boxShadow: '0 0 10px rgba(0,0,0,0.2)' }}
-                    alt="Preview"
-                  />
+                  <div id="item-image-preview" style={{ width: '60px', height: '60px', borderRadius: '10px', objectFit: 'cover', border: '1px solid var(--border-glass)', boxShadow: '0 0 10px rgba(0,0,0,0.2)' }}>
+                      <DishImage item={editingItem} variant="card" className="dish-preview-media" />
+                    </div>
                   <div style={{ flex: 1, position: 'relative' }}>
                     <input
                       type="file"

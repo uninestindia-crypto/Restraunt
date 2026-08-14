@@ -3,6 +3,7 @@ import { db, getCategories, getItemsByCategory, createOrder, getNextOrderNumber,
 import { globalStore } from '../../../store/Store';
 import { formatCurrency, playSound, vibrateDevice, showToast, parseOrderItems, menuItemImageSource } from '../../../utils/helpers';
 import { MenuItem } from './MenuItem';
+import { DishImage } from '../../../components/DishImage';
 import { CategorySlider } from './CategorySlider';
 import { CartDrawer } from './CartDrawer';
 import { OrderSuccessTele } from './OrderSuccessTele';
@@ -962,7 +963,7 @@ export function CustomerApp({ app }) {
                     onContextMenu={(e) => { e.preventDefault(); handleFavoriteItem(item); }}
                     type="button"
                   >
-                    <img src={menuItemImageSource(item) || '/assets/dish-starters.jpg'} alt="" width="640" height="420" loading="lazy" decoding="async" />
+                    <DishImage item={item} variant="card" />
                     <span>{item.name}</span>
                     <strong>{formatCurrency(item.price)}</strong>
                   </button>

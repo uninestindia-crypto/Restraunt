@@ -1822,6 +1822,7 @@
     aspect-ratio: auto;
   }
 
+
   /* No forced height: the row is as tall as its content, which is what lets a
      phone show a browsable list rather than three dishes and a scroll. */
   .store-menu-item-body {
@@ -3084,5 +3085,71 @@
   .store-qty-btn {
     min-width: 44px;
     min-height: 44px;
+  }
+}
+
+/* ══════════════════════════════════════════════════
+   DISH PLACEHOLDER — a dish with no photograph
+
+   The storefront used to fill this gap with one of nine stock photos chosen
+   by category, momos as the catch-all. On a menu a picture reads as a
+   description of the food, so an unrelated plate above a dish name is a claim
+   that is not true — and it hid the real problem, that the operator's actual
+   upload had never reached Storage.
+
+   This is the deliberate alternative: the accent surface, the dish's initial,
+   and the same box the photograph would occupy so nothing reflows when one
+   arrives.
+   ══════════════════════════════════════════════════ */
+.dish-placeholder {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  background: var(--store-accent-surface);
+  /* A single hairline keeps it reading as a panel rather than a hole. */
+  box-shadow: inset 0 -1px 0 var(--store-line);
+}
+
+.dish-placeholder--card {
+  aspect-ratio: 1.58;
+  /* The card clips its own corners, so the panel only needs to fill the top slot. */
+  /* A stretched grid or flex item is given a definite height, and a definite
+     height beats aspect-ratio. The <img> this replaced escaped that through
+     `height: auto` on a replaced element; a plain div has to opt out of the
+     stretch explicitly or it renders taller than wide. */
+  align-self: start;
+  height: auto;
+}
+
+.dish-placeholder--hero {
+  height: 100%;
+}
+
+.dish-placeholder .dish-placeholder-initial {
+  font-family: var(--font-display);
+  font-weight: 800;
+  /* Large enough to read as a designed mark rather than a stray letter. */
+  font-size: clamp(2rem, 9vw, 3.25rem);
+  line-height: 1;
+  color: var(--store-accent-ink);
+  /* The accent on its own surface needs the darker ink: the brand terracotta
+     measures 4.37:1 there, under the 4.5:1 that text requires. */
+  opacity: 0.85;
+  user-select: none;
+}
+
+.dish-placeholder.dish-placeholder--hero .dish-placeholder-initial {
+  font-size: clamp(3rem, 14vw, 5rem);
+}
+
+/* The card turns horizontal below 720px and the media cell is taller than 1.58
+   allows, so the panel fills it exactly as a photograph does — otherwise it sits
+   short with white beneath, which reads as a broken image, which is the whole
+   thing this component exists to avoid. */
+@media (max-width: 720px) {
+  .dish-placeholder--card {
+    height: 100%;
+    aspect-ratio: auto;
+    align-self: stretch;
   }
 }

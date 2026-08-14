@@ -4,6 +4,7 @@
 
 import { getCategories, getAllItems, getItemsByCategory, searchItems } from '../../db/database';
 import { formatCurrencyShort, debounce, escapeHtml, safeImageUrl, menuItemImageSource } from '../../utils/helpers';
+import { dishImageHtml } from '../../components/DishImage';
 
 export class MenuGrid {
   // Fields these methods assign. Type-only: `declare` emits nothing, so the
@@ -121,32 +122,14 @@ export class MenuGrid {
     `;
   }
 
-  getMenuItemImage(item) {
-    const source = menuItemImageSource(item);
-    if (source) return source;
-    const cat = this.categories.find(c => c.id === item.categoryId);
-    const catName = cat ? cat.name.toLowerCase() : '';
-    const defaultImgMap = {
-      momos: '/assets/dish-momos.jpg',
-      starters: '/assets/dish-starters.jpg',
-      noodles: '/assets/dish-noodles.jpg',
-      rice: '/assets/dish-rice.jpg',
-      'main course': '/assets/dish-main.jpg',
-      burgers: '/assets/dish-burgers.jpg',
-      sides: '/assets/dish-sides.jpg',
-      beverages: '/assets/dish-beverages.jpg',
-      desserts: '/assets/dish-desserts.jpg'
-    };
-    return defaultImgMap[catName] || '/assets/dish-starters.jpg';
-  }
-
   renderMenuItem(item) {
     const vegBadge = item.isVeg
       ? '<span class="badge-veg" title="Vegetarian"></span>'
       : '<span class="badge-nonveg" title="Non-Vegetarian"></span>';
 
-    const resolvedImage = safeImageUrl(this.getMenuItemImage(item), '/assets/dish-starters.jpg');
-    const imageContent = `<img data-menu-image src="${resolvedImage}" alt="${escapeHtml(item.name)}"><span class="fallback-emoji" style="display:none; width:100%; height:100%; align-items:center; justify-content:center;">${escapeHtml(item.icon || this.getCategoryIcon(item.categoryId))}</span>`;
+    // A dish with no photograph gets the tinted panel, not an unrelated stock plate — a
+    // cashier reading a tile needs to know which dishes still need a picture.
+    const imageContent = dishImageHtml(item, escapeHtml);
 
     return `
       <div class="menu-item ${!item.isAvailable ? 'sold-out' : ''}" 

@@ -1,17 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { formatCurrency, playSound, vibrateDevice, menuItemImageSource } from '../../../utils/helpers';
-
-const CATEGORY_IMAGE_MAP = {
-  momos: '/assets/dish-momos.jpg',
-  starters: '/assets/dish-starters.jpg',
-  noodles: '/assets/dish-noodles.jpg',
-  rice: '/assets/dish-rice.jpg',
-  'main course': '/assets/dish-main.jpg',
-  burgers: '/assets/dish-burgers.jpg',
-  sides: '/assets/dish-sides.jpg',
-  beverages: '/assets/dish-beverages.jpg',
-  desserts: '/assets/dish-desserts.jpg'
-};
+import { formatCurrency, playSound, vibrateDevice } from '../../../utils/helpers';
+import { DishImage } from '../../../components/DishImage';
 
 const CATEGORY_COPY = {
   momos: 'Hand-folded, steamed or tossed hot.',
@@ -43,14 +32,6 @@ export function ItemDetailDrawer({ item, categories, addons = [], onClose, onAdd
   }, [item?.id, itemAddons.length]);
 
   if (!item) return null;
-
-  const getItemImage = () => {
-    const source = menuItemImageSource(item);
-    if (source) return source;
-    const cat = categories.find(c => c.id === item.categoryId);
-    const catName = cat?.name?.toLowerCase() || '';
-    return CATEGORY_IMAGE_MAP[catName] || '/assets/dish-starters.jpg';
-  };
 
   const getItemDescription = () => {
     if (item.description) return item.description;
@@ -100,7 +81,7 @@ export function ItemDetailDrawer({ item, categories, addons = [], onClose, onAdd
 
         <div className="aether-drawer-scroll-content">
           <div className="aether-drawer-hero-wrapper">
-            <img className="aether-drawer-hero-img" src={getItemImage()} alt={item.name} />
+            <DishImage item={item} variant="hero" className="aether-drawer-hero-img" />
             <span className={`store-food-mark ${isVeg}`} style={{ position: 'absolute', top: '16px', right: '16px', zIndex: 2, boxShadow: '0 4px 10px rgba(0,0,0,0.3)' }}></span>
           </div>
 
