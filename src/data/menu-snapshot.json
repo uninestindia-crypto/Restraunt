@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-29T17:41:04.815Z",
+  "generatedAt": "2026-08-15T18:38:03.981Z",
   "storeId": "the-taste",
   "source": "cloud",
   "categories": [
@@ -13,21 +13,21 @@
           "name": "Chicken Crispy",
           "price": 120,
           "isVeg": false,
-          "imageUrl": ""
+          "imageUrl": "https://scxfkjtrrfgpusyigntx.supabase.co/storage/v1/object/public/menu-images/items/1785921486904_xo1osn7xc.jpg"
         },
         {
           "id": 1,
           "name": "French Fries",
           "price": 80,
           "isVeg": true,
-          "imageUrl": ""
+          "imageUrl": "https://scxfkjtrrfgpusyigntx.supabase.co/storage/v1/object/public/menu-images/items/1785919856177_2utmjozc5.jpg"
         },
         {
           "id": 2,
           "name": "Masala Fries",
           "price": 90,
           "isVeg": true,
-          "imageUrl": ""
+          "imageUrl": "https://scxfkjtrrfgpusyigntx.supabase.co/storage/v1/object/public/menu-images/items/1785920827599_2ohfcq6jc.jpg"
         }
       ]
     },
@@ -41,63 +41,63 @@
           "name": "Chicken Cheese Roll",
           "price": 110,
           "isVeg": false,
-          "imageUrl": ""
+          "imageUrl": "https://scxfkjtrrfgpusyigntx.supabase.co/storage/v1/object/public/menu-images/items/1785923437697_4hoxgq9dd.jpg"
         },
         {
           "id": 10,
           "name": "Chicken Roll",
           "price": 100,
           "isVeg": false,
-          "imageUrl": ""
+          "imageUrl": "https://scxfkjtrrfgpusyigntx.supabase.co/storage/v1/object/public/menu-images/items/1785922707369_xkazyy7w8.jpg"
         },
         {
           "id": 12,
           "name": "Combi Chicken Roll",
           "price": 120,
           "isVeg": false,
-          "imageUrl": ""
+          "imageUrl": "https://scxfkjtrrfgpusyigntx.supabase.co/storage/v1/object/public/menu-images/items/1785923592291_jzu4eqwa3.jpg"
         },
         {
           "id": 6,
           "name": "Double Egg Roll",
           "price": 80,
           "isVeg": false,
-          "imageUrl": ""
+          "imageUrl": "https://scxfkjtrrfgpusyigntx.supabase.co/storage/v1/object/public/menu-images/items/1785921961807_y3cazb696.jpg"
         },
         {
           "id": 5,
           "name": "Egg Roll",
           "price": 70,
           "isVeg": false,
-          "imageUrl": ""
+          "imageUrl": "https://scxfkjtrrfgpusyigntx.supabase.co/storage/v1/object/public/menu-images/items/1785921829806_hmjqoeed0.jpg"
         },
         {
           "id": 8,
           "name": "Paneer Cheese Roll",
           "price": 110,
           "isVeg": true,
-          "imageUrl": ""
+          "imageUrl": "https://scxfkjtrrfgpusyigntx.supabase.co/storage/v1/object/public/menu-images/items/1785922349452_6wuhfsc9l.jpg"
         },
         {
           "id": 7,
           "name": "Paneer Roll",
           "price": 100,
           "isVeg": true,
-          "imageUrl": ""
+          "imageUrl": "https://scxfkjtrrfgpusyigntx.supabase.co/storage/v1/object/public/menu-images/items/1785922195790_7rvtl5vbw.jpg"
         },
         {
           "id": 9,
           "name": "Paneer Schezwan Roll",
           "price": 110,
           "isVeg": true,
-          "imageUrl": ""
+          "imageUrl": "https://scxfkjtrrfgpusyigntx.supabase.co/storage/v1/object/public/menu-images/items/1785922588986_koob6fd27.jpg"
         },
         {
           "id": 4,
           "name": "Veg Roll",
           "price": 65,
           "isVeg": true,
-          "imageUrl": ""
+          "imageUrl": "https://scxfkjtrrfgpusyigntx.supabase.co/storage/v1/object/public/menu-images/items/1785921703623_d31fewmtw.jpg"
         }
       ]
     },

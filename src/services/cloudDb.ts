@@ -609,6 +609,10 @@ async function pullResource(name: string, options: any) {
   try {
     const rows = await resource.fetch(client, options);
 
+    // The server answered. That is the fact the connection strip needs, and it is true here
+    // whether or not any rows came back.
+    lastCloudContactAt = Date.now();
+
     // An empty payload is ambiguous: a table with no rows and a table the
     // current role cannot see through RLS look identical. The fetch itself
     // succeeded, so the read is live — but the cache is left alone rather than
@@ -689,6 +693,25 @@ export function markCloudDataStale(resources?: string | string[]) {
 /** True while `resource` is inside its read-freshness window. */
 export function isCloudDataFresh(resource: string) {
   return freshness.isFresh(resource);
+}
+
+/**
+ * When a read last reached Supabase, as a timestamp.
+ *
+ * Deliberately separate from `isCloudDataFresh`. That answers "may I skip the network?" and its
+ * window is three seconds — a de-duplication window, sized so one screen's cascade of reads costs
+ * one query per table. Reachability is a different question with a different timescale: the
+ * storefront re-pulls every five minutes, so for four minutes and fifty-seven seconds out of every
+ * five minutes the dedupe window is closed while the cloud is perfectly reachable.
+ *
+ * The connection strip asked the first question and reported the answer to the second, which is
+ * why a customer with a working menu in front of them was told the cloud could not be reached.
+ */
+let lastCloudContactAt = 0;
+
+/** Timestamp of the last read that Supabase actually answered, or 0 if it never has. */
+export function getLastCloudContactAt() {
+  return lastCloudContactAt;
 }
 
 // ── Full Cloud Pull (Hydration) ─────────────────────────────────

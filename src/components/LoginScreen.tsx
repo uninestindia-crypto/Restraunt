@@ -140,31 +140,63 @@ function StaffLogin({ onClose, onLoginSuccess }: StaffLoginProps) {
   );
 }
 
-/** Compatibility wrapper for the existing imperative application router. */
+/**
+ * Compatibility wrapper for the existing imperative application router.
+ *
+ * Two rules here are load-bearing, and breaking either one left every signed-in user staring at
+ * "Failed to load staff console" instead of the POS:
+ *
+ * 1. React gets a container of its own, never `#app`. The success callback rebuilds `#app` from
+ *    scratch; a React root unmounting from `#app` afterwards deletes the shell that was just
+ *    built, and `#app-sidebar` is null by the time the sidebar module finishes loading.
+ * 2. The unmount happens after the callback and off the current task. Unmounting synchronously
+ *    from inside a React event handler tears down a root that is still rendering.
+ */
 export class LoginScreen {
   private root: Root | null = null;
-  private container: HTMLElement | null = null;
+  private host: HTMLElement | null = null;
 
   constructor(private readonly onLoginSuccess: LoginCallback, _options: Record<string, unknown> = {}) {}
 
   render(container: HTMLElement) {
     this.destroy();
-    this.container = container;
-    this.root = createRoot(container);
+
+    const host = document.createElement('div');
+    host.className = 'login-root';
+    container.appendChild(host);
+
+    this.host = host;
+    this.root = createRoot(host);
     this.root.render(
       <StaffLogin
         onClose={() => this.destroy()}
         onLoginSuccess={(staff) => {
+          // Hand the root and its container over before calling out: the callback rebuilds the
+          // page, and whatever it does must not be able to race this teardown.
+          const root = this.root;
+          const own = this.host;
+          this.root = null;
+          this.host = null;
+
           this.onLoginSuccess?.(staff);
-          this.destroy();
+
+          queueMicrotask(() => {
+            // `own` may already be detached — the callback replaced `#app`'s contents. It still
+            // holds React's own nodes, so this unmount is well-defined either way.
+            try { root?.unmount(); } catch { /* already gone with the old shell */ }
+            own?.remove();
+          });
         }}
       />
     );
   }
 
   destroy() {
-    this.root?.unmount();
+    const root = this.root;
+    const own = this.host;
     this.root = null;
-    this.container = null;
+    this.host = null;
+    try { root?.unmount(); } catch { /* container already replaced */ }
+    own?.remove();
   }
 }

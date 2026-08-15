@@ -33,12 +33,33 @@ export type Surface = 'staff' | 'guest';
 
 const POLL_MS = 5000;
 
+/**
+ * How long after the last answered read the cloud still counts as reachable.
+ *
+ * This has to exceed the longest gap between reads on a healthy device, or the strip accuses a
+ * working connection every time the app is simply idle. The storefront re-pulls its catalogue on
+ * a five-minute timer, so anything at or under five minutes guarantees a false warning on a
+ * perfectly good connection — which is exactly the bug this constant replaces.
+ */
+const CLOUD_CONTACT_GRACE_MS = 6 * 60 * 1000;
+
+/**
+ * How long the first pull has to land before silence becomes a warning.
+ *
+ * On a cold load there has been no contact yet, which is not the same as failed contact. Warning
+ * immediately means every customer opens the storefront to "Can't reach the cloud right now" for
+ * the few seconds the catalogue takes to arrive — an accusation, retracted, before they have done
+ * anything. Say nothing until there is something to say.
+ */
+const STARTUP_GRACE_MS = 12000;
+
 type Mode = 'hidden' | 'offline' | 'stale' | 'pending' | 'blocked';
 
 let host: HTMLElement | null = null;
 let timer: any = null;
 let lastRendered = '';
 let surface: Surface = 'staff';
+let mountedAt = 0;
 
 function isOnline() {
   return typeof navigator === 'undefined' || navigator.onLine !== false;
@@ -80,11 +101,17 @@ async function readState(surface: Surface) {
   let lastPull = 0;
   let reachable = false;
   try {
-    // Whether a read actually succeeded is the honest signal, and the only one a guest has:
-    // the storefront never opens a staff sync session, so judging reachability by
+    // When a read last succeeded is the honest signal, and the only one a guest has: the
+    // storefront never opens a staff sync session, so judging reachability by
     // `syncService.isConnected` told every customer the cloud was unreachable when it was fine.
-    const { isCloudDataFresh } = await import('../services/cloudDb');
-    reachable = isCloudDataFresh('items') || isCloudDataFresh('categories');
+    //
+    // It must be the time of the last answer, not the read-freshness window. That window is three
+    // seconds wide and exists to collapse one screen's cascade of reads into one query per table;
+    // asking it about reachability meant a storefront that pulls every five minutes spent
+    // 99% of its life claiming to be offline with a live menu on screen.
+    const { getLastCloudContactAt } = await import('../services/cloudDb');
+    lastPull = getLastCloudContactAt();
+    reachable = lastPull > 0 && Date.now() - lastPull < CLOUD_CONTACT_GRACE_MS;
   } catch {
     // cloudDb not loaded yet: say nothing rather than guess.
     reachable = true;
@@ -93,7 +120,10 @@ async function readState(surface: Surface) {
   if (surface === 'staff') {
     try {
       const { syncService } = await import('../services/sync');
-      lastPull = syncService?.lastFullPullTime || 0;
+      // Whichever spoke to the server more recently is the honest "as of" — taking the sync
+      // service's alone would report 0 on a till whose reads are working but whose full pull
+      // has not run yet.
+      lastPull = Math.max(lastPull, syncService?.lastFullPullTime || 0);
       // A staff device additionally has a live channel; either signal counts as reachable.
       reachable = reachable || syncService?.isConnected === true;
     } catch {
@@ -102,7 +132,9 @@ async function readState(surface: Surface) {
   }
 
   const offline = !isOnline();
-  const stale = !offline && !reachable;
+  // Never contacted, but only just started: the first pull is still in flight. Silence, not blame.
+  const starting = lastPull === 0 && Date.now() - mountedAt < STARTUP_GRACE_MS;
+  const stale = !offline && !reachable && !starting;
 
   let mode: Mode = 'hidden';
   if (blocked > 0) mode = 'blocked';
@@ -190,6 +222,7 @@ export function mountConnectionBanner(
 ) {
   if (!parent) return;
   surface = as;
+  if (!mountedAt) mountedAt = Date.now();
 
   if (!host || !host.isConnected) {
     host = document.getElementById('connection-banner-host');
@@ -222,6 +255,7 @@ export function unmountConnectionBanner() {
     host = null;
   }
   lastRendered = '';
+  mountedAt = 0;
 }
 
 /** Exposed for tests: the copy rules, without the DOM or the database. */
