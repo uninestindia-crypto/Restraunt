@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { db, getCategories, getItemsByCategory, createOrder, getNextOrderNumber, getSetting, generateLocalUuid } from '../../../db/database';
+import { db, getCategories, getItemsByCategory, createOrder, getSetting, generateLocalUuid } from '../../../db/database';
 import { globalStore } from '../../../store/Store';
 import { formatCurrency, playSound, vibrateDevice, showToast, parseOrderItems, menuItemImageSource } from '../../../utils/helpers';
 import { MenuItem } from './MenuItem';
@@ -198,6 +198,14 @@ export function CustomerApp({ app }) {
     phone: '',
     address: ''
   });
+  /**
+   * The tax rate this order will be charged at.
+   *
+   * Held in state because the cart and checkout render synchronously and `getSetting` is async.
+   * Without it both screens showed the bare sum of the line prices under the words "Total payable"
+   * while the order was created at that sum plus GST — ₹160.00 on screen, ₹168.00 charged.
+   */
+  const [gstPercent, setGstPercent] = useState(0);
 
   // Polling / WebSocket channels for telemetry
   const statusChannelRef = useRef(null);
@@ -439,12 +447,14 @@ export function CustomerApp({ app }) {
       ]);
     }
 
-    const [name, tagline, phone, address] = await Promise.all([
+    const [name, tagline, phone, address, gst] = await Promise.all([
       getSetting('restaurantName'),
       getSetting('restaurantTagline'),
       getSetting('restaurantPhone'),
-      getSetting('restaurantAddress')
+      getSetting('restaurantAddress'),
+      getSetting('gstPercent')
     ]);
+    setGstPercent(parseFloat(gst || '5') || 0);
 
     const resolvedSettings = {
       name: storeId !== 'the-taste' ? storeId.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') : (name || 'The Taste'),
@@ -720,11 +730,10 @@ export function CustomerApp({ app }) {
     setPlacingOrder(true);
 
     try {
-      const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
-      const gstPercent = parseFloat(await getSetting('gstPercent') || '5');
-      const tax = subtotal * (gstPercent / 100);
+      // Deliberately the same `subtotal`, `taxAmount` and `total` the footer just showed.
+      // Re-deriving the rate here is what let the screen and the order disagree.
+      const tax = taxAmount;
       const deliveryFee = 0;
-      const total = subtotal + tax + deliveryFee;
       const type = detectedTable ? 'dinein' : orderType;
       const tableId = detectedTable ? detectedTable.id : (type === 'dinein' ? parseInt(selectedTableId, 10) : null);
       const now = new Date().toISOString();
@@ -733,7 +742,15 @@ export function CustomerApp({ app }) {
       const orderData = {
         clientOrderId,
         idempotencyKey: clientOrderId,
-        orderNumber: await getNextOrderNumber(),
+        // A provisional label only. `public-order` assigns the real order number under the service
+        // role and its value comes back on the response, so this is never what the store sees.
+        //
+        // It used to call getNextOrderNumber(), which refreshes `orders` from the cloud first —
+        // as `anon`, who holds no select on that table. Every guest checkout therefore asked for
+        // the store's last 500 orders, was refused 42501, and fell back to counting local rows to
+        // produce a number that the server immediately overwrote. Work that could only fail, to
+        // compute a value that was already going to be discarded.
+        orderNumber: `PENDING-${clientOrderId.slice(0, 8)}`,
         type,
         channel: type === 'dinein' && detectedTable ? 'qr' : 'online',
         source: type === 'dinein' && detectedTable ? 'qr' : 'online',
@@ -849,7 +866,12 @@ export function CustomerApp({ app }) {
     requestAnimationFrame(() => document.getElementById('menu')?.scrollIntoView({ block: 'start', behavior: 'smooth' }));
   };
 
-  const total = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  // `subtotal` is the sum of the line prices; `total` is what the customer will be charged. These
+  // were once the same variable, named `total` and rendered under "Total payable" — which is how a
+  // ₹160.00 checkout became a ₹168.00 order.
+  const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const taxAmount = Number((subtotal * (gstPercent / 100)).toFixed(2));
+  const total = Number((subtotal + taxAmount).toFixed(2));
   const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
   const accessibilityClass = [
     customerPreferences.some(pref => pref.key === 'reduced_motion' && pref.enabled) ? 'pref-reduced-motion' : '',
@@ -1069,8 +1091,9 @@ export function CustomerApp({ app }) {
       )}
 
       {state === 'cart' && (
-        <CartDrawer 
+        <CartDrawer
           cart={cart}
+          gstPercent={gstPercent}
           onBack={() => setState('menu')}
           onCheckout={() => setState('checkout')}
         />
@@ -1269,6 +1292,18 @@ export function CustomerApp({ app }) {
 
           <footer className="store-checkout-footer">
             <div>
+              <div className="store-checkout-breakdown">
+                <div className="store-checkout-line">
+                  <span>Subtotal</span>
+                  <span>{formatCurrency(subtotal)}</span>
+                </div>
+                {taxAmount > 0 && (
+                  <div className="store-checkout-line">
+                    <span>GST ({gstPercent}%)</span>
+                    <span>{formatCurrency(taxAmount)}</span>
+                  </div>
+                )}
+              </div>
               <span>Total payable</span>
               <strong>{formatCurrency(total)}</strong>
             </div>

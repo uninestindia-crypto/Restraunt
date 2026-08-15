@@ -2,8 +2,12 @@ import React from 'react';
 import { globalStore } from '../../../store/Store';
 import { formatCurrency } from '../../../utils/helpers';
 
-export function CartDrawer({ cart, onBack, onCheckout }) {
-  const total = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+export function CartDrawer({ cart, onBack, onCheckout, gstPercent = 0 }) {
+  // The review step has to agree with the checkout step and with the order that gets created.
+  // Showing the bare line-price sum as "Total" is what made a ₹160.00 cart into a ₹168.00 bill.
+  const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const taxAmount = Number((subtotal * (gstPercent / 100)).toFixed(2));
+  const total = Number((subtotal + taxAmount).toFixed(2));
 
   const handleNoteChange = (index, value) => {
     const updated = [...cart];
@@ -77,6 +81,18 @@ export function CartDrawer({ cart, onBack, onCheckout }) {
       {cart.length > 0 && (
         <footer className="store-checkout-footer">
           <div>
+            <div className="store-checkout-breakdown">
+              <div className="store-checkout-line">
+                <span>Subtotal</span>
+                <span>{formatCurrency(subtotal)}</span>
+              </div>
+              {taxAmount > 0 && (
+                <div className="store-checkout-line">
+                  <span>GST ({gstPercent}%)</span>
+                  <span>{formatCurrency(taxAmount)}</span>
+                </div>
+              )}
+            </div>
             <span>Total</span>
             <strong>{formatCurrency(total)}</strong>
           </div>

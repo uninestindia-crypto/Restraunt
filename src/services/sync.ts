@@ -1086,7 +1086,15 @@ class SyncService {
         const remoteActs = unsyncedActivities.map(mapActivityToRemote);
         try {
           await retryWithBackoff(async () => {
-            const { error } = await supabase.from('activity_log').upsert(remoteActs);
+            // Append-only, deliberately. `authenticated` holds select and insert on this table and
+            // nothing else, because an audit trail staff can rewrite is not an audit trail. A plain
+            // upsert compiles to ON CONFLICT DO UPDATE, asks for a privilege that is withheld on
+            // purpose, and fails 42501 on every retry forever — which is why no staff activity had
+            // ever reached the cloud. `ignoreDuplicates` compiles to DO NOTHING and needs only
+            // insert, while still making a replayed row harmless.
+            const { error } = await supabase
+              .from('activity_log')
+              .upsert(remoteActs, { ignoreDuplicates: true });
             if (error) throw error;
           }, { maxRetries: 3 });
 
@@ -1822,7 +1830,12 @@ class SyncService {
       const remote = mapActivityToRemote(log);
       
       await retryWithBackoff(async () => {
-        const { error } = await supabase.from('activity_log').upsert(remote);
+        // Append-only: see the batch push above. UPDATE is withheld from `authenticated` on this
+        // table by design, so DO NOTHING is the only conflict behaviour available — and the right
+        // one for an audit row.
+        const { error } = await supabase
+          .from('activity_log')
+          .upsert(remote, { ignoreDuplicates: true });
         if (error) throw error;
       }, { maxRetries: 3, initialDelayMs: 1000, backoffFactor: 2 });
 

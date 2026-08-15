@@ -96,26 +96,40 @@ export function buildCustomerFavoritesFromOrders(orders = []) {
   return [...frequency.values()].sort((a, b) => b.count - a.count);
 }
 
+/**
+ * Re-read one order's status on behalf of the guest who placed it.
+ *
+ * This used to query `orders` through PostgREST. A guest has no session, and `anon` deliberately
+ * holds no select on that table — a grant there would hand every customer's name, phone and
+ * address to anyone holding the publishable key. So every poll came back 42501, the `!error`
+ * guard swallowed it, and the tracking screen showed the status the order had when it was placed,
+ * for as long as the customer kept it open. Ten seconds apart, indefinitely.
+ *
+ * The `public-order` function answers instead, under the service role, returning only the tracking
+ * fields for the single order whose client_order_id is presented. That id is a v4 UUID this
+ * device minted and only it holds: the capability is the identifier, so no listing is possible.
+ */
 export async function fetchLiveOrder(order) {
   if (!order?.clientOrderId) return order;
   if (navigator.onLine) {
     try {
       const supabase = await getSupabaseClient({ persistSession: true });
       if (supabase) {
-        const storeId = localStorage.getItem('store_id') || 'the-taste';
-        const { data, error } = await supabase
-          .from('orders')
-          .select('*')
-          .eq('store_id', storeId)
-          .eq('client_order_id', order.clientOrderId)
-          .maybeSingle();
-        if (!error && data) {
+        const { data, error } = await supabase.functions.invoke('public-order', {
+          body: { action: 'status', clientOrderId: order.clientOrderId }
+        });
+        if (!error && data?.order) {
           const { mapOrderToLocal } = await import('./sync');
-          const mapped = mapOrderToLocal(data);
+          // The status payload is deliberately partial; keep the fields the tracking screen
+          // already had rather than blanking them with undefined.
+          const mapped = { ...order, ...mapOrderToLocal({ ...data.order, client_order_id: order.clientOrderId }) };
           const existing = await db.orders.where('clientOrderId').equals(order.clientOrderId).first();
           if (existing?.id) mapped.id = existing.id;
           await db.orders.put(mapped);
           return mapped;
+        }
+        if (error) {
+          console.warn('[CustomerPlatform] Live order status lookup failed:', error?.message || error);
         }
       }
     } catch (error) {

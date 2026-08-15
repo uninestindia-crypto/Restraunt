@@ -913,9 +913,13 @@ export async function getOrders(status?: string, forceRefresh = false) {
 export async function getOrder(id) {
   if (navigator.onLine) {
     try {
-      const { getSupabaseClient } = await import('../services/supabaseClient');
+      const { getSupabaseClient, getCloudSession } = await import('../services/supabaseClient');
       const supabase = await getSupabaseClient({ persistSession: true });
-      if (supabase) {
+      // Only a signed-in staff session may read `orders`; `anon` holds no select on it, by design.
+      // Without this guard a guest tracking their own order fired a query that could only ever
+      // come back 42501 — once on load and again on every ten-second refresh.
+      const session = supabase ? await getCloudSession() : null;
+      if (supabase && session) {
         const storeId = localStorage.getItem('store_id') || 'the-taste';
         let localOrder;
         if (typeof id === 'string') {

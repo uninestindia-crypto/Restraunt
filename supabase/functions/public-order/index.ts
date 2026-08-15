@@ -127,6 +127,38 @@ Deno.serve(async (req: Request) => {
     return bad("Invalid JSON body.");
   }
 
+  // ── Status lookup ────────────────────────────────────────────────
+  //
+  // A guest has no session, and `anon` deliberately holds no select on `orders` — one grant there
+  // would expose every customer's name, phone and address to anyone with the publishable key. So
+  // the storefront used to poll the table directly, be refused 42501 every ten seconds, swallow
+  // the error and keep showing the status the order had when it was placed. "Live order tracking"
+  // that could not track.
+  //
+  // The client_order_id is the capability: a v4 UUID the customer's own device minted and only it
+  // holds. It authorises exactly one row, and only the fields a tracking screen needs — never the
+  // whole record, and never a listing.
+  if ((payload as any).action === "status") {
+    const wanted = cleanText(payload.clientOrderId, 64);
+    if (!wanted || wanted.length < 20) {
+      return bad("A valid clientOrderId is required to look up an order.", 400);
+    }
+
+    const { data, error } = await supabase
+      .from("orders")
+      .select(
+        "order_number, display_token, type, status, kitchen_status, payment_status, delivery_status, " +
+        "subtotal, tax, tax_percent, delivery_fee, total, created_at, updated_at"
+      )
+      .eq("store_id", STORE_ID)
+      .eq("client_order_id", wanted)
+      .maybeSingle();
+
+    if (error) return bad(`Status lookup failed: ${error.message}`, 500);
+    if (!data) return bad("No such order.", 404);
+    return jsonResponse({ order: { ...data, client_order_id: wanted } });
+  }
+
   const clientOrderId = cleanText(payload.clientOrderId, 64);
   const idempotencyKey = cleanText(payload.idempotencyKey || clientOrderId, 128);
   const type = payload.type;

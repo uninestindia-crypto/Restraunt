@@ -1586,6 +1586,31 @@
   font-weight: 900;
 }
 
+/* What the total is made of, above the total itself.
+   The footer used to show the bare sum of the line prices labelled "Total payable" while the
+   order was created at that sum plus GST. The breakdown is how the customer can tell that the
+   number they are agreeing to is the number they will be charged. */
+.store-checkout-breakdown {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 6px;
+}
+
+/* `.store-checkout-footer div` stacks its children; these two are a row. */
+.store-checkout-footer .store-checkout-line {
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.store-checkout-footer .store-checkout-line span {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--store-muted);
+}
+
 .store-success-shell {
   padding: 28px 16px;
   display: grid;
