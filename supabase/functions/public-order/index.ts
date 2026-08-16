@@ -147,8 +147,8 @@ Deno.serve(async (req: Request) => {
     const { data, error } = await supabase
       .from("orders")
       .select(
-        "order_number, display_token, type, status, kitchen_status, payment_status, delivery_status, " +
-        "subtotal, tax, tax_percent, delivery_fee, total, created_at, updated_at"
+        "order_number, display_token, type, status, payment_status, delivery_status, " +
+        "subtotal, tax, tax_percent, delivery_fee, total, created_at, updated_at, completed_at"
       )
       .eq("store_id", STORE_ID)
       .eq("client_order_id", wanted)

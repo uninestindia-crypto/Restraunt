@@ -1,5 +1,5 @@
 // Phase 2 — authentication, against the live POS deployment.
-import { session, settle, shot, staffLogin, summarise, sb, LIVE_POS, STAFF, OWNER } from './drive.mjs';
+import { session, settle, shot, staffLogin, summarise, LIVE_POS, STAFF, OWNER } from './drive.mjs';
 
 const results = [];
 const record = (name, status, detail) => {
@@ -10,10 +10,10 @@ const record = (name, status, detail) => {
 // ── Bad credentials ────────────────────────────────────────────────
 const badCases = [
   ['wrong password', { email: STAFF.email, password: 'definitely-wrong-9999' }],
-  ['unknown email', { email: 'nobody-qa-test@thetaste.com', password: '123456' }],
-  ['malformed email', { email: 'not-an-email', password: '123456' }],
+  ['unknown email', { email: 'nobody-qa-test@example.invalid', password: 'wrong-on-purpose' }],
+  ['malformed email', { email: 'not-an-email', password: 'wrong-on-purpose' }],
   ['empty password', { email: STAFF.email, password: '' }],
-  ['empty email', { email: '', password: '123456' }]
+  ['empty email', { email: '', password: 'wrong-on-purpose' }]
 ];
 
 for (const [label, creds] of badCases) {

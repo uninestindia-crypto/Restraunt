@@ -64,6 +64,31 @@ test('the function answers status for exactly one order, never a listing', () =>
   }
 });
 
+test('every column the status lookup selects actually exists on orders', () => {
+  // PostgREST answers a select naming a column that is not there with a 400 and no rows, which
+  // from the client looks exactly like "no such order". The first draft of this endpoint asked for
+  // `kitchen_status`, which this schema has never had.
+  const schema = readFileSync('supabase/migrations/20260628000000_initial_schema.sql', 'utf8');
+  const table = schema.slice(
+    schema.indexOf('create table if not exists public.orders'),
+    schema.indexOf(');', schema.indexOf('create table if not exists public.orders'))
+  );
+  // Column lines are `  <name> <type> …`; table-level constraints start with a keyword instead.
+  const NOT_A_COLUMN = new Set(['unique', 'constraint', 'primary', 'foreign', 'check', 'exclude']);
+  const columns = new Set(
+    [...table.matchAll(/^ {2}([a-z_]+)\s+\S/gm)].map((m) => m[1]).filter((n) => !NOT_A_COLUMN.has(n))
+  );
+  assert.ok(columns.size > 20, `parsed only ${columns.size} columns from the orders table`);
+
+  const branch = fn.slice(fn.indexOf('action === "status"'), fn.indexOf('const clientOrderId = cleanText'));
+  const selected = (branch.match(/\.select\(([\s\S]*?)\)\n/) || [])[1] || '';
+  const names = [...selected.matchAll(/([a-z_]{3,})/g)].map((m) => m[1]).filter((n) => n !== 'select');
+
+  for (const n of names) {
+    assert.ok(columns.has(n), `status lookup selects "${n}", which orders does not have`);
+  }
+});
+
 test('anon is never granted select on orders', () => {
   const dir = 'supabase/migrations';
   const sql = readdirSync(dir).filter((f) => f.endsWith('.sql'))

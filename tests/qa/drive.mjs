@@ -14,8 +14,15 @@ import { intercept } from './net.mjs';
 export const LIVE_POS = 'https://restraunt-d646-nine.vercel.app';
 export const LIVE_SELF = 'https://restraunt-two.vercel.app';
 
-export const STAFF = { email: 'staff1@thetaste.com', password: '123456' };
-export const OWNER = { email: 'mohammadjalaluddin1010@gmail.com', password: '123456' };
+// Credentials come from the environment, never the repository. Set QA_STAFF_EMAIL /
+// QA_STAFF_PASSWORD and QA_OWNER_EMAIL / QA_OWNER_PASSWORD before running any of these scripts.
+export const STAFF = { email: process.env.QA_STAFF_EMAIL || '', password: process.env.QA_STAFF_PASSWORD || '' };
+export const OWNER = { email: process.env.QA_OWNER_EMAIL || '', password: process.env.QA_OWNER_PASSWORD || '' };
+
+if (!STAFF.email || !OWNER.email) {
+  console.error('Set QA_STAFF_EMAIL/QA_STAFF_PASSWORD and QA_OWNER_EMAIL/QA_OWNER_PASSWORD first.');
+  process.exit(2);
+}
 
 export const OUT = '/tmp/claude-0/-home-user-Restraunt/fdf1f216-74b6-5b33-8106-81640b245ebf/scratchpad/qa';
 mkdirSync(OUT, { recursive: true });
