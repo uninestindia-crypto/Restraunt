@@ -1076,6 +1076,49 @@ export async function updateOrderStatus(
 }
 
 /**
+ * Cancel an order, refunding it first when the till has already taken the money.
+ *
+ * Postgres refuses `→ cancelled` while `payment_status` is 'paid':
+ *
+ *     raise exception 'Paid orders must be refunded before cancellation';
+ *
+ * and it compares the *old* row, so sending the refund and the cancellation in one update fails
+ * exactly as sending the cancellation alone does. The refund has to be committed first, then the
+ * cancellation. Two round trips, in that order, or neither lands.
+ *
+ * Without this the kitchen board had no way through at all: the owner pressed cancel on a settled
+ * ticket, the local write applied optimistically, the server refused, the change rolled back, and
+ * the ticket reappeared on the next refresh. Five of the eight tickets on the live board were in
+ * that state, and nothing on the screen offered a way out of it.
+ *
+ * `refundPaid` is not a convenience flag. Money left the till; someone has to say it went back.
+ * The caller passes it only after the operator has confirmed the customer was refunded.
+ */
+export async function cancelOrder(
+  id,
+  { refundPaid = false }: { refundPaid?: boolean } = {}
+): Promise<OrderStatusUpdateResult> {
+  const existing = await db.orders.get(id);
+  if (!existing) return { applied: false, synced: false, error: 'Order not found.' };
+
+  if (String(existing.paymentStatus || '') === 'paid') {
+    if (!refundPaid) {
+      return {
+        applied: false,
+        synced: false,
+        error: 'This order is marked paid. Refund it before cancelling.'
+      };
+    }
+    // Same status, refunded payment: the transition trigger returns early when the status has not
+    // changed, so this commits the refund without tripping the lifecycle rules.
+    const refunded = await updateOrderStatus(id, existing.status, { paymentStatus: 'refunded' });
+    if (!refunded.applied) return refunded;
+  }
+
+  return updateOrderStatus(id, 'cancelled');
+}
+
+/**
  * Update payment details of an order.
  * @param {number} id
  * @param {string} paymentMethod

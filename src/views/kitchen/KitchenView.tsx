@@ -3,8 +3,8 @@
  * Kanban-style board for managing order preparation
  */
 
-import { getOrders, updateOrderStatus, db } from '../../db/database';
-import { escapeHtml, formatTime, parseOrderItems, showToast, playSound, vibrateDevice, reportStatusChange } from '../../utils/helpers';
+import { getOrders, updateOrderStatus, cancelOrder, db } from '../../db/database';
+import { escapeHtml, formatTime, formatCurrency, parseOrderItems, showToast, playSound, vibrateDevice, reportStatusChange } from '../../utils/helpers';
 import { orderNotificationService } from '../../services/orderNotification';
 import { authService } from '../../services/auth';
 
@@ -863,21 +863,38 @@ export class KitchenView {
           );
 
           if (isAuthorized) {
-            if (confirm('Are you sure you want to cancel and void this order?')) {
-              // updateOrderStatus replicates to the cloud itself, and rolls the
-              // local change back when the server refuses the transition (for
-              // example, a paid order that has not been refunded).
-              const outcome = await updateOrderStatus(orderId, 'cancelled');
+            // A settled ticket is a different question from an unsettled one, and asking the same
+            // one for both is what made this look broken: Postgres refuses to cancel a paid order
+            // until it has been refunded, so the card left the board, the server said no, and the
+            // ticket came back on the next refresh with nothing on screen explaining why.
+            const order = await db.orders.get(orderId);
+            const isPaid = String(order?.paymentStatus || '') === 'paid';
+            const amount = formatCurrency(Number(order?.total) || 0);
+
+            const question = isPaid
+              ? `This order is marked PAID (${amount}).\n\nCancelling it will also record a refund of ${amount}. Only continue if you have returned the money to the customer.`
+              : `Cancel and void this order (${amount})?`;
+
+            if (confirm(question)) {
+              // cancelOrder commits the refund first when one is needed — the database compares the
+              // order's previous payment status, so refunding and cancelling in a single write is
+              // refused just as cancelling alone is.
+              const outcome = await cancelOrder(orderId, { refundPaid: isPaid });
 
               if (outcome.applied) {
                 await db.activityLog.add({
                   staffId: currentStaff?.id || 0,
-                  action: `void_order_kds_id_${orderId}`,
+                  action: isPaid
+                    ? `refund_and_void_order_kds_id_${orderId}`
+                    : `void_order_kds_id_${orderId}`,
                   timestamp: new Date().toISOString()
                 });
               }
 
-              reportStatusChange(outcome, 'Order cancelled & voided');
+              reportStatusChange(
+                outcome,
+                isPaid ? `Order refunded ${amount} and cancelled` : 'Order cancelled & voided'
+              );
             }
           } else {
             showToast('Cancelling orders requires an active manager, owner, or developer cloud session.', 'error');
