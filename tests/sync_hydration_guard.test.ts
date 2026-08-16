@@ -59,6 +59,12 @@ test('sync hooks evaluate the replication guard synchronously, not inside setTim
   assert.ok(hookLines.length > 0, 'expected sync.ts to register Dexie hooks');
 
   for (const { line, index } of hookLines) {
+    // 'creating' hooks delegate to createHook, which does the guarding once. They have to: Dexie
+    // withholds an auto-incremented key from the hook body, so the row can only be read from
+    // `onsuccess`, and that shape does not fit the inline form below. The helper is checked
+    // separately, just after this loop.
+    if (/this\.createHook\(/.test(line)) continue;
+
     const guard = lines[index + 1]?.trim();
     const deferral = lines[index + 2]?.trim();
 
@@ -74,6 +80,25 @@ test('sync hooks evaluate the replication guard synchronously, not inside setTim
       deferral?.startsWith('setTimeout('),
       `hook at line ${index + 1} must defer only after guarding: ${line.trim()}`
     );
+  }
+
+  // Same property, one level in: createHook must guard before it arms onsuccess, or every
+  // hydration would replicate its own inserts straight back to the cloud.
+  const start = source.indexOf('  createHook(label: string');
+  assert.ok(start > -1, 'createHook helper not found');
+  const helper = source.slice(start, source.indexOf('\n  setupLocalHooks() {', start));
+
+  const guardAt = helper.indexOf('if (isHydrating() || service.isSyncingFromServer) return;');
+  const armAt = helper.indexOf('this.onsuccess =');
+  assert.ok(guardAt > -1, 'createHook must evaluate the replication guard');
+  assert.ok(armAt > -1, 'createHook must take the key from onsuccess');
+  assert.ok(guardAt < armAt, 'the guard must run before onsuccess is armed, not inside it');
+
+  // And every creating hook must actually be routed through it.
+  const creating = lines.filter((l) => l.includes(".hook('creating'"));
+  assert.ok(creating.length >= 11, `expected the creating hooks, found ${creating.length}`);
+  for (const l of creating) {
+    assert.match(l, /this\.createHook\(/, `creating hook bypasses the guarded helper: ${l.trim().slice(0, 90)}`);
   }
 });
 

@@ -1925,19 +1925,44 @@ class SyncService {
    * was destructive — a cloud hydration rebuilding the local cache replicated
    * its own teardown back as cloud DELETEs and permanently destroyed rows.
    */
+  /**
+   * Build a Dexie `creating` hook that replicates the new row to the cloud.
+   *
+   * Every table in this schema is declared `++id`, and Dexie does not know an auto-incremented key
+   * while the `creating` hook is running — `primKey` is undefined there, and the generated key is
+   * delivered on the hook's own `onsuccess`. Reading `primKey` instead threw
+   *
+   *     TypeError: Invalid argument to Table.get()
+   *
+   * inside a setTimeout, after the local write had already succeeded. So nothing an owner created
+   * ever reached Supabase: a new menu item, category, staff member, table, supplier or inventory
+   * line appeared on the device that made it, was never pushed, and disappeared on the next
+   * hydration. The screen said it had saved, and locally it had.
+   *
+   * The replication guard stays synchronous and outside `onsuccess`, for the reason set out above
+   * `setupLocalHooks`: `isHydrating()` is only true for the duration of the write that fired the
+   * hook, so a check deferred into the callback would read false and replicate an echo.
+   */
+  createHook(label: string, table: () => any, push: (row: any) => Promise<any>) {
+    const service = this;
+    return function (this: any, _primKey: any, _obj: any, _transaction: any) {
+      if (isHydrating() || service.isSyncingFromServer) return;
+      this.onsuccess = (primKey: any) => {
+        setTimeout(async () => {
+          try {
+            const row = await table().get(primKey);
+            if (row) await push.call(service, row);
+          } catch (dbErr) {
+            console.error(`[Sync db] Error in ${label} creating hook:`, dbErr);
+          }
+        }, 50);
+      };
+    };
+  }
+
   setupLocalHooks() {
     // Menu Categories hook
-    db.menuCategories.hook('creating', (primKey, obj, transaction) => {
-      if (isHydrating() || this.isSyncingFromServer) return;
-      setTimeout(async () => {
-        try {
-          const cat = await db.menuCategories.get(primKey);
-          if (cat) await this.syncUpCategory(cat);
-        } catch (dbErr) {
-          console.error('[Sync db] Error in menuCategories creating hook:', dbErr);
-        }
-      }, 50);
-    });
+    db.menuCategories.hook('creating', this.createHook('menuCategories', () => db.menuCategories, this.syncUpCategory));
 
     db.menuCategories.hook('updating', (mods, primKey, obj, transaction) => {
       if (isHydrating() || this.isSyncingFromServer) return;
@@ -1968,17 +1993,7 @@ class SyncService {
     });
 
     // Menu Items hook
-    db.menuItems.hook('creating', (primKey, obj, transaction) => {
-      if (isHydrating() || this.isSyncingFromServer) return;
-      setTimeout(async () => {
-        try {
-          const item = await db.menuItems.get(primKey);
-          if (item) await this.syncUpItem(item);
-        } catch (dbErr) {
-          console.error('[Sync db] Error in menuItems creating hook:', dbErr);
-        }
-      }, 50);
-    });
+    db.menuItems.hook('creating', this.createHook('menuItems', () => db.menuItems, this.syncUpItem));
 
     db.menuItems.hook('updating', (mods, primKey, obj, transaction) => {
       if (isHydrating() || this.isSyncingFromServer) return;
@@ -2009,17 +2024,7 @@ class SyncService {
     });
 
     // Staff hooks
-    db.staff.hook('creating', (primKey, obj, transaction) => {
-      if (isHydrating() || this.isSyncingFromServer) return;
-      setTimeout(async () => {
-        try {
-          const s = await db.staff.get(primKey);
-          if (s) await this.syncUpStaff(s);
-        } catch (dbErr) {
-          console.error('[Sync db] Error in staff creating hook:', dbErr);
-        }
-      }, 50);
-    });
+    db.staff.hook('creating', this.createHook('staff', () => db.staff, this.syncUpStaff));
 
     db.staff.hook('updating', (mods, primKey, obj, transaction) => {
       if (isHydrating() || this.isSyncingFromServer) return;
@@ -2050,17 +2055,7 @@ class SyncService {
     });
 
     // Tables hooks
-    tableStore().hook('creating', (primKey, obj, transaction) => {
-      if (isHydrating() || this.isSyncingFromServer) return;
-      setTimeout(async () => {
-        try {
-          const t = await tableStore().get(primKey);
-          if (t) await this.syncUpTable(t);
-        } catch (dbErr) {
-          console.error('[Sync db] Error in tables creating hook:', dbErr);
-        }
-      }, 50);
-    });
+    tableStore().hook('creating', this.createHook('tables', () => tableStore(), this.syncUpTable));
 
     tableStore().hook('updating', (mods, primKey, obj, transaction) => {
       if (isHydrating() || this.isSyncingFromServer) return;
@@ -2091,17 +2086,7 @@ class SyncService {
     });
 
     // Inventory hooks
-    db.menuItemAddons.hook('creating', (primKey, obj, transaction) => {
-      if (isHydrating() || this.isSyncingFromServer) return;
-      setTimeout(async () => {
-        try {
-          const addon = await db.menuItemAddons.get(primKey);
-          if (addon) await this.syncUpAddon(addon);
-        } catch (dbErr) {
-          console.error('[Sync db] Error in add-on creating hook:', dbErr);
-        }
-      }, 50);
-    });
+    db.menuItemAddons.hook('creating', this.createHook('menuItemAddons', () => db.menuItemAddons, this.syncUpAddon));
 
     db.menuItemAddons.hook('updating', (mods, primKey, obj, transaction) => {
       if (isHydrating() || this.isSyncingFromServer) return;
@@ -2131,17 +2116,7 @@ class SyncService {
       }, 50);
     });
 
-    db.inventory.hook('creating', (primKey, obj, transaction) => {
-      if (isHydrating() || this.isSyncingFromServer) return;
-      setTimeout(async () => {
-        try {
-          const i = await db.inventory.get(primKey);
-          if (i) await this.syncUpInventory(i);
-        } catch (dbErr) {
-          console.error('[Sync db] Error in inventory creating hook:', dbErr);
-        }
-      }, 50);
-    });
+    db.inventory.hook('creating', this.createHook('inventory', () => db.inventory, this.syncUpInventory));
 
     db.inventory.hook('updating', (mods, primKey, obj, transaction) => {
       if (isHydrating() || this.isSyncingFromServer) return;
@@ -2172,17 +2147,7 @@ class SyncService {
     });
 
     // Suppliers hooks
-    db.suppliers.hook('creating', (primKey, obj, transaction) => {
-      if (isHydrating() || this.isSyncingFromServer) return;
-      setTimeout(async () => {
-        try {
-          const s = await db.suppliers.get(primKey);
-          if (s) await this.syncUpSupplier(s);
-        } catch (dbErr) {
-          console.error('[Sync db] Error in suppliers creating hook:', dbErr);
-        }
-      }, 50);
-    });
+    db.suppliers.hook('creating', this.createHook('suppliers', () => db.suppliers, this.syncUpSupplier));
 
     db.suppliers.hook('updating', (mods, primKey, obj, transaction) => {
       if (isHydrating() || this.isSyncingFromServer) return;
@@ -2213,17 +2178,7 @@ class SyncService {
     });
 
     // Shifts hooks
-    db.shifts.hook('creating', (primKey, obj, transaction) => {
-      if (isHydrating() || this.isSyncingFromServer) return;
-      setTimeout(async () => {
-        try {
-          const s = await db.shifts.get(primKey);
-          if (s) await this.syncUpShift(s);
-        } catch (dbErr) {
-          console.error('[Sync db] Error in shifts creating hook:', dbErr);
-        }
-      }, 50);
-    });
+    db.shifts.hook('creating', this.createHook('shifts', () => db.shifts, this.syncUpShift));
 
     db.shifts.hook('updating', (mods, primKey, obj, transaction) => {
       if (isHydrating() || this.isSyncingFromServer) return;
@@ -2254,30 +2209,10 @@ class SyncService {
     });
 
     // Activity Log hooks
-    db.activityLog.hook('creating', (primKey, obj, transaction) => {
-      if (isHydrating() || this.isSyncingFromServer) return;
-      setTimeout(async () => {
-        try {
-          const a = await db.activityLog.get(primKey);
-          if (a) await this.syncUpActivity(a);
-        } catch (dbErr) {
-          console.error('[Sync db] Error in activityLog creating hook:', dbErr);
-        }
-      }, 50);
-    });
+    db.activityLog.hook('creating', this.createHook('activityLog', () => db.activityLog, this.syncUpActivity));
 
     // Customers hooks
-    db.customers.hook('creating', (primKey, obj, transaction) => {
-      if (isHydrating() || this.isSyncingFromServer) return;
-      setTimeout(async () => {
-        try {
-          const c = await db.customers.get(primKey);
-          if (c) await this.syncUpCustomer(c);
-        } catch (dbErr) {
-          console.error('[Sync db] Error in customers creating hook:', dbErr);
-        }
-      }, 50);
-    });
+    db.customers.hook('creating', this.createHook('customers', () => db.customers, this.syncUpCustomer));
 
     db.customers.hook('updating', (mods, primKey, obj, transaction) => {
       if (isHydrating() || this.isSyncingFromServer) return;
@@ -2295,17 +2230,7 @@ class SyncService {
     // the cloud and can only be anonymized through an audited server workflow.
 
     // Recipes hooks
-    db.recipes.hook('creating', (primKey, obj, transaction) => {
-      if (isHydrating() || this.isSyncingFromServer) return;
-      setTimeout(async () => {
-        try {
-          const r = await db.recipes.get(primKey);
-          if (r) await this.syncUpRecipe(r);
-        } catch (dbErr) {
-          console.error('[Sync db] Error in recipes creating hook:', dbErr);
-        }
-      }, 50);
-    });
+    db.recipes.hook('creating', this.createHook('recipes', () => db.recipes, this.syncUpRecipe));
 
     db.recipes.hook('updating', (mods, primKey, obj, transaction) => {
       if (isHydrating() || this.isSyncingFromServer) return;
