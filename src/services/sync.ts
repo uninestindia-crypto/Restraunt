@@ -11,6 +11,34 @@ import { orderNotificationService } from './orderNotification';
 
 const DEFAULT_STORE_ID = 'the-taste';
 
+/**
+ * Columns an order may never change after it exists, enforced in Postgres by
+ * `enforce_order_integrity` — it raises "Order identity, items, and totals are immutable".
+ *
+ * This list mirrors that trigger and must be kept in step with it. An update omits these columns
+ * rather than resending them unchanged, because resending is what broke the kitchen board: the
+ * same trigger rebuilds `items` and every money column from the live menu whenever the submitted
+ * items differ from the stored ones, and then rejects the update if the rebuilt totals no longer
+ * equal the order's own. Any ticket holding a since-repriced dish became impossible to advance or
+ * cancel.
+ */
+const IMMUTABLE_ORDER_COLUMNS = [
+  'store_id',
+  'client_order_id',
+  'idempotency_key',
+  'order_number',
+  'type',
+  'channel',
+  'source',
+  'auth_user_id',
+  'items',
+  'subtotal',
+  'tax',
+  'tax_percent',
+  'delivery_fee',
+  'total'
+];
+
 function getStoreId() {
   return localStorage.getItem('store_id') || DEFAULT_STORE_ID;
 }
@@ -1485,6 +1513,31 @@ class SyncService {
       const remote = mapOrderToRemote(order);
 
       await retryWithBackoff(async () => {
+        if (comparison.row) {
+          // The server already holds this order, so this is a lifecycle change — a status, a
+          // payment, a delivery hand-off. Send only the columns that may change.
+          //
+          // Resending the whole row was not harmless. `enforce_order_integrity` rebuilds items and
+          // every money column from the *live* menu whenever the submitted `items` differ from the
+          // stored ones, then refuses the update if the rebuilt totals no longer match the order's
+          // own. A cached row that spells `isVeg` as 1 where the server stores `true` differs as
+          // jsonb, so the rebuild ran on every push; and once any dish on the ticket had been
+          // repriced, the rebuilt total could never match. The result was an order nobody could
+          // advance or cancel again — the card left the kitchen board on the optimistic local
+          // write and reappeared on the next refresh, with no error shown to anyone.
+          const patch: Record<string, any> = { ...remote };
+          for (const column of IMMUTABLE_ORDER_COLUMNS) delete patch[column];
+
+          const { error } = await supabase
+            .from('orders')
+            .update(patch)
+            .eq('store_id', remote.store_id)
+            .eq('client_order_id', remote.client_order_id);
+          if (error) throw error;
+          return;
+        }
+
+        // First time this order has reached the server: it has to carry everything.
         const { error } = await supabase.from('orders').upsert(remote, { onConflict: 'store_id,client_order_id' });
         if (error) throw error;
       }, {
