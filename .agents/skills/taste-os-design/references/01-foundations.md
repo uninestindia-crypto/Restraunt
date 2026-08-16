@@ -111,21 +111,42 @@ of tokens in `src/styles/storefront.css` and inherits the rest.
 **Dark mode is not an inversion.** Surfaces get *lighter* as they come toward the user
 (`#040406` → `#0B0B0F` → `#0E0E14`), which is the opposite of light mode's shadow-based depth.
 
-### 3.3 Storefront — warm light
+### 3.3 Storefront — street-food night
 
 | Token | Value | Use |
 |---|---|---|
-| `--store-soft` | `#fdf7f0` | The page — warm cream, not grey |
-| `--store-panel` | `#ffffff` | Cards, so a dish photo sits on paper |
-| `--store-accent-surface` | `#fae8df` | The tint behind an icon, a mode tile, an active pill |
-| `--store-line` | `rgba(72,44,31,.11)` | Hairline |
-| `--store-accent` | `#bb4726` | Terracotta — the brand, links, selected state |
-| `--store-accent-ink` | `#a63c1e` | The accent **as small text on `--store-accent-surface`** |
+| `--store-soft` | `#14100e` | The page — near-black with a red-brown bias, never neutral grey |
+| `--store-panel` | `#1d1815` | Cards, one step off the ground |
+| `--store-accent-surface` | `#2b1713` | The tint behind a live control |
+| `--store-line` | `rgba(247,239,230,.13)` | Hairline |
+| `--store-ink` | `#f7efe6` | Body — warm off-white, cream rather than clinical white |
+| `--store-muted` | `#a2938a` | Secondary — warm grey biased toward the cream |
+| `--store-accent` | `#e03a21` | Chilli — **fills, rules and boundaries. Never small text.** |
+| `--store-accent-fill` | `#c92e18` | Chilli **as a fill behind cream text** — the primary button |
+| `--store-accent-ink` | `#ff7a5c` | Chilli **as small text on `--store-accent-surface`** |
+| `--store-gold` | `#f2a93b` | Wok flame — eyebrows, prices, small accent text |
+| `--store-green` | `#4fbf8f` | Success only. Not a heading colour. |
 
-**Why `--store-accent-ink` exists, and the general lesson.** `#bb4726` measures 5.2:1 on white and
-4.9:1 on the cream page — fine. On the accent surface it measures 4.37:1, under the 4.5:1 small text
-requires. A brand colour is not one colour: it is one colour *per background it lands on*. When you
-put accent text on an accent tint, check it, and add an `-ink` variant rather than nudging the brand.
+**Why the accent is three tokens.** `#e03a21` is 4.3:1 on the ground: enough for a rule or a fill,
+not enough for a label. `#c92e18` takes it one step down so cream on it measures 4.74:1 — and a
+~15px bold button label needs the full 4.5:1, because WCAG large text does not start until 18.66px
+bold. `#ff7a5c` takes it the other way for small text on the accent tint. A brand colour is not one
+colour: it is one colour *per background it lands on, at the size it lands there*.
+
+**Hover darkens.** On a dark ground the instinct is to brighten a fill on hover; doing that here
+pushed cream on the button to 3.17:1. `--color-primary-hover` is `#b52814` — deeper, 5.63:1.
+
+**The storefront does not follow the viewer's theme.** It is a single committed look, so it paints
+its own background and every colour explicitly. A page that leaves `body` transparent borrows the
+host's ground and renders one theme's text on the other theme's surface.
+
+**What this replaced, and why it matters beyond colour.** The storefront was warm cream `#fdf7f0`
+with a terracotta `#bb4726` accent, a pill badge above the headline, and rounded cards each with a
+tinted rounded icon square on the left. Every one of those is a default that generated interfaces
+reach for, and together they read as a template rather than as this restaurant. The lesson is not
+"dark is better" — it is that a palette and a set of component shapes are an identity, and an
+identity assembled from defaults belongs to nobody. When you reach for a pill badge, a tinted icon
+tile, or a 16px radius on everything, ask whether the subject asked for it.
 
 ### 3.4 Brand orange, and the same lesson in the dark theme
 

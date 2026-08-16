@@ -20,9 +20,11 @@ export function CategorySlider({
         <input 
           type="text" 
           id="store-menu-search" 
-          className="input" 
-          placeholder="Search for dishes, starters, desserts..." 
-          style={{ paddingLeft: '44px', width: '100%', borderRadius: 'var(--radius-lg)', height: '44px', fontSize: 'var(--text-sm)', fontWeight: 500 }} 
+          className="store-input"
+          placeholder="Search for dishes, starters, desserts..."
+          /* No inline border-radius: an inline style beats the stylesheet, so the
+             storefront could not square this control off with everything else. */
+          style={{ paddingLeft: '44px', width: '100%', height: '44px', fontSize: 'var(--text-sm)', fontWeight: 500 }}
           value={searchQuery}
           onChange={(e) => onSearchQueryChange(e.target.value)}
         />

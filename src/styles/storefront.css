@@ -1,29 +1,50 @@
 /* Public storefront: customer-facing website and ordering surface */
 
+/* Every root the storefront can mount under shares one declaration.
+   The palette used to be restated in four places — the shells, the dish drawer, `.storefront-root`,
+   and the high-contrast variant — which is why changing it left `.storefront-root` still painting a
+   cream page behind everything, and the search field white on top of it. A palette restated is a
+   palette that drifts; the design law's "never write a raw hex in a component" is about exactly
+   this. One block, and the roots that need extra layout rules add them separately below. */
+.storefront-root,
 .storefront-shell,
 .store-checkout-shell,
-.store-success-shell {
-  --store-ink: #211814;
-  --store-muted: #74645c;
-  /* Sampled from the storefront mockup: a clean warm cream rather than the
-     dustier beige this started with, and cards in true white so a dish photo
-     sits on paper instead of on tinted card. */
-  --store-soft: #fdf7f0;
-  --store-panel: #ffffff;
-  /* The tinted surface behind an icon or a mode tile. */
-  --store-accent-surface: #fae8df;
-  --store-line: rgba(72, 44, 31, 0.11);
-  --store-accent: #bb4726;
-  /* The accent is legible on paper (5.2:1) and on the cream page (4.9:1), but
-     on the accent surface itself it lands at 4.4:1 — under the 4.5:1 that small
-     text needs. This is the same terracotta taken one step darker, for label
-     text sitting on that tint. */
-  --store-accent-ink: #a63c1e;
-  --store-green: #315f4e;
-  --store-gold: #b68a47;
-  --color-primary: #bb4726;
-  --color-primary-hover: #96371f;
-  --color-primary-rgb: 187, 71, 38;
+.store-success-shell,
+.aether-drawer-overlay {
+  /* ── Street-food night ───────────────────────────────────────────────────
+     A deliberately single-look surface: this page is a food street after dark,
+     not a document that follows the reader's theme. Everything below is painted
+     explicitly for that reason — nothing is left to inherit from the host.
+
+     It replaces a warm-cream ground with a terracotta accent, pill badges and
+     tinted icon tiles on rounded cards. That combination is the most common
+     shape generated interfaces take, and it read as exactly that: a template
+     with a restaurant's name dropped into it. A dish photograph also has
+     nowhere to glow on cream; on this ground it is the brightest thing on the
+     screen, which is the right hierarchy for a menu. */
+  --store-ink: #f7efe6;          /* warm off-white — cream, not clinical white */
+  --store-muted: #a2938a;        /* warm grey, biased toward the cream (7.0:1 on the ground) */
+  --store-soft: #14100e;         /* the ground: near-black with a red-brown bias */
+  --store-panel: #1d1815;        /* a card, one step off the ground */
+  --store-accent-surface: #2b1713;  /* the tint behind a live control */
+  --store-line: rgba(247, 239, 230, 0.13);
+  --store-accent: #e03a21;       /* chilli — fills and rules, never small text */
+  /* Chilli is only 4.6:1 on the ground, so small accent text uses the flame
+     instead (9.1:1). Anything set in --store-accent must be a fill, a border,
+     or type large and heavy enough to carry it. */
+  --store-accent-ink: #ff7a5c;
+  /* The fill behind cream button text. Measured, not chosen by eye: cream on this is 4.74:1,
+     clearing the 4.5:1 body threshold — the button label is ~15px, which is under the 18.66px
+     that would let bold text sit at 3:1. The brighter --store-accent stays for rules and fills
+     that carry no text, where 3.5:1 against the ground is a boundary, not a label. */
+  --store-accent-fill: #c92e18;
+  --store-green: #4fbf8f;
+  --store-gold: #f2a93b;         /* wok flame — prices, eyebrows, small accents */
+  --color-primary: #e03a21;
+  /* Hover darkens rather than brightens: lightening the fill pushed cream on it to 3.17:1. */
+  --color-primary-hover: #b52814;
+  --color-primary-rgb: 224, 58, 33;
+  color-scheme: dark;
   --store-header-height: 72px;
   min-height: 100%;
   /* The window is what actually scrolls this page: the shell's height follows
@@ -134,10 +155,12 @@
   grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 4px;
   padding: 7px;
-  border: 1px solid rgba(74,40,25,.12);
-  border-radius: 22px;
-  background: rgba(255,253,249,.94);
-  box-shadow: 0 18px 50px rgba(39, 28, 21, 0.18);
+  border: 1px solid var(--store-line);
+  /* Squared to match the rest of the surface; a 22px pill floating over the
+     page was the last piece still shaped like a template component. */
+  border-radius: 6px;
+  background: rgba(20, 16, 14, 0.94);
+  box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.55);
   backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(18px);
 }
@@ -147,7 +170,7 @@
   display: grid;
   place-items: center;
   gap: 1px;
-  border-radius: 16px;
+  border-radius: 3px;
   color: var(--store-muted);
   font-weight: 800;
 }
@@ -194,8 +217,8 @@
   align-items: center;
   justify-content: center;
   border-radius: 10px;
-  background: #fff;
-  color: var(--color-primary);
+  background: var(--store-panel);
+  color: var(--store-accent-ink);
   font-size: 0.78rem;
   font-weight: 900;
   box-shadow: 0 4px 12px rgba(var(--color-primary-rgb), 0.25);
@@ -304,7 +327,7 @@
 }
 
 .customer-back-link .material-symbols-rounded { font-size: 18px; }
-.customer-page-hero > p { color: var(--store-accent); font-size: .75rem; font-weight: 850; letter-spacing: .14em; text-transform: uppercase; }
+.customer-page-hero > p { color: var(--store-accent-ink); font-size: .75rem; font-weight: 850; letter-spacing: .14em; text-transform: uppercase; }
 .customer-page-hero h1 { max-width: 13ch; margin: 10px 0 18px; color: var(--store-ink); font-size: clamp(2.6rem, 7vw, 5.5rem); line-height: .98; letter-spacing: -.055em; }
 .customer-page-hero > div { max-width: 630px; color: var(--store-muted); font-size: 1.08rem; line-height: 1.75; }
 
@@ -328,12 +351,12 @@
 }
 
 .customer-feature-card { min-height: 360px; padding: 30px; display: flex; flex-direction: column; align-items: flex-start; }
-.customer-feature-card > .material-symbols-rounded { width: 48px; height: 48px; border-radius: 15px; background: rgba(185,71,42,.1); color: var(--store-accent); }
-.customer-feature-card small { margin-top: 34px; color: var(--store-accent); font-weight: 800; text-transform: uppercase; letter-spacing: .08em; }
+.customer-feature-card > .material-symbols-rounded { width: 48px; height: 48px; border-radius: 15px; background: rgba(185,71,42,.1); color: var(--store-accent-ink); }
+.customer-feature-card small { margin-top: 34px; color: var(--store-accent-ink); font-weight: 800; text-transform: uppercase; letter-spacing: .08em; }
 .customer-feature-card h2 { margin: 8px 0; font-size: 1.7rem; color: var(--store-ink); }
 .customer-feature-card p { color: var(--store-muted); line-height: 1.65; }
 .customer-feature-card strong { margin-top: auto; color: var(--store-ink); }
-.customer-feature-card button { margin-top: 18px; display: flex; align-items: center; gap: 7px; color: var(--store-accent); font-weight: 800; }
+.customer-feature-card button { margin-top: 18px; display: flex; align-items: center; gap: 7px; color: var(--store-accent-ink); font-weight: 800; }
 .customer-feature-card button .material-symbols-rounded { font-size: 18px; }
 
 .customer-story-grid article { padding: 34px; }
@@ -354,12 +377,12 @@
 .customer-faq-list p { padding: 0 0 22px; color: var(--store-muted); }
 .customer-support-actions { display: flex; gap: 12px; margin-top: 26px; }
 
-.customer-account-avatar { width: 68px; height: 68px; display: grid; place-items: center; flex: 0 0 auto; border-radius: 20px; background: rgba(185,71,42,.1); color: var(--store-accent); }
+.customer-account-avatar { width: 68px; height: 68px; display: grid; place-items: center; flex: 0 0 auto; border-radius: 20px; background: rgba(185,71,42,.1); color: var(--store-accent-ink); }
 .customer-account-panel > div:nth-child(2) { flex: 1; }
-.customer-account-panel small { color: var(--store-accent); font-weight: 800; }
+.customer-account-panel small { color: var(--store-accent-ink); font-weight: 800; }
 .customer-account-grid { margin-top: 18px; grid-template-columns: repeat(4, minmax(0,1fr)); }
 .customer-account-grid button { min-height: 145px; padding: 22px; display: flex; flex-direction: column; align-items: flex-start; text-align: left; }
-.customer-account-grid button .material-symbols-rounded { color: var(--store-accent); }
+.customer-account-grid button .material-symbols-rounded { color: var(--store-accent-ink); }
 .customer-account-grid button span { margin-top: auto; font-weight: 850; }
 .customer-account-grid button small { color: var(--store-muted); }
 .customer-account-grid button:disabled { opacity: .55; cursor: not-allowed; }
@@ -396,7 +419,7 @@
 }
 
 .customer-section-title small {
-  color: var(--store-accent);
+  color: var(--store-accent-ink);
   font-size: .72rem;
   font-weight: 850;
   letter-spacing: .12em;
@@ -488,7 +511,7 @@
 .customer-preference-list button.is-active {
   border-color: rgba(185,71,42,.32);
   background: rgba(185,71,42,.1);
-  color: var(--store-accent);
+  color: var(--store-accent-ink);
 }
 
 .customer-address-list div {
@@ -502,7 +525,7 @@
 }
 
 .customer-address-list .material-symbols-rounded {
-  color: var(--store-accent);
+  color: var(--store-accent-ink);
 }
 
 .customer-account-empty {
@@ -510,7 +533,7 @@
 }
 
 .customer-account-empty > .material-symbols-rounded {
-  color: var(--store-accent);
+  color: var(--store-accent-ink);
 }
 
 .customer-account-empty h3 {
@@ -537,7 +560,7 @@
 }
 
 .customer-policy-panel > .material-symbols-rounded {
-  color: var(--store-accent);
+  color: var(--store-accent-ink);
 }
 
 .customer-section-note {
@@ -614,20 +637,20 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 7px 14px 7px 10px;
-  border: 1px solid var(--store-line);
-  border-radius: 99px;
-  background: var(--store-panel);
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
   color: var(--store-muted);
-  font-size: 0.84rem;
+  font-size: 0.85rem;
   font-weight: 600;
   text-decoration: none;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+  box-shadow: none;
 }
 
 .store-location-chip .material-symbols-rounded {
   font-size: 18px;
-  color: var(--color-primary);
+  color: var(--store-gold);
 }
 
 .store-location-chip:hover {
@@ -639,7 +662,7 @@
 .store-section-head p,
 .store-checkout-head p {
   margin: 0 0 10px;
-  color: var(--store-green);
+  color: var(--store-gold);
   font-size: 0.78rem;
   line-height: 1.35;
   font-weight: 900;
@@ -679,24 +702,30 @@
   align-items: center;
   justify-content: center;
   gap: 9px;
-  padding: 0 24px;
-  border-radius: 10px;
-  font-weight: 700;
-  font-size: 0.95rem;
+  padding: 0 26px;
+  /* Nearly square. A 10px radius on everything is the softness that makes a
+     page read as generated; a street sign is cut, not rounded. */
+  border-radius: 3px;
+  font-weight: 800;
+  font-size: 0.92rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
   transition: transform, opacity, background-color, border-color, color, box-shadow 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .store-primary-action {
-  background: var(--store-accent);
-  color: #fff;
-  box-shadow: 0 10px 28px rgba(185, 71, 42, 0.3);
+  /* The deeper chilli, so cream on it clears 4.5:1 — the brighter accent is for
+     rules and fills that carry no text. */
+  background: var(--store-accent-fill);
+  color: var(--store-ink);
+  box-shadow: none;
 }
 
 .store-primary-action:hover {
   background: var(--color-primary-hover);
   color: #fff;
-  box-shadow: 0 12px 32px rgba(var(--color-primary-rgb), 0.45);
-  transform: translateY(-2px);
+  box-shadow: none;
+  transform: translateY(-1px);
 }
 
 .store-primary-action:active {
@@ -762,64 +791,77 @@
 
 .store-service-option {
   min-height: 108px;
-  padding: 20px 24px;
+  padding: 18px 20px;
   border: 1px solid var(--store-line);
-  border-radius: 16px;
+  /* Squared off, and the tinted icon tile is gone. A rounded card carrying a
+     rounded icon square on the left, title above caption, is the single most
+     recognisable generated-layout component there is. The icon now sits inline
+     with the label at text size, and the card is told apart by a chilli rule
+     down its edge — a service pass, not a feature tile. */
+  border-radius: 3px;
+  border-left: 3px solid transparent;
   background: var(--store-panel);
   color: var(--store-ink);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.03);
+  box-shadow: none;
   display: grid;
   grid-template-columns: auto 1fr;
   grid-template-areas:
     "icon title"
-    "icon detail";
-  column-gap: 16px;
-  align-items: center;
+    ".    detail";
+  column-gap: 10px;
+  row-gap: 2px;
+  align-content: center;
   text-align: left;
-  transition: transform, opacity, background-color, border-color, color, box-shadow 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: background-color, border-color, color 0.25s ease;
 }
 
 .store-service-option:hover {
-  transform: translateY(-6px);
-  border-color: rgba(var(--color-primary-rgb), 0.3);
-  box-shadow: 0 20px 40px rgba(var(--color-primary-rgb), 0.08);
+  transform: none;
+  border-color: var(--store-line);
+  border-left-color: rgba(var(--color-primary-rgb), 0.5);
+  background: #241d19;
+  box-shadow: none;
 }
 
-/* Selection is signalled with border, fill, and shadow — never with a
-   transform. Displacing the active card knocks it out of alignment with its
+/* Selection is signalled with the edge rule and the ground, never with a
+   transform: displacing the active card knocks it out of alignment with its
    siblings for as long as it stays selected. */
 .store-service-option.is-active {
-  border-color: var(--color-primary);
-  border-width: 2px;
-  padding: 19px 23px; /* absorb the extra border so the box stays the same size */
+  border-color: var(--store-line);
+  border-left-color: var(--store-accent-ink);
+  border-width: 1px;
+  border-left-width: 3px;
+  padding: 18px 20px;
   background: var(--store-accent-surface);
-  box-shadow: 0 12px 28px rgba(var(--color-primary-rgb), 0.14);
+  box-shadow: none;
 }
 
 .store-service-option .material-symbols-rounded {
   grid-area: icon;
-  width: 48px;
-  height: 48px;
+  width: auto;
+  height: auto;
+  align-self: center;
   display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 12px;
-  background: var(--store-accent-surface);
-  color: var(--color-primary);
-  transition: transform, opacity, background-color, border-color, color, box-shadow 0.3s ease;
+  border-radius: 0;
+  background: none;
+  color: var(--store-muted);
+  font-size: 20px;
+  transition: color 0.25s ease;
 }
 
 .store-service-option.is-active .material-symbols-rounded {
-  background: var(--color-primary);
-  color: #fff;
-  box-shadow: 0 4px 12px rgba(var(--color-primary-rgb), 0.3);
+  background: none;
+  color: var(--store-accent-ink);
+  box-shadow: none;
 }
 
 .store-service-option strong {
   grid-area: title;
-  align-self: end;
-  font-size: 1rem;
-  font-weight: 700;
+  align-self: center;
+  font-size: 0.94rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
   color: var(--store-ink);
 }
 
@@ -847,7 +889,7 @@
 
 .store-section-head p,
 .store-checkout-head p {
-  color: var(--store-green);
+  color: var(--store-gold);
 }
 
 .store-section-head h2,
@@ -916,20 +958,40 @@
   height: 40px;
   display: grid;
   place-items: center;
-  border-radius: 999px;
+  border-radius: 3px;
   border: 1px solid var(--store-line);
-  background: rgba(255, 253, 249, 0.92);
-  color: var(--store-accent);
-  box-shadow: 0 4px 12px rgba(39, 28, 21, 0.18);
+  /* A near-white disc over a dish photograph read as a blob of missing image.
+     Smoked glass instead: it sits on the photo without competing with it. */
+  background: rgba(20, 16, 14, 0.62);
+  color: var(--store-ink);
+  box-shadow: none;
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
-  transition: background 0.2s ease, transform 0.2s ease;
+  transition: background 0.2s ease, color 0.2s ease;
 }
 
 .store-featured-fav:hover {
-  background: var(--store-accent);
-  color: #fff;
-  transform: scale(1.06);
+  background: var(--store-accent-fill);
+  color: var(--store-ink);
+  transform: none;
+}
+
+/* Saved. Law 4: the state is a filled glyph *and* a colour, never colour alone —
+   the markup swaps favorite_border for favorite, and this carries the colour. */
+.store-featured-fav.is-saved {
+  background: var(--store-accent-fill);
+  color: var(--store-ink);
+  border-color: var(--store-accent-ink);
+}
+
+.store-featured-fav:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.store-featured-fav:focus-visible {
+  outline: 2px solid var(--store-gold);
+  outline-offset: 2px;
 }
 
 .store-featured-fav .material-symbols-rounded {
@@ -963,8 +1025,11 @@
 
 .store-featured-item strong {
   margin: 8px 0 12px;
-  color: var(--store-accent);
+  /* Flame, like every other price. --store-accent is 4.3:1 on this card, which axe flags as a
+     serious contrast violation at 1rem — it is a fill colour, not a text colour. */
+  color: var(--store-gold);
   font-size: 1rem;
+  font-variant-numeric: tabular-nums;
 }
 
 .store-menu-toolbar {
@@ -1001,30 +1066,34 @@
 
 .store-category-tab {
   min-height: 38px;
-  padding: 0 18px;
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  border-radius: 99px;
-  background: #fff;
+  padding: 0 16px;
+  border: 1px solid var(--store-line);
+  /* These were hard-coded white pills, so they ignored the palette entirely and
+     sat on the night ground like stickers. */
+  border-radius: 3px;
+  background: transparent;
   color: var(--store-muted);
   white-space: nowrap;
   font-weight: 700;
-  font-size: 0.88rem;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.02);
-  transition: transform, opacity, background-color, border-color, color, box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  font-size: 0.85rem;
+  letter-spacing: 0.03em;
+  box-shadow: none;
+  transition: background-color, border-color, color 0.2s ease;
   cursor: pointer;
 }
 
 .store-category-tab:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.06);
-  border-color: rgba(0, 0, 0, 0.15);
+  transform: none;
+  box-shadow: none;
+  border-color: rgba(var(--color-primary-rgb), 0.45);
+  color: var(--store-ink);
 }
 
 .store-category-tab.is-active {
-  border-color: var(--color-primary);
-  background: var(--color-primary);
-  color: #fff;
-  box-shadow: 0 6px 14px rgba(var(--color-primary-rgb), 0.25);
+  border-color: var(--store-accent-fill);
+  background: var(--store-accent-fill);
+  color: var(--store-ink);
+  box-shadow: none;
   font-weight: 800;
 }
 
@@ -1173,9 +1242,12 @@
 }
 
 .store-menu-item-footer > strong {
-  color: var(--color-primary);
+  /* Flame, not chilli. Chilli is 4.3:1 on a card — under the 4.5:1 this size needs — and a price
+     is information, not an alarm. Tabular figures so a column of prices lines up. */
+  color: var(--store-gold);
   font-size: 1.25rem;
   font-weight: 800;
+  font-variant-numeric: tabular-nums;
 }
 
 .store-add-btn {
@@ -1183,8 +1255,8 @@
   padding: 0 20px;
   border-radius: 99px;
   font-size: 0.85rem;
-  background: #fff;
-  color: var(--color-primary);
+  background: var(--store-panel);
+  color: var(--store-accent-ink);
   border: 1.5px solid rgba(var(--color-primary-rgb), 0.4);
   font-weight: 800;
   text-transform: uppercase;
@@ -1196,7 +1268,7 @@
 .store-add-btn:hover {
   background: var(--color-primary);
   color: #fff;
-  border-color: var(--color-primary);
+  border-color: var(--store-accent-ink);
   box-shadow: 0 6px 16px rgba(var(--color-primary-rgb), 0.25);
   transform: translateY(-1.5px);
 }
@@ -1288,7 +1360,7 @@
 }
 
 .store-floating-cart strong {
-  color: var(--color-primary);
+  color: var(--store-accent-ink);
   font-size: 1.1rem;
   font-weight: 800;
 }
@@ -1317,7 +1389,7 @@
   padding: 20px;
   border: 1px solid var(--store-line);
   border-radius: 8px;
-  background: #F8F2EA;
+  background: var(--store-panel);
 }
 
 .store-info-band .material-symbols-rounded {
@@ -1356,11 +1428,11 @@
 
 .store-empty-state .material-symbols-rounded {
   font-size: 42px;
-  color: var(--store-accent);
+  color: var(--store-accent-ink);
 }
 
 .store-checkout-shell {
-  background: #FFF7EF;
+  background: var(--store-panel);
   color: var(--store-ink);
   display: flex;
   flex-direction: column;
@@ -1393,7 +1465,7 @@
 
 .store-subheader .btn-icon {
   border-radius: 8px;
-  background: #fff;
+  background: var(--store-panel);
   color: var(--store-ink);
   border-color: var(--store-line);
 }
@@ -1422,7 +1494,7 @@
 .store-payment-box {
   border: 1px solid var(--store-line);
   border-radius: 8px;
-  background: #fff;
+  background: var(--store-panel);
   box-shadow: 0 18px 42px rgba(39, 28, 21, 0.08);
 }
 
@@ -1454,13 +1526,13 @@
 }
 
 .store-cart-row-controls strong {
-  color: var(--store-accent);
+  color: var(--store-accent-ink);
   white-space: nowrap;
 }
 
 .store-note-input {
   grid-column: 1 / -1;
-  background: #FFF7EF;
+  background: var(--store-panel);
   color: var(--store-ink);
 }
 
@@ -1484,15 +1556,85 @@
   font-weight: 900;
 }
 
-.store-input {
-  min-height: 48px;
+/* Any generic control that lands on the storefront.
+   `.input`, `.btn` and friends are defined against the POS's light palette, so
+   a component reused here arrived cream on a night ground. Scoping the override
+   to the shell catches the ones already here and the next one someone adds. */
+.storefront-shell .input,
+.store-checkout-shell .input,
+.store-success-shell .input {
+  background: #221c18;
   border-color: var(--store-line);
-  background: #FFF9F3;
   color: var(--store-ink);
+  border-radius: 3px;
+}
+
+.storefront-shell .input::placeholder,
+.store-checkout-shell .input::placeholder,
+.store-success-shell .input::placeholder {
+  color: var(--store-muted);
+}
+
+.storefront-shell .input:focus,
+.store-checkout-shell .input:focus,
+.store-success-shell .input:focus {
+  border-color: var(--store-accent-ink);
+}
+
+/* The storefront's own field.
+   It used to be `class="input store-input"`, borrowing the staff console's control — and the
+   console's light theme carries `:root[data-theme="system"] .input` behind a
+   `prefers-color-scheme: light` query, which out-specifies anything scoped to the storefront and
+   painted every field white on the night ground. Fighting that with more specificity would have
+   been a war with no end; a storefront control simply is not a console control, so it no longer
+   claims to be one. This rule therefore has to be complete on its own. */
+.store-input {
+  width: 100%;
+  min-height: 48px;
+  padding: 12px 16px;
+  border: 1px solid var(--store-line);
+  border-radius: 3px;
+  background: #221c18;
+  color: var(--store-ink);
+  font-family: inherit;
+  font-size: var(--text-base);
+  outline: none;
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.store-input::placeholder {
+  color: var(--store-muted);
 }
 
 .store-input:focus {
-  border-color: var(--store-accent);
+  border-color: var(--store-accent-ink);
+  background: #2a221d;
+}
+
+.store-input:focus-visible {
+  outline: 2px solid var(--store-gold);
+  outline-offset: 1px;
+}
+
+.store-input:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* A select renders its own arrow in the UA's colours; on a dark field that arrow disappeared. */
+select.store-input {
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: linear-gradient(45deg, transparent 50%, var(--store-muted) 50%),
+                    linear-gradient(135deg, var(--store-muted) 50%, transparent 50%);
+  background-position: calc(100% - 20px) 21px, calc(100% - 15px) 21px;
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+  padding-right: 40px;
+}
+
+.store-input:focus {
+  border-color: var(--store-accent-ink);
 }
 
 .store-option-grid {
@@ -1510,7 +1652,7 @@
   padding: 12px;
   border: 1px solid var(--store-line);
   border-radius: 8px;
-  background: #FFF9F3;
+  background: var(--store-panel);
   color: var(--store-muted);
   display: flex;
   flex-direction: column;
@@ -1528,7 +1670,7 @@
 
 .store-choice-btn.is-active {
   border-color: rgba(233, 79, 43, 0.48);
-  background: #FFF0E8;
+  background: var(--store-accent-surface);
   color: var(--store-ink);
 }
 
@@ -1581,7 +1723,7 @@
 }
 
 .store-checkout-footer strong {
-  color: var(--store-accent);
+  color: var(--store-accent-ink);
   font-size: 1.65rem;
   font-weight: 900;
 }
@@ -1658,7 +1800,7 @@
   width: min(260px, 100%);
   border: 1px solid var(--store-line);
   border-radius: 8px;
-  background: #FFF7EF;
+  background: var(--store-panel);
 }
 
 .store-token span {
@@ -1670,7 +1812,7 @@
 }
 
 .store-token strong {
-  color: var(--store-accent);
+  color: var(--store-accent-ink);
   font-size: 3rem;
   line-height: 1;
 }
@@ -1690,7 +1832,7 @@
   display: inline-block;
   padding: 12px;
   margin-bottom: 10px;
-  background: #fff;
+  background: var(--store-panel);
   border-radius: 8px;
   border: 1px solid var(--store-line);
 }
@@ -1990,20 +2132,11 @@
   pointer-events: auto;
 }
 
-/* The dish sheet mounts as a sibling of .storefront-shell, not inside it, so it
-   inherits none of the storefront's tokens. That is why it rendered as an
-   invisible panel: its background asked for `--bg-surface-glass`, which is
-   referenced here and defined nowhere, and every inner rule was painting
-   operator-theme colours over a see-through sheet. It carries the storefront
-   palette itself, the same way the pre-rendered shell restates it. */
+/* The dish sheet mounts as a sibling of .storefront-shell, not inside it, so it inherits none of
+   the storefront's tokens — which is why it once rendered as an invisible panel over operator
+   colours. It takes the palette from the shared block at the top of this file; what it still needs
+   is the mapping from the storefront's names onto the generic ones its inner markup asks for. */
 .aether-drawer-overlay {
-  --store-ink: #211814;
-  --store-muted: #74645c;
-  --store-soft: #fdf7f0;
-  --store-panel: #ffffff;
-  --store-line: rgba(72, 44, 31, 0.14);
-  --color-primary: #bb4726;
-  --color-primary-rgb: 187, 71, 38;
   --text-primary: var(--store-ink);
   --text-secondary: var(--store-muted);
   --text-muted: var(--store-muted);
@@ -2111,7 +2244,9 @@
   font-family: var(--font-display);
   font-size: 1.25rem;
   font-weight: 800;
-  color: var(--color-primary);
+  /* Flame, matching the price on the card behind it. Chilli at this size is 4.3:1 on the panel. */
+  color: var(--store-gold);
+  font-variant-numeric: tabular-nums;
 }
 
 .aether-drawer-desc {
@@ -2163,7 +2298,7 @@
 }
 
 .aether-spicy-option input[type="radio"]:checked + .aether-spicy-card {
-  border-color: var(--color-primary);
+  border-color: var(--store-accent-ink);
   background: rgba(196, 56, 28, 0.05);
   box-shadow: var(--shadow-glow-active);
 }
@@ -2223,7 +2358,7 @@
 }
 
 .aether-modifier-item input[type="checkbox"]:checked + .aether-checkbox-visual {
-  border-color: var(--color-primary);
+  border-color: var(--store-accent-ink);
   background: var(--color-primary);
 }
 
@@ -2769,7 +2904,7 @@
 .crm-order-price {
   font-size: 0.75rem;
   font-weight: 800;
-  color: var(--color-primary);
+  color: var(--store-accent-ink);
 }
 
 .crm-order-items {
@@ -2814,13 +2949,13 @@
 
 .aether-sandbox-trigger:hover {
   transform: translateY(-2px);
-  border-color: var(--color-primary);
+  border-color: var(--store-accent-ink);
   box-shadow: 0 6px 20px rgba(0,0,0,0.3), 0 0 16px var(--color-primary-glow);
 }
 
 .aether-sandbox-trigger span {
   font-size: 16px;
-  color: var(--color-primary);
+  color: var(--store-accent-ink);
 }
 
 .aether-sandbox-panel {
@@ -2891,7 +3026,7 @@
 
 .sandbox-panel-btn:hover {
   background: rgba(255, 255, 255, 0.04);
-  border-color: var(--color-primary);
+  border-color: var(--store-accent-ink);
 }
 
 .sandbox-panel-btn span {
@@ -2943,32 +3078,35 @@
 }
 
 .storefront-root {
-  --store-ink: #201511;
-  --store-cream: #fffaf3;
-  --store-accent: #b9472a;
+  /* The ground the whole storefront composites onto. It painted cream from its own private tokens,
+     so it stayed cream when the palette changed and showed through every element that does not set
+     a background of its own. It takes the shared token now, with one warm glow off to the side —
+     a street light, not a gradient hero. */
   background:
-    radial-gradient(circle at 10% 35%, rgba(229, 75, 32, 0.055), transparent 28rem),
-    var(--store-cream);
+    radial-gradient(circle at 12% 30%, rgba(224, 58, 33, 0.10), transparent 30rem),
+    var(--store-soft);
+  color: var(--store-ink);
+  min-height: 100%;
 }
 
 .storefront-root.pref-larger-text {
   font-size: 112%;
 }
 
-.storefront-root.pref-high-contrast {
-  --store-ink: #090604;
-  --store-muted: #31251f;
-  --store-line: rgba(0,0,0,.32);
-  --store-accent: #8f240e;
-}
-
+/* High contrast pushes the same identity further apart, rather than swapping to a light theme:
+   a guest who turned this on still gets the storefront they were looking at. */
+.storefront-root.pref-high-contrast,
 .storefront-root.pref-high-contrast .storefront-shell,
 .storefront-root.pref-high-contrast .store-checkout-shell,
-.storefront-root.pref-high-contrast .store-success-shell {
-  --store-ink: #090604;
-  --store-muted: #31251f;
-  --store-line: rgba(0,0,0,.32);
-  --store-accent: #8f240e;
+.storefront-root.pref-high-contrast .store-success-shell,
+.storefront-root.pref-high-contrast .aether-drawer-overlay {
+  --store-soft: #000000;
+  --store-panel: #14100e;
+  --store-ink: #ffffff;
+  --store-muted: #d6cabf;
+  --store-line: rgba(255, 255, 255, 0.42);
+  --store-gold: #ffc061;
+  --store-accent-ink: #ff9a80;
 }
 
 .storefront-root.pref-reduced-motion *,
@@ -2996,12 +3134,20 @@
   letter-spacing: 0.12em;
 }
 
+/* An eyebrow, not a badge.
+   This was a rounded pill with a tinted fill and a hairline border — the shape
+   that sits above the headline on almost every generated landing page. It says
+   nothing a line of type does not, and it made the first thing on the page look
+   like a component rather than a sentence. A rule and letter-spacing carry it. */
 .store-kicker {
   width: fit-content;
-  padding: 7px 12px;
-  border: 1px solid rgba(var(--color-primary-rgb), 0.18);
-  border-radius: 999px;
-  background: var(--store-accent-surface);
+  padding: 0 0 9px;
+  border: 0;
+  border-bottom: 2px solid var(--store-accent);
+  border-radius: 0;
+  background: none;
+  color: var(--store-gold);
+  letter-spacing: 0.18em;
 }
 
 .store-hero h1 {
@@ -3177,4 +3323,47 @@
     aspect-ratio: auto;
     align-self: stretch;
   }
+}
+
+
+/* Console buttons that land on the storefront.
+   `.btn` and its variants are defined against the staff console's palette, and the console's light
+   theme reaches them through `:root[data-theme="system"] .btn` inside a prefers-color-scheme query —
+   which out-specifies anything scoped to the storefront and left white pills on the night ground.
+   These are scoped under `.storefront-root` *and* carry the same weight, so they win on order. */
+.storefront-root .btn-primary,
+.store-checkout-shell .btn-primary,
+.store-success-shell .btn-primary,
+.aether-drawer-overlay .btn-primary {
+  background: var(--store-accent-fill);
+  border-color: var(--store-accent-fill);
+  color: var(--store-ink);
+  border-radius: 3px;
+  box-shadow: none;
+}
+
+.storefront-root .btn-primary:hover,
+.store-checkout-shell .btn-primary:hover,
+.store-success-shell .btn-primary:hover,
+.aether-drawer-overlay .btn-primary:hover {
+  background: var(--color-primary-hover);
+  border-color: var(--color-primary-hover);
+  color: var(--store-ink);
+}
+
+.storefront-root .btn-secondary,
+.store-checkout-shell .btn-secondary,
+.store-success-shell .btn-secondary,
+.aether-drawer-overlay .btn-secondary {
+  background: transparent;
+  border-color: var(--store-line);
+  color: var(--store-ink);
+  border-radius: 3px;
+}
+
+.storefront-root .btn,
+.store-checkout-shell .btn,
+.store-success-shell .btn,
+.aether-drawer-overlay .btn {
+  border-radius: 3px;
 }

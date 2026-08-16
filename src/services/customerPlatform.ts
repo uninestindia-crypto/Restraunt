@@ -172,30 +172,117 @@ export async function fetchCustomerOffers(customer = null) {
   }
 }
 
-export async function syncCustomerFavorite({ customer, item }) {
-  if (!customer || !item) return { synced: false, reason: 'missing_customer_or_item' };
-  const localKey = `customer_favorites_${customer.cloudUserId || customer.authUserId || customer.phone || 'guest'}`;
-  const localFavorites = JSON.parse(localStorage.getItem(localKey) || '[]').filter(Boolean);
-  const next = [...new Set([...localFavorites, String(item.id)])];
-  localStorage.setItem(localKey, JSON.stringify(next));
+/**
+ * Where this device remembers a person's favourites.
+ *
+ * A signed-out guest is the normal case on a storefront, not an edge case — they get their own
+ * key rather than being turned away. The previous version returned before touching storage when
+ * there was no `customer`, so every guest tap saved nothing at all while the screen said
+ * "Favourite saved locally".
+ */
+function favoritesKey(customer) {
+  const who = customer?.cloudUserId || customer?.authUserId || customer?.phone || 'guest';
+  return `customer_favorites_${who}`;
+}
 
-  if (!navigator.onLine || !(customer.cloudUserId || customer.authUserId)) {
-    return { synced: false, reason: 'local_only' };
+function readLocalFavorites(customer) {
+  try {
+    const raw = JSON.parse(localStorage.getItem(favoritesKey(customer)) || '[]');
+    return Array.isArray(raw) ? raw.filter(Boolean).map(String) : [];
+  } catch {
+    return [];
   }
+}
+
+/**
+ * Every dish this person has saved, as `{ itemId, itemName }`.
+ *
+ * Nothing read favourites back before, so the list was empty on every load and the heart on a
+ * saved dish looked exactly like the heart on an unsaved one.
+ */
+export async function fetchCustomerFavorites({ customer = null, items = [] } = {}) {
+  const localIds = readLocalFavorites(customer);
+  const byId = new Map(items.map((i) => [String(i.id), i]));
+  const local = localIds.map((id) => ({
+    itemId: id,
+    itemName: byId.get(id)?.name || '',
+    source: 'local'
+  }));
+
+  const userId = customer?.cloudUserId || customer?.authUserId;
+  if (!navigator.onLine || !userId) return local;
 
   try {
     const supabase = await getSupabaseClient({ persistSession: true });
-    if (!supabase) return { synced: false, reason: 'no_client' };
-    const { error } = await supabase.from('customer_favorites').upsert({
-      user_id: customer.cloudUserId || customer.authUserId,
-      store_id: localStorage.getItem('store_id') || 'the-taste',
-      menu_item_id: item.id,
-      item_name: item.name,
-      updated_at: new Date().toISOString(),
-    }, { onConflict: 'user_id,store_id,menu_item_id' });
-    return { synced: !error, error };
+    if (!supabase) return local;
+    const { data, error } = await supabase
+      .from('customer_favorites')
+      .select('menu_item_id, item_name')
+      .eq('user_id', userId)
+      .eq('store_id', localStorage.getItem('store_id') || 'the-taste');
+    if (error || !data) return local;
+
+    // The cloud is authoritative for a signed-in person, but anything saved on this device while
+    // signed out still belongs to them until they clear it.
+    const merged = new Map(local.map((f) => [String(f.itemId), f]));
+    for (const row of data) {
+      merged.set(String(row.menu_item_id), {
+        itemId: String(row.menu_item_id),
+        itemName: row.item_name || byId.get(String(row.menu_item_id))?.name || '',
+        source: 'server'
+      });
+    }
+    return [...merged.values()];
+  } catch {
+    return local;
+  }
+}
+
+/**
+ * Save a dish, or un-save it if it is already saved.
+ *
+ * This used to be add-only, so a heart could be turned on and never off — and tapping an already
+ * saved dish reported "Saved to favourites" again, which was true of the state and false of the
+ * action.
+ *
+ * @returns `{ favorited, synced }` — `favorited` is the state the dish is now in.
+ */
+export async function toggleCustomerFavorite({ customer = null, item }) {
+  if (!item?.id) return { favorited: false, synced: false, reason: 'missing_item' };
+
+  const id = String(item.id);
+  const current = readLocalFavorites(customer);
+  const favorited = !current.includes(id);
+  const next = favorited ? [...new Set([...current, id])] : current.filter((x) => x !== id);
+  localStorage.setItem(favoritesKey(customer), JSON.stringify(next));
+
+  const userId = customer?.cloudUserId || customer?.authUserId;
+  if (!navigator.onLine || !userId) return { favorited, synced: false, reason: 'local_only' };
+
+  try {
+    const supabase = await getSupabaseClient({ persistSession: true });
+    if (!supabase) return { favorited, synced: false, reason: 'no_client' };
+    const storeId = localStorage.getItem('store_id') || 'the-taste';
+
+    if (favorited) {
+      const { error } = await supabase.from('customer_favorites').upsert({
+        user_id: userId,
+        store_id: storeId,
+        menu_item_id: item.id,
+        item_name: item.name,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'user_id,store_id,menu_item_id' });
+      return { favorited, synced: !error, error };
+    }
+
+    const { error } = await supabase.from('customer_favorites')
+      .delete()
+      .eq('user_id', userId)
+      .eq('store_id', storeId)
+      .eq('menu_item_id', item.id);
+    return { favorited, synced: !error, error };
   } catch (error) {
-    return { synced: false, error };
+    return { favorited, synced: false, error };
   }
 }
 

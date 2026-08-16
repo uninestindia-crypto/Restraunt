@@ -327,7 +327,7 @@ export function LoyaltyDrawer({ loggedInCustomer, customerPhone, customerName, o
                   <input 
                     type="tel" 
                     id="crm-phone-input" 
-                    className="input store-input" 
+                    className="store-input" 
                     placeholder="10-digit mobile number" 
                     maxLength={10} 
                     value={phoneInput}
@@ -373,7 +373,7 @@ export function LoyaltyDrawer({ loggedInCustomer, customerPhone, customerName, o
                   <input 
                     type="text" 
                     id="crm-reg-name" 
-                    className="input store-input" 
+                    className="store-input" 
                     placeholder="E.g. Alexander Mercer" 
                     value={regName}
                     onChange={(e) => setRegName(e.target.value)}
@@ -386,7 +386,7 @@ export function LoyaltyDrawer({ loggedInCustomer, customerPhone, customerName, o
                     <input 
                       type="tel" 
                       id="crm-reg-phone" 
-                      className="input store-input" 
+                      className="store-input" 
                       placeholder="10-digit mobile number" 
                       maxLength={10} 
                       value={regPhone}
@@ -418,7 +418,7 @@ export function LoyaltyDrawer({ loggedInCustomer, customerPhone, customerName, o
                   <input 
                     type="tel" 
                     id="crm-link-phone" 
-                    className="input store-input" 
+                    className="store-input" 
                     placeholder="10-digit mobile number" 
                     maxLength={10} 
                     value={linkPhone}

@@ -12,7 +12,7 @@ import { LoyaltyDrawer } from './LoyaltyDrawer';
 import { OffersPage, AboutPage, CateringPage, SupportPage, AccountPage } from './CustomerPages';
 import { getCurrentCoordinates, reverseGeocode, autocompleteAddress } from '../../../services/geocoding';
 import { STOREFRONT_DEFAULTS, STOREFRONT_SETTING_KEYS, resolveStorefrontCopy } from '../../../content/storefront';
-import { buildCustomerFavoritesFromOrders, fetchCustomerOffers, injectCustomerStructuredData, RETENTION_PREFERENCES, syncCustomerFavorite } from '../../../services/customerPlatform';
+import { buildCustomerFavoritesFromOrders, fetchCustomerFavorites, fetchCustomerOffers, injectCustomerStructuredData, RETENTION_PREFERENCES, toggleCustomerFavorite } from '../../../services/customerPlatform';
 import { startPublicMenuSync } from '../../../services/publicMenuSync';
 
 const PHONE_RE = /^[6-9]\d{9}$/;
@@ -156,6 +156,9 @@ export function CustomerApp({ app }) {
   const [loggedInCustomer, setLoggedInCustomer] = useState(null);
   const [customerOrders, setCustomerOrders] = useState([]);
   const [customerFavorites, setCustomerFavorites] = useState([]);
+  /* The dish whose favourite state is currently being written. A control that performs a network
+     write disables itself in flight — otherwise a double tap sends an add and a remove. */
+  const [savingFavoriteId, setSavingFavoriteId] = useState(null);
   const [customerAddresses, setCustomerAddresses] = useState([]);
   const [customerOffers, setCustomerOffers] = useState([]);
   const [customerPreferences, setCustomerPreferences] = useState(() => {
@@ -423,7 +426,23 @@ export function CustomerApp({ app }) {
       }
 
       setCustomerOrders(matchingOrders);
-      setCustomerFavorites(buildCustomerFavoritesFromOrders(matchingOrders).slice(0, 6));
+
+      // Favourites are the dishes this person actually saved, so the heart on a saved dish can
+      // look different from the heart on an unsaved one. Nothing read them back before — the list
+      // started empty on every load and was only ever appended to in-session, which is why the
+      // control could never show its own state.
+      //
+      // What the order history yields is a different thing: the usuals. They enrich a saved
+      // favourite with how often it has been ordered, but they do not add entries — a heart
+      // must mean "I saved this", not "you order this a lot".
+      const menuItems = categories.flatMap(category => menuByCategory.get(category.id) || []);
+      const saved = await fetchCustomerFavorites({ customer: loggedInCustomer, items: menuItems });
+      const counts = new Map(
+        buildCustomerFavoritesFromOrders(matchingOrders).map(f => [String(f.itemId), f.count])
+      );
+      setCustomerFavorites(
+        saved.map(f => ({ ...f, count: counts.get(String(f.itemId)) || 0 })).slice(0, 12)
+      );
       setCustomerAddresses([...addressSet]);
     } catch (error) {
       console.warn('[CustomerView] Failed to load customer insights:', error);
@@ -641,13 +660,32 @@ export function CustomerApp({ app }) {
     showToast('Communication preference updated', 'success');
   };
 
+  const isFavorite = (item) =>
+    customerFavorites.some(fav => String(fav.itemId) === String(item?.id));
+
   const handleFavoriteItem = async (item) => {
-    const result = await syncCustomerFavorite({ customer: loggedInCustomer, item });
-    const existing = customerFavorites.find(fav => String(fav.itemId) === String(item.id) || fav.itemName === item.name);
-    if (!existing) {
-      setCustomerFavorites([{ itemId: item.id, itemName: item.name, count: 1, source: result.synced ? 'server' : 'local' }, ...customerFavorites].slice(0, 6));
+    if (!item?.id || savingFavoriteId) return;
+    setSavingFavoriteId(String(item.id));
+    try {
+      const result = await toggleCustomerFavorite({ customer: loggedInCustomer, item });
+
+      // Reflect the state the dish is now in, rather than only ever appending. The heart could
+      // previously be turned on and never off, and an already-saved dish answered a second tap
+      // with "Saved to favourites" — true of the state, false of the action.
+      setCustomerFavorites(prev => {
+        const without = prev.filter(fav => String(fav.itemId) !== String(item.id));
+        return result.favorited
+          ? [{ itemId: String(item.id), itemName: item.name, source: result.synced ? 'server' : 'local' }, ...without]
+          : without;
+      });
+
+      showToast(
+        result.favorited ? `Saved ${item.name} to favourites` : `Removed ${item.name} from favourites`,
+        'success'
+      );
+    } finally {
+      setSavingFavoriteId(null);
     }
-    showToast(result.synced ? 'Saved to favourites' : 'Favourite saved locally', 'success');
   };
 
   const handleReorder = (order) => {
@@ -991,14 +1029,26 @@ export function CustomerApp({ app }) {
                   </button>
                   {/* Right-click/long-press stays as a shortcut, but favouriting
                       needs a real control to be reachable by keyboard and AT. */}
+                  {/* The heart shows its own state: a filled glyph when this dish is saved, an
+                      outline when it is not. It used to render the same filled heart either way,
+                      so nothing on screen distinguished a saved dish from an unsaved one — and
+                      the label said "Save" even when a second tap would remove it. */}
                   <button
-                    className="store-featured-fav"
+                    className={`store-featured-fav ${isFavorite(item) ? 'is-saved' : ''}`}
                     type="button"
                     onClick={() => handleFavoriteItem(item)}
-                    aria-label={`Save ${item.name} to favourites`}
-                    title={`Save ${item.name} to favourites`}
+                    aria-pressed={isFavorite(item)}
+                    disabled={savingFavoriteId === String(item.id)}
+                    aria-label={isFavorite(item)
+                      ? `Remove ${item.name} from favourites`
+                      : `Save ${item.name} to favourites`}
+                    title={isFavorite(item)
+                      ? `Remove ${item.name} from favourites`
+                      : `Save ${item.name} to favourites`}
                   >
-                    <span className="material-symbols-rounded" aria-hidden="true">favorite</span>
+                    <span className="material-symbols-rounded" aria-hidden="true">
+                      {isFavorite(item) ? 'favorite' : 'favorite_border'}
+                    </span>
                   </button>
                 </article>
               ))}
@@ -1131,11 +1181,11 @@ export function CustomerApp({ app }) {
               <h3>Contact details</h3>
               <div className="input-group store-input-group">
                 <label className="store-field-label" htmlFor="self-name">Your name</label>
-                <input type="text" id="self-name" className="input store-input" value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder="Enter your name" />
+                <input type="text" id="self-name" className="store-input" value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder="Enter your name" />
               </div>
               <div className="input-group store-input-group" style={{ marginTop: '12px' }}>
                 <label className="store-field-label" htmlFor="self-phone">Phone number</label>
-                <input type="tel" id="self-phone" className="input store-input" value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} placeholder="10-digit mobile number" />
+                <input type="tel" id="self-phone" className="store-input" value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} placeholder="10-digit mobile number" />
               </div>
             </section>
 
@@ -1193,7 +1243,7 @@ export function CustomerApp({ app }) {
                     <div style={{ position: 'relative' }}>
                       <textarea 
                         id="self-delivery-address" 
-                        className="input store-input" 
+                        className="store-input" 
                         rows={3} 
                         value={deliveryAddress} 
                         onChange={(e) => handleAddressInputChange(e.target.value)} 
@@ -1252,7 +1302,7 @@ export function CustomerApp({ app }) {
                     
                     <div className="input-group store-input-group" style={{ marginTop: '12px' }}>
                       <label className="store-field-label" htmlFor="self-delivery-landmark">Landmark / delivery notes</label>
-                      <input type="text" id="self-delivery-landmark" className="input store-input" value={deliveryLandmark} onChange={(e) => setDeliveryLandmark(e.target.value)} placeholder="Nearby landmark, gate code, etc." />
+                      <input type="text" id="self-delivery-landmark" className="store-input" value={deliveryLandmark} onChange={(e) => setDeliveryLandmark(e.target.value)} placeholder="Nearby landmark, gate code, etc." />
                     </div>
                   </div>
                 )}
@@ -1260,7 +1310,7 @@ export function CustomerApp({ app }) {
                 {orderType === 'dinein' && (
                   <div id="table-fields" className="store-conditional-fields">
                     <label className="store-field-label" htmlFor="self-table-select">Table number</label>
-                    <select id="self-table-select" className="input store-input" value={selectedTableId} onChange={(e) => setSelectedTableId(e.target.value)}>
+                    <select id="self-table-select" className="store-input" value={selectedTableId} onChange={(e) => setSelectedTableId(e.target.value)}>
                       <option value="">Select a table</option>
                       {tables.map(table => (
                         <option key={table.id} value={table.id}>Table {table.number} ({table.floorSection || 'Main'})</option>

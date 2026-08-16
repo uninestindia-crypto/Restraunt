@@ -17,11 +17,39 @@ Two products live in this codebase, and they do not look alike on purpose.
 | | **Storefront** | **Staff console** |
 |---|---|---|
 | Who | A hungry stranger, on their phone, outdoors, one-handed | A cashier or cook, on a fixed screen, for eight hours |
-| Mood | Warm, appetising, calm — a menu on good paper | Focused, high-contrast, low-fatigue — an instrument |
-| Ground | Cream `#fdf7f0`, cards in true white | Obsidian `#040406`, surfaces in graphite |
-| Accent | Terracotta `#bb4726` | Vermillion `#FF5E36` |
+| Mood | A food street after dark — appetising, warm, lit | Focused, high-contrast, low-fatigue — an instrument |
+| Ground | Night `#14100e`, cards one step off it at `#1d1815` | Obsidian `#040406`, surfaces in graphite |
+| Accent | Chilli `#e03a21` for fills and rules; flame `#f2a93b` for small accent text | Vermillion `#FF5E36` |
 | Density | Generous. One decision per screen. | Dense. Everything reachable without scrolling. |
 | Failure cost | They leave and eat elsewhere | The queue stops moving |
+
+**The storefront is deliberately single-look.** It does not follow the viewer's theme. A menu is a
+place, and this one is open in the evening; the page commits to that and paints every colour
+explicitly rather than inheriting anything from the host.
+
+**Why it is no longer cream.** It was warm cream with a terracotta accent, a pill badge above the
+headline, and rounded cards each carrying a tinted rounded icon square. That is the most recognisable
+shape a generated interface takes, and it read as one — a template with a restaurant's name dropped
+in. It also gave a dish photograph nowhere to go: on cream the photo is the dullest thing on screen,
+which is the wrong hierarchy for a menu. On the night ground the food is the brightest thing on the
+page, which is the whole job.
+
+**The storefront's measured pairs** (Law 2 is measured, not estimated):
+
+| Pair | Ratio | |
+|---|---|---|
+| `--store-ink` on the ground | 16.6:1 | body |
+| `--store-muted` on the ground | 6.4:1 | body |
+| `--store-gold` on the ground | 9.5:1 | body — this is why small accent text is flame, not chilli |
+| `--store-accent-ink` on `--store-accent-surface` | 6.6:1 | body |
+| `--store-accent` on the ground | 4.3:1 | **fills and rules only** — never small text |
+| `--store-ink` on `--store-accent-fill` | 4.7:1 | body — the primary button |
+| `--store-ink` on `--color-primary-hover` | 5.6:1 | body — hover darkens, it does not brighten |
+
+`--store-accent` and `--store-accent-fill` are two colours on purpose. The bright one is for
+boundaries that carry no text; the deeper one is the only chilli that may sit behind a label. A
+~15px bold button label is **not** WCAG large text (that starts at 18.66px bold), so it needs the
+full 4.5:1 and the bright accent cannot give it.
 
 **They share the grid, the type ramp, the motion physics, the interaction rules, and the voice.**
 They share nothing else. A storefront card dropped into the POS looks broken, and vice versa — that
