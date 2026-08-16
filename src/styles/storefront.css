@@ -11,40 +11,46 @@
 .store-checkout-shell,
 .store-success-shell,
 .aether-drawer-overlay {
-  /* ── Street-food night ───────────────────────────────────────────────────
-     A deliberately single-look surface: this page is a food street after dark,
-     not a document that follows the reader's theme. Everything below is painted
-     explicitly for that reason — nothing is left to inherit from the host.
+  /* ── Quiet daylight ──────────────────────────────────────────────────────
+     Apple-flavoured: a near-white ground that is cool rather than cream, one
+     saturated accent used sparingly, hairline separators instead of borders,
+     and no chrome competing with the food. The photography is the only
+     saturated thing on the page — everything around it steps back.
 
-     It replaces a warm-cream ground with a terracotta accent, pill badges and
-     tinted icon tiles on rounded cards. That combination is the most common
-     shape generated interfaces take, and it read as exactly that: a template
-     with a restaurant's name dropped into it. A dish photograph also has
-     nowhere to glow on cream; on this ground it is the brightest thing on the
-     screen, which is the right hierarchy for a menu. */
-  --store-ink: #f7efe6;          /* warm off-white — cream, not clinical white */
-  --store-muted: #a2938a;        /* warm grey, biased toward the cream (7.0:1 on the ground) */
-  --store-soft: #14100e;         /* the ground: near-black with a red-brown bias */
-  --store-panel: #1d1815;        /* a card, one step off the ground */
-  --store-accent-surface: #2b1713;  /* the tint behind a live control */
-  --store-line: rgba(247, 239, 230, 0.13);
-  --store-accent: #e03a21;       /* chilli — fills and rules, never small text */
-  /* Chilli is only 4.6:1 on the ground, so small accent text uses the flame
-     instead (9.1:1). Anything set in --store-accent must be a fill, a border,
-     or type large and heavy enough to carry it. */
-  --store-accent-ink: #ff7a5c;
-  /* The fill behind cream button text. Measured, not chosen by eye: cream on this is 4.74:1,
-     clearing the 4.5:1 body threshold — the button label is ~15px, which is under the 18.66px
-     that would let bold text sit at 3:1. The brighter --store-accent stays for rules and fills
-     that carry no text, where 3.5:1 against the ground is a boundary, not a label. */
-  --store-accent-fill: #c92e18;
-  --store-green: #4fbf8f;
-  --store-gold: #f2a93b;         /* wok flame — prices, eyebrows, small accents */
-  --color-primary: #e03a21;
-  /* Hover darkens rather than brightens: lightening the fill pushed cream on it to 3.17:1. */
-  --color-primary-hover: #b52814;
-  --color-primary-rgb: 224, 58, 33;
-  color-scheme: dark;
+     Two earlier directions are worth remembering here. The first was warm cream
+     with a terracotta accent, pill badges and tinted icon tiles: the shape a
+     generated interface takes, and it read as one. The second was a dark
+     street-food theme, which had a point of view but is not what this product
+     is for — a menu a stranger opens outdoors, one-handed, in daylight, wants
+     to be legible and calm before it wants atmosphere.
+
+     Every value below is measured against the surface it lands on, not chosen
+     by eye. The ratios are in the design law. */
+  --store-ink: #1d1d1f;             /* 16.8:1 on a card */
+  --store-muted: #6e6e73;           /* 5.1:1 on a card — passes body, not decoration */
+  --store-soft: #fbfbfd;            /* the ground: off-white, faintly cool */
+  --store-panel: #ffffff;           /* a card, lifted by a hairline not a shadow */
+  --store-accent-surface: #f5f5f7;  /* the tint behind a live control */
+  --store-line: rgba(0, 0, 0, 0.09);
+
+  /* One accent, not three. At 5.33:1 it clears body contrast both as text on a
+     card and as a fill behind white, so the same value serves every role — which
+     is why the night palette needed three tokens and this one does not. */
+  --store-accent: #c7332b;
+  --store-accent-ink: #c7332b;
+  --store-accent-fill: #c7332b;
+  --store-gold: #b3231c;            /* prices: the accent, one step down, 6.6:1 */
+  /* Text sitting *on* the accent fill. It is not --store-ink: ink is near-black here, and the
+     whole point of a filled button is that its label is the opposite of the page. White on the
+     accent measures 5.33:1. Hard-coding --store-ink here is what broke both filled controls when
+     the palette went from a cream ink to a black one. */
+  --store-on-accent: #ffffff;
+  --store-green: #1d7a4c;
+
+  --color-primary: #c7332b;
+  --color-primary-hover: #a81f19;
+  --color-primary-rgb: 199, 51, 43;
+  color-scheme: light;
   --store-header-height: 72px;
   min-height: 100%;
   /* The window is what actually scrolls this page: the shell's height follows
@@ -122,8 +128,13 @@
   align-items: center;
   justify-content: space-between;
   gap: 18px;
-  background: rgba(23, 20, 18, 0.88);
-  color: #fff;
+  /* Opaque, not an 88% tint over a backdrop blur. The blur means the real background behind the
+     link text is whatever happens to be scrolling under it — a dish photograph, usually — so the
+     contrast of the nav labels changed with the page. The same lesson the bottom nav already
+     carries in 05-accessibility.md. */
+  background: var(--store-panel);
+  color: var(--store-ink);
+  border-bottom: 1px solid var(--store-line);
   border-bottom: 1px solid rgba(255,255,255,.11);
   backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(18px);
@@ -131,8 +142,8 @@
 
 .customer-shell-nav .store-nav-links a.is-active,
 .customer-shell-nav .store-nav-text-button.is-active {
-  background: rgba(255,255,255,.14);
-  color: #fff;
+  background: var(--store-accent-surface);
+  color: var(--store-accent-ink);
 }
 
 .customer-shell-nav .store-logout-btn {
@@ -159,8 +170,8 @@
   /* Squared to match the rest of the surface; a 22px pill floating over the
      page was the last piece still shaped like a template component. */
   border-radius: 6px;
-  background: rgba(20, 16, 14, 0.94);
-  box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.55);
+  background: var(--store-panel);
+  box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.06);
   backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(18px);
 }
@@ -235,12 +246,16 @@
   align-items: center;
   gap: 4px;
   padding: 4px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 12px;
-  background: rgba(15, 15, 26, 0.4);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  /* No pill, no tint, no blur. This was a dark translucent capsule from the original operator-theme
+     nav — it composited to a mid grey behind the link labels (#9f9fa3, 1.92:1) and was the reason
+     the header text failed contrast even after the bar itself went opaque. The header is already a
+     surface; the links sit on it directly. */
+  border: 0;
+  border-radius: 0;
+  background: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow: none;
 }
 
 .store-nav-links a {
@@ -249,8 +264,8 @@
   align-items: center;
   justify-content: center;
   padding: 0 16px;
-  border-radius: 8px;
-  color: rgba(255, 255, 255, 0.85);
+  border-radius: 6px;
+  color: var(--store-muted);
   font-size: 0.9rem;
   font-weight: 600;
   transition: transform, opacity, background-color, border-color, color, box-shadow 0.25s ease;
@@ -258,8 +273,8 @@
 
 .store-nav-links a:hover,
 .store-nav-links a:focus-visible {
-  background: rgba(255, 255, 255, 0.1);
-  color: #fff;
+  background: var(--store-accent-surface);
+  color: var(--store-ink);
 }
 
 .store-rewards-link {
@@ -276,25 +291,26 @@
   align-items: center;
   gap: 5px;
   padding: 0 13px;
-  border: 1px solid rgba(215, 180, 119, 0.45);
-  border-radius: 999px;
-  background: rgba(215, 180, 119, 0.1);
-  color: #f1d7a7;
+  /* Was pale gold on a gold tint — legible on the old dark bar, 1.31:1 on a white one. */
+  border: 1px solid var(--store-line);
+  border-radius: 6px;
+  background: var(--store-panel);
+  color: var(--store-ink);
   font-size: 0.74rem;
   font-weight: 750;
   transition: background 180ms ease, border-color 180ms ease;
 }
 
 .store-login-btn:hover {
-  background: rgba(215, 180, 119, 0.18);
-  border-color: rgba(215, 180, 119, 0.72);
+  background: var(--store-accent-surface);
+  border-color: var(--store-accent);
 }
 
 .store-nav-text-button {
   min-height: 38px;
   padding: 0 14px;
-  border-radius: 8px;
-  color: rgba(255,255,255,.85);
+  border-radius: 6px;
+  color: var(--store-muted);
   font-size: .88rem;
   font-weight: 650;
 }
@@ -574,12 +590,12 @@
   grid-template-columns: 1fr;
 }
 
-.customer-footer { margin-top: 76px; padding: 52px max(24px, calc((100% - 1180px) / 2)); display: grid; grid-template-columns: 1.5fr 1fr auto; align-items: end; gap: 34px; background: #211713; color: #f8eee5; }
+.customer-footer { margin-top: 76px; padding: 52px max(24px, calc((100% - 1180px) / 2)); display: grid; grid-template-columns: 1.5fr 1fr auto; align-items: end; gap: 34px; background: var(--store-accent-surface); color: var(--store-ink); border-top: 1px solid var(--store-line); }
 .customer-footer strong { letter-spacing: .14em; }
-.customer-footer p { max-width: 340px; margin-top: 8px; color: rgba(248,238,229,.62); }
+.customer-footer p { max-width: 340px; margin-top: 8px; color: var(--store-muted); }
 .customer-footer nav { display: flex; gap: 18px; }
-.customer-footer button { color: #f8eee5; font-weight: 700; }
-.customer-footer small { color: rgba(248,238,229,.5); }
+.customer-footer button { color: var(--store-ink); font-weight: 700; }
+.customer-footer small { color: var(--store-muted); }
 
 @media (max-width: 800px) {
   .customer-shell-nav {
@@ -714,16 +730,14 @@
 }
 
 .store-primary-action {
-  /* The deeper chilli, so cream on it clears 4.5:1 — the brighter accent is for
-     rules and fills that carry no text. */
   background: var(--store-accent-fill);
-  color: var(--store-ink);
+  color: var(--store-on-accent);
   box-shadow: none;
 }
 
 .store-primary-action:hover {
   background: var(--color-primary-hover);
-  color: #fff;
+  color: var(--store-on-accent);
   box-shadow: none;
   transform: translateY(-1px);
 }
@@ -819,7 +833,7 @@
   transform: none;
   border-color: var(--store-line);
   border-left-color: rgba(var(--color-primary-rgb), 0.5);
-  background: #241d19;
+  background: var(--store-accent-surface);
   box-shadow: none;
 }
 
@@ -962,7 +976,7 @@
   border: 1px solid var(--store-line);
   /* A near-white disc over a dish photograph read as a blob of missing image.
      Smoked glass instead: it sits on the photo without competing with it. */
-  background: rgba(20, 16, 14, 0.62);
+  background: rgba(255, 255, 255, 0.82);
   color: var(--store-ink);
   box-shadow: none;
   backdrop-filter: blur(6px);
@@ -972,7 +986,7 @@
 
 .store-featured-fav:hover {
   background: var(--store-accent-fill);
-  color: var(--store-ink);
+  color: var(--store-on-accent);
   transform: none;
 }
 
@@ -1092,7 +1106,7 @@
 .store-category-tab.is-active {
   border-color: var(--store-accent-fill);
   background: var(--store-accent-fill);
-  color: var(--store-ink);
+  color: var(--store-on-accent);
   box-shadow: none;
   font-weight: 800;
 }
@@ -1563,7 +1577,7 @@
 .storefront-shell .input,
 .store-checkout-shell .input,
 .store-success-shell .input {
-  background: #221c18;
+  background: var(--store-panel);
   border-color: var(--store-line);
   color: var(--store-ink);
   border-radius: 3px;
@@ -1594,7 +1608,7 @@
   padding: 12px 16px;
   border: 1px solid var(--store-line);
   border-radius: 3px;
-  background: #221c18;
+  background: var(--store-panel);
   color: var(--store-ink);
   font-family: inherit;
   font-size: var(--text-base);
@@ -1608,7 +1622,7 @@
 
 .store-input:focus {
   border-color: var(--store-accent-ink);
-  background: #2a221d;
+  background: var(--store-panel);
 }
 
 .store-input:focus-visible {
@@ -3090,9 +3104,7 @@ select.store-input {
      so it stayed cream when the palette changed and showed through every element that does not set
      a background of its own. It takes the shared token now, with one warm glow off to the side —
      a street light, not a gradient hero. */
-  background:
-    radial-gradient(circle at 12% 30%, rgba(224, 58, 33, 0.10), transparent 30rem),
-    var(--store-soft);
+  background: var(--store-soft);
   color: var(--store-ink);
   min-height: 100%;
 }
@@ -3108,13 +3120,13 @@ select.store-input {
 .storefront-root.pref-high-contrast .store-checkout-shell,
 .storefront-root.pref-high-contrast .store-success-shell,
 .storefront-root.pref-high-contrast .aether-drawer-overlay {
-  --store-soft: #000000;
-  --store-panel: #14100e;
-  --store-ink: #ffffff;
-  --store-muted: #d6cabf;
-  --store-line: rgba(255, 255, 255, 0.42);
-  --store-gold: #ffc061;
-  --store-accent-ink: #ff9a80;
+  --store-soft: #ffffff;
+  --store-panel: #ffffff;
+  --store-ink: #000000;
+  --store-muted: #3a3a3c;
+  --store-line: rgba(0, 0, 0, 0.45);
+  --store-gold: #8f1410;
+  --store-accent-ink: #8f1410;
 }
 
 .storefront-root.pref-reduced-motion *,
@@ -3345,7 +3357,7 @@ select.store-input {
 .aether-drawer-overlay .btn-primary {
   background: var(--store-accent-fill);
   border-color: var(--store-accent-fill);
-  color: var(--store-ink);
+  color: var(--store-on-accent);
   border-radius: 3px;
   box-shadow: none;
 }
@@ -3356,7 +3368,7 @@ select.store-input {
 .aether-drawer-overlay .btn-primary:hover {
   background: var(--color-primary-hover);
   border-color: var(--color-primary-hover);
-  color: var(--store-ink);
+  color: var(--store-on-accent);
 }
 
 .storefront-root .btn-secondary,

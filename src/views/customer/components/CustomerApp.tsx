@@ -1176,7 +1176,7 @@ export function CustomerApp({ app }) {
             {!loggedInCustomer ? (
               <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', background: 'rgba(212,175,55,0.04)', border: '1px solid rgba(212,175,55,0.12)', padding: '10px 14px', borderRadius: 'var(--radius-md)', marginBottom: '14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px' }}>
                 <span>🔒 Sign in to autofill details and earn points!</span>
-                <button className="btn btn-secondary btn-sm" onClick={handleShowLogin} type="button" style={{ padding: '4px 10px', fontSize: '0.7rem', borderColor: 'var(--tier-gold)', color: 'var(--tier-gold)', fontWeight: 700, flexShrink: 0 }}>Sign In</button>
+                <button className="btn btn-secondary btn-sm" onClick={handleShowLogin} type="button" style={{ padding: '4px 10px', fontSize: '0.7rem', fontWeight: 700, flexShrink: 0 }}>Sign In</button>
               </div>
             ) : null}
 

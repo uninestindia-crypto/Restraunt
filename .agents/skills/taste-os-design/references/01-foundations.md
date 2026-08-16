@@ -111,42 +111,47 @@ of tokens in `src/styles/storefront.css` and inherits the rest.
 **Dark mode is not an inversion.** Surfaces get *lighter* as they come toward the user
 (`#040406` → `#0B0B0F` → `#0E0E14`), which is the opposite of light mode's shadow-based depth.
 
-### 3.3 Storefront — street-food night
+### 3.3 Storefront — quiet daylight
 
 | Token | Value | Use |
 |---|---|---|
-| `--store-soft` | `#14100e` | The page — near-black with a red-brown bias, never neutral grey |
-| `--store-panel` | `#1d1815` | Cards, one step off the ground |
-| `--store-accent-surface` | `#2b1713` | The tint behind a live control |
-| `--store-line` | `rgba(247,239,230,.13)` | Hairline |
-| `--store-ink` | `#f7efe6` | Body — warm off-white, cream rather than clinical white |
-| `--store-muted` | `#a2938a` | Secondary — warm grey biased toward the cream |
-| `--store-accent` | `#e03a21` | Chilli — **fills, rules and boundaries. Never small text.** |
-| `--store-accent-fill` | `#c92e18` | Chilli **as a fill behind cream text** — the primary button |
-| `--store-accent-ink` | `#ff7a5c` | Chilli **as small text on `--store-accent-surface`** |
-| `--store-gold` | `#f2a93b` | Wok flame — eyebrows, prices, small accent text |
-| `--store-green` | `#4fbf8f` | Success only. Not a heading colour. |
+| `--store-soft` | `#fbfbfd` | The page — off-white, faintly cool, never cream |
+| `--store-panel` | `#ffffff` | Cards, lifted by a hairline rather than a shadow |
+| `--store-accent-surface` | `#f5f5f7` | The tint behind a live control |
+| `--store-line` | `rgba(0,0,0,.09)` | Hairline |
+| `--store-ink` | `#1d1d1f` | Body — 16.8:1 on a card |
+| `--store-muted` | `#6e6e73` | Secondary — 5.1:1, passes body contrast |
+| `--store-accent` | `#c7332b` | The one accent: 5.3:1 as text on a card *and* behind white |
+| `--store-on-accent` | `#ffffff` | Text sitting **on** the accent fill |
+| `--store-gold` | `#b3231c` | Prices — the accent one step down, 6.6:1 |
+| `--store-green` | `#1d7a4c` | Success only. Not a heading colour. |
 
-**Why the accent is three tokens.** `#e03a21` is 4.3:1 on the ground: enough for a rule or a fill,
-not enough for a label. `#c92e18` takes it one step down so cream on it measures 4.74:1 — and a
-~15px bold button label needs the full 4.5:1, because WCAG large text does not start until 18.66px
-bold. `#ff7a5c` takes it the other way for small text on the accent tint. A brand colour is not one
-colour: it is one colour *per background it lands on, at the size it lands there*.
+**One accent, and why the count changes.** The previous palette needed three accent tokens because
+no single red cleared 4.5:1 both as text on the ground and as a fill behind a label. `#c7332b` does
+both, so `--store-accent`, `--store-accent-fill` and `--store-accent-ink` now hold the same value.
+The names survive so components did not have to change; if a future palette needs them to diverge,
+the reason will be a measurement, not a preference.
 
-**Hover darkens.** On a dark ground the instinct is to brighten a fill on hover; doing that here
-pushed cream on the button to 3.17:1. `--color-primary-hover` is `#b52814` — deeper, 5.63:1.
+**`--store-on-accent` is not `--store-ink`.** A filled button's label is the opposite of the page,
+not the same as it. Using the page's ink there worked while ink was cream on a dark ground and broke
+every filled control the moment the palette inverted — the button labels went near-black on red.
 
-**The storefront does not follow the viewer's theme.** It is a single committed look, so it paints
-its own background and every colour explicitly. A page that leaves `body` transparent borrows the
-host's ground and renders one theme's text on the other theme's surface.
+**Translucency defeats measurement.** The header and the nav capsule were `rgba(…)` over a backdrop
+blur, so the real background behind their labels was whatever was scrolling underneath — usually a
+dish photograph. axe measured the composite at `#9f9fa3`, 1.92:1, and it was right to. A surface
+that carries text does not get to be see-through.
 
-**What this replaced, and why it matters beyond colour.** The storefront was warm cream `#fdf7f0`
-with a terracotta `#bb4726` accent, a pill badge above the headline, and rounded cards each with a
-tinted rounded icon square on the left. Every one of those is a default that generated interfaces
-reach for, and together they read as a template rather than as this restaurant. The lesson is not
-"dark is better" — it is that a palette and a set of component shapes are an identity, and an
-identity assembled from defaults belongs to nobody. When you reach for a pill badge, a tinted icon
-tile, or a 16px radius on everything, ask whether the subject asked for it.
+**What this replaced, twice, and the lesson that outlasts both.** First: warm cream `#fdf7f0` with a
+terracotta `#bb4726` accent, a pill badge above the headline, tinted rounded icon tiles on rounded
+cards — the defaults a generated interface reaches for, which together read as a template. Then: a
+dark street-food theme, which had a point of view but the wrong one for a menu a stranger opens
+outdoors in daylight.
+
+The lesson is not "light" or "dark". It is that a palette and a set of component shapes are an
+identity, an identity assembled from defaults belongs to nobody, and an identity chosen for its
+atmosphere still has to serve the person holding the phone. When you reach for a pill badge, a
+tinted icon tile, or a 16px radius on everything, ask whether the subject asked for it — and when
+you reach for a mood, ask who is looking at the screen and where they are standing.
 
 ### 3.4 Brand orange, and the same lesson in the dark theme
 

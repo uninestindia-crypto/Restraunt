@@ -4,7 +4,7 @@ description: >-
   The design law for The Taste restaurant OS. Use whenever building, changing, or reviewing anything
   a human looks at — a storefront screen, a POS or KDS surface, an admin view, a modal, a toast, an
   empty state, a piece of interface copy, a colour, a motion, or a component's states. Defines the
-  two theme systems (the staff console's obsidian dark and the storefront's warm light), the type,
+  two theme systems (the staff console's obsidian dark and the storefront's quiet daylight), the type,
   space, shape and depth scales, the component contracts, the interaction and accessibility rules,
   and the writing voice. Founder Mode's P6 taste gate defers to this file entirely. Load it before
   the first line of markup or CSS, not after.
@@ -17,39 +17,63 @@ Two products live in this codebase, and they do not look alike on purpose.
 | | **Storefront** | **Staff console** |
 |---|---|---|
 | Who | A hungry stranger, on their phone, outdoors, one-handed | A cashier or cook, on a fixed screen, for eight hours |
-| Mood | A food street after dark — appetising, warm, lit | Focused, high-contrast, low-fatigue — an instrument |
-| Ground | Night `#14100e`, cards one step off it at `#1d1815` | Obsidian `#040406`, surfaces in graphite |
-| Accent | Chilli `#e03a21` for fills and rules; flame `#f2a93b` for small accent text | Vermillion `#FF5E36` |
+| Mood | Quiet daylight — calm, legible, the food is the only loud thing | Focused, high-contrast, low-fatigue — an instrument |
+| Ground | Off-white `#fbfbfd`, cards in true white | Obsidian `#040406`, surfaces in graphite |
+| Accent | One red, `#c7332b` — 5.33:1 as text on a card *and* behind white | Vermillion `#FF5E36` |
 | Density | Generous. One decision per screen. | Dense. Everything reachable without scrolling. |
 | Failure cost | They leave and eat elsewhere | The queue stops moving |
 
-**The storefront is deliberately single-look.** It does not follow the viewer's theme. A menu is a
-place, and this one is open in the evening; the page commits to that and paints every colour
-explicitly rather than inheriting anything from the host.
+**The storefront is deliberately single-look.** It does not follow the viewer's theme. It commits to
+daylight and paints every colour explicitly rather than inheriting anything from the host.
 
-**Why it is no longer cream.** It was warm cream with a terracotta accent, a pill badge above the
-headline, and rounded cards each carrying a tinted rounded icon square. That is the most recognisable
-shape a generated interface takes, and it read as one — a template with a restaurant's name dropped
-in. It also gave a dish photograph nowhere to go: on cream the photo is the dullest thing on screen,
-which is the wrong hierarchy for a menu. On the night ground the food is the brightest thing on the
-page, which is the whole job.
+**Why it looks like this.** Two earlier directions are worth keeping on the record, because each was
+wrong in a way that is easy to repeat.
+
+The first was warm cream `#fdf7f0` with a terracotta `#bb4726` accent, a pill badge above the
+headline, and rounded cards each carrying a tinted rounded icon square on the left. Every one of
+those is a default that generated interfaces reach for, and together they read as a template with a
+restaurant's name dropped in.
+
+The second was a dark street-food theme. It had a point of view, which the first lacked, but it was
+the wrong point of view for this product: a menu a hungry stranger opens outdoors, one-handed, in
+daylight, wants to be legible and calm before it wants atmosphere. Restraint is not the same as
+having no opinion.
+
+What is here now is neither: an off-white ground that is faintly cool rather than cream, one
+saturated accent used sparingly, hairline separators instead of borders and shadows, and generous
+space. The photography is the only saturated thing on the page. That is the hierarchy a menu wants —
+the dish should be the loudest thing on the screen, and nothing else should compete with it.
+
+**One accent, not three.** `#c7332b` measures 5.33:1 both as text on a card and as a fill behind
+white, so a single token serves every role. The night palette needed three (`--store-accent`,
+`--store-accent-fill`, `--store-accent-ink`) because no single value cleared body contrast in both
+directions. Those names survive as aliases so components did not have to change, but they hold the
+same value — if a future palette needs them to diverge again, the reason will be a measurement.
+
+**`--store-on-accent` is separate on purpose.** Text sitting *on* the accent fill is white, not
+`--store-ink`. Hard-coding the page's ink there is what broke every filled control the moment the
+palette went from a cream ink to a near-black one.
 
 **The storefront's measured pairs** (Law 2 is measured, not estimated):
 
 | Pair | Ratio | |
 |---|---|---|
-| `--store-ink` on the ground | 16.6:1 | body |
-| `--store-muted` on the ground | 6.4:1 | body |
-| `--store-gold` on the ground | 9.5:1 | body — this is why small accent text is flame, not chilli |
-| `--store-accent-ink` on `--store-accent-surface` | 6.6:1 | body |
-| `--store-accent` on the ground | 4.3:1 | **fills and rules only** — never small text |
-| `--store-ink` on `--store-accent-fill` | 4.7:1 | body — the primary button |
-| `--store-ink` on `--color-primary-hover` | 5.6:1 | body — hover darkens, it does not brighten |
+| `--store-ink` on a card | 16.8:1 | body |
+| `--store-muted` on a card | 5.1:1 | body — secondary text, not decoration |
+| `--store-accent` on a card | 5.3:1 | body — links, prices, small accent text |
+| `--store-on-accent` on `--store-accent` | 5.3:1 | body — the primary button's label |
+| `--store-gold` on a card | 6.6:1 | body — prices, the accent one step down |
+| `--store-on-accent` on `--color-primary-hover` | 7.3:1 | body — hover darkens |
 
-`--store-accent` and `--store-accent-fill` are two colours on purpose. The bright one is for
-boundaries that carry no text; the deeper one is the only chilli that may sit behind a label. A
-~15px bold button label is **not** WCAG large text (that starts at 18.66px bold), so it needs the
-full 4.5:1 and the bright accent cannot give it.
+A ~15px bold button label is **not** WCAG large text — that starts at 18.66px bold — so it needs the
+full 4.5:1. Any accent chosen for this product has to clear that as a fill, which is what rules out
+the brighter reds that look better in isolation.
+
+**Translucency defeats measurement.** Two bars here were `rgba(…, 0.88)` over a backdrop blur, so
+the real background behind their labels was whatever happened to be scrolling underneath — usually a
+dish photograph. Contrast changed with the page, and axe reported the composite (`#9f9fa3`, 1.92:1)
+rather than the intended white. Both are opaque now. If a surface carries text, it does not get to
+be see-through.
 
 **They share the grid, the type ramp, the motion physics, the interaction rules, and the voice.**
 They share nothing else. A storefront card dropped into the POS looks broken, and vice versa — that
