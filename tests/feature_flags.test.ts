@@ -46,21 +46,15 @@ function readersOf(key: string) {
 }
 
 /**
- * Flags nothing honours yet. Shrinking this list is the fix; growing it is a regression. The test
- * asserts equality in both directions so neither happens silently.
+ * Flags nothing honours. Empty, and it must stay empty: every switch the console draws is read by
+ * code somewhere. The seven that were not — public ordering, delivery, loyalty, cloud sync, the
+ * BLE printer, WhatsApp sharing, and a maintenance mode that blocked nobody — were removed rather
+ * than wired, because a control that reports success and does nothing is a defect.
  */
-const KNOWN_UNWIRED = [
-  'enableBLEPrinter',
-  'enableCloudSync',
-  'enableDelivery',
-  'enableLoyaltyProgram',
-  'enablePublicOrdering',
-  'enableWhatsAppSharing',
-  'maintenanceMode'
-];
+const KNOWN_UNWIRED = [];
 
 test('the console declares the flags this test thinks it does', () => {
-  assert.ok(declared.length >= 9, `parsed only ${declared.length} flags from ${CONSOLE_PATH}`);
+  assert.ok(declared.length >= 2, `parsed only ${declared.length} flags from ${CONSOLE_PATH}`);
 });
 
 test('no new switch is added that nothing reads', () => {

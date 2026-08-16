@@ -19,16 +19,24 @@ const TABS = [
   { id: 'ai-config', icon: 'smart_toy', label: 'AI Config' },
 ];
 
+/**
+ * Switches that actually switch something.
+ *
+ * Seven more used to sit here — public ordering, delivery, loyalty, cloud sync, the BLE printer,
+ * WhatsApp sharing, and a "Maintenance Mode (blocks all staff)". Each wrote to the settings table,
+ * showed a success toast, and was then read by no code anywhere in the product. Maintenance mode
+ * blocked nobody, which is worse than not offering it: an owner reaching for it in an incident
+ * would have believed the store was locked down.
+ *
+ * They are removed rather than wired because a control that lies is a defect, and shipping a
+ * console full of them is the same failure as a staff role that grants no permissions. Wiring any
+ * of them back is a feature with a behaviour to design, not a checkbox to restore — and the test
+ * in tests/feature_flags.test.ts asserts every key listed here is read somewhere, so a new dead
+ * switch fails the build.
+ */
 const FEATURE_FLAGS = [
-  { key: 'enablePublicOrdering', label: 'Public Self-Ordering (QR/Kiosk)', default: 'true' },
-  { key: 'enableDelivery', label: 'Delivery Management', default: 'true' },
-  { key: 'enableLoyaltyProgram', label: 'Customer Loyalty Program', default: 'true' },
-  { key: 'enableCloudSync', label: 'Cloud Sync (Supabase)', default: 'true' },
   { key: 'enableAIChat', label: 'AI Chat Assistant (Groq)', default: 'true' },
   { key: 'enableAIAnalytics', label: 'AI Analytics (Lightning)', default: 'false' },
-  { key: 'enableBLEPrinter', label: 'BLE Thermal Printer', default: 'true' },
-  { key: 'enableWhatsAppSharing', label: 'WhatsApp Receipt Sharing', default: 'true' },
-  { key: 'maintenanceMode', label: 'Maintenance Mode (blocks all staff)', default: 'false' },
 ];
 
 export class DevConsoleView {

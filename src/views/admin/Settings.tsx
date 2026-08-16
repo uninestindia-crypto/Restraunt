@@ -317,6 +317,22 @@ export function SettingsView() {
         }
       }
 
+      // The tax rate is the one setting that decides what a customer is charged, so it does not
+      // live on this device. It goes to `store_security_settings`, which the order function reads
+      // per order — previously this screen wrote only to IndexedDB while the server charged from
+      // an environment variable, so changing the rate here moved the number customers were shown
+      // and not the number they paid.
+      const gst = Number(config.gstPercent);
+      if (Number.isFinite(gst) && gst >= 0 && gst <= 30) {
+        const { publishStoreRates } = await import('../../services/storeRates');
+        const published = await publishStoreRates({ gstPercent: gst });
+        if (!published.ok) {
+          showToast(`Saved on this device, but the store's tax rate was not updated: ${published.error}`, 'warning', 8000);
+        }
+      } else if (config.gstPercent !== undefined && config.gstPercent !== '') {
+        showToast('Tax rate must be a number between 0 and 30. It was not changed.', 'warning');
+      }
+
       // Update cached variables
       localStorage.setItem('app_currency_symbol', currencySymbol);
       localStorage.setItem('app_currency_code', config.currencyCode || 'INR');

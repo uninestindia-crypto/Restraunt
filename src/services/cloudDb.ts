@@ -579,6 +579,41 @@ const CLOUD_RESOURCE_MAP: Record<string, CloudResource> = {
       ));
       return local.length;
     }
+  },
+
+  /**
+   * The store's published rates — the tax percentage and delivery fee printed on every bill.
+   *
+   * This is the only place the rate lives. It used to live in three: a per-device IndexedDB
+   * setting the Settings screen wrote, an environment variable the order function actually
+   * charged with, and this table, which nothing read. They agreed only by coincidence of
+   * defaults, so changing the rate in Settings moved the number the customer was shown and not
+   * the number they were charged.
+   *
+   * Hydrating it into `settings` keeps every existing `getSetting('gstPercent')` caller correct
+   * without touching them, and gives the storefront a cached rate to render from before the
+   * network answers.
+   */
+  storeRates: {
+    table: 'store_security_settings',
+    fetch: async (client) => {
+      const { data, error } = await client
+        .from('store_security_settings')
+        .select('gst_percent, delivery_fee')
+        .eq('store_id', getStoreId())
+        .maybeSingle();
+      if (error) throw error;
+      return data ? [data] : [];
+    },
+    hydrate: async (rows) => {
+      const row = rows[0];
+      if (!row) return 0;
+      await hydrateTx(db.settings, async () => {
+        await db.settings.put({ key: 'gstPercent', value: String(row.gst_percent) });
+        await db.settings.put({ key: 'deliveryFee', value: String(row.delivery_fee) });
+      });
+      return 1;
+    }
   }
 };
 
@@ -591,10 +626,10 @@ const lastPullCounts: Record<string, number> = {};
 export const CLOUD_RESOURCES = Object.keys(CLOUD_RESOURCE_MAP);
 
 /** Menu data the anonymous storefront reads. */
-export const PUBLIC_RESOURCES = ['categories', 'items', 'addons', 'tables'];
+export const PUBLIC_RESOURCES = ['categories', 'items', 'addons', 'tables', 'storeRates'];
 
 /** The live kitchen board — all a temporary staff account is allowed to read. */
-export const KITCHEN_RESOURCES = ['categories', 'items', 'addons', 'staff', 'orders', 'tables'];
+export const KITCHEN_RESOURCES = ['categories', 'items', 'addons', 'staff', 'orders', 'tables', 'storeRates'];
 
 async function pullResource(name: string, options: any) {
   const resource = CLOUD_RESOURCE_MAP[name];

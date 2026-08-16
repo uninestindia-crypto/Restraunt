@@ -10,9 +10,34 @@ declare const Deno: {
 };
 
 const STORE_ID = Deno.env.get("STORE_ID") || "the-taste";
-const GST_PERCENT = Number(Deno.env.get("GST_PERCENT") || "5");
-const DELIVERY_FEE = Number(Deno.env.get("DELIVERY_FEE") || "0");
-const ORDER_PREFIX = Deno.env.get("ORDER_PREFIX") || "TT";
+/* The rate this store charges lives in `store_security_settings`, one row per store, and is read
+   per request. These are the last-resort defaults for a store whose row is somehow missing — they
+   are not a configuration point. GST_PERCENT and DELIVERY_FEE used to be environment variables
+   here, which meant the Settings screen moved the number the customer was *shown* while this
+   function kept charging whatever the deployment was configured with. */
+const FALLBACK_GST_PERCENT = 5;
+const FALLBACK_DELIVERY_FEE = 0;
+
+/** The store's published rates. One read per order — cheap, and always current. */
+async function storeRates(supabase: any) {
+  const { data, error } = await supabase
+    .from("store_security_settings")
+    .select("gst_percent, delivery_fee")
+    .eq("store_id", STORE_ID)
+    .maybeSingle();
+
+  if (error || !data) {
+    console.warn(`[public-order] Could not read the store's rates; falling back. ${error?.message ?? "no row"}`);
+    return { gstPercent: FALLBACK_GST_PERCENT, deliveryFee: FALLBACK_DELIVERY_FEE };
+  }
+  return {
+    gstPercent: Number(data.gst_percent ?? FALLBACK_GST_PERCENT),
+    deliveryFee: Number(data.delivery_fee ?? FALLBACK_DELIVERY_FEE)
+  };
+}
+/* Trailing separators are stripped: the deployment sets ORDER_PREFIX to "TSTE-", and the template
+   below adds its own dash, which produced order numbers like `TSTE--20260814-…`. */
+const ORDER_PREFIX = (Deno.env.get("ORDER_PREFIX") || "TT").replace(/[-\s]+$/, "") || "TT";
 const MAX_ORDERS_PER_WINDOW = Number(Deno.env.get("PUBLIC_ORDER_RATE_LIMIT_MAX") || "12");
 const RATE_LIMIT_WINDOW_MINUTES = Number(Deno.env.get("PUBLIC_ORDER_RATE_LIMIT_MINUTES") || "10");
 const RATE_LIMIT_SALT = Deno.env.get("PUBLIC_ORDER_RATE_LIMIT_SALT") || "the-taste-public-order";
@@ -301,8 +326,9 @@ Deno.serve(async (req: Request) => {
     };
   });
 
-  const tax = Number((subtotal * (GST_PERCENT / 100)).toFixed(2));
-  const deliveryFee = type === "delivery" ? DELIVERY_FEE : 0;
+  const rates = await storeRates(supabase);
+  const tax = Number((subtotal * (rates.gstPercent / 100)).toFixed(2));
+  const deliveryFee = type === "delivery" ? rates.deliveryFee : 0;
   const total = Number((subtotal + tax + deliveryFee).toFixed(2));
   const paymentStatus = paymentMethod === "upi" ? "pending" : "unpaid";
   const deliveryStatus = type === "delivery" ? "pending" : "none";
@@ -321,7 +347,7 @@ Deno.serve(async (req: Request) => {
     items: validatedItems,
     subtotal,
     tax,
-    tax_percent: GST_PERCENT,
+    tax_percent: rates.gstPercent,
     delivery_fee: deliveryFee,
     total,
     payment_method: paymentMethod,

@@ -1621,6 +1621,14 @@
   cursor: not-allowed;
 }
 
+/* A field the form refused. Law 4: the state is a border *and* a glyph, never colour alone — the
+   toast names what is wrong, and this keeps saying so after the toast has gone. */
+.store-input[aria-invalid="true"] {
+  border-color: var(--store-accent);
+  border-left-width: 3px;
+  background: var(--store-accent-surface);
+}
+
 /* A select renders its own arrow in the UA's colours; on a dark field that arrow disappeared. */
 select.store-input {
   appearance: none;

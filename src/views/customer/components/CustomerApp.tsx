@@ -159,6 +159,8 @@ export function CustomerApp({ app }) {
   /* The dish whose favourite state is currently being written. A control that performs a network
      write disables itself in flight — otherwise a double tap sends an add and a remove. */
   const [savingFavoriteId, setSavingFavoriteId] = useState(null);
+  /* Whether Place Order has been pressed. Fields are only marked invalid after that. */
+  const [submitAttempted, setSubmitAttempted] = useState(false);
   const [customerAddresses, setCustomerAddresses] = useState([]);
   const [customerOffers, setCustomerOffers] = useState([]);
   const [customerPreferences, setCustomerPreferences] = useState(() => {
@@ -741,6 +743,7 @@ export function CustomerApp({ app }) {
 
   // Submit Order logic
   const handleValidateAndPlaceOrder = () => {
+    setSubmitAttempted(true);
     if (!customerName) {
       showToast('Please enter your name', 'warning');
       return;
@@ -764,6 +767,7 @@ export function CustomerApp({ app }) {
     // Submission state lives in React rather than being written straight into
     // the button's DOM: the old approach fought re-renders and could leave the
     // control stuck on "Placing Order..." after a state update.
+    setSubmitAttempted(true);
     if (placingOrder) return;
     setPlacingOrder(true);
 
@@ -1181,11 +1185,16 @@ export function CustomerApp({ app }) {
               <h3>Contact details</h3>
               <div className="input-group store-input-group">
                 <label className="store-field-label" htmlFor="self-name">Your name</label>
-                <input type="text" id="self-name" className="store-input" value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder="Enter your name" />
+                <input type="text" id="self-name" className="store-input" value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder="Enter your name"
+                  /* Marked invalid only after a submit attempt, so the form does not scold someone
+                     who has simply not reached the field yet. The toast that names the problem
+                     fades; this does not. */
+                  aria-invalid={submitAttempted && !customerName.trim() ? 'true' : undefined} />
               </div>
               <div className="input-group store-input-group" style={{ marginTop: '12px' }}>
                 <label className="store-field-label" htmlFor="self-phone">Phone number</label>
-                <input type="tel" id="self-phone" className="store-input" value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} placeholder="10-digit mobile number" />
+                <input type="tel" id="self-phone" className="store-input" value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} placeholder="10-digit mobile number"
+                  aria-invalid={submitAttempted && !PHONE_RE.test(customerPhone.trim()) ? 'true' : undefined} />
               </div>
             </section>
 
