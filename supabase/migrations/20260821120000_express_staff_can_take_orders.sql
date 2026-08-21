@@ -11,6 +11,18 @@
 --      one that actually fires, because it is a BEFORE trigger and runs ahead of the RLS check.
 --   3. `staff write tables` excludes kitchen, so an express dine-in cannot seat its table.
 --
+-- Gate 2 is not confined to the Express Panel, which is what makes it the serious one. Both other
+-- till screens settle at the same moment and hit the same check:
+--
+--   * `#/pos` builds its order with paymentStatus 'paid' (or 'partial' on a split) and only then
+--     inserts it, so a *waiter* — a role the sidebar hands the full POS to — is refused at the
+--     payment modal with "Role waiter cannot confirm payment".
+--   * `#/orders` marks a cash delivery paid inside markDelivered(), so a *delivery* driver closing
+--     the job they were assigned is refused with "Role delivery cannot modify payment state".
+--
+-- Neither had been reported yet only because the restaurant has not used those roles in anger. The
+-- fix below covers all three, or it would be back within the week under a different account.
+--
 -- Gate 2 is the wider bug. An express sale is a counter sale: it is settled at the moment it is
 -- rung up, so the insert always carries payment_status 'paid'. That means the Express Panel was
 -- unusable by *every* role except developer, owner, manager and cashier — including
@@ -51,7 +63,23 @@ $$;
 revoke all on function public.has_express_access(text) from public, anon;
 grant execute on function public.has_express_access(text) to authenticated, service_role;
 
--- Who may mark money as collected: the till roles, plus whoever the owner put on the counter.
+-- Who may mark money as collected.
+--
+-- This list is not a policy decision made here — it is read off the screens the app already hands
+-- each role, because a database stricter than the interface does not add security, it just breaks
+-- the product somewhere nobody can diagnose:
+--
+--   #/pos          the till, with its payment modal  → owner, manager, cashier, waiter
+--   #/pos-kitchen  the express register              → + kitchen and the express-only role, gated
+--                                                      on the owner's per-person checkbox
+--   #/orders       mark paid, cash on delivery       → owner, manager, cashier, delivery
+--
+-- All three write payment_status 'paid' or 'partial', so all three hit this gate. Before this
+-- migration only the first four names cleared it, which is why a waiter could ring up a table and
+-- a driver could not close a cash delivery.
+--
+-- Refunds are deliberately not here. Money coming in is a counter decision; money going back out
+-- stays with developer, owner and manager, and that check is left exactly as it was.
 create or replace function public.can_settle_payments(target_store_id text)
 returns boolean
 language sql
@@ -59,7 +87,8 @@ stable
 security definer
 set search_path = ''
 as $$
-  select public.has_staff_role(target_store_id, array['developer','owner','manager','cashier'])
+  select public.has_staff_role(target_store_id,
+           array['developer','owner','manager','cashier','waiter','delivery'])
       or public.has_express_access(target_store_id)
 $$;
 revoke all on function public.can_settle_payments(text) from public, anon;

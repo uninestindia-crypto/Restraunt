@@ -38,6 +38,8 @@ const allSql = migrations.map((f) => readFileSync(`supabase/migrations/${f}`, 'u
 const sidebar = readFileSync('src/components/Sidebar.tsx', 'utf8');
 const router = readFileSync('src/router.ts', 'utf8');
 const database = readFileSync('src/db/database.ts', 'utf8');
+const pv = readFileSync('src/views/pos/PosView.tsx', 'utf8');
+const history = readFileSync('src/views/admin/OrderHistory.tsx', 'utf8');
 
 /**
  * Comments quote the wording they replaced, so a search for the old strings finds the very
@@ -111,7 +113,7 @@ test('seating an express dine-in is allowed for express staff', () => {
 
 test('confirming the payment is allowed for express staff — the gate that actually fired', () => {
   assert.match(latest, /create or replace function public\.can_settle_payments\(target_store_id text\)/);
-  assert.match(latest, /public\.has_staff_role\(target_store_id, array\['developer','owner','manager','cashier'\]\)\s*\n\s*or public\.has_express_access\(target_store_id\)/);
+  assert.match(latest, /array\['developer','owner','manager','cashier','waiter','delivery'\]\)\s*\n\s*or public\.has_express_access\(target_store_id\)/);
 
   // The trigger must ask the function, not a frozen list.
   const trigger = latest.slice(latest.indexOf('function public.enforce_order_integrity'));
@@ -119,6 +121,35 @@ test('confirming the payment is allowed for express staff — the gate that actu
     'the INSERT gate still tests a hard-coded role list');
   assert.match(trigger, /and not public\.can_settle_payments\(new\.store_id\) then\s*\n\s*raise exception 'Role % cannot modify payment state'/,
     'the UPDATE gate still tests a hard-coded role list');
+});
+
+test('the settle list covers every screen that settles, not just the express one', () => {
+  // Read off the app, not chosen here: a database stricter than the interface does not add
+  // security, it breaks the product somewhere nobody can diagnose. If a screen is given to a role,
+  // the writes that screen performs have to be allowed for that role.
+  const settle = latest.slice(
+    latest.indexOf('function public.can_settle_payments'),
+    latest.indexOf('revoke all on function public.can_settle_payments')
+  );
+
+  // #/pos builds the order already settled, and the sidebar hands it to waiter.
+  const pos = sidebar.match(/\{ hash: '#\/pos',[^}]*\}/)[0];
+  assert.match(pos, /'waiter'/);
+  assert.match(pv, /orderData\.paymentStatus = splitDetails\.remainingAmount > 0 \? 'partial' : 'paid';/,
+    'the POS settles at insert; if that ever changes, this gate can narrow again');
+  assert.match(settle, /'waiter'/, 'a waiter is given the till and refused at the payment modal');
+
+  // #/orders marks a cash delivery paid on completion, and the sidebar hands it to delivery.
+  const orders = sidebar.match(/\{ hash: '#\/orders',[^}]*\}/)[0];
+  assert.match(orders, /'delivery'/);
+  assert.match(history, /paymentStatus: 'paid',\n\s*paymentCollectedAt: new Date\(\)\.toISOString\(\),/,
+    'markDelivered settles the cash on the doorstep; that is the write being allowed');
+  assert.match(settle, /'delivery'/, 'a driver is given the screen and refused when closing the job');
+
+  // The one role deliberately absent: kitchen reaches this only through the owner's checkbox.
+  assert.doesNotMatch(settle, /'kitchen'/,
+    'kitchen must earn this through allow_express, never by role alone');
+  assert.match(settle, /or public\.has_express_access\(target_store_id\)/);
 });
 
 test('refunds did not widen with it', () => {
