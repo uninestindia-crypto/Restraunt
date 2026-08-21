@@ -657,6 +657,35 @@ export async function searchItems(query) {
 }
 
 /**
+ * What to tell the person standing at the till.
+ *
+ * `createOrder` is cloud-first, so every failure below ends a sale with a customer waiting. The
+ * message they got was "Checkout Aborted: Direct cloud write failed to ensure data safety.
+ * Connection error or RLS policy violation." — which named the transport and not the problem, and
+ * offered nothing to do about it. A cook refused permission to take payment read that as the app
+ * being broken, which is exactly how it was reported.
+ *
+ * Each branch names the cause and the next move. The out-of-stock check throws from inside the
+ * same try, so it is passed through rather than buried under transport wording.
+ */
+export function describeCheckoutFailure(error: any) {
+  const message = error?.message || String(error);
+
+  if (/^Out of stock:/i.test(message)) return message;
+
+  if (/cannot confirm payment|cannot modify payment state/i.test(message)) {
+    return 'This account is not allowed to take payments. Ask the owner to tick "Allow access to Express Panel" for it under Staff, then sign in again. Nothing has been billed.';
+  }
+  if (/cannot refund payments/i.test(message)) {
+    return 'Only an owner or manager can refund a payment. Nothing has been changed.';
+  }
+  if (/row-level security|permission denied|not authorized/i.test(message)) {
+    return 'This account is not allowed to create orders. Ask the owner to check its role under Staff, then sign in again. Nothing has been billed.';
+  }
+  return `The order could not be saved to the cloud, so nothing was billed. ${message}`;
+}
+
+/**
  * Create a new order with items.
  * @param {Object} orderData - Order data including items array
  * @returns {Promise<Object>} The created order with id
@@ -796,10 +825,10 @@ export async function createOrder(orderData: any, options: any = {}) {
         }
       } catch (cloudErr) {
         console.error('[Database] Direct cloud write failed for order:', cloudErr);
-        throw new Error(`Checkout Aborted: Direct cloud write failed to ensure data safety. Connection error or RLS policy violation. Details: ${cloudErr.message}`);
+        throw new Error(describeCheckoutFailure(cloudErr));
       }
     } else {
-      throw new Error('Checkout Aborted: Device is offline. An active internet connection is required to process and secure orders in the cloud.');
+      throw new Error('This device is offline. An order cannot be billed until it can reach the cloud — check the connection and try again. Nothing has been billed.');
     }
   } else {
     // If skipping sync (e.g. seeding / cloud pull), preserve incoming values

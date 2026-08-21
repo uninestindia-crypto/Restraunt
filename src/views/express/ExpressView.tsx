@@ -2122,7 +2122,8 @@ export class ExpressView {
 
     } catch (err) {
       console.error('[ExpressView] Finalize order failed:', err);
-      showToast('Failed to save order: ' + err.message, 'error');
+      // The message already names the cause and the next move; a prefix only pushes it off screen.
+      showToast(err.message, 'error', 8000);
     }
   }
 

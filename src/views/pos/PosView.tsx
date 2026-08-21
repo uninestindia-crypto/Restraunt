@@ -416,7 +416,8 @@ export class PosView {
 
     } catch (error) {
       console.error('Failed to finalize order:', error);
-      showToast('Failed to save order: ' + error.message, 'error');
+      // The message already names the cause and the next move; a prefix only pushes it off screen.
+      showToast(error.message, 'error', 8000);
     }
   }
 
