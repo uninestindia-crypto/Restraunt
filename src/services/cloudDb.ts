@@ -614,6 +614,32 @@ const CLOUD_RESOURCE_MAP: Record<string, CloudResource> = {
       });
       return 1;
     }
+  },
+
+  /**
+   * The rest of the store's settings — its name, its UPI ID, the receipt and invoice wording.
+   *
+   * These lived only in the browser that typed them, so a second till, a phone, or a replacement
+   * device came up unconfigured and there was no way to tell from the screen. `store_settings` is
+   * staff-read and manager-write; the keys that describe one machine rather than the restaurant
+   * (its printer, its theme, its credentials) are held back by `isStoreScoped` on both sides.
+   */
+  storeSettings: {
+    table: 'store_settings',
+    fetch: async (client) => {
+      const { data, error } = await client
+        .from('store_settings')
+        .select('key, value')
+        .eq('store_id', getStoreId());
+      if (error) throw error;
+      return data || [];
+    },
+    hydrate: async (rows) => {
+      const { hydrateStoreSettings } = await import('./storeSettings');
+      let count = 0;
+      await hydrateTx(db.settings, async () => { count = await hydrateStoreSettings(rows); });
+      return count;
+    }
   }
 };
 
@@ -629,7 +655,7 @@ export const CLOUD_RESOURCES = Object.keys(CLOUD_RESOURCE_MAP);
 export const PUBLIC_RESOURCES = ['categories', 'items', 'addons', 'tables', 'storeRates'];
 
 /** The live kitchen board — all a temporary staff account is allowed to read. */
-export const KITCHEN_RESOURCES = ['categories', 'items', 'addons', 'staff', 'orders', 'tables', 'storeRates'];
+export const KITCHEN_RESOURCES = ['categories', 'items', 'addons', 'staff', 'orders', 'tables', 'storeRates', 'storeSettings'];
 
 async function pullResource(name: string, options: any) {
   const resource = CLOUD_RESOURCE_MAP[name];

@@ -1,5 +1,15 @@
-import { getSupabaseClient } from './supabaseClient';
 import { db } from '../db/database';
+
+/**
+ * Supabase is loaded only when there is something to report.
+ *
+ * This module is imported by main.ts, so a static `import { getSupabaseClient }` put the whole
+ * Supabase SDK — 224 KB, of which Lighthouse measured 218 KB unused — into the first chunk of
+ * every page, including the marketing home where nothing touches the cloud until the visitor opens
+ * the menu. Telemetry's one call site is an error report, which by definition is not the common
+ * path, so it pays for the client when it needs it.
+ */
+const supabaseClient = () => import('./supabaseClient').then((m) => m.getSupabaseClient());
 
 class TelemetryService {
   // Fields these methods assign. Type-only: `declare` emits nothing, so the
@@ -87,7 +97,7 @@ class TelemetryService {
 
   async sendToCloud(logEntry) {
     try {
-      const supabase = await getSupabaseClient();
+      const supabase = await supabaseClient();
       if (!supabase) return false;
 
       const { error } = await supabase

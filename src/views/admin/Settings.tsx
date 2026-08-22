@@ -356,10 +356,22 @@ export function SettingsView() {
     setInvalidKey('');
     try {
       // Save all field values
+      const saved: Record<string, string> = {};
       for (const k of CONFIG_KEYS) {
         if (config[k] !== undefined) {
-          await setSetting(k, k === 'currencySymbol' ? currencySymbol : String(config[k]));
+          saved[k] = k === 'currencySymbol' ? currencySymbol : String(config[k]);
+          await setSetting(k, saved[k]);
         }
+      }
+
+      // The restaurant's own settings belong to the restaurant, not to this browser. Before this,
+      // setting the UPI ID on the laptop left the phone with none and the second till printing
+      // receipts without a footer. `publishStoreSettings` filters out the keys that describe this
+      // machine — its printer, its theme, its credentials — and sends the rest.
+      const { publishStoreSettings } = await import('../../services/storeSettings');
+      const shared = await publishStoreSettings(saved);
+      if (!shared.ok) {
+        showToast(`Saved on this device, but the other screens were not updated: ${shared.error}`, 'warning', 8000);
       }
 
       // The tax rate is the one setting that decides what a customer is charged, so it does not
@@ -834,6 +846,10 @@ export function SettingsView() {
           {/* PRINTER ROLL SETTINGS */}
           {settingsTab === 'printer' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              <p style={{ margin: 0, fontSize: 'var(--text-sm)', color: 'var(--text-secondary)' }}>
+                Printer settings belong to this device — each till keeps its own. Everything on the
+                other tabs is shared with every screen in the restaurant.
+              </p>
               <div className="settings-card" style={{ background: 'var(--glass-bg)', padding: '24px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
                 <h3 className="settings-card-heading" style={{ margin: '0 0 16px 0', fontSize: 'var(--text-base)', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)' }}>
                   <span className="material-symbols-rounded" style={{ color: 'var(--color-primary)' }}>print</span>

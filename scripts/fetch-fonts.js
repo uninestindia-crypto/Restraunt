@@ -11,7 +11,13 @@
  * Only the `latin` and `latin-ext` subsets are kept. Re-run if the font stack
  * or weight range in variables.css changes.
  *
- *   node scripts/fetch-fonts.js
+ * This downloads Google's files whole, and `latin-ext` whole is 83 KB for Inter — which the
+ * storefront pays on every page for one character, the rupee sign. Narrow it afterwards:
+ *
+ *   node scripts/fetch-fonts.js && python3 scripts/subset-fonts.py
+ *
+ * tests/storefront_boot_weight.test.ts holds the shipped files to a size budget, so forgetting the
+ * second command fails the build rather than quietly costing 71 KB on every visit.
  */
 
 import { mkdir, writeFile } from 'node:fs/promises';

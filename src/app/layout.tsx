@@ -1,11 +1,12 @@
 import type { Metadata, Viewport } from 'next';
 import { STORE_ORIGIN } from '../content/storefront';
+// Only what the pre-rendered storefront paints with. The staff console's chrome —
+// components-v2.css, layout.css, sidebar.css, 88 KB of it — is imported by main.ts instead, so it
+// arrives with the app that uses it rather than blocking the render of a marketing page that never
+// draws a sidebar. Lighthouse was reporting 590ms of unused CSS on the home page.
 import '../styles/fonts.css';
 import '../styles/variables.css';
 import '../styles/base.css';
-import '../styles/components-v2.css';
-import '../styles/layout.css';
-import '../styles/sidebar.css';
 import '../styles/storefront.css';
 import '../styles/storefront-static.css';
 
