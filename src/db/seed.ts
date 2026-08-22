@@ -1,6 +1,46 @@
 import { db, generateLocalUuid, getDisplayToken } from './database';
 
 /**
+ * The store's own details, and the reason they cannot live only in the seed block below.
+ *
+ * `seedDatabase` returns early when the menu is already present — and on every device after the
+ * first, it is, because the cloud pull fills the menu before the seed ever looks. So the seed's
+ * settings write never ran on a real device, and `db.settings` held exactly the two keys the cloud
+ * pull writes: `gstPercent` and `deliveryFee`.
+ *
+ * That was not a cosmetic gap. The Settings screen refuses to save anything at all while the
+ * restaurant name is blank, so an owner could fill in the UPI ID, press Save All Configurations,
+ * and have the entire form silently discarded — the reported symptom being that the UPI link
+ * "disappears after refreshing". It was never saved.
+ *
+ * `ensureDefaultSettings` therefore runs on every boot and fills only the keys that have no row.
+ * It never overwrites a value the owner has set; a key present with an empty string is a
+ * deliberate empty, not a gap.
+ */
+const DEFAULT_SETTINGS: Array<{ key: string; value: string }> = [
+  { key: 'restaurantName', value: 'The Taste' },
+  { key: 'restaurantTagline', value: 'Chinese Food — Fresh & Reasonable' },
+  { key: 'restaurantPhone', value: '' },
+  { key: 'restaurantAddress', value: 'Sandalpur Road, Kumhrar, Patna, Bihar' },
+  { key: 'upiId', value: '' },
+  { key: 'upiName', value: 'The Taste' },
+  { key: 'gstPercent', value: '5' },
+  { key: 'printerWidth', value: '58' },
+  { key: 'orderNumberPrefix', value: 'TT' },
+];
+
+export async function ensureDefaultSettings() {
+  const missing = [];
+  for (const setting of DEFAULT_SETTINGS) {
+    if ((await db.settings.get(setting.key)) === undefined) missing.push(setting);
+  }
+  if (missing.length) {
+    await db.settings.bulkPut(missing);
+    console.log(`[Seed] Filled ${missing.length} missing store setting(s): ${missing.map((s) => s.key).join(', ')}.`);
+  }
+}
+
+/**
  * Seeds the database with initial data if empty.
  * Cloud-first: If Supabase has data, pull from cloud instead of seeding locally.
  * This ensures new devices always get the real production data.
@@ -231,19 +271,9 @@ export async function seedDatabase(options: { publicOnly?: boolean } = {}) {
     await db.menuItems.bulkAdd(menuItems);
 
     // ── Default Settings ────────────────────────────────────────
-    const defaultSettings = [
-      { key: 'restaurantName', value: 'The Taste' },
-      { key: 'restaurantTagline', value: 'Chinese Food — Fresh & Reasonable' },
-      { key: 'restaurantPhone', value: '' },
-      { key: 'restaurantAddress', value: 'Sandalpur Road, Kumhrar, Patna, Bihar' },
-      { key: 'upiId', value: '' },
-      { key: 'upiName', value: 'The Taste' },
-      { key: 'gstPercent', value: '5' },
-      { key: 'printerWidth', value: '58' },
-      { key: 'orderNumberPrefix', value: 'TT' },
-    ];
-
-    await db.settings.bulkPut(defaultSettings);
+    // Same list runMigrations fills from, so a fresh device and a cloud-hydrated one cannot end up
+    // with different keys.
+    await db.settings.bulkPut(DEFAULT_SETTINGS);
 
     if (publicOnly) {
       return;
@@ -405,6 +435,9 @@ export async function seedDatabase(options: { publicOnly?: boolean } = {}) {
  */
 async function runMigrations() {
   try {
+    // Before the corrective migrations below, because they all assume a row exists to correct.
+    await ensureDefaultSettings();
+
     await db.settings.bulkDelete(['adminPin', 'adminPinHash', 'requirePinForOrder']);
     const staffMembers = await db.staff.toArray();
     for (const staff of staffMembers) {

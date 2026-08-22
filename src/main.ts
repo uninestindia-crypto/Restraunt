@@ -20,7 +20,7 @@ import './styles/storefront-static.css';
 
 // Database
 import { db } from './db/database';
-import { seedDatabase } from './db/seed';
+import { seedDatabase, ensureDefaultSettings } from './db/seed';
 
 // Router
 import { router } from './router';
@@ -163,6 +163,17 @@ class App {
           console.warn('[App] Unhandled dynamic import rejection detected. Triggering urgent version check...');
           checkForUpdateAndGate().catch(err => console.debug('[App] Promise rejection version check failed:', err));
         }
+      });
+
+      // The store's own details, before anything reads them.
+      //
+      // seedDatabase() only runs for a public entry, so on a device that goes straight to #/pos
+      // and signs in, it never ran at all — leaving db.settings holding only the two keys the
+      // cloud pull writes. The Settings screen refuses to save while the store name is blank, so
+      // an owner filling in the UPI ID had the whole form discarded with a three-second warning
+      // about a field on another tab. This has to be boot-wide, not seed-path-only.
+      await ensureDefaultSettings().catch((err) => {
+        console.warn('[App] Could not fill missing store settings:', err);
       });
 
       // Cache currency and tax settings to localStorage for synchronous access in helpers

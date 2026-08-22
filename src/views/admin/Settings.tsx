@@ -27,8 +27,24 @@ const CONFIG_KEYS = [
   'autoLockTimeout', 'sessionDuration', 'app_theme'
 ];
 
+/**
+ * The two fields the save refuses to proceed without, and where each one lives.
+ *
+ * The tab matters as much as the label. Both guards used to abort the whole save and say so in a
+ * three-second toast — on whatever tab the operator happened to be on. Fill in the UPI ID on
+ * Payments, press save, and a warning about the *store name* flashes past on a tab you cannot see,
+ * naming a field you are not looking at. Nothing is written, and the reasonable conclusion is that
+ * the screen does not save. That is exactly how it was reported.
+ */
+const REQUIRED_FIELDS: Array<{ key: string; label: string; tab: 'profile' | 'payments'; why: string }> = [
+  { key: 'restaurantName', label: 'Store Name', tab: 'profile', why: 'it prints on every receipt' },
+  { key: 'upiId', label: 'UPI ID (VPA)', tab: 'payments', why: 'the checkout QR is generated from it' },
+];
+
 export function SettingsView() {
   const [config, setConfig] = useState<Record<string, any>>({});
+  /** The field a refused save is waiting on. Cleared as soon as it is typed into. */
+  const [invalidKey, setInvalidKey] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [settingsTab, setSettingsTab] = useState<'profile' | 'payments' | 'printer' | 'invoice' | 'cloud' | 'security' | 'notifications'>('profile');
   const [activePreviewTab, setActivePreviewTab] = useState<'thermal' | 'invoice'>('thermal');
@@ -143,6 +159,36 @@ export function SettingsView() {
 
   const handleConfigChange = (key: string, value: any) => {
     setConfig(prev => ({ ...prev, [key]: value }));
+    // Re-validate on change only after the field has errored — see the design law's Field contract.
+    if (invalidKey === key && String(value).trim()) setInvalidKey('');
+  };
+
+  /** Marks a field, opens the tab it lives on, and puts the cursor in it. */
+  const focusRequiredField = (field: typeof REQUIRED_FIELDS[number]) => {
+    setInvalidKey(field.key);
+    setSettingsTab(field.tab);
+    requestAnimationFrame(() => {
+      const el = document.getElementById(`setting-${field.key}`);
+      el?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      (el as HTMLInputElement | null)?.focus();
+    });
+  };
+
+  /** Shared props for a field that can be the reason a save was refused. */
+  const requiredFieldProps = (key: string) => ({
+    id: `setting-${key}`,
+    'aria-invalid': invalidKey === key,
+    'aria-describedby': invalidKey === key ? `setting-${key}-error` : undefined,
+  });
+
+  const fieldError = (key: string) => {
+    if (invalidKey !== key) return null;
+    const field = REQUIRED_FIELDS.find((f) => f.key === key)!;
+    return (
+      <p id={`setting-${key}-error`} style={{ margin: '6px 0 0', fontSize: 'var(--text-sm)', color: 'var(--color-danger)', fontWeight: 600 }}>
+        Needed before anything on this screen can be saved — {field.why}.
+      </p>
+    );
   };
 
   // --- Bluetooth Thermal Printer connect triggers ---
@@ -296,19 +342,18 @@ export function SettingsView() {
     playSound(800, 100);
     vibrateDevice([50, 30]);
 
-    const name = config.restaurantName?.trim();
-    const upiId = config.upiId?.trim();
     const currencySymbol = safeCurrencySymbol(config.currencySymbol, '₹');
     const currentStaff = authService.getCurrentStaff();
 
-    if (!name) {
-      showToast('Restaurant name is required', 'warning');
+    // A refused save has to leave the operator looking at the field it is waiting on. Anything
+    // less and the screen reads as broken — nothing is written and the reason is on another tab.
+    const missing = REQUIRED_FIELDS.find((f) => !String(config[f.key] ?? '').trim());
+    if (missing) {
+      focusRequiredField(missing);
+      showToast(`Add the ${missing.label} first — nothing was saved.`, 'warning', 6000);
       return;
     }
-    if (!upiId) {
-      showToast('UPI ID is required for checkout QR generation', 'warning');
-      return;
-    }
+    setInvalidKey('');
     try {
       // Save all field values
       for (const k of CONFIG_KEYS) {
@@ -322,15 +367,24 @@ export function SettingsView() {
       // per order — previously this screen wrote only to IndexedDB while the server charged from
       // an environment variable, so changing the rate here moved the number customers were shown
       // and not the number they paid.
-      const gst = Number(config.gstPercent);
+      //
+      // A blank box is not 0%. `Number('')` is 0, and 0 passes every check below, so a device
+      // whose gstPercent row had never been written showed an empty field and published a 0% tax
+      // rate for the whole store the first time anyone pressed save — every subsequent customer
+      // order priced with no tax on it, from a screen that said nothing had happened. Blank means
+      // "leave it alone", and it says so.
+      const rawGst = String(config.gstPercent ?? '').trim();
+      const gst = rawGst === '' ? NaN : Number(rawGst);
       if (Number.isFinite(gst) && gst >= 0 && gst <= 30) {
         const { publishStoreRates } = await import('../../services/storeRates');
         const published = await publishStoreRates({ gstPercent: gst });
         if (!published.ok) {
           showToast(`Saved on this device, but the store's tax rate was not updated: ${published.error}`, 'warning', 8000);
         }
-      } else if (config.gstPercent !== undefined && config.gstPercent !== '') {
-        showToast('Tax rate must be a number between 0 and 30. It was not changed.', 'warning');
+      } else if (rawGst === '') {
+        showToast('Tax rate is blank, so it was left as it is. Type 0 if you charge no tax.', 'warning', 8000);
+      } else {
+        showToast('Tax rate must be a number between 0 and 30. It was not changed.', 'warning', 6000);
       }
 
       // Update cached variables
@@ -348,7 +402,7 @@ export function SettingsView() {
       const logo = document.getElementById('app-logo')?.querySelector('span:last-child');
       if (logo) logo.textContent = config.restaurantName;
 
-      showToast('Settings saved successfully. 🎨', 'success');
+      showToast('Settings saved.', 'success');
 
       // Hot-reconnect cloud sync syncService
       try {
@@ -655,8 +709,9 @@ export function SettingsView() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                   <div className="input-group">
-                    <label>Store Name</label>
-                    <input type="text" className="input" value={config.restaurantName} onChange={(e) => handleConfigChange('restaurantName', e.target.value)} placeholder="e.g. The Taste" />
+                    <label htmlFor="setting-restaurantName">Store Name</label>
+                    <input type="text" className="input" {...requiredFieldProps('restaurantName')} style={invalidKey === 'restaurantName' ? { borderColor: 'var(--color-danger)' } : undefined} value={config.restaurantName} onChange={(e) => handleConfigChange('restaurantName', e.target.value)} placeholder="e.g. The Taste" />
+                    {fieldError('restaurantName')}
                   </div>
                   <div className="input-group">
                     <label>Tagline / Cuisine</label>
@@ -715,8 +770,9 @@ export function SettingsView() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                 <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: '16px' }}>
                   <div className="input-group">
-                    <label>UPI ID (VPA) for Scanning</label>
-                    <input type="text" className="input" style={{ borderColor: 'rgba(var(--color-primary-rgb), 0.3)' }} value={config.upiId} onChange={(e) => handleConfigChange('upiId', e.target.value)} placeholder="merchant@upi" />
+                    <label htmlFor="setting-upiId">UPI ID (VPA) for Scanning</label>
+                    <input type="text" className="input" {...requiredFieldProps('upiId')} style={{ borderColor: invalidKey === 'upiId' ? 'var(--color-danger)' : 'rgba(var(--color-primary-rgb), 0.3)' }} value={config.upiId} onChange={(e) => handleConfigChange('upiId', e.target.value)} placeholder="merchant@upi" />
+                    {fieldError('upiId')}
                   </div>
                   <div className="input-group">
                     <label>Merchant Name</label>
