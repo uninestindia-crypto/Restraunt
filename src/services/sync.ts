@@ -1559,7 +1559,18 @@ class SyncService {
 
         // First time this order has reached the server: it has to carry everything.
         const { error } = await supabase.from('orders').upsert(remote, { onConflict: 'store_id,client_order_id' });
-        if (error) throw error;
+        if (!error) return;
+
+        // Deployed ahead of its migration: this store's orders table has no discount columns yet.
+        // Retry without them rather than leaving the order stuck in the queue forever.
+        if (isMissingSchemaError(error) && 'bill_discount_type' in remote) {
+          console.warn('[Sync] The discount columns are missing — run the pending migration to record discounts. Pushing the order without them for now.');
+          const { bill_discount_type, bill_discount_value, discount_reason, ...withoutDiscounts } = remote;
+          const retry = await supabase.from('orders').upsert(withoutDiscounts, { onConflict: 'store_id,client_order_id' });
+          if (retry.error) throw retry.error;
+          return;
+        }
+        throw error;
       }, {
         maxRetries: 3,
         initialDelayMs: 1000,

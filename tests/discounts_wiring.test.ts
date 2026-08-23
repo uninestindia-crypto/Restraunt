@@ -86,7 +86,8 @@ test('a lifecycle update does not resend the discount columns', () => {
 test('the till adopts the server\'s arithmetic rather than its own', () => {
   // The preview was a preview. What gets printed and stored is what the server banked.
   const fn = database.slice(database.indexOf('export async function createOrder'), database.indexOf('let result;'));
-  assert.match(fn, /\.select\('id, items, subtotal, tax, tax_percent, delivery_fee, total, item_discount_total/);
+  assert.match(database, /const DISCOUNT_SELECT = 'id, items, subtotal, tax, tax_percent, delivery_fee, total, item_discount_total/);
+  assert.match(fn, /\.select\(discountColumnsMissing \? LEGACY_SELECT : DISCOUNT_SELECT\)/);
   assert.match(fn, /total: Number\(data\.total\),/);
   assert.match(fn, /discountTotal: Number\(data\.discount_total\) \|\| 0/);
 });
@@ -126,6 +127,22 @@ test('the bill shows what came off, and what was taxed', () => {
   }
   assert.match(receipt, /You saved /, 'a saving is worth saying out loud');
   assert.match(receipt, /Delivery/, 'the delivery fee is on the total, so it belongs on the bill');
+});
+
+test('a device deployed ahead of the migration still banks orders', () => {
+  // The web bundle deploys itself; the migration is run by a human. In between, the app sends
+  // bill_discount_type to a table that has no such column and PostgREST refuses the whole insert —
+  // which would fail every checkout, not just the discounted ones.
+  const fn = database.slice(database.indexOf('export async function createOrder'), database.indexOf('let result;'));
+  assert.match(fn, /if \(discountColumnsMissing\) for \(const column of DISCOUNT_COLUMNS\) delete payload\[column\];/);
+  assert.match(fn, /if \(isMissingSchemaError\(result\.error\)\) \{/);
+  assert.match(fn, /discountColumnsMissing = true;\s*\n\s*continue;/);
+  assert.match(fn, /\.select\(discountColumnsMissing \? LEGACY_SELECT : DISCOUNT_SELECT\)/,
+    'the select has to fall back too, or reading the row back fails instead');
+
+  // And the background push, which would otherwise leave the order stuck in the queue forever.
+  assert.match(sync, /if \(isMissingSchemaError\(error\) && 'bill_discount_type' in remote\) \{/);
+  assert.match(sync, /const \{ bill_discount_type, bill_discount_value, discount_reason, \.\.\.withoutDiscounts \} = remote;/);
 });
 
 test('the arithmetic is verified against a real Postgres, not just asserted about', () => {

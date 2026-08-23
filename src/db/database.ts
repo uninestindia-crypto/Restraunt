@@ -676,6 +676,23 @@ export async function searchItems(query) {
 }
 
 /**
+ * The discount columns, and what to do on a device that reaches the cloud before the migration has.
+ *
+ * The web bundle deploys itself; the migration is run by a human. Between those two moments the
+ * app is sending `bill_discount_type` to a table that has no such column, and PostgREST refuses the
+ * whole insert — which would mean every checkout failing, not just the discounted ones. The menu
+ * description had exactly this problem and was solved the same way: notice the schema error, drop
+ * the columns the server has not got yet, and bank the rest of the order.
+ *
+ * The flag is per-session and one-way. Once a store's migration has run, the first successful
+ * insert leaves it false forever and nothing pays for the check again.
+ */
+const DISCOUNT_COLUMNS = ['bill_discount_type', 'bill_discount_value', 'discount_reason'];
+const DISCOUNT_SELECT = 'id, items, subtotal, tax, tax_percent, delivery_fee, total, item_discount_total, bill_discount_type, bill_discount_value, bill_discount_amount, discount_total';
+const LEGACY_SELECT = 'id, items, subtotal, tax, tax_percent, delivery_fee, total';
+let discountColumnsMissing = false;
+
+/**
  * What to tell the person standing at the till.
  *
  * `createOrder` is cloud-first, so every failure below ends a sale with a customer waiting. The
@@ -793,14 +810,28 @@ export async function createOrder(orderData: any, options: any = {}) {
         let data: any = null;
         let attempt = 0;
         while (true) {
+          const payload = { ...remoteOrder };
+          if (discountColumnsMissing) for (const column of DISCOUNT_COLUMNS) delete payload[column];
+
           const result = await supabase
             .from('orders')
-            .insert(remoteOrder)
+            .insert(payload)
             // Not just the id. The server rebuilds every line and every money column from the live
             // menu and works out what the discounts are worth; reading them back is what stops the
             // receipt in the customer's hand disagreeing with the amount that was banked.
-            .select('id, items, subtotal, tax, tax_percent, delivery_fee, total, item_discount_total, bill_discount_type, bill_discount_value, bill_discount_amount, discount_total')
+            .select(discountColumnsMissing ? LEGACY_SELECT : DISCOUNT_SELECT)
             .single();
+
+          // Deployed ahead of its migration. Drop the columns this store has not got yet and try
+          // again — an order that cannot carry a discount is still an order that must be banked.
+          if (result.error && !discountColumnsMissing) {
+            const { isMissingSchemaError } = await import('../services/sync');
+            if (isMissingSchemaError(result.error)) {
+              console.warn('[Database] The discount columns are missing — run the pending migration to record discounts. Banking the order without them for now.');
+              discountColumnsMissing = true;
+              continue;
+            }
+          }
 
           if (!result.error) {
             data = result.data;
@@ -816,7 +847,7 @@ export async function createOrder(orderData: any, options: any = {}) {
           if (conflict && !onOrderNumber) {
             const existing = await supabase
               .from('orders')
-              .select('id, items, subtotal, tax, tax_percent, delivery_fee, total, item_discount_total, bill_discount_type, bill_discount_value, bill_discount_amount, discount_total')
+              .select(discountColumnsMissing ? LEGACY_SELECT : DISCOUNT_SELECT)
               .eq('store_id', storeId)
               .eq('client_order_id', clientOrderId)
               .maybeSingle();
