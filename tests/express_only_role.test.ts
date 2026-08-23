@@ -64,19 +64,31 @@ test('the role is not granted anything the panel does not use', () => {
   assert.doesNotMatch(grants, /managers write menu_(categories|items)/);
 });
 
+/**
+ * Three screens, and the third was added on purpose.
+ *
+ * `#/bills` reprints a receipt from the current service and does nothing else — no status changes,
+ * no payment edits, no cancellation, and only this service's orders. An express-only account rings
+ * up counter sales, so it is the account most likely to be standing in front of the customer asking
+ * for their bill back. Giving it the full Orders console instead would have handed it every
+ * customer's address and phone number, which is the trade this screen exists to avoid.
+ *
+ * The list stays pinned: anything else appearing here is a widening that needs its own argument.
+ */
+const EXPRESS_ONLY_SCREENS = ['#/bills', '#/help', '#/pos-kitchen'];
+
 test('the client sends an express-only account straight to its one screen', () => {
   assert.match(main, /staff\.role === 'temporary_staff'[\s\S]{0,80}router\.navigate\('#\/pos-kitchen'\)/);
 
-  // And the router only admits it to that screen and the help centre.
   const routes = [...main.matchAll(/router\.register\('(#\/[a-z-]+)'[\s\S]*?\}, (\[[^\]]*\])\);/g)]
     .filter(m => m[2].includes('temporary_staff'))
     .map(m => m[1]);
-  assert.deepEqual(routes.sort(), ['#/help', '#/pos-kitchen']);
+  assert.deepEqual(routes.sort(), EXPRESS_ONLY_SCREENS);
 });
 
 test('the sidebar shows an express-only account nothing else', () => {
   const withRole = [...sidebar.matchAll(/hash: '(#\/[a-z-]+)'[^\n]*roles: \[([^\]]*)\]/g)]
     .filter(m => m[2].includes('temporary_staff'))
     .map(m => m[1]);
-  assert.deepEqual(withRole.sort(), ['#/help', '#/pos-kitchen']);
+  assert.deepEqual(withRole.sort(), EXPRESS_ONLY_SCREENS);
 });

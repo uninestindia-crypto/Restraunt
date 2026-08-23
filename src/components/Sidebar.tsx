@@ -39,6 +39,7 @@ const NAV_GROUPS = [
   {
     label: 'System',
     items: [
+      { hash: '#/bills', icon: 'receipt', label: "Today's Bills", roles: ['developer', 'owner', 'manager', 'cashier', 'kitchen', 'waiter', 'delivery', 'temporary_staff'] },
       { hash: '#/orders', icon: 'receipt_long', label: 'Orders', roles: ['developer', 'owner', 'manager', 'cashier', 'delivery'] },
       { hash: '#/admin', icon: 'admin_panel_settings', label: 'Admin', roles: ['developer', 'owner', 'manager'] },
       { hash: '#/help', icon: 'help', label: 'Help Center', roles: ['developer', 'owner', 'manager', 'cashier', 'waiter', 'kitchen', 'delivery', 'temporary_staff'] },

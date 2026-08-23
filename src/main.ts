@@ -696,6 +696,14 @@ class App {
     }, ['developer', 'owner', 'manager', 'cashier']);
 
     // ── System ──
+    // Every staff role, deliberately. A customer asking for their receipt back does not care who is
+    // on the counter, and the alternative was opening the full Orders console — with its customer
+    // addresses, payment editing and delivery assignment — to a cook.
+    router.register('#/bills', async () => {
+      const { BillsView } = await import('./views/receipts/BillsView');
+      return new BillsView(this);
+    }, ['developer', 'owner', 'manager', 'cashier', 'kitchen', 'waiter', 'delivery', 'temporary_staff']);
+
     router.register('#/orders', async () => {
       const { OrderHistory } = await import('./views/admin/OrderHistory');
       return new OrderHistory(this);

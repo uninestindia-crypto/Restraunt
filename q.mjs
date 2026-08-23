@@ -1,0 +1,13 @@
+import { api } from './tests/qa/net.mjs';
+import { readFileSync } from 'node:fs';
+const { url, key } = JSON.parse(readFileSync('/tmp/claude-0/-home-user-Restraunt/fdf1f216-74b6-5b33-8106-81640b245ebf/scratchpad/sb.json', 'utf8'));
+const H = { apikey: key };
+const cats = (await api(`${url}/rest/v1/menu_categories?select=id,name&store_id=eq.the-taste&order=sort_order`, { headers: H })).json;
+const items = (await api(`${url}/rest/v1/menu_items?select=id,name,category_id,image_url,description&store_id=eq.the-taste&order=sort_order&limit=200`, { headers: H })).json;
+const byCat = new Map(cats.map((c) => [c.id, c.name]));
+const missing = items.filter((i) => !String(i.image_url || '').trim());
+console.log(`${items.length} dishes · ${items.length - missing.length} with a photo · ${missing.length} without · ${items.filter(i=>String(i.description||'').trim()).length} with a description\n`);
+const grouped = {};
+for (const i of missing) (grouped[byCat.get(i.category_id) || '?'] ??= []).push(i.name);
+console.log('Dishes with no photo, by category:');
+for (const [cat, names] of Object.entries(grouped)) console.log(`  ${cat} (${names.length}): ${names.join(', ')}`);
