@@ -73,6 +73,9 @@ test('a device with no thermal printer still prints', () => {
     'refusing outright leaves the customer standing there');
   assert.match(fn, /No thermal printer here/);
   assert.match(view, /InvoiceGenerator\.generateInvoiceHTML\(order, settings\)/);
+  // The template's inline window.onload print-and-close is written for a popup: wrong in a frame,
+  // and blocked outright by the app's CSP, which allows no inline script.
+  assert.match(view, /\.replace\(\/<script\\b\[\\s\\S\]\*\?<\\\/script>\/gi, ''\)/);
 });
 
 test('the screen does only the one job', () => {

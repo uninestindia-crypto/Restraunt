@@ -329,7 +329,13 @@ export class BillsView {
   }
 
   printInBrowser(order: any, settings: any) {
-    const html = InvoiceGenerator.generateInvoiceHTML(order, settings);
+    // The invoice template carries an inline `window.onload` that calls print() and then close(),
+    // written for being opened in a new window. In a frame that script is both wrong — there is no
+    // window to close — and blocked, because the app's Content-Security-Policy allows no inline
+    // script. Removing it keeps the console clean and leaves the printing to the call below, which
+    // is the part that works.
+    const html = InvoiceGenerator.generateInvoiceHTML(order, settings)
+      .replace(/<script\b[\s\S]*?<\/script>/gi, '');
     const frame = document.createElement('iframe');
     frame.setAttribute('aria-hidden', 'true');
     frame.style.cssText = 'position:fixed; right:0; bottom:0; width:0; height:0; border:0;';
