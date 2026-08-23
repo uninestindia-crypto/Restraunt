@@ -13,6 +13,13 @@ export class InvoiceGenerator {
   static generateInvoiceHTML(order, settings, upiQrDataUrl = '') {
     const items = parseOrderItems(order.items);
     const subtotal = Number(order.subtotal) || 0;
+    // A tax invoice has to show the taxable value it charged GST on, or it does not add up. The
+    // discount sits between the subtotal and the tax for exactly that reason.
+    const itemDiscount = Number(order.itemDiscountTotal) || 0;
+    const billDiscount = Number(order.billDiscountAmount) || 0;
+    const discountTotal = Number(order.discountTotal) || (itemDiscount + billDiscount);
+    const taxableValue = Math.max(0, subtotal - discountTotal);
+    const deliveryFee = Number(order.deliveryFee) || 0;
     const tax = Number(order.tax) || 0;
     const total = Number(order.total) || 0;
     const orderNum = String(order.orderNumber || '0000');
@@ -504,10 +511,34 @@ export class InvoiceGenerator {
                       <span style="color: #64748b;">Subtotal</span>
                       <span style="font-weight: 600; color: #1e293b;">${currencySymbol}${subtotal.toFixed(2)}</span>
                     </div>
+                    ${discountTotal > 0 ? `
+                      ${itemDiscount > 0 ? `
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 12px;">
+                          <span style="color: #64748b;">Item discounts</span>
+                          <span style="font-weight: 600; color: #b91c1c;">-${currencySymbol}${itemDiscount.toFixed(2)}</span>
+                        </div>
+                      ` : ''}
+                      ${billDiscount > 0 ? `
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 12px;">
+                          <span style="color: #64748b;">Bill discount${order.billDiscountType === 'percent' ? ` ${escapeHtml(String(Number(order.billDiscountValue) || 0))}%` : ''}</span>
+                          <span style="font-weight: 600; color: #b91c1c;">-${currencySymbol}${billDiscount.toFixed(2)}</span>
+                        </div>
+                      ` : ''}
+                      <div style="display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 12px;">
+                        <span style="color: #64748b;">Taxable value</span>
+                        <span style="font-weight: 600; color: #1e293b;">${currencySymbol}${taxableValue.toFixed(2)}</span>
+                      </div>
+                    ` : ''}
                     ${tax > 0 ? `
                       <div style="display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 12px;">
                         <span style="color: #64748b;">${escapeHtml(taxLabel)}</span>
                         <span style="font-weight: 600; color: #1e293b;">${currencySymbol}${tax.toFixed(2)}</span>
+                      </div>
+                    ` : ''}
+                    ${deliveryFee > 0 ? `
+                      <div style="display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 12px;">
+                        <span style="color: #64748b;">Delivery</span>
+                        <span style="font-weight: 600; color: #1e293b;">${currencySymbol}${deliveryFee.toFixed(2)}</span>
                       </div>
                     ` : ''}
                     <div style="border-top: 2px solid ${primaryColor}22; padding-top: 10px; margin-top: 10px; display: flex; justify-content: space-between; align-items: center;">

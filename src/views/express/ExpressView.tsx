@@ -14,9 +14,14 @@ import { showToast, formatCurrencyShort, formatCurrency, playSound, vibrateDevic
 import { dishImageHtml } from '../../components/DishImage';
 import { CheckoutSuccessModal } from '../pos/CheckoutSuccessModal';
 import { generateUPIQR } from '../../services/upi';
+import { priceOrder } from '../../services/pricing';
 import { orderNotificationService } from '../../services/orderNotification';
 
 export class ExpressView {
+  declare billDiscountType: any;
+  declare billDiscountValue: any;
+  declare discountReason: any;
+  declare deliveryFee: any;
   // Fields these methods assign. Type-only: `declare` emits nothing, so the
   // runtime shape of the class is unchanged.
   declare customerPhone: any;
@@ -52,6 +57,10 @@ export class ExpressView {
     
     // POS Cart State
     this.cart = [];
+    this.billDiscountType = 'none';
+    this.billDiscountValue = 0;
+    this.discountReason = '';
+    this.deliveryFee = 0;
     this.orderType = 'takeaway'; // takeaway | dinein | delivery
     this.customerPhone = '';
     this.selectedTableId = null;
@@ -78,6 +87,7 @@ export class ExpressView {
     // this codebase writes, so every displayed total was computed at 5% while
     // the order was created at the store's real rate.
     this.gstPercent = parseFloat(await getSetting('gstPercent') || '5') || 0;
+    this.deliveryFee = parseFloat(await getSetting('deliveryFee') || '0') || 0;
 
     // Load static data from Dexie
     this.categories = await getCategories();
@@ -222,8 +232,7 @@ export class ExpressView {
 
   render() {
     const gstPercent = this.gstPercent;
-    const subtotal = this.cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-    const total = subtotal * (1 + gstPercent / 100);
+    const total = this.priced().total;
     const totalItems = this.cart.reduce((s, i) => s + i.quantity, 0);
 
     const mobileCartHtml = this.cart.length > 0 ? `
@@ -330,6 +339,11 @@ export class ExpressView {
                   <!-- Customer Phone -->
                   <input type="tel" id="express-cust-phone" class="meta-input" aria-label="Customer phone number (optional)" placeholder="📱 Phone number (Optional)" value="${escapeHtml(this.customerPhone)}">
                 </div>
+              </div>
+
+              <!-- Whole-bill discount -->
+              <div id="express-bill-discount-wrap">
+                ${this.renderBillDiscount()}
               </div>
 
               <!-- Total & Checkout buttons -->
@@ -785,6 +799,70 @@ export class ExpressView {
           border: 1px solid var(--border-glass);
           border-radius: var(--radius-sm);
           transition: transform, opacity, background-color, border-color, color, box-shadow var(--transition-fast);
+        }
+
+        /* The cart row grows a second line for the discount, so the row is a grid rather than a
+           flex pair. Without a discount typed the second line is a bare input and reads as part of
+           the row; with one it shows what came off, next to the price it came off. */
+        .express-cart-row {
+          flex-wrap: wrap;
+          row-gap: 6px;
+        }
+
+        .row-discount {
+          flex-basis: 100%;
+          display: flex;
+          align-items: center;
+          justify-content: flex-end;
+          gap: 8px;
+        }
+
+        .line-disc-input {
+          width: 74px;
+          min-height: 32px;
+          background: var(--bg-secondary);
+          border: 1px solid var(--border-glass);
+          border-radius: var(--radius-sm);
+          color: var(--text-primary);
+          font-size: 11px;
+          text-align: right;
+          padding: 0 8px;
+        }
+
+        .line-disc-input:focus-visible {
+          outline: 2px solid var(--border-active);
+          outline-offset: 1px;
+        }
+
+        .line-disc-amount {
+          font-size: 11px;
+          font-weight: 700;
+          color: var(--color-success);
+          font-variant-numeric: tabular-nums;
+        }
+
+        .express-bill-discount {
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+          padding: 10px 12px;
+          border-top: 1px solid var(--border-glass);
+        }
+
+        .bill-discount-row {
+          display: flex;
+          gap: 8px;
+          align-items: center;
+        }
+
+        .bill-discount-row .meta-dropdown { flex: 1.2; min-width: 120px; }
+        .bill-discount-row .meta-input { flex: 0.8; min-width: 84px; }
+
+        .bill-discount-summary {
+          margin: 0;
+          font-size: 11px;
+          color: var(--text-secondary);
+          font-variant-numeric: tabular-nums;
         }
 
         .express-cart-row:hover {
@@ -1664,21 +1742,88 @@ export class ExpressView {
             <span class="step-val">${Math.max(1, Number(item.quantity) || 1)}</span>
             <button class="step-circle step-inc" data-index="${index}">+</button>
           </div>
-          <div class="row-total">${formatCurrencyShort(item.price * item.quantity)}</div>
+          <div class="row-total">${escapeHtml(formatCurrencyShort(item.price * item.quantity))}</div>
+        </div>
+        <div class="row-discount">
+          <label class="sr-only" for="express-line-disc-${index}">Discount on ${escapeHtml(item.itemName)}, percent</label>
+          <input id="express-line-disc-${index}" class="line-disc-input" type="number" inputmode="decimal"
+            min="0" max="100" step="1" placeholder="% off" data-index="${index}"
+            value="${escapeHtml(item.discountPercent === undefined || item.discountPercent === null ? '' : String(item.discountPercent))}">
+          ${Number(item.discount) > 0 ? `<span class="line-disc-amount">-${escapeHtml(formatCurrencyShort(item.discount))}</span>` : ''}
         </div>
       </div>
     `).join('');
   }
 
+  /**
+   * The whole-bill discount, and the reason it goes with it.
+   *
+   * A discount without a reason is a hole in the till that nobody can account for later, so the
+   * note travels with the order rather than living in someone's memory. The server has the last
+   * word on the amount: it clamps to the bill and refuses anything above the store's ceiling.
+   */
+  renderBillDiscount() {
+    const p = this.priced();
+    return `
+      <div class="express-bill-discount">
+        <div class="bill-discount-row">
+          <select id="express-disc-type" class="meta-dropdown" aria-label="Bill discount type">
+            <option value="none" ${this.billDiscountType === 'none' ? 'selected' : ''}>No discount</option>
+            <option value="percent" ${this.billDiscountType === 'percent' ? 'selected' : ''}>% off bill</option>
+            <option value="amount" ${this.billDiscountType === 'amount' ? 'selected' : ''}>₹ off bill</option>
+          </select>
+          <input id="express-disc-value" class="meta-input" type="number" inputmode="decimal" min="0" step="1"
+            aria-label="Bill discount amount" placeholder="${this.billDiscountType === 'percent' ? '%' : '₹'}"
+            value="${this.billDiscountValue ? escapeHtml(String(this.billDiscountValue)) : ''}"
+            style="display:${this.billDiscountType === 'none' ? 'none' : 'block'};">
+        </div>
+        ${this.billDiscountType !== 'none' ? `
+          <input id="express-disc-reason" class="meta-input" type="text" maxlength="160"
+            aria-label="Why this discount" placeholder="Why? (regular customer, complaint…)"
+            value="${escapeHtml(this.discountReason || '')}">
+        ` : ''}
+        ${p.discountTotal > 0 ? `
+          <p class="bill-discount-summary">
+            ${escapeHtml(formatCurrency(p.subtotal))} &minus; ${escapeHtml(formatCurrency(p.discountTotal))}
+            = ${escapeHtml(formatCurrency(p.taxableValue))} before tax
+          </p>
+        ` : ''}
+      </div>
+    `;
+  }
+
+  /**
+   * What the bill comes to, worked out the same way the server will.
+   *
+   * Every number this screen shows goes through here, so the operator cannot be reading one total
+   * while the customer is charged another. `priceOrder` is the client's copy of the trigger's
+   * arithmetic and both are pinned to the same worked examples.
+   */
+  priced() {
+    return priceOrder({
+      items: this.cart,
+      billDiscountType: this.billDiscountType,
+      billDiscountValue: this.billDiscountValue,
+      taxPercent: this.gstPercent,
+      deliveryFee: this.deliveryFee,
+      type: this.orderType
+    });
+  }
+
   renderCheckoutBar() {
-    const subtotal = this.cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-    const gstPercent = this.gstPercent;
-    const total = subtotal * (1 + gstPercent / 100);
+    const p = this.priced();
+    const total = p.total;
 
     return `
+      ${p.discountTotal > 0 ? `
+        <div class="express-total-info" style="opacity:0.85;">
+          <span class="total-lbl">Discount</span>
+          <span class="total-val" style="color: var(--color-success);">-${escapeHtml(formatCurrency(p.discountTotal))}</span>
+        </div>
+      ` : ''}
       <div class="express-total-info">
         <span class="total-lbl">Total (${this.cart.reduce((s, i) => s + i.quantity, 0)} items)</span>
-        <span class="total-val">${formatCurrency(total)}</span>
+        <span class="total-val">${escapeHtml(formatCurrency(total))}</span>
       </div>
       <div class="checkout-buttons-group">
         <button class="quick-pay-btn btn-cash" id="express-pay-cash" ${this.cart.length === 0 ? 'disabled' : ''}>
@@ -1928,6 +2073,8 @@ export class ExpressView {
     const checkoutBar = document.getElementById('express-checkout-bar');
     if (cartList) cartList.innerHTML = this.renderCartItems();
     if (checkoutBar) checkoutBar.innerHTML = this.renderCheckoutBar();
+    const discountWrap = document.getElementById('express-bill-discount-wrap');
+    if (discountWrap) discountWrap.innerHTML = this.renderBillDiscount();
 
     const countTitle = document.getElementById('express-cart-count-title');
     if (countTitle) {
@@ -1938,9 +2085,7 @@ export class ExpressView {
     // Update Mobile Cart Bar
     const mobileCartWrapper = document.getElementById('mobile-cart-bar-wrapper');
     if (mobileCartWrapper) {
-      const gstPercent = this.gstPercent;
-      const subtotal = this.cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-      const total = subtotal * (1 + gstPercent / 100);
+      const total = this.priced().total;
       const totalItems = this.cart.reduce((s, i) => s + i.quantity, 0);
 
       if (this.cart.length > 0) {
@@ -1987,10 +2132,10 @@ export class ExpressView {
       return;
     }
 
-    const subtotal = this.cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-    const gstPercent = parseFloat(await getSetting('gstPercent') || '5');
-    const tax = subtotal * (gstPercent / 100);
-    const total = subtotal + tax;
+    // The preview, computed the same way the server will. These are the numbers the operator has
+    // been looking at; createOrder replaces them with the server's own answer once it lands.
+    this.gstPercent = parseFloat(await getSetting('gstPercent') || '5') || 0;
+    const priced = this.priced();
     const orderNumber = await getNextOrderNumber();
 
     // Read phone
@@ -2011,10 +2156,16 @@ export class ExpressView {
       channel: 'pos',
       status: 'pending',
       items: JSON.stringify(this.cart),
-      subtotal,
-      tax,
-      taxPercent: gstPercent,
-      total,
+      subtotal: priced.subtotal,
+      tax: priced.tax,
+      taxPercent: priced.taxPercent,
+      deliveryFee: priced.deliveryFee,
+      total: priced.total,
+      // Only the rule travels. The server decides what it is worth against the live menu, clamps it
+      // to the bill, and refuses anything above the ceiling the owner set.
+      billDiscountType: this.billDiscountType,
+      billDiscountValue: this.billDiscountValue,
+      discountReason: this.discountReason,
       paymentMethod: paymentMethod,
       paymentStatus: 'paid', // Instant checkout means fully paid
       customerName: this.customerPhone ? 'Walk-in' : '',
@@ -2033,11 +2184,12 @@ export class ExpressView {
       const canvas = document.getElementById('express-upi-canvas');
       
       if (upiModal && amountLabel && canvas) {
-        amountLabel.textContent = formatCurrency(total);
+        amountLabel.textContent = formatCurrency(priced.total);
         upiModal.style.display = 'flex';
         
         try {
-          await generateUPIQR(canvas, { amount: total, orderId: orderNumber });
+          // The QR has to encode the discounted amount, or the customer scans and pays full price.
+          await generateUPIQR(canvas, { amount: priced.total, orderId: orderNumber });
         } catch (e) {
           console.error('[ExpressView] UPI QR generation failed:', e);
           showToast('Failed to load UPI QR Code. Check setup.', 'error');
@@ -2094,6 +2246,10 @@ export class ExpressView {
 
       // Reset cart
       this.cart = [];
+      // The next customer must not inherit this one's discount.
+      this.billDiscountType = 'none';
+      this.billDiscountValue = 0;
+      this.discountReason = '';
       this.selectedTableId = null;
       this.customerPhone = '';
       this.updateCartUI();
@@ -2310,6 +2466,47 @@ export class ExpressView {
           }
         };
       });
+    }
+
+    // Per-line discount. Typing re-prices the whole bill, so the operator sees the effect of a
+    // line discount on the total immediately rather than after the sale.
+    if (cartList) {
+      cartList.querySelectorAll('.line-disc-input').forEach((input: any) => {
+        input.onchange = () => {
+          const index = parseInt(input.dataset.index, 10);
+          const raw = String(input.value).trim();
+          const line = this.cart[index];
+          if (!line) return;
+          line.discountPercent = raw === '' ? null : Math.min(Math.max(Number(raw) || 0, 0), 100);
+          delete line.discountAmount;
+          this.updateCartUI();
+        };
+      });
+    }
+
+    // Whole-bill discount.
+    const discType = document.getElementById('express-disc-type') as HTMLSelectElement;
+    if (discType) {
+      discType.onchange = () => {
+        this.billDiscountType = discType.value;
+        if (this.billDiscountType === 'none') {
+          this.billDiscountValue = 0;
+          this.discountReason = '';
+        }
+        this.updateCartUI();
+      };
+    }
+    const discValue = document.getElementById('express-disc-value') as HTMLInputElement;
+    if (discValue) {
+      discValue.onchange = () => {
+        this.billDiscountValue = Math.max(Number(discValue.value) || 0, 0);
+        this.updateCartUI();
+      };
+    }
+    const discReason = document.getElementById('express-disc-reason') as HTMLInputElement;
+    if (discReason) {
+      // Kept out of updateCartUI so the field is not re-rendered from under the cursor mid-word.
+      discReason.oninput = () => { this.discountReason = discReason.value; };
     }
 
     // Checkout buttons

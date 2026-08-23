@@ -70,14 +70,18 @@ test('the tax rate comes from the store settings, never from a cache nobody fill
 });
 
 test('what the operator is shown and what the order stores use the same rate', () => {
-  // The Express Panel renders synchronously, so it caches the rate at mount rather than
-  // guessing inline. The POS cart bar awaits the same setting the bill does.
+  // The Express Panel renders synchronously, so it caches the rate at mount rather than guessing
+  // inline. It used to apply that rate in three separate places — the header, the mobile bar and
+  // the checkout bar — each with its own `subtotal * (1 + gst/100)`; discounts made a fourth copy
+  // untenable, so all of them now go through priceOrder(). The property to hold is not "three
+  // copies read the cache" but "no copy does its own arithmetic".
   const express = readFileSync('src/views/express/ExpressView.tsx', 'utf8');
   assert.match(express, /this\.gstPercent = parseFloat\(await getSetting\('gstPercent'\)/);
-  assert.equal(
-    (express.match(/const gstPercent = this\.gstPercent;/g) || []).length,
-    3,
-    'all three Express display paths must read the cached rate'
+  assert.match(express, /priceOrder\(\{/, 'the Express Panel must price through the shared module');
+  assert.doesNotMatch(
+    code(express),
+    /\* \(1 \+ [a-zA-Z.]*gstPercent \/ 100\)/,
+    'an inline tax calculation in Express is a second answer to what the customer pays'
   );
 
   const pos = readFileSync('src/views/pos/PosView.tsx', 'utf8');

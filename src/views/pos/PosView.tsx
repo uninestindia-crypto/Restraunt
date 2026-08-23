@@ -5,6 +5,7 @@
 
 import { MenuGrid } from './MenuGrid';
 import { CartPanel } from './CartPanel';
+import { priceOrder } from '../../services/pricing';
 import { PaymentModal } from './PaymentModal';
 import { CheckoutSuccessModal } from './CheckoutSuccessModal';
 import { db, createOrder, getNextOrderNumber, getSetting } from '../../db/database';
@@ -252,10 +253,19 @@ export class PosView {
     }
 
     // Calculate totals
-    const subtotal = this.cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    // Priced the same way the server will price it, discounts and all. These are the numbers the
+    // cashier has been looking at; createOrder replaces them with the server's own answer.
     const gstPercent = parseFloat(await getSetting('gstPercent') || '5');
-    const tax = subtotal * (gstPercent / 100);
-    const total = subtotal + tax;
+    const priced = priceOrder({
+      items: this.cart,
+      billDiscountType: this.cartPanel?.billDiscountType,
+      billDiscountValue: this.cartPanel?.billDiscountValue,
+      taxPercent: gstPercent,
+      type: this.orderType
+    });
+    const subtotal = priced.subtotal;
+    const tax = priced.tax;
+    const total = priced.total;
     const orderNumber = await getNextOrderNumber();
 
     let staffId = authService.getCurrentStaff()?.id || null;
@@ -268,6 +278,10 @@ export class PosView {
       status: 'pending',
       items: JSON.stringify(this.cart),
       subtotal,
+      // Only the rule travels; the server decides what it is worth against the live menu.
+      billDiscountType: this.cartPanel?.billDiscountType || 'none',
+      billDiscountValue: this.cartPanel?.billDiscountValue || 0,
+      discountReason: this.cartPanel?.discountReason || '',
       tax,
       taxPercent: gstPercent,
       total,

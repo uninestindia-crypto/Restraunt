@@ -30,16 +30,22 @@ import test from 'node:test';
 
 const sync = readFileSync('src/services/sync.ts', 'utf8');
 
-/** The columns the trigger guards, read out of the migration rather than trusted from memory. */
+/**
+ * The columns the trigger guards, read out of the migration rather than trusted from memory.
+ *
+ * The *last* definition, not the first: migrations run in name order and each one is a
+ * `create or replace`, so a later migration's guard list is the one Postgres ends up enforcing.
+ * Reading the first match silently pinned this test to a superseded version of the trigger.
+ */
 function guardedColumns() {
   const dir = 'supabase/migrations';
-  const sql = readdirSync(dir).filter((f) => f.endsWith('.sql'))
+  const sql = readdirSync(dir).filter((f) => f.endsWith('.sql')).sort()
     .map((f) => readFileSync(`${dir}/${f}`, 'utf8')).join('\n');
 
-  const raise = sql.indexOf("raise exception 'Order identity, items, and totals are immutable'");
+  const raise = sql.lastIndexOf("raise exception 'Order identity, items, and totals are immutable'");
   assert.ok(raise > -1, 'the immutability trigger was not found in any migration');
 
-  const condition = sql.slice(sql.lastIndexOf('if new.', 0 + raise - 1200) || 0, raise);
+  const condition = sql.slice(Math.max(0, sql.lastIndexOf('if new.store_id is distinct', raise)), raise);
   return new Set(
     [...condition.matchAll(/new\.([a-z_]+) is distinct from old\.\1/g)].map((m) => m[1])
   );

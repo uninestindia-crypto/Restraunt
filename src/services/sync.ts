@@ -36,7 +36,15 @@ const IMMUTABLE_ORDER_COLUMNS = [
   'tax',
   'tax_percent',
   'delivery_fee',
-  'total'
+  'total',
+  // The discount columns are set once, at insert, from the rules the till sent — and the trigger
+  // refuses to see them change afterwards. Sending them on a lifecycle update (a status change, a
+  // payment) would be refused as "Order identity, items, and totals are immutable".
+  'item_discount_total',
+  'bill_discount_type',
+  'bill_discount_value',
+  'bill_discount_amount',
+  'discount_total'
 ];
 
 function getStoreId() {
@@ -195,6 +203,12 @@ export function mapOrderToRemote(order: any) {
     tax_percent: parseFloat(order.taxPercent) || 0,
     delivery_fee: parseFloat(order.deliveryFee) || 0,
     total: parseFloat(order.total) || 0,
+    // Only the *rule* is sent. What it is worth is decided by enforce_order_integrity against the
+    // live menu, exactly as the prices are — a discount is a deviation from the menu price, and the
+    // menu price is the one thing this schema will not take from a browser.
+    bill_discount_type: ['percent', 'amount'].includes(order.billDiscountType) ? order.billDiscountType : 'none',
+    bill_discount_value: parseFloat(order.billDiscountValue) || 0,
+    discount_reason: String(order.discountReason || '').slice(0, 160),
     payment_method: order.paymentMethod || null,
     payment_status: order.paymentStatus || 'unpaid',
     payment_reference: order.paymentReference || '',
@@ -230,6 +244,12 @@ export function mapOrderToRemote(order: any) {
 export function mapOrderToLocal(row: any) {
   return {
     id: row.id,
+    itemDiscountTotal: parseFloat(row.item_discount_total) || 0,
+    billDiscountType: row.bill_discount_type || 'none',
+    billDiscountValue: parseFloat(row.bill_discount_value) || 0,
+    billDiscountAmount: parseFloat(row.bill_discount_amount) || 0,
+    discountTotal: parseFloat(row.discount_total) || 0,
+    discountReason: row.discount_reason || '',
     serverOrderId: row.id,
     clientOrderId: row.client_order_id,
     idempotencyKey: row.idempotency_key,

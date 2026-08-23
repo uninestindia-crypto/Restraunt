@@ -213,6 +213,14 @@ export class ReceiptBuilder {
         } else {
           rb.leftRight(itemName, amtStr);
         }
+
+        // A discount on this line goes directly under it, so the customer can see which dish it
+        // came off rather than finding one lump sum at the bottom of the bill.
+        const lineDiscount = Number(item.discount) || 0;
+        if (lineDiscount > 0) {
+          const rule = item.discountPercent ? `  Discount ${Number(item.discountPercent)}%` : '  Discount';
+          rb.leftRight(rule, `-${lineDiscount.toFixed(2)}`);
+        }
       }
     }
 
@@ -222,11 +230,31 @@ export class ReceiptBuilder {
     const subtotal = order.subtotal || 0;
     rb.leftRight('Subtotal', subtotal.toFixed(2));
 
+    // Discounts, then the taxable value they produce. The order matters and it is not cosmetic:
+    // GST is charged on the discounted amount, so a bill that showed the discount *after* the tax
+    // would not add up and would be wrong on an invoice.
+    const itemDiscount = Number(order.itemDiscountTotal) || 0;
+    const billDiscount = Number(order.billDiscountAmount) || 0;
+    const discountTotal = Number(order.discountTotal) || (itemDiscount + billDiscount);
+    if (discountTotal > 0) {
+      if (itemDiscount > 0) rb.leftRight('Item discounts', `-${itemDiscount.toFixed(2)}`);
+      if (billDiscount > 0) {
+        const rule = order.billDiscountType === 'percent'
+          ? `Bill discount ${Number(order.billDiscountValue)}%`
+          : 'Bill discount';
+        rb.leftRight(rule, `-${billDiscount.toFixed(2)}`);
+      }
+      rb.leftRight('Taxable value', Math.max(0, subtotal - discountTotal).toFixed(2));
+    }
+
     // Tax
     if (order.tax && order.tax > 0) {
       const gstLabel = settings.taxLabel ? `${settings.taxLabel} (${settings.gstPercent || 5}%)` : (settings.gstPercent ? `GST (${settings.gstPercent}%)` : 'Tax');
       rb.leftRight(gstLabel, order.tax.toFixed(2));
     }
+
+    const deliveryFee = Number(order.deliveryFee) || 0;
+    if (deliveryFee > 0) rb.leftRight('Delivery', deliveryFee.toFixed(2));
 
     rb.line('=')
       .center()
@@ -236,6 +264,10 @@ export class ReceiptBuilder {
       .normal()
       .bold(false)
       .line('=');
+
+    if (discountTotal > 0) {
+      rb.center().text(`You saved ${settings.currencySymbol || '₹'}${discountTotal.toFixed(2)}`).left();
+    }
 
     // Payment info
     const paymentMethod = order.paymentMethod ? order.paymentMethod.toUpperCase() : 'PENDING';

@@ -66,6 +66,11 @@ export interface OrderItem {
   notes?: string;
   addonIds?: number[];
   spiceLevel?: string;
+  /** The rule the till applied to this line: a percentage off, or a flat amount off. */
+  discountPercent?: number | null;
+  discountAmount?: number;
+  /** What that rule was worth, in rupees, decided by the server against the menu price. */
+  discount?: number;
 }
 
 export interface Order {
@@ -97,6 +102,20 @@ export interface Order {
   taxPercent?: number;
   deliveryFee?: number;
   total: number;
+  /**
+   * What was given away, and on whose say-so.
+   *
+   * `billDiscountType`/`billDiscountValue` are the rule the till sent — "percent, 10" or
+   * "amount, 50". Everything else is the server's answer, written by enforce_order_integrity
+   * against the live menu, because a discount is a deviation from the menu price and the client
+   * does not get to decide what a customer pays. Per-line discounts live on the items themselves.
+   */
+  billDiscountType?: 'none' | 'percent' | 'amount' | string;
+  billDiscountValue?: number;
+  billDiscountAmount?: number;
+  itemDiscountTotal?: number;
+  discountTotal?: number;
+  discountReason?: string;
   serverOrderId?: string | null;
   paymentReference?: string;
   paymentVerifiedAt?: string | null;
@@ -777,7 +796,10 @@ export async function createOrder(orderData: any, options: any = {}) {
           const result = await supabase
             .from('orders')
             .insert(remoteOrder)
-            .select('id')
+            // Not just the id. The server rebuilds every line and every money column from the live
+            // menu and works out what the discounts are worth; reading them back is what stops the
+            // receipt in the customer's hand disagreeing with the amount that was banked.
+            .select('id, items, subtotal, tax, tax_percent, delivery_fee, total, item_discount_total, bill_discount_type, bill_discount_value, bill_discount_amount, discount_total')
             .single();
 
           if (!result.error) {
@@ -794,7 +816,7 @@ export async function createOrder(orderData: any, options: any = {}) {
           if (conflict && !onOrderNumber) {
             const existing = await supabase
               .from('orders')
-              .select('id')
+              .select('id, items, subtotal, tax, tax_percent, delivery_fee, total, item_discount_total, bill_discount_type, bill_discount_value, bill_discount_amount, discount_total')
               .eq('store_id', storeId)
               .eq('client_order_id', clientOrderId)
               .maybeSingle();
@@ -822,6 +844,22 @@ export async function createOrder(orderData: any, options: any = {}) {
           serverOrderId = data.id;
           isSynced = 1;
           syncStatus = 'synced';
+
+          // Adopt the server's arithmetic wholesale. Anything the till computed was a preview.
+          orderData = {
+            ...orderData,
+            items: Array.isArray(data.items) ? data.items : orderData.items,
+            subtotal: Number(data.subtotal),
+            tax: Number(data.tax),
+            taxPercent: Number(data.tax_percent),
+            deliveryFee: Number(data.delivery_fee),
+            total: Number(data.total),
+            itemDiscountTotal: Number(data.item_discount_total) || 0,
+            billDiscountType: data.bill_discount_type || 'none',
+            billDiscountValue: Number(data.bill_discount_value) || 0,
+            billDiscountAmount: Number(data.bill_discount_amount) || 0,
+            discountTotal: Number(data.discount_total) || 0
+          };
         }
       } catch (cloudErr) {
         console.error('[Database] Direct cloud write failed for order:', cloudErr);
@@ -854,6 +892,12 @@ export async function createOrder(orderData: any, options: any = {}) {
         subtotal: orderData.subtotal || 0,
         tax: orderData.tax || 0,
         taxPercent: orderData.taxPercent || 0,
+        itemDiscountTotal: orderData.itemDiscountTotal || 0,
+        billDiscountType: orderData.billDiscountType || 'none',
+        billDiscountValue: orderData.billDiscountValue || 0,
+        billDiscountAmount: orderData.billDiscountAmount || 0,
+        discountTotal: orderData.discountTotal || 0,
+        discountReason: orderData.discountReason || '',
         deliveryFee: orderData.deliveryFee || 0,
         total: orderData.total || 0,
         paymentMethod: orderData.paymentMethod || null,

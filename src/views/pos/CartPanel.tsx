@@ -4,8 +4,12 @@
 
 import { formatCurrencyShort, formatCurrency, escapeHtml } from '../../utils/helpers';
 import { getSetting } from '../../db/database';
+import { priceOrder } from '../../services/pricing';
 
 export class CartPanel {
+  declare billDiscountType: any;
+  declare billDiscountValue: any;
+  declare discountReason: any;
   // Fields these methods assign. Type-only: `declare` emits nothing, so the
   // runtime shape of the class is unchanged.
   declare cart: any;
@@ -30,6 +34,9 @@ export class CartPanel {
     this.onOrderTypeChange = onOrderTypeChange;
     this.gstPercent = 5;
     this.taxLabel = 'GST';
+    this.billDiscountType = 'none';
+    this.billDiscountValue = 0;
+    this.discountReason = '';
 
     this.loadSettings();
   }
@@ -151,42 +158,104 @@ export class CartPanel {
                 </button>
               </div>
             </div>
-            <div class="cart-item-total">${escapeHtml(formatCurrencyShort(item.price * item.quantity))}</div>
+            <div class="cart-item-total">
+              ${escapeHtml(formatCurrencyShort(item.price * item.quantity))}
+              ${Number(item.discount) > 0 ? `<div class="cart-item-discount">-${escapeHtml(formatCurrencyShort(item.discount))}</div>` : ''}
+            </div>
             <button class="cart-item-delete" data-index="${index}" aria-label="Remove item">
               <span class="material-symbols-rounded" style="font-size: 18px;">close</span>
             </button>
+            <div class="cart-item-disc-row">
+              <label class="sr-only" for="pos-line-disc-${index}">Discount on ${escapeHtml(item.itemName)}, percent</label>
+              <input id="pos-line-disc-${index}" class="cart-line-disc" type="number" inputmode="decimal"
+                min="0" max="100" step="1" placeholder="% off" data-index="${index}"
+                value="${escapeHtml(item.discountPercent === undefined || item.discountPercent === null ? '' : String(item.discountPercent))}">
+            </div>
           </div>
         `).join('')}
       </div>
     `;
   }
 
+  /**
+   * What the bill comes to, worked out the same way the server will.
+   *
+   * The cashier is looking at these numbers with the customer in front of them, so they have to be
+   * the numbers that get banked. `priceOrder` is the client's copy of the order trigger's
+   * arithmetic and both are pinned to the same worked examples.
+   */
+  priced() {
+    return priceOrder({
+      items: this.cart,
+      billDiscountType: this.billDiscountType,
+      billDiscountValue: this.billDiscountValue,
+      taxPercent: this.gstPercent
+    });
+  }
+
   renderCartBottom() {
     if (this.cart.length === 0) return '';
 
-    const subtotal = this.getSubtotal();
-    const tax = subtotal * (this.gstPercent / 100);
-    const total = subtotal + tax;
+    const p = this.priced();
 
     return `
+      <div class="cart-discount">
+        <div class="cart-discount-row">
+          <label class="sr-only" for="pos-disc-type">Bill discount type</label>
+          <select id="pos-disc-type" class="input">
+            <option value="none" ${this.billDiscountType === 'none' ? 'selected' : ''}>No discount</option>
+            <option value="percent" ${this.billDiscountType === 'percent' ? 'selected' : ''}>% off bill</option>
+            <option value="amount" ${this.billDiscountType === 'amount' ? 'selected' : ''}>₹ off bill</option>
+          </select>
+          ${this.billDiscountType !== 'none' ? `
+            <label class="sr-only" for="pos-disc-value">Bill discount amount</label>
+            <input id="pos-disc-value" class="input" type="number" inputmode="decimal" min="0" step="1"
+              placeholder="${this.billDiscountType === 'percent' ? '%' : '₹'}"
+              value="${this.billDiscountValue ? escapeHtml(String(this.billDiscountValue)) : ''}">
+          ` : ''}
+        </div>
+        ${this.billDiscountType !== 'none' ? `
+          <label class="sr-only" for="pos-disc-reason">Why this discount</label>
+          <input id="pos-disc-reason" class="input" type="text" maxlength="160"
+            placeholder="Why? (regular customer, complaint…)" value="${escapeHtml(this.discountReason || '')}">
+        ` : ''}
+      </div>
       <div class="cart-summary">
         <div class="cart-summary-row">
           <span>Subtotal (${this.getTotalItemCount()} items)</span>
-          <span>${formatCurrency(subtotal)}</span>
+          <span>${escapeHtml(formatCurrency(p.subtotal))}</span>
         </div>
+        ${p.itemDiscountTotal > 0 ? `
+          <div class="cart-summary-row cart-summary-discount">
+            <span>Item discounts</span>
+            <span>-${escapeHtml(formatCurrency(p.itemDiscountTotal))}</span>
+          </div>
+        ` : ''}
+        ${p.billDiscountAmount > 0 ? `
+          <div class="cart-summary-row cart-summary-discount">
+            <span>Bill discount${this.billDiscountType === 'percent' ? ` ${escapeHtml(String(this.billDiscountValue))}%` : ''}</span>
+            <span>-${escapeHtml(formatCurrency(p.billDiscountAmount))}</span>
+          </div>
+        ` : ''}
+        ${p.discountTotal > 0 ? `
+          <div class="cart-summary-row">
+            <span>Taxable value</span>
+            <span>${escapeHtml(formatCurrency(p.taxableValue))}</span>
+          </div>
+        ` : ''}
         <div class="cart-summary-row">
           <span>${escapeHtml(this.taxLabel)} (${escapeHtml(this.gstPercent)}%)</span>
-          <span>${formatCurrency(tax)}</span>
+          <span>${escapeHtml(formatCurrency(p.tax))}</span>
         </div>
         <div class="cart-summary-row summary-total">
           <span>Total</span>
-          <span>${formatCurrency(total)}</span>
+          <span>${escapeHtml(formatCurrency(p.total))}</span>
         </div>
       </div>
       <div class="cart-actions">
         <button class="btn btn-primary btn-block btn-lg" id="btn-place-order">
           <span class="material-symbols-rounded">payments</span>
-          Pay ${formatCurrencyShort(total)}
+          Pay ${escapeHtml(formatCurrencyShort(p.total))}
         </button>
         <button class="btn btn-ghost btn-block btn-sm" id="btn-clear-cart">
           <span class="material-symbols-rounded" style="font-size: 18px;">delete_sweep</span>
@@ -290,6 +359,46 @@ export class CartPanel {
           if (this.onClearCart) this.onClearCart();
         });
       }
+
+      // Whole-bill discount. Changing it re-renders the summary so the cashier sees the new total
+      // before pressing Pay, rather than after.
+      const discType = (newBottom as HTMLElement).querySelector('#pos-disc-type') as HTMLSelectElement;
+      if (discType) {
+        discType.addEventListener('change', () => {
+          this.billDiscountType = discType.value;
+          if (this.billDiscountType === 'none') {
+            this.billDiscountValue = 0;
+            this.discountReason = '';
+          }
+          this.render();
+        });
+      }
+      const discValue = (newBottom as HTMLElement).querySelector('#pos-disc-value') as HTMLInputElement;
+      if (discValue) {
+        discValue.addEventListener('change', () => {
+          this.billDiscountValue = Math.max(Number(discValue.value) || 0, 0);
+          this.render();
+        });
+      }
+      const discReason = (newBottom as HTMLElement).querySelector('#pos-disc-reason') as HTMLInputElement;
+      if (discReason) {
+        // Deliberately not re-rendering: the field would be rebuilt from under the cursor mid-word.
+        discReason.addEventListener('input', () => { this.discountReason = discReason.value; });
+      }
     }
+
+    // Per-line discount, on the item rows.
+    const itemsContainer = document.getElementById('cart-items-container') || document;
+    itemsContainer.querySelectorAll('.cart-line-disc').forEach((input: any) => {
+      input.addEventListener('change', () => {
+        const index = parseInt(input.dataset.index, 10);
+        const line = this.cart[index];
+        if (!line) return;
+        const raw = String(input.value).trim();
+        line.discountPercent = raw === '' ? null : Math.min(Math.max(Number(raw) || 0, 0), 100);
+        delete line.discountAmount;
+        this.render();
+      });
+    });
   }
 }
