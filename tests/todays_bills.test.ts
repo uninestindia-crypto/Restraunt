@@ -1,6 +1,6 @@
 // @ts-nocheck
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync, statSync } from 'node:fs';
 import test from 'node:test';
 
 /**
@@ -93,13 +93,46 @@ test('it has the states a screen needs, with words that say what to do', () => {
   assert.match(view, /Couldn't reprint that bill/);                  // failure
 });
 
+test('it introduces no icon the font does not ship', () => {
+  // The icon font is subset to the names found in the source — 148 of them, 17.7 KB instead of
+  // 1.72 MB. A name that is not in that set renders as an empty rectangle, which is what `block`
+  // and `pending` did on the live build. Any glyph this screen asks for has to be one the app
+  // already uses somewhere else, or the font has to be regenerated first.
+  const walk = (dir) => readdirSync(dir).flatMap((entry) => {
+    const path = `${dir}/${entry}`;
+    return statSync(path).isDirectory() ? walk(path) : [path];
+  });
+  const sources = walk('src').filter((f) => /\.tsx?$/.test(f) && !f.endsWith('BillsView.tsx'));
+
+  const NAME = /material-symbols-rounded[^>]*>\s*([a-z0-9_]+)\s*</gi;
+  const ICON_FIELD = /icon:\s*'([a-z0-9_]+)'/g;
+  const shipped = new Set();
+  for (const file of sources) {
+    const text = readFileSync(file, 'utf8');
+    for (const m of text.matchAll(NAME)) shipped.add(m[1]);
+    for (const m of text.matchAll(ICON_FIELD)) shipped.add(m[1]);
+  }
+
+  const asked = new Set();
+  for (const m of view.matchAll(/material-symbols-rounded[^>]*>([^<]*)</gi)) {
+    for (const n of m[1].match(/'([a-z0-9_]+)'/g) || []) asked.add(n.replace(/'/g, ''));
+    const plain = m[1].trim();
+    if (/^[a-z0-9_]+$/.test(plain)) asked.add(plain);
+  }
+
+  assert.ok(asked.size >= 4, 'expected this screen to use several glyphs');
+  const unavailable = [...asked].filter((n) => !shipped.has(n));
+  assert.deepEqual(unavailable, [],
+    `these icon names are not in the subset font and will render as boxes: ${unavailable.join(', ')}`);
+});
+
 test('status is never colour alone', () => {
   // Roughly one in twelve men cannot separate the red from the green, and this is read at a counter.
   assert.match(view, /const STATUS_WORD = \{/);
   assert.match(view, /const PAYMENT_WORD = \{/);
   assert.match(view, /\$\{escapeHtml\(status\)\}/);
   assert.match(view, /\$\{escapeHtml\(payment\)\}/);
-  assert.match(view, /settled \? 'check_circle' : 'pending'/, 'the glyph has to differ too, not just the colour');
+  assert.match(view, /settled \? 'check_circle' : 'warning'/, 'the glyph has to differ too, not just the colour');
 });
 
 test('every interpolation of order data is escaped', () => {

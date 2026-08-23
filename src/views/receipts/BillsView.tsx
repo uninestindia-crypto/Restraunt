@@ -237,6 +237,11 @@ export class BillsView {
     const status = STATUS_WORD[String(order.status)] || String(order.status || '');
     const payment = PAYMENT_WORD[String(order.paymentStatus)] || String(order.paymentStatus || '');
     // Law 4: the word carries the meaning; the glyph and colour only reinforce it.
+    //
+    // The four glyph names below are ones the app already uses elsewhere, and that is a hard
+    // constraint rather than a preference: the icon font is subset to the names found in the
+    // source, so a new one renders as a .notdef box. `block` and `pending` read better here and
+    // both came out as empty rectangles on the live build.
     const settled = String(order.paymentStatus) === 'paid';
     const voided = String(order.status) === 'cancelled';
 
@@ -249,11 +254,11 @@ export class BillsView {
             </strong>
             <span style="font-size:var(--text-sm); color:var(--text-secondary);">${escapeHtml(formatTime(order.createdAt))}</span>
             <span style="font-size:var(--text-xs); font-weight:700; color:${voided ? 'var(--color-danger)' : 'var(--text-secondary)'};">
-              <span class="material-symbols-rounded" aria-hidden="true" style="font-size:14px; vertical-align:-2px;">${voided ? 'block' : 'schedule'}</span>
+              <span class="material-symbols-rounded" aria-hidden="true" style="font-size:14px; vertical-align:-2px;">${voided ? 'delete' : 'schedule'}</span>
               ${escapeHtml(status)}
             </span>
             <span style="font-size:var(--text-xs); font-weight:700; color:${settled ? 'var(--color-success)' : 'var(--color-warning)'};">
-              <span class="material-symbols-rounded" aria-hidden="true" style="font-size:14px; vertical-align:-2px;">${settled ? 'check_circle' : 'pending'}</span>
+              <span class="material-symbols-rounded" aria-hidden="true" style="font-size:14px; vertical-align:-2px;">${settled ? 'check_circle' : 'warning'}</span>
               ${escapeHtml(payment)}
             </span>
           </div>
